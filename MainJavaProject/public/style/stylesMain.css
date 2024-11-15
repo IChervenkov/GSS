@@ -1,0 +1,251 @@
+/* Basic styling for body and layout */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Top Navigation Bar */
+.top-nav {
+    background-color: #28a745;
+    /* Green for better contrast */
+    color: white;
+    padding: 1em;
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Main layout with flexbox */
+.main-content {
+    display: flex;
+    flex: 1;
+}
+
+/* Left Sidebar */
+.left-nav {
+    width: 250px;
+    background-color: #e9f5e9;
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Left Navigation links */
+.left-nav ul {
+    list-style: none;
+    padding: 0;
+}
+
+.left-nav ul li {
+    margin: 15px 0;
+}
+
+.left-nav ul li a {
+    text-decoration: none;
+    color: #333;
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 10px;
+    display: block;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Hover effect for navigation links */
+.left-nav ul li a:hover {
+    background-color: #28a745;
+    color: white;
+    border-radius: 5px;
+}
+
+/* Content Area */
+.content {
+    flex: 1;
+    padding: 20px;
+    background-color: #fff;
+}
+
+/* Sample table styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+/* Horizontal Navigation Bar Styles */
+.horizontal-nav {
+    background-color: #28a745;
+    color: white;
+    border-bottom: 2px solid #1e7e34;
+    /* Darker green border */
+    padding: 10px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.horizontal-nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.horizontal-nav ul li {
+    margin: 0 20px;
+}
+
+.horizontal-nav ul li a {
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 8px 12px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.horizontal-nav ul li a:hover {
+    background-color: #1e7e34;
+    border-radius: 5px;
+    color: #f8f9fa;
+}
+
+/* Custom Scrollbar */
+.table-container {
+    height: 80vh;
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.table-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background-color: #28a745;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background-color: #1e7e34;
+}
+
+thead th {
+    position: sticky;
+    top: 0;
+    background-color: #333;
+    color: white;
+    z-index: 0;
+    border-bottom: 2px solid #ddd;
+}
+
+/* Menu button (hamburger icon) */
+.menu-toggle {
+    display: none;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    font-size: 1.5em;
+    padding: 10px;
+    cursor: pointer;
+}
+
+/* Menu button (hamburger icon) */
+.menu-toggle-left {
+    display: none;
+    width: 100%;
+    text-align: left;
+    color: black;
+    background-color: #e9f5e9c4;
+    font-size: 1.5em;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+/* Media Queries for mobile responsiveness */
+@media screen and (max-width: 768px) {
+
+    .horizontal-nav ul {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        background-color: #28a745;
+    }
+
+    .horizontal-nav ul li {
+        margin: 10px 0;
+        text-align: center;
+    }
+
+    .menu-toggle {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 15px;
+    }
+
+    .horizontal-nav ul.active {
+        display: flex;
+    }
+
+    /* Stack content and sidebar vertically */
+    .main-content {
+        flex-direction: column;
+    }
+
+    /* Adjust font size and padding for better readability */
+    .top-nav,
+    .horizontal-nav ul li a {
+        font-size: 1.2em;
+        padding: 8px 10px;
+    }
+
+    .left-nav {
+        display: none;
+        width: auto;
+        background-color: #f4f4f4;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        padding-top: 45px;
+    }
+
+    /* Add an active class to show the left-nav */
+    .left-nav.active {
+        display: block;
+    }
+
+    .left-nav ul.active {
+        display: flex;
+    }
+
+    .menu-toggle-left {
+        display: block;
+    }
+
+    .menu-toggle-left:focus {
+        outline: none;
+    }
+
+    /* Reduce padding in the content area for smaller screens */
+    .content {
+        padding: 10px;
+    }
+
+    /* Adjust table layout for smaller screens */
+    table,
+    th,
+    td {
+        font-size: 0.9em;
+        padding: 6px;
+    }
+}

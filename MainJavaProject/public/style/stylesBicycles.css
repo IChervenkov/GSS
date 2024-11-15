@@ -1,0 +1,1156 @@
+/* Main layout with flexbox */
+.main-content {
+  display: flex;
+  flex: 1;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+  background-color: #fff;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+h3 {
+  font-weight: 600;
+}
+
+.left-nav {
+  width: 500px;
+  background-color: #f4f4f4;
+  padding: 20px;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.show-date {
+  display: none;
+}
+
+/* Flexbox for side-by-side calendars */
+.calendar-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.calendar {
+  margin: auto;
+  width: 98%;
+  max-width: 380px;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.calendar header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendar nav {
+  display: flex;
+  align-items: center;
+}
+
+.calendar ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  text-align: center;
+}
+
+.calendar ul li {
+  width: calc(100% / 7);
+  margin-top: 25px;
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+  /* Indicate clickable items */
+}
+
+#prev,
+#next {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+#prev::before,
+#next::before {
+  content: "";
+  width: 50%;
+  height: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-style: solid;
+  border-width: 0.25em 0.25em 0 0;
+  border-color: #ccc;
+}
+
+#next::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+#prev::before {
+  transform: translate(-50%, -50%) rotate(-135deg);
+}
+
+#prev:hover::before,
+#next:hover::before {
+  border-color: #000;
+}
+
+.days {
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.dates li.inactive {
+  color: #ccc;
+}
+
+.dates li.selected {
+  color: #fff;
+  /* Text color for selected date */
+  border-radius: 50%;
+  /* Make it circular */
+  position: relative;
+  /* Ensure correct positioning */
+}
+
+.dates li.selected::before {
+  content: "";
+  width: 2rem;
+  height: 2rem;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #000;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+/* Horizontal Navigation Bar Styles */
+.horizontal-nav {
+  background-color: #28a745;
+  /* Green background */
+  color: white;
+  border-bottom: 2px solid #218838;
+  /* Darker green */
+  padding: 10px 0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.horizontal-nav ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.horizontal-nav ul li {
+  margin: 0 20px;
+  /* Increased spacing between items */
+}
+
+.horizontal-nav ul li a {
+  text-decoration: none;
+  color: white;
+  font-weight: bold;
+  font-size: 1.1em;
+  /* Slightly larger text */
+  padding: 8px 12px;
+  /* Added padding for better click area */
+  transition: background-color 0.3s, color 0.3s;
+  /* Smooth transition for hover effects */
+}
+
+.horizontal-nav ul li a:hover {
+  background-color: #218838;
+  ;
+  /* Darker blue for hover effect */
+  border-radius: 5px;
+  /* Rounded corners for the hover effect */
+  color: #f8f9fa;
+  /* Light text color on hover */
+}
+
+/* Dropdown Button */
+.dropbtn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 16px;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+}
+
+/* Dropdown Container */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* Styling for "None" text to be bold and red */
+.none-selected {
+  font-weight: bold;
+  color: red;
+}
+
+.button-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  /* Add space between the buttons */
+  gap: 10px;
+  /* Optional: adds space between buttons */
+}
+
+#checkBtn {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.login-btn-report {
+  flex: 1;
+  /* Ensures buttons are the same width */
+  padding: 5px 10px 5px 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #28a745;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-btn-report:hover {
+  background-color: #218838;
+}
+
+.login-btn {
+  flex: 1;
+  /* Ensures buttons are the same width */
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #28a745;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-btn:hover {
+  background-color: #218838;
+}
+
+@media (max-height: 930px) {
+
+  .content {
+    max-height: 73vh;
+  }
+
+  .content .table-container {
+    height: 75vh;
+    max-height: 75vh;
+  }
+
+  .modal-content {
+    margin-left: 20%;
+  }
+
+  .button-container {
+    flex-direction: column;
+  }
+
+  .modal-content-total-info .table-container {
+    max-height: 60vh;
+  }
+
+  .modal-content-view {
+    margin-left: 80%;
+  }
+}
+
+/* Sample table styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  background-color: #fff;
+  /* White background for clarity */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  /* Slight shadow for better visibility */
+}
+
+th,
+td {
+  border: 1px solid #ddd;
+  padding: 12px 15px;
+  /* Larger padding for more readable content */
+  text-align: left;
+  font-size: 1em;
+  /* Standard text size */
+}
+
+thead th {
+  position: sticky;
+  /* Sticky header */
+  top: 0;
+  background-color: #333;
+  /* Dark background for header */
+  color: white;
+  z-index: 1;
+  /* Ensure header is above the table rows */
+  border-bottom: 2px solid #ddd;
+}
+
+tbody tr td {
+  text-align: center;
+}
+
+#mainTable tbody tr td {
+  text-align: left;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+  /* Alternating row color */
+}
+
+/* Custom Scrollbar */
+.table-container {
+  height: 77vh;
+  /* Set height relative to viewport */
+  max-height: 77vh;
+  overflow-y: auto;
+  /* Enable vertical scrolling */
+  overflow-x: auto;
+  /* Enable horizontal scrolling */
+}
+
+.table-container::-webkit-scrollbar {
+  /* display: none; */
+  width: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background-color: #28a745;
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background-color: #28a745;
+}
+
+/* Media Queries for Smaller Screens */
+@media screen and (max-width: 768px) {
+  .table-container {
+    height: 40vh;
+    /* Adjust height for smaller screens */
+    max-height: 70vh;
+  }
+
+  table {
+    font-size: 0.9em;
+    /* Adjust table font size for smaller screens */
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .table-container {
+    height: 35vh;
+    max-height: 60vh;
+  }
+
+  table {
+    font-size: 0.8em;
+    /* Smaller font for very small screens */
+  }
+}
+
+/* Modal background */
+.modal {
+  display: none;
+  /* Hidden by default */
+  position: fixed;
+  /* Stay in place */
+  z-index: 1;
+  /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%;
+  /* Full width */
+  height: 100%;
+  /* Full height */
+  background-color: rgba(0, 0, 0, 0.5);
+  /* Black background with opacity */
+  display: flex;
+  /* Use flexbox to center the content */
+  justify-content: center;
+  /* Horizontally center the modal */
+  align-items: center;
+  /* Vertically center the modal */
+  transition: opacity 0.3s ease;
+}
+
+.modal.show {
+  display: block;
+  opacity: 1;
+  /* Ensure it's visible when showing */
+}
+
+/* Keyframes for sliding in and out */
+@keyframes slideIn {
+  from {
+    transform: translateY(-200px);
+    /* Start above */
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    /* Slide into view */
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateY(-200px);
+    /* Slide out above */
+    opacity: 0;
+  }
+}
+
+.modal-content.slide-in,
+.modal-content-multi-calendar.slide-in,
+.modal-content-view.slide-in,
+.modal-content.slide.slide-in,
+.modal-content-total-info.slide-in,
+.modal-content-mess.slide-in {
+  animation: slideIn 0.4s forwards;
+  /* Slide in animation */
+}
+
+.modal-content.slide-out,
+.modal-content-multi-calendar.slide-out,
+.modal-content-view.slide-out,
+.modal-content.slide.slide-out,
+.modal-content-total-info.slide-out,
+.modal-content-mess.slide-out {
+  animation: slideOut 0.4s forwards;
+  /* Slide out animation */
+}
+
+/* Modal content box */
+
+.modal-content-multi-calendar {
+  margin-top: 10%;
+  margin-left: 25%;
+  background-color: #fefefe;
+  padding: 20px;
+  border: 1px solid #888;
+  max-width: 50%;
+  /* Ensure it doesn't overflow on small screens */
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  /* Positioning context for the close button */
+  transform: translateY(-200px);
+  /* Initial position for sliding */
+  opacity: 0;
+  /* Hidden initially */
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  /* Slide and fade effect */
+}
+
+.modal-content-multi-calendar.show {
+  transform: translateY(0);
+  /* Slide into view */
+  opacity: 1;
+}
+
+.modal-content-view {
+  margin-top: 80px;
+  margin-left: 25%;
+  background-color: #fefefe;
+  padding: 20px;
+  border: 1px solid #888;
+  max-width: 850px;
+  /* Ensure it doesn't overflow on small screens */
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  /* Positioning context for the close button */
+  transform: translateY(-200px);
+  /* Initial position for sliding */
+  opacity: 0;
+  /* Hidden initially */
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  /* Slide and fade effect */
+}
+
+.modal-content-view.show {
+  transform: translateY(0);
+  /* Slide into view */
+  opacity: 1;
+}
+
+.modal-content {
+  margin-top: 15%;
+  margin-left: 25%;
+  background-color: #fefefe;
+  padding: 20px;
+  border: 1px solid #888;
+  max-width: 50%;
+  /* Ensure it doesn't overflow on small screens */
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  /* Positioning context for the close button */
+  transform: translateY(-200px);
+  /* Initial position for sliding */
+  opacity: 0;
+  /* Hidden initially */
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  /* Slide and fade effect */
+}
+
+.modal-content.show {
+  transform: translateY(0);
+  /* Slide into view */
+  opacity: 1;
+}
+
+/* Time selection styles */
+.time-selection {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.time-selection .mb-3 {
+  flex: 1;
+  margin-right: 10px;
+  /* Add space between hour and minute dropdowns */
+}
+
+/* Checkbox layout: Align checkbox with label */
+.form-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Center-align the checkbox and label horizontally */
+}
+
+/* Close button style */
+.close {
+  position: absolute;
+  /* Absolute positioning to place it at the top-right */
+  top: 10px;
+  /* Distance from the top */
+  right: 10px;
+  /* Distance from the right */
+  color: #aaa;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+  color: black;
+  text-decoration: none;
+}
+
+/* Styling the checkbox */
+input[type="checkbox"] {
+  /* Hide default checkbox */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #fff;
+  border: 2px solid #28a745;
+  border-radius: 4px;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+input[type="checkbox"]:checked {
+  background-color: #28a745;
+  /* Green color when checked */
+  border-color: #218838;
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 4px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Styling the label for the checkbox */
+.form-check-label {
+  margin-left: 10px;
+  /* Space between checkbox and label */
+  font-size: 1em;
+  color: #000;
+  cursor: pointer;
+}
+
+#longTermCheckbox {
+  margin-left: 50px;
+}
+
+/* Hover effects */
+input[type="checkbox"]:hover {
+  border-color: #218838;
+  /* Darker green border on hover */
+}
+
+input[type="checkbox"]:checked:hover {
+  background-color: #218838;
+}
+
+/* Style for buttons in the modal */
+
+.modal-image {
+  display: block;
+  margin: 0 auto;
+  margin-bottom: 15px;
+  max-width: 20%;
+  /* Adjust as needed */
+  height: auto;
+  /* Keeps aspect ratio */
+}
+
+.table-icon {
+  max-width: 25px;
+  /* Restrict the width */
+  height: auto;
+  /* Keep aspect ratio */
+  display: block;
+  /* Ensure it behaves like a block element */
+  align-items: center;
+}
+
+.header-modal-report {
+  margin-bottom: 25px;
+}
+
+.modal-content-total-info {
+  margin-top: 5%;
+  margin-left: 25%;
+  background-color: #fefefe;
+  padding: 20px;
+  border: 1px solid #888;
+  max-width: 50%;
+  max-height: 70%;
+  /* Ensure it doesn't overflow on small screens */
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  /* Positioning context for the close button */
+  transform: translateY(-200px);
+  /* Initial position for sliding */
+  opacity: 0;
+  /* Hidden initially */
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  /* Slide and fade effect */
+}
+
+.modal-content-total-info.show {
+  transform: translateY(0);
+  /* Slide into view */
+  opacity: 1;
+}
+
+.modal-content-total-info .table-container {
+  max-height: 55vh;
+}
+
+.modal-content-view .table-container {
+  max-height: 250px;
+}
+
+.modal-content-mess {
+  margin-top: 20%;
+  margin-left: 35%;
+  background-color: #fefefe;
+  padding: 20px;
+  border: 1px solid #888;
+  max-width: 30%;
+  /* Ensure it doesn't overflow on small screens */
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  /* Positioning context for the close button */
+  transform: translateY(-200px);
+  /* Initial position for sliding */
+  opacity: 0;
+  /* Hidden initially */
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  /* Slide and fade effect */
+}
+
+.modal-content-mess.show {
+  transform: translateY(0);
+  /* Slide into view */
+  opacity: 1;
+}
+
+.modal-content-mess .button-container-mess {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  /* Space between buttons */
+  margin-top: 20px;
+}
+
+.modal-content-mess .button-container-mess .login-btn-mess {
+  background-color: #28a745;
+  /* Green background for confirm */
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: block;
+}
+
+.modal-content-mess .button-container-mess .confirm-btn:hover {
+  background-color: #218838;
+  /* Darker green on hover */
+}
+
+.visualization-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 15px;
+  padding-top: 15px;
+}
+
+.virtual-warehouse-labels {
+  display: flex;
+  gap: 10px;
+  /* Adjust the spacing between the labels as needed */
+}
+
+.virtual-warehouse-label {
+  background-color: #f0f0f0;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.virtual-warehouse-label:hover {
+  background-color: #e0e0e0;
+  /* Change background color on hover */
+  cursor: pointer;
+  /* Ensure cursor changes on hover */
+}
+
+/* Styling for the custom dropdown */
+.search-container {
+  position: relative;
+}
+
+#bikeDropdown,
+#clientDropdown,
+#removeBikeDropdown {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  border: 1px solid #ddd;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  position: absolute;
+  z-index: 1000;
+  background-color: white;
+}
+
+#bikeDropdown li,
+#clientDropdown li,
+#removeBikeDropdown li {
+  padding: 10px;
+  cursor: pointer;
+}
+
+#bikeDropdown li:hover,
+#clientDropdown li:hover,
+#removeBikeDropdown li:hover {
+  background-color: #218838;
+  color: white;
+}
+
+.btn:hover {
+  background-color: #218838;
+}
+
+/* Menu button (hamburger icon) */
+.menu-toggle {
+  display: none;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  font-size: 1.5em;
+  padding: 10px;
+  cursor: pointer;
+}
+
+/* Menu button (hamburger icon) */
+.menu-toggle-left {
+  display: none;
+  width: 100%;
+  text-align: left;
+  color: black;
+  background-color: #e9f5e9c4;
+  font-size: 1.5em;
+  padding: 10px;
+  border: none;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+.button-container-report {
+  display: none;
+}
+
+/* Hide the download button by default */
+.download-btn {
+  display: none;
+  /* Hide by default */
+}
+
+.disabled-select {
+  pointer-events: none;
+  /* Disable interactions */
+  opacity: 0.5;
+  /* Make it look disabled */
+  background-color: #f0f0f0;
+  /* Optional: Change background color */
+  color: #888;
+  /* Optional: Change text color */
+}
+
+#bikeDropdown.list-group::-webkit-scrollbar,
+#clientDropdown.list-group::-webkit-scrollbar,
+#removeBikeDropdown.list-group::-webkit-scrollbar {
+  width: 10px;
+}
+
+#bikeDropdown.list-group::-webkit-scrollbar-thumb,
+#clientDropdown.list-group::-webkit-scrollbar-thumb,
+#removeBikeDropdown.list-group::-webkit-scrollbar-thumb {
+  background-color: #28a745;
+  border-radius: 4px;
+}
+
+#bikeDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#clientDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#removeBikeDropdown.list-group::-webkit-scrollbar-thumb:hover {
+  background-color: #1e7e34;
+}
+
+
+#addBikeModal .modal-content,
+#removeBikeModal .modal-content,
+#addMultiBikeModal .modal-content {
+  text-align: left;
+}
+
+#addBikeModal h2,
+#removeBikeModal h2,
+#addMultiBikeModal h2 {
+  margin-bottom: 30px;
+}
+
+.custom-progress {
+  height: 20px;
+  width: 0%;
+  background-color: #4caf50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  transition: width 0.3s ease;
+}
+
+.progress-bar {
+  width: 100%;
+  background-color: #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.pagination .active .page-link {
+  background-color: #4CAF50;
+  color: white;
+  border: black;
+}
+
+#pagination {
+  margin-top: 16px;
+  margin-bottom: 0px;
+  color: black;
+}
+
+.disabled-button {
+  pointer-events: none;
+  opacity: 0.5;
+  position: relative;
+}
+
+/* Media Queries for mobile responsiveness */
+@media screen and (max-width: 768px) {
+
+  #addBikeModal .modal-content,
+  #removeBikeModal .modal-content {
+    margin-right: 20px;
+  }
+
+  .download-btn {
+    display: block;
+    /* Show on mobile */
+    flex: 1;
+    padding: 5px 10px 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 100%;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  .login-btn-mess {
+    width: 100%;
+  }
+
+  .modal-content-mess {
+    max-width: 100%;
+    margin-left: 50px;
+    margin-right: 50px;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: 350px;
+    margin-left: 30px;
+  }
+
+  .button-container-report {
+    display: flex;
+    flex-direction: column;
+    /* Stack buttons vertically */
+    align-items: center;
+    /* Center buttons horizontally (optional) */
+  }
+
+  .visualization-header h3 {
+    margin-bottom: 30px;
+  }
+
+  .virtual-warehouse-labels button:first-of-type {
+    display: none;
+    /* Hide the first button */
+  }
+
+  .virtual-warehouse-labels {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    /* Three columns with automatic width */
+    gap: 10px;
+    /* Optional: space between labels */
+    margin: 0 auto;
+    /* Center the grid container */
+  }
+
+  .modal-content-view {
+    width: 350px;
+    max-width: 350px;
+    margin-left: 30px;
+  }
+
+  .visualization-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .button-container-report {
+    margin-top: 15px;
+    width: 100%;
+  }
+
+  .login-btn-report {
+    width: 100%;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  .modal-content-total-info {
+    max-width: 400px;
+    margin-top: 100px;
+    margin-left: 10px;
+    margin-right: 10px;
+    padding: 30px;
+  }
+
+  .horizontal-nav ul {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    background-color: #28a745;
+  }
+
+  .horizontal-nav ul li {
+    margin: 10px 0;
+    text-align: center;
+  }
+
+  .menu-toggle {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 15px;
+  }
+
+  .horizontal-nav ul.active {
+    display: flex;
+  }
+
+  /* Stack content and sidebar vertically */
+  .main-content {
+    flex-direction: column;
+  }
+
+  /* Adjust font size and padding for better readability */
+  .top-nav,
+  .horizontal-nav ul li a {
+    font-size: 1.2em;
+    padding: 8px 10px;
+  }
+
+  .left-nav {
+    display: none;
+    width: auto;
+    background-color: #f4f4f4;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    padding-top: 45px;
+  }
+
+  /* Add an active class to show the left-nav */
+  .left-nav.active {
+    display: block;
+    padding-top: 0px;
+    max-height: 700px;
+  }
+
+  .left-nav ul.active {
+    display: flex;
+  }
+
+  .menu-toggle-left {
+    display: block;
+  }
+
+  .menu-toggle-left:focus {
+    outline: none;
+  }
+
+  /* Reduce padding in the content area for smaller screens */
+  .content {
+    padding: 10px;
+    padding-top: 30px;
+  }
+
+  /* Adjust table layout for smaller screens */
+  table,
+  th,
+  td {
+    font-size: 0.9em;
+    padding: 6px;
+  }
+
+  h3 {
+    display: none;
+  }
+
+  .table-container {
+    max-height: 600px;
+    height: 600px;
+  }
+
+  .modal-content-multi-calendar {
+    max-width: 95%;
+    padding: 15px;
+    margin-left: 10px;
+  }
+
+  .calendar-container {
+    flex-direction: column;
+    /* Stack calendars vertically on small screens */
+    align-items: center;
+  }
+
+  .calendar {
+    width: 90%;
+    /* Take almost full width on small screens */
+  }
+
+  .calendar h3 {
+    display: block;
+  }
+
+  .calendar th,
+  .calendar td {
+    padding: 5px;
+    font-size: 12px;
+    /* Smaller text size for small screens */
+  }
+
+  .pagination {
+    padding-bottom: 16px;
+  }
+}

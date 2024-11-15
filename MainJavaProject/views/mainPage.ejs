@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="icon" href="./icon/logo.jpg">
+    <link rel="stylesheet" href="../style/stylesMain.css">
+</head>
+<body>
+
+    <!-- Horizontal Navigation Bar -->
+    <div class="horizontal-nav">
+        <button class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
+        <ul id="nav-links">
+            <% horizontalNavItems.forEach(function(item) { %>
+                <li><a href="<%= item.href %>"><%= item.name %></a></li>
+            <% }); %>
+        </ul>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+
+        <button id="menu-toggle-left" class="menu-toggle-left" aria-label="Toggle sidebar navigation">
+            <span id="arrow">&#9651;</span> Set Building
+        </button>
+
+        <% if(navItems) { %>
+        <!-- Left Navigation Bar -->
+        <div class="left-nav">
+            <ul>
+                <% navItems.forEach(function(item) { %>
+                    <li><a href="<%= item.href %>"><%= item.name %></a></li>
+                <% }); %>
+            </ul>
+        </div>
+        <% }; %>
+
+        <!-- Main Content Area -->
+        <div class="content">
+
+            <!-- Data Visualization Table -->
+            <div class="visualization">
+                <h3> <%= startMessage %> </h3>
+
+                <% if(headerTable) { %>
+                <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <% headerTable.forEach(function(item) { %>
+                            <th><%= item.name %></th>
+                            <% }); %>
+                        </tr>
+                    </thead>
+                    <% if (data) { %>
+                    <tbody>
+                        <% data.forEach(function(item) { %>
+                            <tr>
+                                <td><%= item.name %></td>
+                            </tr>
+                        <% }); %>
+                        
+                    </tbody>
+                </table>
+                </div>
+                <% } } else { %>
+                    <p>This system was created and provided for the needs of Global RTS employees.</p>
+                <% }; %>
+            </div>
+        </div>
+    </div>
+
+</body>
+<script src="../java/phoneMenu.js"></script>
+</html>

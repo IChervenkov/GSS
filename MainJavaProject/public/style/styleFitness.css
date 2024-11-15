@@ -1,0 +1,487 @@
+/* Main layout with flexbox */
+.main-content {
+    display: flex;
+    flex: 1;
+}
+
+.content {
+    flex: 1;
+    padding: 20px;
+    background-color: #fff;
+}
+
+.visualization-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 15px;
+    padding-top: 15px;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+h3 {
+    font-weight: 600;
+}
+
+.left-nav {
+    width: 500px;
+    background-color: #f4f4f4;
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.show-date {
+    display: none;
+}
+
+/* Flexbox for side-by-side calendars */
+.calendar-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.calendar {
+    margin: auto;
+    margin-top: 20px;
+    width: 98%;
+    max-width: 380px;
+    padding: 1rem;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.calendar header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.calendar nav {
+    display: flex;
+    align-items: center;
+}
+
+.calendar ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    text-align: center;
+}
+
+.calendar ul li {
+    width: calc(100% / 7);
+    margin-top: 25px;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+    /* Indicate clickable items */
+}
+
+#prev,
+#next {
+    width: 20px;
+    height: 20px;
+    position: relative;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+#prev::before,
+#next::before {
+    content: "";
+    width: 50%;
+    height: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-style: solid;
+    border-width: 0.25em 0.25em 0 0;
+    border-color: #ccc;
+}
+
+#next::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+#prev::before {
+    transform: translate(-50%, -50%) rotate(-135deg);
+}
+
+#prev:hover::before,
+#next:hover::before {
+    border-color: #000;
+}
+
+.days {
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.dates li.inactive {
+    color: #ccc;
+}
+
+.dates li.selected {
+    color: #fff;
+    /* Text color for selected date */
+    border-radius: 50%;
+    /* Make it circular */
+    position: relative;
+    /* Ensure correct positioning */
+}
+
+.dates li.selected::before {
+    content: "";
+    width: 2rem;
+    height: 2rem;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #000;
+    border-radius: 50%;
+    z-index: -1;
+}
+
+/* Horizontal Navigation Bar Styles */
+.horizontal-nav {
+    background-color: #28a745;
+    /* Green background */
+    color: white;
+    border-bottom: 2px solid #218838;
+    /* Darker green */
+    padding: 10px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.horizontal-nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.horizontal-nav ul li {
+    margin: 0 20px;
+    /* Increased spacing between items */
+}
+
+.horizontal-nav ul li a {
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    font-size: 1.1em;
+    /* Slightly larger text */
+    padding: 8px 12px;
+    /* Added padding for better click area */
+    transition: background-color 0.3s, color 0.3s;
+    /* Smooth transition for hover effects */
+}
+
+.horizontal-nav ul li a:hover {
+    background-color: #218838;
+    ;
+    /* Darker blue for hover effect */
+    border-radius: 5px;
+    /* Rounded corners for the hover effect */
+    color: #f8f9fa;
+    /* Light text color on hover */
+}
+
+.button-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    /* Add space between the buttons */
+    gap: 10px;
+    /* Optional: adds space between buttons */
+}
+
+.btn-report {
+    flex: 1;
+    /* Ensures buttons are the same width */
+    padding: 5px 10px 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-report:hover {
+    background-color: #218838;
+}
+
+.modal-btn {
+    padding: 5px 10px 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.modal-btn:hover {
+    background-color: #218838;
+}
+
+.pagination .active .page-link {
+    background-color: #4CAF50;
+    color: white;
+    border: black;
+}
+
+#pagination {
+    margin-top: 16px;
+    margin-bottom: 0px;
+    color: black;
+}
+
+.virtual-warehouse-labels {
+    display: flex;
+    gap: 10px;
+    /* Adjust the spacing between the labels as needed */
+}
+
+.virtual-warehouse-label {
+    background-color: #f0f0f0;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+@media (max-height: 930px) {
+
+    .content {
+        max-height: 73vh;
+    }
+
+    .content .table-container {
+        height: 75vh;
+        max-height: 75vh;
+    }
+
+    .modal-content {
+        margin-left: 20%;
+    }
+
+    .button-container {
+        flex-direction: column;
+    }
+
+    .modal-content-total-info .table-container {
+        max-height: 60vh;
+    }
+
+    .modal-content-view {
+        margin-left: 80%;
+    }
+}
+
+/* Sample table styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #fff;
+    /* White background for clarity */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    /* Slight shadow for better visibility */
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 12px 15px;
+    /* Larger padding for more readable content */
+    text-align: left;
+    font-size: 1em;
+    /* Standard text size */
+}
+
+thead th {
+    position: sticky;
+    /* Sticky header */
+    top: 0;
+    background-color: #333;
+    /* Dark background for header */
+    color: white;
+    z-index: 1;
+    /* Ensure header is above the table rows */
+    border-bottom: 2px solid #ddd;
+    text-align: center;
+}
+
+tbody tr td {
+    text-align: center;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+    /* Alternating row color */
+}
+
+/* Custom Scrollbar */
+.table-container {
+    height: 77vh;
+    /* Set height relative to viewport */
+    max-height: 77vh;
+    overflow-y: auto;
+    /* Enable vertical scrolling */
+    overflow-x: auto;
+    /* Enable horizontal scrolling */
+}
+
+.table-container::-webkit-scrollbar {
+    /* display: none; */
+    width: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background-color: #28a745;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background-color: #28a745;
+}
+
+/* Modal background */
+.modal {
+    display: none;
+    /* Hidden by default */
+    position: fixed;
+    /* Stay in place */
+    z-index: 1;
+    /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%;
+    /* Full width */
+    height: 100%;
+    /* Full height */
+    background-color: rgba(0, 0, 0, 0.5);
+    /* Black background with opacity */
+    display: flex;
+    /* Use flexbox to center the content */
+    justify-content: center;
+    /* Horizontally center the modal */
+    align-items: center;
+    /* Vertically center the modal */
+    transition: opacity 0.3s ease;
+}
+
+.modal.show {
+    display: block;
+    opacity: 1;
+    /* Ensure it's visible when showing */
+}
+
+.modal-content.slide-in {
+    animation: slideIn 0.4s forwards;
+    /* Slide in animation */
+}
+
+.modal-content.slide-out {
+    animation: slideOut 0.4s forwards;
+    /* Slide out animation */
+}
+
+.modal-content {
+    margin-top: 15%;
+    margin-left: 25%;
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    max-width: 50%;
+    /* Ensure it doesn't overflow on small screens */
+    border-radius: 10px;
+    text-align: center;
+    position: relative;
+    /* Positioning context for the close button */
+    transform: translateY(-200px);
+    /* Initial position for sliding */
+    opacity: 0;
+    /* Hidden initially */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    /* Slide and fade effect */
+}
+
+.modal-content.show {
+    transform: translateY(0);
+    /* Slide into view */
+    opacity: 1;
+}
+
+/* Close button style */
+.close {
+    position: absolute;
+    /* Absolute positioning to place it at the top-right */
+    top: 10px;
+    /* Distance from the top */
+    right: 10px;
+    /* Distance from the right */
+    color: #aaa;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+}
+
+/* Styling the checkbox */
+input[type="checkbox"] {
+    /* Hide default checkbox */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #fff;
+    border: 2px solid #28a745;
+    border-radius: 4px;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    position: relative;
+    outline: none;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+input[type="checkbox"]:checked {
+    background-color: #28a745;
+    /* Green color when checked */
+    border-color: #218838;
+}
+
+input[type="checkbox"]:checked::after {
+    content: '';
+    display: block;
+    position: absolute;
+    left: 4px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Media Queries for mobile responsiveness */
+@media screen and (max-width: 768px) {}

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="./icon/logo.jpg">
+    <link rel="stylesheet" href="/style/stylesLogIn.css">
+    <!-- Use absolute pathing for stylesheets when working with Express -->
+    <title>
+        <%= title %>
+    </title>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <img src="./icon/logologin.png" alt="img/png" class="logo-login">
+            <form id="loginForm" action="/login" method="POST"> <!-- Adding action and method for form submission -->
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter Username" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter Password" required>
+                </div>
+                <button type="submit" class="login-btn">Login</button>
+
+                <!-- Displaying error message dynamically using EJS -->
+                <% if (errorMessage) { %>
+                    <p id="errorMessage" class="error-message">
+                        <%= errorMessage %>
+                    </p>
+                    <% } %>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

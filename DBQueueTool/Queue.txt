@@ -1,0 +1,86 @@
+CREATE TABLE users (
+	username TEXT,
+	password TEXT
+);
+
+CREATE TABLE Soldier (
+	id TEXT NOT NULL PRIMARY KEY,
+	namesoldier TEXT,
+	country TEXT,
+	date_accommodation TIMESTAMP,
+	date_free TIMESTAMP,
+	meal_card TEXT,
+	laundry_bag_id TEXT,
+	FOREIGN KEY(laundry_bag_id) REFERENCES laundryBags(id)
+);
+
+CREATE TABLE bicycles (
+	id TEXT NOT NULL PRIMARY KEY,
+	namebike TEXT,
+	status TEXT
+);
+
+CREATE TABLE bikeSoldier(
+	id INT NOT NULL PRIMARY KEY,
+	bikeId TEXT,
+	soldierId TEXT,
+	datefrom TIMESTAMP,
+	dateto TIMESTAMP,
+	FOREIGN KEY(bikeId) REFERENCES bicycles(id),
+	FOREIGN KEY(soldierId) REFERENCES soldier(id)
+);
+
+CREATE TABLE buildings (
+	id TEXT NOT NULL PRIMARY KEY,
+	nameBuilding TEXT,
+	type TEXT
+);
+
+CREATE TABLE key (
+	id TEXT NOT NULL PRIMARY KEY,
+	nameKey TEXT,
+	soldierId TEXT,
+	FOREIGN KEY(soldierId) REFERENCES soldier(id)
+);
+
+CREATE TABLE rooms (
+	id TEXT NOT NULL PRIMARY KEY,
+	nameRoom TEXT
+);
+
+CREATE TABLE roomsKey (
+	roomId TEXT,
+	keyId TEXT,
+	FOREIGN KEY(roomId) REFERENCES rooms(id),
+	FOREIGN KEY(keyId) REFERENCES key(id)
+);
+
+CREATE TABLE buildRoom (
+	buildId TEXT,
+	roomId TEXT,
+	FOREIGN KEY(buildId) REFERENCES buildings(id),
+	FOREIGN KEY(roomId) REFERENCES rooms(id)
+);
+
+CREATE TABLE movesoldier (
+	idnewkey TEXT,
+	idpreviewkey TEXT,
+	idsoldier TEXT,
+	datemove TIMESTAMP,
+	FOREIGN KEY(idnewkey) REFERENCES key(id),
+	FOREIGN KEY(idpreviewkey) REFERENCES key(id),
+	FOREIGN KEY(idsoldier) REFERENCES soldier(id)
+);
+
+CREATE TABLE laundryBags (
+	id TEXT NOT NULL PRIMARY KEY,
+	code TEXT
+);
+
+CREATE TABLE fitnes (
+	id INT NOT NULL PRIMARY KEY,
+	soldierid TEXT,
+	emoji VARCHAR(10) NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY(soldierid) REFERENCES soldier(id)
+);

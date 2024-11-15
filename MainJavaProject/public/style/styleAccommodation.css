@@ -1,0 +1,767 @@
+/* Basic styling for body and layout */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Top Navigation Bar */
+.top-nav {
+    background-color: #28a745;
+    /* Green for better contrast */
+    color: white;
+    padding: 1em;
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Main layout with flexbox */
+.main-content {
+    display: flex;
+    flex: 1;
+    max-height: calc(100vh - 50px);
+}
+
+/* Left Sidebar */
+.left-nav {
+    width: 290px;
+    background-color: #f4f4f4;
+    /* Light green background */
+    padding: 20px;
+    padding-top: 0px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+    max-height: calc(100vh - 30px);
+}
+
+.transparent-bg {
+    background-color: #f4f4f4;
+}
+
+.full-back {
+    margin-right: 9px;
+}
+
+.button-group {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* Show the button group on hover */
+.list-group-item:hover .button-group {
+    opacity: 1;
+}
+
+/* Custom Scrollbar for Left Navigation */
+.left-nav::-webkit-scrollbar {
+    width: 8px;
+}
+
+.left-nav::-webkit-scrollbar-thumb {
+    background-color: #28a745;
+    border-radius: 4px;
+}
+
+.left-nav::-webkit-scrollbar-thumb:hover {
+    background-color: #1e7e34;
+}
+
+/* Left Navigation links */
+.left-nav ul {
+    list-style: none;
+    padding: 0;
+}
+
+.left-nav ul li {
+    margin: 15px 0;
+}
+
+.left-nav ul li a {
+    text-decoration: none;
+    color: #333;
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 10px;
+    display: block;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Hover effect for navigation links */
+.left-nav ul li a:hover {
+    background-color: #28a745;
+    /* Same green as top-nav */
+    color: white;
+    border-radius: 5px;
+}
+
+/* Content Area */
+.content {
+    flex: 1;
+    padding: 20px;
+    background-color: #fff;
+}
+
+/* Sample table styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 1.1em;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
+}
+
+#data-table th,
+#data-table td {
+    text-align: left;
+}
+
+/* Table Header Styling */
+thead th {
+    background-color: #333;
+    color: white;
+    position: sticky;
+    top: 0;
+    border-bottom: 2px solid #ddd;
+    z-index: 1;
+}
+
+/* Hover effect for table rows */
+.main-content table tbody tr:hover,
+#keyModal table tbody tr:hover {
+    background-color: #f1f1f1;
+    cursor: pointer;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+    /* Alternating row color */
+}
+
+/* Input Field Styling Above Headers */
+thead th input {
+    width: 90%;
+    padding: 8px;
+    margin-bottom: 8px;
+    font-size: 1em;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s;
+}
+
+thead th input:focus {
+    border-color: #28a745;
+    outline: none;
+}
+
+/* Horizontal Navigation Bar Styles */
+.horizontal-nav {
+    background-color: #28a745;
+    /* Green background for contrast */
+    color: white;
+    border-bottom: 2px solid #1e7e34;
+    padding: 10px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.horizontal-nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.horizontal-nav ul li {
+    margin: 0 20px;
+}
+
+.horizontal-nav ul li a {
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 8px 12px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.horizontal-nav ul li a:hover {
+    background-color: #1e7e34;
+    /* Darker green for hover */
+    border-radius: 5px;
+    color: #f8f9fa;
+}
+
+/* Custom Scrollbar */
+.table-container {
+    height: 78vh;
+    /* Set height relative to viewport */
+    max-height: 78vh;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.table-container::-webkit-scrollbar {
+    /* display: none; */
+    width: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background-color: #28a745;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background-color: #28a745;
+}
+
+#keyModal .table-container {
+    height: auto;
+}
+
+.undefined-data,
+.undefined-data-soldier {
+    font-weight: bold;
+    color: green;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    padding-top: 100px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.4);
+    transition: opacity 0.3s ease;
+}
+
+.modal.show {
+    display: block;
+    opacity: 1;
+    /* Ensure it's visible when showing */
+}
+
+.modal-content.slide-in,
+.modal-content-view.slide-in,
+.modal-content-mess.slide-in {
+    animation: slideIn 0.4s forwards;
+    /* Slide in animation */
+}
+
+.modal-content.slide-out,
+.modal-content-view.slide-out,
+.modal-content-mess.slide-out {
+    animation: slideOut 0.4s forwards;
+    /* Slide out animation */
+}
+
+#form3 {
+    margin-left: 36%;
+    max-width: 400px;
+}
+
+.modal-content {
+    margin-top: 2%;
+    margin-left: 27%;
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    max-width: 45%;
+    border-radius: 10px;
+    text-align: left;
+    position: relative;
+    transform: translateY(-200px);
+    /* Initial position for sliding */
+    opacity: 0;
+    /* Hidden initially */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    /* Slide and fade effect */
+}
+
+#form3.modal-content {
+    margin-top: 5%;
+}
+
+.modal-content.show {
+    transform: translateY(0);
+    /* Slide into view */
+    opacity: 1;
+}
+
+/* Keyframes for sliding in and out */
+@keyframes slideIn {
+    from {
+        transform: translateY(-200px);
+        /* Start above */
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        /* Slide into view */
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateY(-200px);
+        /* Slide out above */
+        opacity: 0;
+    }
+}
+
+.close-btn {
+    position: absolute;
+    /* Absolute positioning to place it at the top-right */
+    top: 10px;
+    /* Distance from the top */
+    right: 10px;
+    /* Distance from the right */
+    color: #aaa;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-btn:hover,
+.close-btn:focus {
+    color: black;
+    text-decoration: none;
+}
+
+.modal-content input {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0 10px 0;
+    box-sizing: border-box;
+}
+
+.modal h2 {
+    margin-bottom: 30px;
+}
+
+.modal-labal-info {
+    margin-bottom: 20px;
+}
+
+.modal-grid {
+    display: grid;
+    grid-template-columns: auto;
+    /* Three columns: left label, symbol, right label */
+    text-align: center;
+    /* Centers the symbol in the middle column */
+}
+
+.round-symbol {
+    font-size: 30px;
+    /* Adjust size as needed */
+}
+
+.modal-button {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 20px;
+}
+
+.modal-button:hover {
+    background-color: #218838;
+}
+
+.visualization-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* Keeps space between elements */
+    padding: 15px;
+    /* Adjusted for consistent padding */
+    padding-top: 5px;
+    background-color: #ffffff;
+    /* Consider adding a background color for contrast */
+}
+
+.virtual-warehouse-labels {
+    display: flex;
+    gap: 10px;
+    /* Space between labels */
+    margin-left: auto;
+    /* Pushes labels to the right */
+}
+
+.virtual-warehouse-label {
+    background-color: #f0f0f0;
+    /* Background color for labels */
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    color: #333;
+    /* Dark text color for contrast */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    /* Subtle shadow for depth */
+}
+
+.name-add {
+    font-size: 0.8em;
+    color: #888;
+}
+
+.left-nav a:hover .name-add {
+    color: white;
+}
+
+/* Styling for the custom dropdown */
+.search-container {
+    position: relative;
+}
+
+#soldierDropdown,
+#soldierDropdownMove,
+#bagDropdown,
+#roomDropdown,
+#keyDropdown {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    border: 1px solid #ddd;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    background-color: white;
+}
+
+#soldierDropdown li,
+#soldierDropdownMove li,
+#bagDropdown li,
+#roomDropdown li,
+#keyDropdown li {
+    padding: 10px;
+    cursor: pointer;
+}
+
+#soldierDropdown li:hover,
+#soldierDropdownMove li:hover,
+#bagDropdown li:hover,
+#roomDropdown li:hover,
+#keyDropdown li:hover {
+    background-color: #218838;
+    color: white;
+}
+
+.move-label {
+    margin-bottom: 10px;
+}
+
+.btn:hover {
+    background-color: #218838;
+}
+
+.btn-report {
+    flex: 1;
+    /* Ensures buttons are the same width */
+    padding: 5px 10px 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-report:hover {
+    background-color: #218838;
+}
+
+.btn-add-soldier {
+
+    padding: 5px 10px 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-add-soldier:hover {
+    background-color: #218838;
+}
+
+.btn-add-destination {
+
+    padding: 5px 10px 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-add-destination:hover {
+    background-color: #218838;
+}
+
+.progress-bar {
+    width: 100%;
+    background-color: #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.custom-progress {
+    height: 20px;
+    width: 0%;
+    background-color: #4caf50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    transition: width 0.3s ease;
+}
+
+.modal-content-view {
+    margin-left: 7%;
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    max-width: 1500px;
+    /* Ensure it doesn't overflow on small screens */
+    border-radius: 10px;
+    text-align: center;
+    position: relative;
+    /* Positioning context for the close button */
+    transform: translateY(-200px);
+    /* Initial position for sliding */
+    opacity: 0;
+    /* Hidden initially */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    /* Slide and fade effect */
+}
+
+.modal-content-view.show {
+    transform: translateY(0);
+    /* Slide into view */
+    opacity: 1;
+}
+
+.modal-content-view .table-container {
+    max-height: 300px;
+}
+
+.modal-content-mess {
+    margin-top: 10%;
+    margin-left: 35%;
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    max-width: 30%;
+    border-radius: 10px;
+    text-align: center;
+    position: relative;
+    transform: translateY(-200px);
+    /* Initial position for sliding */
+    opacity: 0;
+    /* Hidden initially */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    /* Slide and fade effect */
+}
+
+.modal-content-mess.show {
+    transform: translateY(0);
+    /* Slide into view */
+    opacity: 1;
+}
+
+.button-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    /* Add space between the buttons */
+    gap: 10px;
+    /* Optional: adds space between buttons */
+}
+
+.modal-content-mess .button-container-mess {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    /* Space between buttons */
+    margin-top: 20px;
+}
+
+.modal-content-mess .button-container-mess .login-btn-mess {
+    background-color: #28a745;
+    /* Green background for confirm */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: block;
+}
+
+.modal-content-mess .button-container-mess .confirm-btn:hover {
+    background-color: #218838;
+    /* Darker green on hover */
+}
+
+.modal-image {
+    display: block;
+    margin: 0 auto;
+    margin-bottom: 15px;
+    max-width: 20%;
+    /* Adjust as needed */
+    height: auto;
+    /* Keeps aspect ratio */
+}
+
+.visualization-header h3 {
+    margin-bottom: 0px;
+}
+
+#soldierDropdown.list-group::-webkit-scrollbar,
+#soldierDropdownMove.list-group::-webkit-scrollbar,
+#bagDropdown.list-group::-webkit-scrollbar,
+#roomDropdown.list-group::-webkit-scrollbar,
+#keyDropdown.list-group::-webkit-scrollbar {
+    width: 10px;
+}
+
+#soldierDropdown.list-group::-webkit-scrollbar-thumb,
+#soldierDropdownMove.list-group::-webkit-scrollbar-thumb,
+#bagDropdown.list-group::-webkit-scrollbar-thumb,
+#roomDropdown.list-group::-webkit-scrollbar-thumb,
+#keyDropdown.list-group::-webkit-scrollbar-thumb {
+    background-color: #28a745;
+    border-radius: 4px;
+}
+
+#soldierDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#soldierDropdownMove.list-group::-webkit-scrollbar-thumb:hover,
+#bagDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#roomDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#keyDropdown.list-group::-webkit-scrollbar-thumb:hover {
+    background-color: #1e7e34;
+}
+
+.btn-free-soldier {
+
+    padding: 5px 10px 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: red;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-free-soldier:hover {
+    background-color: #b30000;
+}
+
+.code-style {
+    color: red;
+    font-weight: bold;
+}
+
+.modal-button-release {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: red;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 20px;
+}
+
+.modal-button-release:hover {
+    background-color: #b30000;
+}
+
+#deleteModal .modal-content {
+    text-align: center;
+}
+
+.pagination .active .page-link {
+    background-color: #4CAF50;
+    color: white;
+    border: black;
+}
+
+#pagination {
+    margin-top: 16px;
+    margin-bottom: 0px;
+    color: black;
+}
+
+.ascending::after {
+    content: " ↑";
+}
+
+.descending::after {
+    content: " ↓";
+}
+
+.modal table thead tr {
+    text-align: center;
+}
+
+@media (min-width: 1750px) {
+
+    .modal-content-view {
+        margin-left: 10%;
+    }
+
+    .table-container {
+        height: 85vh;
+    }
+
+    .modal-content-view .table-container {
+        max-height: 300px;
+    }
+
+    #form3 {
+        margin-left: 40%;
+        max-width: 400px;
+    }
+}

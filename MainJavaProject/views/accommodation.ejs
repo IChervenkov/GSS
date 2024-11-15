@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+    <link rel="icon" href="./icon/logo.jpg">
+    <link rel="stylesheet" href="../style/styleAccommodation.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+
+    <input type="hidden" id="curent-dest" value="<%= numBuild %>">
+
+    <!-- Horizontal Navigation Bar -->
+    <div class="horizontal-nav">
+        <ul>
+            <% horizontalNavItems.forEach(function(item) { %>
+                <li><a href="<%= item.href %>">
+                        <%= item.name %>
+                    </a></li>
+                <% }); %>
+        </ul>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+
+        <% if(navItems) { %>
+            <!-- Left Navigation Bar -->
+            <div class="left-nav">
+                <div class="title-container mb-2 sticky-top p-3 w-100 transparent-bg">
+                    <button type="button" id="btnAddDestination" class="btn-add-destination w-100">Add
+                        Destination</button>
+                </div>
+                <ul>
+                    <% navItems.forEach(function(item) { %>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <a href="<%= item.href %>" class="flex-grow-1 text-decoration-none full-back">
+                                <%= item.name %>
+                                    <span class="name-add d-block">
+                                        <%= item.nameAdd %>
+                                    </span>
+                            </a>
+                            <div class="button-group">
+                                <button type="button" class="btn btn-success btn-sm me-1 btn-add"
+                                    name="<%= item.numBuild %>">+</button>
+                                <button type="button" class="btn btn-danger btn-sm btn-remove"
+                                    name="<%= item.numBuild %>">−</button>
+                                <% if(item.numBuild) { %>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        name="<%= item.numBuild %>" data-name-room="<%= item.name %>">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <% } %>
+                            </div>
+                        </li>
+                        <% }); %>
+                </ul>
+            </div>
+            <% } %>
+
+                <!-- Main Content Area -->
+                <div class="content">
+
+                    <div class="visualization-header">
+                        <h3>
+                            <%= titlePage %>
+                                <% if(countBeds) { %>
+                                    <span class="name-add">
+                                        (<%= countBeds %> free beds)
+                                    </span>
+                                    <% }; %>
+                        </h3>
+                        <div class="virtual-warehouse-labels">
+                            <label class="virtual-warehouse-label">Free Beds: <%= totalFreeBeds %></label>
+                            <label class="virtual-warehouse-label">Occupied Beds: <%= totalOccupiedBeds %></label>
+                            <button type="button" id="btnAddSoldier" class="btn-add-soldier">Add soldier</button>
+                            <button type="button" id="btnAccommSoldier" class="btn-add-soldier">Accommodation
+                                soldiers</button>
+                            <button type="button" id="btnFreeAllRoom" class="btn-free-soldier">Release all
+                                rooms</button>
+                            <button type="button" id="btnReport" class="btn-report">Reports</button>
+                        </div>
+                    </div>
+
+                    <!-- Data Visualization Table -->
+
+                    <% if(headerTable) { %>
+                        <div class="table-container">
+                            <table id="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>
+                                            <input type="text" class="search-input" placeholder="Search...">
+                                            <label id="room-number-header">Room Number</label>
+                                        </th>
+
+                                        <th>
+                                            <input type="text" class="search-input" placeholder="Search...">
+                                            <label id="room-status-header">Room Status</label>
+                                        </th>
+
+                                        <th>
+                                            <input type="text" class="search-input" placeholder="Search...">
+                                            <label id="count-free-beds-header">Count Free Beds</label>
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <% if (nameroomSetCount) { %>
+                                    <tbody id="tableBody">
+                                        <% nameroomSetCount.forEach(function(item) { %>
+                                            <tr class="data-room">
+
+                                                <td>
+                                                    <%= item.nameroom %>
+                                                </td>
+
+                                                <td class="<%= item.countFreeBeds != 0 ? 'undefined-data' : '' %>">
+                                                    <%= item.countFreeBeds !=0 ? 'Free' : 'Occupied' %>
+                                                </td>
+
+                                                <td>
+                                                    <%= item.countFreeBeds %>
+                                                </td>
+
+                                            </tr>
+                                            <% }); %>
+                                    </tbody>
+                            </table>
+                        </div>
+
+                        <nav aria-label="Table pagination">
+                            <ul id="pagination" class="pagination justify-content-center"></ul>
+                        </nav>
+
+                        <% } } %>
+
+                </div>
+    </div>
+
+    <input type="hidden" id="typeBuild" value="<%= type %>">
+    <input type="hidden" id="numBuild" value="<%= numBuild %>">
+
+    <!-- The Modal for Reports View -->
+    <div id="keyModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2>List of Keys
+                <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold"
+                    id="addKey">+</button>
+                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                    id="removeKey">−</button>
+            </h2>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <% headerTable.forEach(function(item) { %>
+                                <th>
+                                    <%= item.name %>
+                                </th>
+                                <% }); %>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <form id="form1" action="/saveKey" method="post">
+
+        <!-- Modal Structure -->
+
+        <div id="roomModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+
+                <h2>Room Information</h2>
+
+                <!-- Label for Key Number -->
+                <p class="modal-labal-info" id="modal-keynum"></p>
+
+                <!-- Label for Key Number -->
+                <p class="modal-labal-info" id="modal-keycode"></p>
+                <input type="hidden" id="key-code-value" name="keyCodeId" value="">
+
+                <!-- Soldier Selection with Custom Search -->
+                <div class="mb-3 search-container" id="search-soldier-container">
+                    <label for="soldierSearch" class="form-label">Soldier Name:</label>
+                    <div class="input-group">
+                        <input type="text" id="soldierSearch" class="form-control" placeholder="Soldier Name">
+                    </div>
+                    <ul id="soldierDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedSoldierId" name="soldierId" value="">
+                    <!-- To store the selected soldier ID -->
+                </div>
+
+                <!-- Bag Selection with Custom Search -->
+                <div class="mb-3 search-container" id="search-laundry-bag-container">
+                    <label for="laundryBagSearch" class="form-label">Laundry Bag:</label>
+                    <div class="input-group">
+                        <input type="text" id="laundryBagSearch" class="form-control" placeholder="Laundry Bag">
+                    </div>
+                    <ul id="bagDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedBagId" name="bagId" value="">
+                    <!-- To store the selected soldier ID -->
+                </div>
+
+                <div class="mb-3" id="input-meal-card">
+                    <label for="meal-card-value" class="form-label">Meal card:</label>
+                    <div class="input-group">
+                        <input type="text" id="meal-card-value" name="mealCardId" class="form-control"
+                            placeholder="Meal card" value="">
+                    </div>
+                </div>
+
+                <!-- Label for Country -->
+                <p class="modal-labal-info" id="modal-country"></p>
+                <input type="hidden" id="country-value" name="countryId" value="">
+
+                <input type="hidden" id="isAccommodation" value="false">
+
+                <button type="button" class="modal-button" id="save-button">Save</button>
+                <button type="button" class="modal-button" id="move-button">Move Soldier</button>
+            </div>
+        </div>
+
+        <!-- The Modal Message -->
+        <div id="myMessage" class="modal">
+            <div class="modal-content-mess">
+                <span class="close-btn">&times;</span>
+
+                <img src="../icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon">
+                <p id="mess-text"></p>
+                <div class="button-container-mess">
+                    <button id="btnYes" type="submit" class="login-btn-mess confirm-btn">Ok</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- The Modal for Reports View -->
+    <div id="reportViewModal" class="modal">
+        <form class="modal-content-view" action="/accommodation/report" method="POST" id="form2">
+            <span class="close-btn">&times;</span>
+            <h2>Reports View</h2>
+
+            <div class="table-container">
+                <table id="soldierUsageTable">
+                    <thead>
+                        <tr>
+                            <th><input type="text" class="search-input-view" placeholder="Search...">Soldier Name
+                            </th>
+                            <th><input type="text" class="search-input-view" placeholder="Search...">Country</th>
+                            <th><input type="text" class="search-input-view" placeholder="Search...">Accommodation
+                                Date
+                            </th>
+                            <th><input type="text" class="search-input-view" placeholder="Search...">Release Date
+                            </th>
+                            <th><input type="text" class="search-input-view" placeholder="Search...">Meal card</th>
+                            <th><input type="text" class="search-input-view" placeholder="Search...">Laundry bag
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-container">
+                <table id="soldierMoveTable">
+                    <thead>
+                        <tr>
+                            <th><input type="text" class="search-input-view-second" placeholder="Search...">Previous
+                                Room</th>
+                            <th><input type="text" class="search-input-second" placeholder="Search...">New Room</th>
+                            <th><input type="text" class="search-input-second" placeholder="Search...">Soldier</th>
+                            <th><input type="text" class="search-input-second" placeholder="Search...">Date
+                                Relocation
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Buttons for confirming the selection -->
+            <div class="button-container">
+                <button id="confirmReportBtnReport" class="modal-button">Generate Report</button>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- The Modal for Move -->
+    <div id="moveModal" class="modal">
+        <form class="modal-content" action="/accommodation/moveSoldier" method="POST" id="form3">
+            <span class="close-btn">&times;</span>
+            <h2>Move soldier</h2>
+
+            <div class="modal-grid">
+
+                <!-- Label for Room 1 -->
+                <label class="move-label" id="modal-move-room-1"></label>
+                <input type="hidden" id="previewKey" name="keyId" value="">
+
+                <!-- Label for Soldier 1 -->
+                <label class="move-label" id="modal-soldier-1"></label>
+                <input type="hidden" id="previewSoldier" name="soldId">
+
+            </div>
+
+            <div class="modal-grid">
+                <!-- Round Symbol -->
+                <p class="round-symbol">⇅</p>
+            </div>
+
+            <div class="modal-grid">
+
+                <!-- Soldier Selection with Custom Search -->
+                <div class="mb-3 search-container" id="search-soldier-container-move">
+                    <div class="input-group">
+                        <input type="text" id="soldierSearchMove" class="form-control" placeholder="Key Number"
+                            required>
+                    </div>
+                    <ul id="soldierDropdownMove" class="list-group"></ul> <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedKeyMoveId" name="keyMoveId" value="">
+                    <!-- To store the selected soldier ID -->
+                </div>
+
+                <!-- Label for Room 1 -->
+                <label id="modal-soldier-2">Soldier: Undefined</label>
+                <input type="hidden" id="selectedSoldMoveId" name="soldMoveId">
+
+            </div>
+
+            <!-- Buttons for confirming the selection -->
+            <div class="button-container">
+                <button id="confirmReportBtnMove" class="modal-button">Move</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- The Modal for Add Soldier -->
+    <div id="addSoldierModal" class="modal">
+        <form class="modal-content" action="/accommodation/addSoldier" method="POST" id="form4">
+            <span class="close-btn">&times;</span>
+
+            <h2>Add soldier</h2>
+
+            <div class="mb-3">
+                <label for="soldier-number" class="form-label">Soldier Number:</label>
+                <div class="input-group">
+                    <input type="text" id="soldier-number" name="soldierId" class="form-control"
+                        placeholder="Soldier Number" pattern="[A-Za-z0-9]+" required>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="soldier-name" class="form-label">Soldier Name:</label>
+                <div class="input-group">
+                    <input type="text" id="soldier-name" name="soldierName" class="form-control"
+                        placeholder="Soldier Name" pattern="[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+" required>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="soldier-country" class="form-label">Soldier Country:</label>
+                <div class="input-group">
+                    <input type="text" id="soldier-country" name="soldierCountry" class="form-control"
+                        placeholder="Soldier Country" pattern="[A-Za-z\s]+" required>
+                </div>
+            </div>
+
+            <!-- Buttons for confirming the selection -->
+            <div class="button-container">
+                <button type="submit" id="confirmReportBtnAddSoldier" class="modal-button">Add soldier</button>
+                <button type="button" id="confirmReportBtnAddMultiSoldier" class="modal-button">Add multiple
+                    soldiers</button>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2>Add multiple soldiers <a href="/accommodation/uploadSoldier/download"><i class="bi bi-download"></i></a>
+            </h2>
+
+            <div class="mb-3">
+                <label for="fileInput" class="form-label">Upload File:</label>
+                <input type="file" id="fileInput" class="form-control" accept=".xlsx">
+                <!-- Accept specific file types -->
+            </div>
+
+            <div class="progress-bar">
+                <div class="custom-progress" id="progress">
+                </div>
+            </div>
+
+            <button type="button" id="upload-btn" class="modal-button">Upload</button>
+        </div>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="accommodattionModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2>Accommodation multiple soldiers <a href="/accommodation/multiSoldier/download"><i
+                        class="bi bi-download"></i></a></h2>
+
+            <div class="mb-3">
+                <label for="fileInputSoldier" class="form-label">Upload File:</label>
+                <input type="file" id="fileInputSoldier" class="form-control" accept=".xlsx">
+                <!-- Accept specific file types -->
+            </div>
+
+            <div class="progress-bar">
+                <div class="custom-progress" id="progress-multi-soldier">
+                </div>
+            </div>
+
+            <button type="button" id="upload-multi-soldier-btn" class="modal-button">Upload</button>
+        </div>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="deleteModal" class="modal">
+        <form class="modal-content" action="/accommodation/deleteSoldier" method="get" id="form5">
+            <span class="close-btn">&times;</span>
+
+            <h2>⚠ Release all rooms ⚠</h2>
+
+            <p>To release all rooms you need to enter <span id="randomText" class="code-style"></span> in the field
+                below</p>
+            <input type="hidden" id="randomTextValue" value="">
+
+            <div class="mb-3">
+                <input type="text" id="deleteCode" class="form-control" placeholder="Enter special characters here">
+                <!-- Accept specific file types -->
+            </div>
+
+            <button type="submit" id="delete-soldier-btn" class="modal-button-release">Release</button>
+        </form>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="destinationModal" class="modal">
+        <form class="modal-content" action="/accommodation/addDestination" method="post" id="form6">
+            <span class="close-btn">&times;</span>
+
+            <h2>Add destination</h2>
+
+            <div class="mb-3">
+                <label for="build-id" class="form-label">Building Number:</label>
+                <input type="text" id="build-id" name="buildId" class="form-control" placeholder="Building Number"
+                    required>
+            </div>
+
+            <div class="mb-3">
+                <label for="build-name" class="form-label">Building Name:</label>
+                <input type="text" id="build-name" name="buildName" class="form-control" placeholder="Building Name"
+                    required>
+            </div>
+
+            <div class="mb-3">
+                <label for="build-type" class="form-label">Building Type:</label>
+                <input type="text" id="build-type" name="buildType" class="form-control" placeholder="Building Type"
+                    required>
+            </div>
+
+            <button type="submit" id="add-destination-btn" class="modal-button">Add destination</button>
+
+        </form>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="roomAddModal" class="modal">
+        <form class="modal-content" action="/accommodation/addRoomToDestination" method="post" id="form7">
+            <span class="close-btn">&times;</span>
+
+            <h2>Add Room</h2>
+
+            <div class="mb-3">
+                <label for="room-id" class="form-label">Room Number:</label>
+                <input type="text" id="room-id" name="roomId" class="form-control" placeholder="Room Number" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="room-name" class="form-label">Room Name:</label>
+                <input type="text" id="room-name" name="roomName" class="form-control" pattern="^[^\/]+\/.+$"
+                    placeholder="Room Name" required>
+            </div>
+
+            <input type="hidden" id="click-build" name="clickBuild">
+
+            <button type="submit" id="add-room-btn" class="modal-button">Add room</button>
+
+        </form>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="roomRemoveModal" class="modal">
+        <form class="modal-content" action="/accommodation/removeRoomToDestination" method="post" id="form8">
+            <span class="close-btn">&times;</span>
+
+            <h2>Remove Room</h2>
+
+            <!-- Room Selection with Custom Search -->
+            <div class="mb-3 search-container" id="search-room-container">
+                <label for="roomSearch" class="form-label">Room Name:</label>
+                <div class="input-group">
+                    <input type="text" id="roomSearch" class="form-control" placeholder="Room Name" required>
+                </div>
+                <ul id="roomDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedRoomId" name="roomSelectId" value="">
+                <!-- To store the selected soldier ID -->
+            </div>
+
+            <input type="hidden" id="click-build" name="clickBuild">
+
+            <button type="submit" id="add-room-btn" class="modal-button">Remove room</button>
+
+        </form>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="keyAddModal" class="modal">
+        <form class="modal-content" action="/accommodation/addKeyToRoom" method="post" id="form9">
+            <span class="close-btn">&times;</span>
+
+            <h2>Add Key</h2>
+
+            <div class="mb-3">
+                <label for="key-id" class="form-label">Key Number:</label>
+                <input type="text" id="key-id" name="keyId" class="form-control" placeholder="Key Number" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="key-name" class="form-label">Key Name:</label>
+                <input type="text" id="key-name" name="keyName" class="form-control" pattern="^[^\/]+\/[^\/]+\/.+$"
+                    placeholder="Key Name" required>
+            </div>
+
+            <input type="hidden" id="selected-room-for-key" name="selectedRoomForKey">
+
+            <button type="submit" id="add-room-btn" class="modal-button">Add key</button>
+
+        </form>
+    </div>
+
+     <!-- Modal Structure -->
+     <div id="keyRemoveModal" class="modal">
+        <form class="modal-content" action="/accommodation/removeKeyToRoom" method="post" id="form10">
+            <span class="close-btn">&times;</span>
+
+            <h2>Remove Key</h2>
+
+            <div class="mb-3 search-container" id="search-key-container">
+                <label for="keySearch" class="form-label">Key Name:</label>
+                <div class="input-group">
+                    <input type="text" id="keySearch" class="form-control" placeholder="Key Name" required>
+                </div>
+                <ul id="keyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedKeyId" name="keySelectId" value="">
+                <!-- To store the selected soldier ID -->
+            </div>
+
+            <button type="submit" id="remove-room-btn" class="modal-button">Remove key</button>
+
+        </form>
+    </div>
+
+    <!-- The Modal Message -->
+    <div id="myGlobalMessage" class="modal">
+        <div class="modal-content-mess">
+            <span class="close-btn">&times;</span>
+
+            <img src="../icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-global-icon">
+            <p id="mess-global-text"></p>
+        </div>
+    </div>
+
+    <script src="../java/autoSearch.js"></script>
+    <script src="../java/soldier_modal.js"></script>
+    <script src="../java/pageNumber.js"></script>
+
+</body>
+
+</html>

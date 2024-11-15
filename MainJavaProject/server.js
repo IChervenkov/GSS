@@ -1,0 +1,2990 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const session = require('express-session');
+const path = require('path');
+const excelJS = require('exceljs');
+const helmet = require('helmet');
+const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const crypto = require('crypto');
+const multer = require('multer');
+const XLSX = require('xlsx');
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Track failed login attempts (In-memory)
+const failedLoginAttempts = {};
+const MAX_FAILED_ATTEMPTS = 10;  // Maximum failed attempts before blocking
+const BLOCK_TIME = 5 * 60 * 1000;  // Block time in milliseconds (5 minutes)
+const PORT = process.env.PORT || 3000;
+const repireUserId = 4;
+
+require('dotenv').config({
+    override: true,
+    path: path.join(__dirname, 'connect_db.env')
+});
+
+const { Pool, ClientBase } = require('pg');
+
+const pool = new Pool({
+    user: process.env.USER,
+    host: process.env.HOST,
+    database: process.env.DATABASE,
+    password: process.env.PASSWORD,
+    port: process.env.DATABASE_PORT
+});
+
+const Joi = require('joi');
+
+const schemaLogIn = Joi.object({
+    username: Joi.string().alphanum().required(),
+    password: Joi.string().alphanum().required()
+});
+
+// Define the schema
+const emojiDataSchema = Joi.object({
+    emoji: Joi.string().max(10).required() // emoji should be a string, maximum 10 characters, and is required
+});
+
+const clientDataSchema = Joi.object({
+    userId: Joi.string().required(), // userId should be a string and is required
+});
+
+const schemaNFCRent = Joi.object({
+    nfcData: Joi.string().required(), // nfcData should be a string and is required
+    date: Joi.date().iso().required(), // date should be a valid ISO date and is required
+    time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), // time should be in HH:MM format and is required
+    selectClient: Joi.number().required() // selectClient should be a string and is required
+});
+
+const schemaNFCReturn = Joi.object({
+    nfcData: Joi.string().required(), // nfcData should be a string and is required
+    date: Joi.date().iso().required(), // date should be a valid ISO date and is required
+    time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), // time should be in HH:MM format and is required
+});
+
+const schemaBike = Joi.object({
+    bikeId: Joi.string().required(), // bikeId should be a string and is required
+    clientId: Joi.string().allow('').optional(), // clientId should be a string
+    actionId: Joi.string().required(), // actionId should be a string and is required
+    dateId: Joi.date().iso().required(), // dateId should be a valid ISO date and is required (e.g., "2023-10-12")
+    hourSelectId: Joi.number().integer().min(0).max(23).required(), // hourId should be an integer between 0 and 23, representing the hour
+    minuteSelect: Joi.number().integer().min(0).max(59).required(), // minuteId should be an integer between 0 and 59, representing the minutes
+    ltstatus: Joi.boolean().optional()
+});
+
+const schemaReport = Joi.object({
+    selectedDate1: Joi.date().iso().allow('None'),
+    selectedDate2: Joi.date().iso().allow('None')
+});
+
+const schemaAddBike = Joi.object({
+    bikeAddId: Joi.string().alphanum().required(),
+    bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required()
+});
+
+const schemaUploadBike = Joi.object({
+    id: Joi.string().alphanum().required(),
+    namebike: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required()
+});
+
+const schemaRemoveBike = Joi.object({
+    bikeRemoveId: Joi.string().alphanum().required()
+});
+
+const schemaSearchBike = Joi.object({
+    id: Joi.string().alphanum().required()
+});
+
+const schemaGetSoldier = Joi.object({
+    keyId: Joi.string().alphanum().required()
+});
+
+const schemaAccommodation = Joi.object({
+    numBuild: Joi.string().alphanum().allow('').optional(),
+    isFirstTime: Joi.boolean().optional()
+});
+
+const schemaMoveSoldier = Joi.object({
+    keyId: Joi.string().alphanum().required(),
+    soldId: Joi.string().alphanum().required(),
+    keyMoveId: Joi.string().alphanum().required(),
+    soldMoveId: Joi.string().alphanum().allow('').required()
+});
+
+const schemaAddDestination = Joi.object({
+    buildId: Joi.string().alphanum().required(),
+    buildName: Joi.string().pattern(/^[A-Za-z0-9\s]+$/).required(),
+    buildType: Joi.string().alphanum().required()
+});
+
+const schemaRemoveDestination = Joi.object({
+    buildId: Joi.string().alphanum().required()
+});
+
+const schemaRoomToDestination = Joi.object({
+    roomId: Joi.string().alphanum().required(),
+    roomName: Joi.string().pattern(/^[^\/]+\/.+$/).required(),
+    clickBuild: Joi.string().alphanum().required()
+});
+
+const schemaKeyToRoom = Joi.object({
+    keyId: Joi.string().alphanum().required(),
+    keyName: Joi.string().pattern(/^[^\/]+\/.+$/).required(),
+    selectedRoomForKey: Joi.string().alphanum().required()
+});
+
+const schemaSpecialRoom = Joi.object({
+    numBuild: Joi.string().alphanum().allow('').required()
+});
+
+const schemaSpecialKey = Joi.object({
+    numBuild: Joi.string().alphanum().allow('').required(),
+    numRoom: Joi.string().alphanum().allow('').required()
+});
+
+const schemaRemoveRoom = Joi.object({
+    roomId: Joi.string().alphanum().required()
+});
+
+const schemaRemoveKey = Joi.object({
+    keyId: Joi.string().alphanum().required()
+});
+
+const schemaAddSoldier = Joi.object({
+    soldierId: Joi.string().alphanum().required(),
+    soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$/).required(),
+    soldierCountry: Joi.string().alphanum().required()
+});
+
+const schemaUploadSoldier = Joi.object({
+    namekey: Joi.string().pattern(/^[A-Za-z0-9]+\/[A-Za-z0-9]+\/[A-Za-z0-9]+$/).required(),
+    keynumber: Joi.string().alphanum().required(),
+    soldierid: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).optional(),
+    mealcard: Joi.string().alphanum().optional(),
+    laundrybag: Joi.string().alphanum().optional()
+});
+
+const schemaSaveSoldier = Joi.object({
+    keyCodeId: Joi.string().alphanum().required(),
+    soldierId: Joi.string().alphanum().allow('').required(),
+    countryId: Joi.string().alphanum().required(),
+    bagId: Joi.string().alphanum().allow('').required(),
+    mealCardId: Joi.string().alphanum().allow('').required()
+});
+
+const schemaViewKey = Joi.object({
+    roomNumber: Joi.string().alphanum().required()
+});
+
+const schemaNFCBikeRead = Joi.object({
+    nfcData: Joi.string().required(), // nfcData should be a string and is required
+});
+
+const navItems = [];
+
+const horizontalNavItems = [
+    { href: '/', name: 'Main Page' },
+    { href: 'fitness', name: 'Gym' },
+    { href: 'accommodation', name: 'Accommodation' },
+    { href: 'bicycles', name: 'Bicycles' },
+    { href: 'logout', name: 'Logout' }
+];
+
+class Server {
+    constructor(port) {
+
+        this.port = port || PORT;
+        this.app = express();
+
+        // Middleware to parse JSON bodies
+        this.app.use(bodyParser.json());
+        this.app.set("view engine", "ejs");
+        this.app.use(express.static(path.join(__dirname, 'public')));
+        this.app.use(express.urlencoded({ extended: false }))
+        this.app.use((req, res, next) => {
+            res.setHeader('Content-Security-Policy', "default-src 'self'");
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            next();
+        });
+        this.app.use(helmet());
+
+        this.app.use((req, res, next) => {
+            res.setHeader('X-Frame-Options', 'DENY');
+            next();
+        });
+
+        // Session middleware
+        this.app.use(session({
+            secret: process.env.SESSION_SECRET || 'default_secret', // Use an environment variable for the secret
+            resave: false,
+            saveUninitialized: false,
+            cookie: {
+                secure: false, // Set to true in production with HTTPS
+                httpOnly: true,
+                sameSite: 'lax',
+                maxAge: 6 * 60 * 60 * 1000 // Session expires in 6 houres
+            }
+        }));
+
+        // Middleware to prevent session refreshing
+        this.app.use((req, res, next) => {
+            if (req.session) {
+                // Avoid resetting session's maxAge on activity
+                req.session._lastActivity = Date.now(); // Track last activity time
+            }
+            next();
+        });
+
+        this.app.use((err, req, res, next) => {
+            console.error(err.stack); // Log the error stack trace
+            res.status(500).send('Something broke!'); // Send a response
+        });
+
+        // Define the routes
+
+        this.defineRoutesMain();
+        this.defineRoutesLogin();
+        this.defineRoutesRFID();
+        this.defineRoutesNFC();
+        this.defineRoutesBicycles();
+        this.defineRoutesAccommodation();
+        this.defineRoutesFitnes();
+    }
+
+    giveSpecificPermissionMain(username, indexs, res) {
+        res.render('mainPage', {
+            title: 'Main Page Layout',
+            navItems: navItems,
+            horizontalNavItems: indexs.map(index => horizontalNavItems[index]),
+            headerTable: null,
+            data: null,
+            startMessage: "Welcom to Global Supoport System (GSS)",
+            username: username
+        });
+    }
+
+    giveSpecificPermissionBicycles(username, indexs, res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike) {
+
+        res.render('bicycles', {
+            startMessage: "Bicycles",
+            horizontalNavItems: indexs.map(index => horizontalNavItems[index]),
+            data: data,
+            optionHour: optionHour,
+            optionMinute: optionMinute,
+            totalBike: totalBike,
+            rentedBike: rentedBike,
+            availableBike: availableBike,
+            repairBike: repairBike,
+            lateBike: lateBike,
+            longTermBike: longTermBike,
+            username: username
+        });
+    }
+
+    giveSpecificPermissionAccommodation(username, indexs, res, navBuild, totalFreeBeds, totalOccupiedBeds, type, titlePage, countBeds, headerTable, nameroomSetCount, numBuild) {
+
+        switch (username) {
+            case "admin":
+                res.render('accommodation', {
+                    title: "Accommodation",
+                    navItems: navBuild,
+                    horizontalNavItems: horizontalNavItems,
+                    headerTable: headerTable,
+                    totalFreeBeds: totalFreeBeds,
+                    totalOccupiedBeds: totalOccupiedBeds,
+                    type: type,
+                    titlePage: titlePage,
+                    countBeds: countBeds,
+                    nameroomSetCount: nameroomSetCount,
+                    numBuild: numBuild
+                });
+                break;
+
+            default:
+                res.render('accommodation', {
+                    title: "Accommodation",
+                    navItems: navBuild,
+                    horizontalNavItems: indexs.map(index => horizontalNavItems[index]),
+                    headerTable: headerTable,
+                    totalFreeBeds: totalFreeBeds,
+                    totalOccupiedBeds: totalOccupiedBeds,
+                    type: type,
+                    titlePage: titlePage,
+                    countBeds: countBeds,
+                    nameroomSetCount: nameroomSetCount,
+                    numBuild: numBuild
+                });
+                break;
+        }
+    }
+
+    giveSpecificPermissionFitness(username, indexs, res, data, dataPerEmj) {
+
+        switch (username) {
+            case "admin":
+                res.render('fitness', {
+                    title: "Gym",
+                    horizontalNavItems: horizontalNavItems,
+                    data: data,
+                    dataPerEmj: dataPerEmj
+                });
+                break;
+
+            default:
+                res.render('fitness', {
+                    title: "Gym",
+                    horizontalNavItems: indexs.map(index => horizontalNavItems[index]),
+                    data: data,
+                    dataPerEmj: dataPerEmj
+                });
+                break;
+        }
+    }
+
+    // Check if the IP or user is blocked due to too many failed login attempts
+    isBlocked(username) {
+        const record = failedLoginAttempts[username];
+
+        if (record) {
+            const { failedAttempts, blockExpiresAt } = record;
+
+            if (failedAttempts >= MAX_FAILED_ATTEMPTS && blockExpiresAt > Date.now()) {
+                return true; // User is still blocked
+            }
+
+            if (blockExpiresAt && blockExpiresAt <= Date.now()) {
+                // Block period has expired, reset the record
+                failedLoginAttempts[username] = { failedAttempts: 0 };
+            }
+        }
+        return false;
+    }
+
+    // Middleware to check if the user is logged in
+    isLoggedIn(req, res, next) {
+        if (req.session && req.session.username) {
+            return next(); // User is logged in, proceed to the route
+        } else {
+            return res.redirect('/login'); // Redirect to login if not logged in
+        }
+    }
+
+    generateMonthHtml(year, month) {
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const numDays = lastDay.getDate();
+        const startDay = firstDay.getDay();
+        let day = 1;
+        let html = '<div class="month"><h2>' + new Date(year, month).toLocaleString('default', { month: 'long' }) + '</h2><table><thead><tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead><tbody>';
+
+        for (let row = 0; row < 6; row++) {
+            html += '<tr>';
+            for (let col = 0; col < 7; col++) {
+                if (row === 0 && col < startDay) {
+                    html += '<td>&nbsp;</td>';
+                } else if (day > numDays) {
+                    html += '<td>&nbsp;</td>';
+                } else {
+                    html += '<td>' + day++ + '</td>';
+                }
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table></div>';
+        return html;
+    }
+
+    checkApkFileLegality(apkFilePath, res) {
+        // Optionally, verify the file hash (integrity check)
+        const apkHash = crypto.createHash('sha256');
+        const apkFileBuffer = fs.readFileSync(apkFilePath);
+        apkHash.update(apkFileBuffer);
+        const hashDigest = apkHash.digest('hex');
+
+        const expectedHash = process.env.HASH_APP_BIKE; // You should know the expected hash of a legal APK
+
+        if (hashDigest !== expectedHash) {
+            console.error('APK file hash does not match expected value');
+            res.status(400).send('File integrity check failed');
+            return false;
+        }
+
+        return true; // File is legal
+    }
+
+    // Method to define routes for main page
+    defineRoutesMain() {
+
+        // GET route for checking server status
+        this.app.get('/', this.isLoggedIn.bind(this), (req, res) => {
+
+            switch (req.session.username) {
+                case 'guest':
+                    this.giveSpecificPermissionMain(req.session.username, [0, 3, 4], res);
+                    break;
+                case 'helpDesk':
+                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4], res);
+                    break;
+                default:
+                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4], res);
+                    break;
+            }
+
+        });
+    }
+
+    defineRoutesLogin() {
+
+        // Section for Login
+
+        this.app.get('/login', (req, res) => {
+            req.session.username = null;
+            res.render('index', { title: "LogIn", errorMessage: null });
+        });
+
+        // POST route for login with brute-force protection
+        this.app.post('/login', async (req, res) => {
+
+            const { error } = schemaLogIn.validate(req.body);
+            if (error) {
+                return res.render('index', { title: 'LogIn', errorMessage: 'Invalid username or password, username and password must contain only a-z, A-Z, 0-9 symbols' });
+            }
+
+            const { username, password } = req.body;
+
+            try {
+                // Get a client from the pool
+                const client = await pool.connect();
+
+                // Query the database for the user
+                const result = await client.query("SELECT * FROM users WHERE username = $1", [username]);
+
+                // Release the client back to the pool
+                client.release();
+
+                // Check if the user exists in the result
+                if (result.rows.length === 0) {
+                    return res.render('index', { title: 'LogIn', errorMessage: 'Invalid username or password' });
+                }
+
+                const user = result.rows[0];
+
+                // Check if the user is blocked due to failed login attempts
+                if (this.isBlocked(username)) {
+                    return res.render('index', { title: 'LogIn', errorMessage: 'Too many failed attempts. Please try again later.' });
+                }
+
+                // Verify the password
+                const passwordMatches = bcrypt.compareSync(password, user.password);
+                if (passwordMatches) {
+                    req.session.username = username;
+
+                    // Reset failed login attempts on successful login
+                    failedLoginAttempts[username] = { failedAttempts: 0 };
+
+                    return res.redirect('/');
+                } else {
+                    // Increment failed attempts or initialize tracking
+                    const record = failedLoginAttempts[username] || { failedAttempts: 0 };
+
+                    record.failedAttempts += 1;
+                    if (record.failedAttempts >= MAX_FAILED_ATTEMPTS) {
+                        record.blockExpiresAt = Date.now() + BLOCK_TIME;
+                    }
+                    failedLoginAttempts[username] = record;
+
+                    return res.render('index', { title: 'LogIn', errorMessage: 'Invalid username or password' });
+                }
+            } catch (err) {
+                console.error('Error querying the database', err);
+                return res.render('index', { title: 'LogIn', errorMessage: 'An error occurred. Please try again later.' });
+            }
+        });
+
+        // POST route to handle logout
+        this.app.get('/logout', (req, res) => {
+
+            req.session.destroy();
+            res.redirect('/login'); // Redirect to login page after logout
+        });
+    }
+
+    defineRoutesRFID() {
+
+        // POST route to handle RFID codes (only accessible after login)
+        this.app.post('/rfid', (req, res) => {
+
+            const { code } = req.body;
+
+            if (code) {
+                res.status(200).send('Code received');
+            } else {
+                res.status(400).send('Bad Request');
+            }
+        });
+    }
+
+    defineRoutesNFC() {
+        // Section NFC App
+
+        this.app.post('/readBikeNfc', async (req, res) => {
+
+            const { error } = schemaNFCBikeRead.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { nfcData } = req.body;
+
+            const client = await pool.connect();
+
+            const result = await client.query(`
+                SELECT SPLIT_PART(namebike, '/', 1) AS namebike
+                FROM bicycles
+                WHERE id = $1;`, [nfcData]);
+
+            client.release();
+
+            // Check if a result was found
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'Bike not found for the provided NFC data.' });
+            }
+
+            res.status(200).json({ namebike: result.rows[0].namebike });
+
+        });
+
+        // Endpoint to get all available bikes
+        this.app.get('/getClient', async (req, res) => {
+            try {
+
+                const client = await pool.connect();
+
+                const result = await client.query('SELECT id, namesoldier FROM soldier');
+
+                client.release();
+
+                res.status(200).json(result.rows);
+
+            } catch (err) {
+                console.error('Error querying the database', err);
+                res.status(500).json({ error: 'Internal Server Error' });
+            }
+        });
+
+        this.app.post('/nfcRent', async (req, res) => {
+
+            const { error } = schemaNFCRent.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { nfcData, date, time, selectClient } = req.body;
+
+            const dateText = `${date} ${time}`;
+            const recDate = new Date(dateText);
+
+            try {
+
+                const client = await pool.connect();
+
+                // Update bike status and assign to client
+
+                const now = new Date();
+                const diffTime = Math.abs(recDate - now); // Calculate time difference in milliseconds
+                const diffHours = diffTime / (1000 * 60 * 60); // Convert milliseconds to hours
+
+                let newStatus;
+
+                if (selectClient == repireUserId) {
+                    newStatus = 'Repair';
+                }
+
+                else if (diffHours > 24) {
+                    newStatus = 'Late';
+                }
+
+                else {
+                    newStatus = 'Rented';
+                }
+
+                await client.query(
+                    "UPDATE bicycles SET status = $1 WHERE id = $2",
+                    [newStatus, nfcData]
+                );
+
+                await client.query(
+                    `INSERT INTO bikesoldier(id, bikeid, soldierid, datefrom) VALUES (
+                    (SELECT COALESCE(MAX(id), 0) + 1 FROM bikesoldier), $1, $2, $3);`,
+                    [nfcData, selectClient, recDate]
+                );
+
+                // Release the client back to the pool
+                client.release();
+
+                // Redirect or respond with a success message
+                res.status(200).send('Data rent received successfully');
+
+            } catch (error) {
+                console.error('Error executing database query', error);
+                res.status(500).send('An error occurred. Please try again later.');
+            }
+        });
+
+        this.app.post('/nfcReturn', async (req, res) => {
+
+            const { error } = schemaNFCReturn.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { nfcData, date, time } = req.body;
+
+            const dateText = `${date} ${time}`;
+            const recDate = new Date(dateText);
+
+            try {
+
+                const client = await pool.connect();
+
+                await client.query(
+                    "UPDATE bicycles SET status = 'Available' WHERE id = $1",
+                    [nfcData]
+                );
+
+                await client.query(
+                    "UPDATE bikesoldier SET dateto = $1 WHERE bikeid = $2 AND dateto IS NULL",
+                    [recDate, nfcData]
+                );
+
+                res.status(200).send('Data return received successfully');
+
+            } catch (error) {
+                console.error('Error executing database query', error);
+                res.status(500).send('An error occurred. Please try again later.');
+            }
+        });
+    }
+
+    defineRoutesBicycles() {
+
+        // Serve APK file from local directory
+        this.app.get('/download-apk-bike', this.isLoggedIn.bind(this), (req, res) => {
+
+            // Path to your APK file
+            const apkFilePath = path.join(__dirname, 'adroidApp', 'app-nfc-bike-global-rts.apk'); // Update path to your APK file
+
+            if (!this.checkApkFileLegality(apkFilePath, res)) {
+                return;
+            }
+
+            // Use res.download() to download the APK file
+            res.download(apkFilePath, 'app-nfc-bike-global-rts.apk', (err) => {
+                if (err) {
+                    console.error('Error downloading file:', err);
+                    res.status(500).send('Could not download the file');
+                }
+            });
+        });
+
+        // Section bicycles
+
+        this.app.get('/bicycles', this.isLoggedIn.bind(this), async (req, res) => {
+
+            var data = [];
+            var optionHour = [];
+            var optionMinute = [];
+
+            var totalBike = 0;
+            var rentedBike = 0;
+            var availableBike = 0;
+            var repairBike = 0;
+            var lateBike = 0;
+            var longTermBike = 0;
+
+            // Get a client from the pool
+            const client = await pool.connect();
+
+            await client.query(`
+                WITH bike_times AS (
+                SELECT 
+                    b.id AS bike_id, 
+                    namebike, 
+                    b.status, 
+                    namesoldier, 
+                    lb.datefrom,
+                    EXTRACT(EPOCH FROM (NOW() - lb.datefrom)) / 3600 AS hours_passed
+                FROM bicycles b 
+                LEFT JOIN (
+                    SELECT bikeId, soldierId, datefrom, ROW_NUMBER() OVER (PARTITION BY bikeId ORDER BY id DESC) AS rn 
+                    FROM bikeSoldier
+                ) lb ON b.id = lb.bikeId AND lb.rn = 1
+                LEFT JOIN soldier s ON lb.soldierId = s.id
+            )
+            UPDATE bicycles
+            SET status = 'Late'
+            FROM bike_times
+            WHERE bicycles.id = bike_times.bike_id 
+                AND bike_times.hours_passed > 24
+                AND bike_times.status = 'Rented';`);
+
+            // Query the database for the user
+            const result_bike = await client.query(
+                `SELECT 
+                    namebike, 
+                    b.status, 
+                    namesoldier, 
+                    TO_CHAR(lb.datefrom, 'FMMonth DD, YYYY HH24:MI') AS formatted_date
+                FROM bicycles b 
+                LEFT JOIN (SELECT bikeId, soldierId, datefrom, ROW_NUMBER() OVER (PARTITION BY bikeId ORDER BY id DESC) AS rn FROM bikeSoldier) lb ON b.id = lb.bikeId AND lb.rn = 1 
+                LEFT JOIN soldier s ON lb.soldierId = s.id
+                ORDER BY CASE WHEN b.status = 'Late' THEN 0 WHEN b.status = 'Repair' THEN 1 WHEN b.status = 'Rented' THEN 2 WHEN b.status = 'Available' THEN 3 ELSE 4 END, b.status;`
+            );
+
+            // Release the client back to the pool
+            client.release();
+
+            result_bike.rows.forEach(element => {
+                data.push({
+                    name: element.namebike,
+                    status: element.status,
+                    hiredby: element.status == "Available" ? "None" : element.namesoldier,
+                    datefrom: element.status == "Available" ? "None" : element.formatted_date
+                });
+
+                switch (element.status) {
+                    case 'Rented':
+                        rentedBike++;
+                        break;
+
+                    case 'Available':
+                        availableBike++;
+                        break;
+
+                    case 'Repair':
+                        repairBike++;
+                        break;
+
+                    case 'Late':
+                        lateBike++;
+                        break;
+
+                    case 'Long term':
+                        longTermBike++;
+                        break;
+                }
+
+                totalBike++;
+            });
+
+            for (let index = 0; index < 24; index++) {
+                optionHour.push({ value: index, name: index });
+            }
+
+            for (let index = 0; index < 60; index++) {
+                optionMinute.push({ value: index, name: index });
+            }
+
+            switch (req.session.username) {
+                case 'guest':
+                    this.giveSpecificPermissionBicycles(req.session.username, [0, 3, 4], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                    break;
+                case 'helpDesk':
+                    this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                    break;
+                default:
+                    this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                    break;
+            }
+        });
+
+        this.app.post("/bicycles", this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaBike.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { bikeId, clientId, actionId, dateId, hourSelectId, minuteSelect, ltstatus } = req.body;
+
+            // Ensure hour and minute are valid numbers
+            const hour = parseInt(hourSelectId, 10);
+            const minute = parseInt(minuteSelect, 10);
+
+            if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                return res.status(400).send('Invalid time.');
+            }
+
+            // Construct date string and parse it into a Date object
+            const dateText = `${dateId} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            const recDate = new Date(dateText);
+
+
+            // Check if the constructed date is valid
+            if (isNaN(recDate.getTime())) {
+                return res.status(400).send('Invalid date format.');
+            }
+
+            try {
+                const client = await pool.connect();
+
+                if (actionId === 'Rent') {
+
+                    // Update bike status and assign to client
+
+                    const now = new Date();
+                    const diffTime = Math.abs(recDate - now); // Calculate time difference in milliseconds
+                    const diffHours = diffTime / (1000 * 60 * 60); // Convert milliseconds to hours
+
+                    let newStatus;
+
+                    if (ltstatus) {
+                        newStatus = 'Long term';
+                    } else if (clientId == repireUserId) {
+                        newStatus = 'Repair';
+                    } else if (diffHours > 24) {
+                        newStatus = 'Late';
+                    } else {
+                        newStatus = 'Rented';
+                    }
+
+                    await client.query(
+                        "UPDATE bicycles SET status = $1 WHERE id = $2",
+                        [newStatus, bikeId]
+                    );
+
+                    await client.query(
+                        `INSERT INTO bikesoldier(id, bikeid, soldierid, datefrom) VALUES (
+                        (SELECT COALESCE(MAX(id), 0) + 1 FROM bikesoldier), $1, $2, $3);`,
+                        [bikeId, clientId, recDate]
+                    );
+
+                } else {
+                    // Update bike status and clear client assignment
+
+                    await client.query(
+                        "UPDATE bicycles SET status = 'Available' WHERE id = $1",
+                        [bikeId]
+                    );
+
+                    await client.query(
+                        "UPDATE bikesoldier SET dateto = $1 WHERE bikeid = $2 AND dateto IS NULL",
+                        [recDate, bikeId]
+                    );
+                }
+
+                // Release the client back to the pool
+                client.release();
+
+                // Redirect or respond with a success message
+                res.redirect('/bicycles');
+
+            } catch (error) {
+                console.error('Error executing database query', error);
+                res.status(500).send('An error occurred. Please try again later.');
+            }
+        });
+
+        this.app.post("/bicycles/report", this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaReport.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            let { selectedDate1, selectedDate2 } = req.body;
+
+            try {
+
+                selectedDate1 += " 00:00";
+                selectedDate2 += " 23:59";
+
+                const client = await pool.connect();
+
+                // Query for bike usage details
+                const result_soldior = await client.query(
+                    `SELECT 
+                        ROW_NUMBER() OVER (ORDER BY namebike) AS row_num, 
+                        b.namebike, 
+                        s.namesoldier,
+                        COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
+                        COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_to,
+                        CASE 
+                            WHEN dateto IS NOT NULL THEN CONCAT(
+                                EXTRACT(DAY FROM (dateto - datefrom)), ' days, ',
+                                EXTRACT(HOUR FROM (dateto - datefrom)), ' hours and ',
+                                EXTRACT(MINUTE FROM (dateto - datefrom)), ' minutes'
+                            )
+                            ELSE 'Still in use'
+                        END AS duration,
+                        CASE
+                            WHEN dateto IS NOT NULL AND (dateto - datefrom) > INTERVAL '24 hours' THEN 'Late'
+                            ELSE 'On time'
+                        END AS status
+                    FROM bikesoldier bs 
+                    LEFT JOIN soldier s ON bs.soldierid = s.id 
+                    LEFT JOIN bicycles b ON bs.bikeid = b.id
+                    WHERE datefrom BETWEEN $1 AND $2
+                    ORDER BY date_from;`,
+                    [selectedDate1, selectedDate2]
+                );
+
+                const data = result_soldior.rows;
+
+                const result_bike_totals = await client.query(
+                    `SELECT 
+                        TO_CHAR(datefrom, 'YYYY-MM-DD') AS date, 
+                        COUNT(bikeid) AS total_bikes
+                    FROM bikesoldier
+                    WHERE datefrom BETWEEN $1 AND $2
+                    GROUP BY TO_CHAR(datefrom, 'YYYY-MM-DD')
+                    ORDER BY date;`,
+                    [selectedDate1, selectedDate2]
+                );
+                const dateTotals = result_bike_totals.rows;
+
+                client.release();
+
+                // Create a new Excel workbook
+                const workbook = new excelJS.Workbook();
+
+                // Sheet 1: Bike Usage Data
+                const worksheet1 = workbook.addWorksheet('Bike Usage Data');
+
+                // Add custom column titles for the first sheet
+                const headers1 = ['Row Number', 'Bike Name', 'Soldier Name', 'Date From', 'Date To', 'Duration', 'Status'];
+                const headerRow1 = worksheet1.addRow(headers1);
+
+                // Apply styling to the headers
+                headerRow1.eachCell((cell) => {
+                    cell.font = { bold: true, size: 12 };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
+                // Set column widths for sheet 1
+                worksheet1.columns = [
+                    { width: 12 }, // Row Number
+                    { width: 20 }, // Bike Name
+                    { width: 25 }, // Soldier Name
+                    { width: 20 }, // Date From
+                    { width: 20 }, // Date To
+                    { width: 25 }, // Duration
+                    { width: 15 }, // Status
+                ];
+
+                // Add data rows to the first sheet with alternating row color styling
+                data.forEach((row, index) => {
+                    const dataRow = worksheet1.addRow(Object.values(row));
+
+                    // Check if the status is "Late" and add a ⚠️ icon
+                    if (row.status === 'Late') {
+                        dataRow.getCell(7).value = '⚠️';
+                    } else {
+                        dataRow.getCell(7).value = '';
+                    }
+
+                    // Center align the "Status" column (7th column)
+                    dataRow.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
+
+                    // Apply borders and alternating row color
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                });
+
+                // Sheet 2: Total Bikes Used by Date
+                const worksheet2 = workbook.addWorksheet('Total Bikes by Date');
+
+                const headers2 = ['Date', 'Total Bikes Used'];
+                const headerRow2 = worksheet2.addRow(headers2);
+
+                headerRow2.eachCell((cell) => {
+                    cell.font = { bold: true, size: 12 };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
+                worksheet2.columns = [
+                    { width: 20 }, // Date
+                    { width: 25 }, // Total Bikes Used
+                ];
+
+                let totalBikesUsed = 0;
+
+                dateTotals.forEach((row, index) => {
+                    const dataRow = worksheet2.addRow([row.date, row.total_bikes]);
+                    totalBikesUsed += parseInt(row.total_bikes, 10);
+
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                });
+
+                const totalRow = worksheet2.addRow(['Total', totalBikesUsed]);
+                totalRow.eachCell((cell) => {
+                    cell.font = { bold: true };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx');
+
+                await workbook.xlsx.write(res);
+                res.end();
+
+            } catch (error) {
+                console.log('Error:', error);
+                res.status(500).send('An error occurred');
+            }
+
+        });
+
+        this.app.get('/bikes', this.isLoggedIn.bind(this), async (req, res) => {
+
+            var optionBike = [];
+
+            const client = await pool.connect();
+            const result_bike = await client.query(`SELECT id, namebike, status FROM bicycles;`);
+            client.release();
+
+            result_bike.rows.forEach(element => {
+                optionBike.push({ id: element.id, name: element.namebike, status: element.status });
+            });
+
+            res.json(optionBike);
+        });
+
+        this.app.post('/bicycles/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaReport.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            let { selectedDate1, selectedDate2 } = req.body;
+
+            if (selectedDate1 !== "None" && selectedDate2 !== "None") {
+                try {
+
+                    selectedDate1 += " 00:00";
+                    selectedDate2 += " 23:59";
+
+                    const client = await pool.connect();
+
+                    // Query for bike usage details
+                    const result_soldior = await client.query(
+                        `SELECT
+                        ROW_NUMBER() OVER (ORDER BY namebike) AS row_num, 
+                        b.namebike, 
+                        s.namesoldier, 
+                        COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
+                        COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_to, 
+                        CASE 
+                            WHEN dateto IS NOT NULL THEN CONCAT(
+                                EXTRACT(DAY FROM (dateto - datefrom)), ' days, ',
+                                EXTRACT(HOUR FROM (dateto - datefrom)), ' hours and ',
+                                EXTRACT(MINUTE FROM (dateto - datefrom)), ' minutes'
+                            )
+                            ELSE 'Still in use'
+                        END AS duration
+                    FROM bikesoldier bs 
+                    LEFT JOIN soldier s ON bs.soldierid = s.id 
+                    LEFT JOIN bicycles b ON bs.bikeid = b.id
+                    WHERE datefrom BETWEEN $1 AND $2
+                    ORDER BY date_from DESC;`,
+                        [selectedDate1, selectedDate2]
+                    );
+
+                    const data = result_soldior.rows;
+
+                    // Query for total bike usage per day in the date range
+                    const result_bike_totals = await client.query(
+                        `SELECT 
+                        TO_CHAR(datefrom, 'YYYY-MM-DD') AS date, 
+                        COUNT(bikeid) AS total_bikes
+                    FROM bikesoldier
+                    WHERE datefrom BETWEEN $1 AND $2
+                    GROUP BY TO_CHAR(datefrom, 'YYYY-MM-DD')
+                    ORDER BY date DESC;`,
+                        [selectedDate1, selectedDate2]
+                    );
+                    const dateTotals = result_bike_totals.rows;
+
+                    // Release the client back to the pool
+                    client.release();
+
+                    res.json({ data, dateTotals });
+
+                } catch (error) {
+                    console.log('Error:', error);
+                    res.status(500).send('An error occurred');
+                }
+            }
+        });
+
+        this.app.post('/bicycles/addBike', async (req, res) => {
+
+            const { error } = schemaAddBike.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            let { bikeAddId, bikeName } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                // Check if bikeAddId already exists
+                const result = await client.query(`SELECT * FROM bicycles WHERE id = $1`, [bikeAddId]);
+
+                if (result.rows.length > 0) {
+                    return res.status(400).send({ error: 'This bike already exists.' });
+                }
+
+                // Insert new bike if bikeAddId doesn't exist
+                await client.query(`INSERT INTO bicycles VALUES ($1, $2, 'Available');`, [bikeAddId, bikeName]);
+
+                return res.status(200).json({ message: 'Bike added successfully.' });
+            } catch (err) {
+                console.error('Database error:', err);
+                return res.status(500).send({ error: 'Internal server error.' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/bicycles/removeBike', async (req, res) => {
+
+            const { error } = schemaRemoveBike.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            let { bikeRemoveId } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query(`DELETE FROM bicycles WHERE id = $1;`, [bikeRemoveId]);
+                return res.status(200).json({ message: 'Bike remove successfully.' });
+
+            } catch (err) {
+                console.error('Database error:', err);
+                return res.status(500).send({ error: 'Internal server error.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/bicycles/multiBike/download', this.isLoggedIn.bind(this), async (req, res) => {
+
+            // Create a new Excel workbook
+            const workbook = new excelJS.Workbook();
+
+            // Sheet 1: Accommodation Multipul Soldiers
+            const worksheet = workbook.addWorksheet('Bicycles Multipul Bike');
+
+            const headers = ['id', 'namebike'];
+            const headerRow = worksheet.addRow(headers);
+
+            // Apply styling to the headers
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, size: 12 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+
+            // Set the response headers for file download
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=templateBicyclesBike.xlsx');
+
+            // Write the workbook to the response stream
+            await workbook.xlsx.write(res);
+            res.end(); // End the response
+
+        });
+
+        this.app.post('/bicycles/uploadMultiBike', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+
+            const client = await pool.connect();
+            const errors = [];
+
+            try {
+                if (!req.file) {
+                    return res.status(400).json({ error: 'No file uploaded.' });
+                }
+
+                const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet);
+
+                // Create a Set to track unique soldier IDs within the data array
+                const uniqueBikeId = new Set();
+
+                await Promise.all(data.map(async (row) => {
+
+                    if (!row.id) {
+                        return;
+                    }
+
+                    const { error } = schemaUploadBike.validate(row);
+
+                    if (error) {
+                        errors.push({ type: 'Validation', details: error.details, row });
+                        return;
+                    }
+
+                    // Check for duplicates within the data array
+                    if (uniqueBikeId.has(row.id)) {
+                        errors.push({ type: 'UniqueIdCheck', message: `Duplicate bike id '${row.id}' found within the data.` });
+                        return;
+                    }
+
+                    // Add soldier ID to the Set after checking
+                    uniqueBikeId.add(row.id);
+
+                    // Inside the backend function, when checking for duplicates
+                    const result = await client.query("SELECT * FROM bicycles WHERE id = $1;", [row.id]);
+
+                    if (result.rows.length > 0) {
+                        errors.push({ type: 'CheckExist', message: `Bicycles with number '${row.id}' is alredy exists.` });
+                        return;
+                    }
+
+                }));
+
+                if (errors.length > 0) {
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row) => {
+
+                    if (!row.id) {
+                        return;
+                    }
+
+                    await client.query(
+                        "INSERT INTO bicycles VALUES ($1, $2, 'Available')",
+                        [row.id, row.namebike]
+                    );
+
+                }));
+
+                return res.status(200).json({ message: 'File processed successfully' });
+
+            } catch (error) {
+                console.error('Error processing file:', error);
+                return res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/checkBike', async (req, res) => {
+
+            const { bikeId } = req.body;
+
+            const client = await pool.connect();
+
+            const result_bike = await client.query(`
+                SELECT status, datefrom FROM bicycles b
+                LEFT JOIN bikesoldier bs ON bs.bikeid = b.id
+                WHERE b.id = $1 and b.status <> 'Available' AND dateto IS NULL;`, [bikeId]);
+
+            client.release();
+
+            if (result_bike.rows.length > 0) {
+                const statusRes = result_bike.rows[0].status ? result_bike.rows[0].status : 'Available';
+                const datefromRes = result_bike.rows[0].datefrom ? result_bike.rows[0].datefrom : 'None';
+
+                res.json({ status: statusRes, datefrom: datefromRes });
+            } else {
+                res.json({ status: 'Available', datefrom: 'None' });
+            }
+        });
+
+        this.app.get('/clients', this.isLoggedIn.bind(this), async (req, res) => {
+
+            var optionClient = [];
+
+            const client = await pool.connect();
+            const result_client = await client.query(`SELECT id, namesoldier, country FROM soldier WHERE date_free IS NULL;`);
+            client.release();
+
+            result_client.rows.forEach(element => {
+                optionClient.push({ id: element.id, name: element.namesoldier, country: element.country });
+            });
+
+            res.json(optionClient);
+        });
+    }
+
+    // Section Accommodation
+    defineRoutesAccommodation() {
+
+        this.app.get('/rooms', this.isLoggedIn.bind(this), async (req, res) => {
+
+            var optionRoom = [];
+
+            const client = await pool.connect();
+            const result_client = await client.query(`SELECT id, namekey, soldierid FROM key;`);
+            client.release();
+
+            result_client.rows.forEach(element => {
+                optionRoom.push({ id: element.id, name: `${element.namekey}${element.soldierid ? ' 🚫' : ' ✅'}` });
+            });
+
+            res.json(optionRoom);
+        });
+
+        this.app.get('/bags', this.isLoggedIn.bind(this), async (req, res) => {
+
+            var optionBag = [];
+            var optionAllBag = [];
+
+            const client = await pool.connect();
+            const result_client = await client.query(`
+                SELECT lb.* FROM laundrybags lb
+                LEFT JOIN soldier s ON s.laundry_bag_id = lb.id
+                WHERE s.laundry_bag_id is null;`);
+
+            const result_all_bags = await client.query(`
+                    SELECT * FROM laundrybags`);
+
+            client.release();
+
+            result_client.rows.forEach(element => {
+                optionBag.push({ id: element.id, name: element.code });
+            });
+
+            result_all_bags.rows.forEach(element => {
+                optionAllBag.push({ id: element.id, name: element.code });
+            });
+
+            res.json({ bags: optionBag, allBags: optionAllBag });
+        });
+
+        this.app.post('/move/getSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaGetSoldier.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const keyId = req.body.keyId;
+
+            const client = await pool.connect();
+
+            const result_client = await client.query(`
+                SELECT s.id, namesoldier FROM key k
+                JOIN soldier s ON s.id = k.soldierid
+                WHERE k.id = $1;`, [keyId]);
+
+            client.release();
+
+            const soldiername = result_client.rows.length === 0 ? 'None' : result_client.rows[0].namesoldier;
+            const soldierid = result_client.rows.length === 0 ? '' : result_client.rows[0].id;
+
+            res.json({ id: soldierid, name: soldiername });
+        });
+
+        this.app.post('/searchBikes', async (req, res) => {
+
+            const { error } = schemaSearchBike.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const selectBike = req.body.id;
+            var allBikeInfo = [];
+
+            const client = await pool.connect();
+            const result_client = await client.query(`
+                SELECT namesoldier,
+                TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI') AS formatted_date_from, 
+                COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS formatted_date_to
+                FROM bikesoldier bs
+                LEFT JOIN soldier s ON s.id = bs.soldierid
+                LEFT JOIN bicycles b ON b.id = bs.bikeid
+                WHERE bikeid = $1
+                ORDER BY datefrom DESC
+				LIMIT 2;`, [selectBike]);
+            client.release();
+
+            result_client.rows.forEach(element => {
+                allBikeInfo.push({ namesoldier: element.namesoldier, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
+            });
+
+            res.json(allBikeInfo);
+        });
+
+        this.app.post('/searchClient', async (req, res) => {
+
+            const { error } = schemaSearchBike.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const selectClient = req.body.id;
+            var allClientInfo = [];
+
+            const client = await pool.connect();
+            const result_client = await client.query(`
+                SELECT namebike,
+                TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI') AS formatted_date_from,
+                COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS formatted_date_to
+                FROM bikesoldier bs
+                LEFT JOIN soldier s ON s.id = bs.soldierid
+                LEFT JOIN bicycles b ON b.id = bs.bikeid
+                WHERE soldierid = $1
+                ORDER BY datefrom DESC
+				LIMIT 2;`, [selectClient]);
+            client.release();
+
+            result_client.rows.forEach(element => {
+                allClientInfo.push({ namebike: element.namebike, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
+            });
+
+            res.json(allClientInfo);
+        });
+
+        this.app.get('/accommodation', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAccommodation.validate(req.query);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { numBuild, isFirstTime } = req.query;
+            var nameroomSet = new Set();
+
+            var headerTable = [
+                { name: "Number Key" },
+                { name: "Key code" },
+                { name: "Soldier" },
+                { name: "Nationality" }
+            ];
+
+            var type = '';
+            var title;
+            var countFreeBeds;
+            var selectBuildType;
+
+            let roomCounts = {}; // Object to hold counts for each nameroom
+
+            // Get a client from the pool
+            const client = await pool.connect();
+
+            if (numBuild === 'E' || numBuild === 'D') {
+
+                const resultData = await client.query(`
+                    SELECT nameroom,
+                           COUNT(CASE WHEN namesoldier IS NULL THEN 1 END) as unassigned_count
+                    FROM rooms r
+                    LEFT JOIN roomskey rk ON r.id = rk.roomid
+                    LEFT JOIN key k ON k.id = rk.keyid
+                    LEFT JOIN soldier s ON s.id = k.soldierid
+                    LEFT JOIN buildroom br ON br.roomid = r.id
+                    LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
+                    WHERE nameroom SIMILAR TO '%/' || $1 || '[0-9]%'
+                    GROUP BY nameroom
+                    ORDER BY nameroom;`, [numBuild]);
+
+                // Initialize room counts using the query result
+                resultData.rows.forEach(row => {
+                    nameroomSet.add(row.nameroom);
+                    roomCounts[row.nameroom] = row.unassigned_count || 0;
+                });
+
+                type = numBuild === 'E' ? "Entrance" : "Dryer";
+                title = numBuild === 'E' ? "Entrance" : "Dryer room";
+
+                selectBuildType = '';
+
+            } else if (numBuild) {
+
+                const resultData = await client.query(`
+                    SELECT 
+                        nameroom,
+                        COUNT(CASE WHEN s.id IS NULL THEN k.id END) AS unassigned_count
+                    FROM 
+                        rooms r
+                    LEFT JOIN 
+                        roomskey rk ON r.id = rk.roomid
+                    LEFT JOIN 
+                        key k ON k.id = rk.keyid
+                    LEFT JOIN 
+                        soldier s ON s.id = k.soldierid
+                    LEFT JOIN 
+                        buildroom br ON br.roomid = r.id
+                    WHERE 
+                        br.buildid = $1
+                        AND nameroom NOT SIMILAR TO '%/(E|D)[0-9]%'
+                    GROUP BY 
+                        nameroom
+                    ORDER BY 
+                        nameroom;`, [numBuild]);
+
+                // Initialize room counts using the query result
+                resultData.rows.forEach(row => {
+                    nameroomSet.add(row.nameroom);
+                    roomCounts[row.nameroom] = row.unassigned_count || 0;
+                });
+
+                const res_type = await client.query('SELECT type FROM buildings WHERE id = $1', [numBuild]);
+
+                type = res_type.rows[0].type;
+                title = `Building ${numBuild}`;
+
+                const countFreeBedsResult = await client.query(`
+                    SELECT COUNT(*) AS freebeds
+                    FROM rooms r
+                    LEFT JOIN roomskey rk ON r.id = rk.roomid
+                    LEFT JOIN key k ON k.id = rk.keyid
+                    LEFT JOIN soldier s ON s.id = k.soldierid
+                    LEFT JOIN buildroom br ON br.roomid = r.id
+                    WHERE s.namesoldier IS NULL 
+                    AND br.buildid = $1
+                    AND r.nameroom LIKE '__/___';`, [numBuild]);
+
+                countFreeBeds = countFreeBedsResult.rows[0].freebeds;
+
+                const selectBuildTyperesult = await client.query(`SELECT type FROM buildings WHERE id = $1;`, [numBuild]);
+                selectBuildType = selectBuildTyperesult.rows[0].type;
+
+            } else {
+
+                const resultData = await client.query(`
+                    SELECT 
+                        nameroom,
+                        COUNT(CASE WHEN s.id IS NULL THEN k.id END) AS unassigned_count
+                    FROM 
+                        rooms r
+                    LEFT JOIN 
+                        roomskey rk ON r.id = rk.roomid
+                    LEFT JOIN 
+                        key k ON k.id = rk.keyid
+                    LEFT JOIN 
+                        soldier s ON s.id = k.soldierid
+                    LEFT JOIN 
+                        buildroom br ON br.roomid = r.id
+                    LEFT JOIN 
+                        buildings b ON br.buildid = b.id
+                    WHERE 
+                        nameroom NOT SIMILAR TO '%/(E|D)[0-9]%'
+                        AND b.type = 'Accommodation'
+                    GROUP BY 
+                        nameroom
+                    ORDER BY 
+                        nameroom;`);
+
+                // Initialize room counts using the query result
+                resultData.rows.forEach(row => {
+                    nameroomSet.add(row.nameroom);
+                    roomCounts[row.nameroom] = row.unassigned_count || 0;
+                });
+
+                title = "Accommodation"
+
+                selectBuildType = '';
+            }
+
+            switch (type) {
+                case 'Accommodation':
+                case '':
+                    // Add headers
+                    headerTable.push({ name: "Meal card" });
+                    headerTable.push({ name: "Laundry bag" });
+                    break;
+            }
+
+            const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings`);
+
+            var navBuild = [
+                { href: "accommodation?numBuild=E", name: "Entrance" },
+                { href: "accommodation?numBuild=D", name: "Dryer room" }
+            ];
+
+            var totalFreeBeds = 0;
+
+            const counttotalBeds = await client.query(`
+                SELECT COUNT(*) AS totalbed
+                FROM rooms r
+                LEFT JOIN roomskey rk ON r.id = rk.roomid
+                LEFT JOIN key k ON k.id = rk.keyid
+                LEFT JOIN soldier s ON s.id = k.soldierid
+                LEFT JOIN buildroom br ON br.roomid = r.id
+                WHERE nameroom NOT LIKE '__/D_' AND nameroom NOT LIKE '__/_/E_';`);
+
+            for (const row of resultBuild.rows) {
+                try {
+                    const countFreeBedsResult = await client.query(`
+                        SELECT COUNT(*) AS freebeds
+                        FROM rooms r
+                        LEFT JOIN roomskey rk ON r.id = rk.roomid
+                        LEFT JOIN key k ON k.id = rk.keyid
+                        LEFT JOIN soldier s ON s.id = k.soldierid
+                        LEFT JOIN buildroom br ON br.roomid = r.id
+                        WHERE s.namesoldier IS NULL 
+                        AND br.buildid = $1
+                        AND r.nameroom LIKE '__/___';`, [row.id]);
+
+                    const selectBuildType = await client.query(`SELECT type FROM buildings WHERE id = $1;`, [row.id]);
+
+                    const countFreeBeds = countFreeBedsResult.rows[0].freebeds;
+                    totalFreeBeds += Number(countFreeBeds);
+
+                    const url = `accommodation?numBuild=${row.id}`;
+
+                    if (selectBuildType.rows[0].type === 'Accommodation') {
+                        navBuild.push({ href: url, name: `${row.namebuilding}`, nameAdd: `(${countFreeBeds} free beds)`, numBuild: row.id });
+
+                    } else {
+                        navBuild.push({ href: url, name: `${row.namebuilding}`, numBuild: row.id });
+                    }
+
+                } catch (error) {
+                    console.error(`Error fetching data for building ${row.id}:`, error);
+                }
+            }
+
+            var totalOccupiedBeds = counttotalBeds.rows[0].totalbed - totalFreeBeds;
+
+            // Release the client back to the pool
+            client.release();
+
+            let nameroomSetCount = [];
+
+            nameroomSet.forEach(room => {
+                nameroomSetCount.push({ nameroom: room, countFreeBeds: roomCounts[room] });
+            });
+
+            if (isFirstTime) {
+                res.json(nameroomSetCount);
+
+            } else if (selectBuildType === 'Accommodation') {
+                this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
+
+            } else {
+                this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+            }
+        });
+
+        this.app.post('/getRoomKeys', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaViewKey.validate(req.body);
+
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const roomNumber = req.body.roomNumber;
+            const client = await pool.connect();
+
+            try {
+
+                const result = await client.query(`
+                    SELECT namekey, k.id as code, namesoldier, country, meal_card as mealcard, lb.code as lbcode
+                    FROM rooms r
+                    LEFT JOIN roomskey rk ON r.id = rk.roomid
+                    LEFT JOIN key k ON k.id = rk.keyid
+                    LEFT JOIN soldier s ON s.id = k.soldierid
+                    LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
+                    WHERE r.id = $1 AND k.id IS NOT NULL
+                    ORDER BY namekey;`, [roomNumber]);
+
+                // Send back filtered data for the specified room
+                res.json(result.rows);
+
+            } catch (error) {
+                console.error("Error fetching room keys:", error);
+                res.status(500).send("Server error");
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/saveKey', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaSaveSoldier.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { keyCodeId, soldierId, countryId, bagId, mealCardId } = req.body;
+
+            // Get a client from the pool
+            const client = await pool.connect();
+
+            if (soldierId !== '' && countryId === 'None') {
+                await client.query(
+                    "UPDATE key SET soldierid = $1 where id = $2;",
+                    [soldierId, keyCodeId]
+                );
+
+            } else if (soldierId !== '' && countryId !== 'None') {
+                await client.query(
+                    "UPDATE key SET soldierid = $1 where id = $2;",
+                    [soldierId, keyCodeId]
+                );
+
+                const result_accommodation_soldier = await client.query(`SELECT * FROM soldier WHERE date_accommodation IS NOT NULL AND id = $1`,
+                    [soldierId]
+                );
+
+                if (result_accommodation_soldier.rows.length === 0) {
+                    await client.query(
+                        "UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3 where id = $1;",
+                        [soldierId, mealCardId, bagId]
+                    );
+                } else {
+                    await client.query(
+                        "UPDATE soldier SET meal_card = $2, laundry_bag_id = $3 where id = $1;",
+                        [soldierId, mealCardId, bagId]
+                    );
+                }
+
+            } else if (soldierId === '' && countryId !== 'None') {
+
+                const res_query = await client.query(
+                    "SELECT soldierid FROM key WHERE id = $1;",
+                    [keyCodeId]
+                );
+
+                await client.query(
+                    "UPDATE key SET soldierid = NULL where id = $1;",
+                    [keyCodeId]
+                );
+
+                await client.query(
+                    "UPDATE soldier SET date_free = CURRENT_DATE where id = $1;",
+                    [res_query.rows[0].soldierid]
+                );
+
+            } else {
+                await client.query(
+                    "UPDATE key SET soldierid = NULL where id = $1;",
+                    [keyCodeId]
+                );
+            }
+
+            // Release the client back to the pool
+            client.release();
+
+            res.redirect('/accommodation');
+        });
+
+        this.app.get('/accommodation/viewReport', async (req, res) => {
+
+            try {
+
+                const client = await pool.connect();
+
+                // Query for bike usage details
+                const result_soldior = await client.query(`
+                    SELECT 
+                        namesoldier, 
+                        country, 
+                        TO_CHAR(date_accommodation, 'Mon DD, YYYY') AS date_accommodation, 
+                        TO_CHAR(date_free, 'Mon DD, YYYY') AS date_free,
+                        meal_card,
+						code
+                    FROM 
+                        soldier s
+                    LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
+                    WHERE 
+                        country <> 'None';`);
+
+                // Query for bike usage details
+                const result_move = await client.query(`
+                    SELECT 
+                        current_rooms.nameroom AS current_room,
+                        previous_rooms.nameroom AS previous_room,
+                        soldier_name.namesoldier AS name_soldier,
+                        TO_CHAR(ms.datemove, 'YYYY-MM-DD') AS datemove
+                    FROM 
+                        movesoldier ms
+                    JOIN 
+                        key k_current ON ms.idnewkey = k_current.id
+                    JOIN 
+                        roomskey rk_current ON k_current.id = rk_current.keyid
+                    JOIN 
+                        rooms current_rooms ON current_rooms.id = rk_current.roomid
+                    JOIN 
+                        key k_previous ON ms.idpreviewkey = k_previous.id
+                    JOIN 
+                        roomskey rk_previous ON k_previous.id = rk_previous.keyid
+                    JOIN 
+                        rooms previous_rooms ON previous_rooms.id = rk_previous.roomid
+                    JOIN 
+                        soldier soldier_name ON soldier_name.id = ms.idsoldier;`);
+
+                const data = result_soldior.rows;
+                const data_move = result_move.rows;
+
+                client.release();
+
+                res.json({ data, data_move });
+
+            } catch (error) {
+                console.log('Error:', error);
+                res.status(500).send('An error occurred');
+            }
+        });
+
+        this.app.post("/accommodation/report", this.isLoggedIn.bind(this), async (req, res) => {
+
+            try {
+
+                const client = await pool.connect();
+
+                // Query for bike usage details
+                const result_soldior = await client.query(`
+                    SELECT 
+                        namesoldier, 
+                        country, 
+                        COALESCE(TO_CHAR(date_accommodation, 'Mon DD, YYYY'), 'Not accommodated') AS date_accommodation, 
+                        COALESCE(TO_CHAR(date_free, 'Mon DD, YYYY'), 'No departure date	') AS date_free,
+                        COALESCE(meal_card, 'No meal card set') AS meal_card,
+						COALESCE(code, 'No bag set') AS code
+                    FROM 
+                        soldier s
+                    LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
+                    WHERE 
+                        country <> 'None';`);
+
+                // Query for bike usage details
+                const result_move = await client.query(`
+                    SELECT 
+                        current_rooms.nameroom AS current_room,
+                        previous_rooms.nameroom AS previous_room,
+                        soldier_name.namesoldier AS name_soldier,
+                        TO_CHAR(ms.datemove, 'YYYY-MM-DD') AS datemove
+                    FROM 
+                        movesoldier ms
+                    JOIN 
+                        key k_current ON ms.idnewkey = k_current.id
+                    JOIN 
+                        roomskey rk_current ON k_current.id = rk_current.keyid
+                    JOIN 
+                        rooms current_rooms ON current_rooms.id = rk_current.roomid
+                    JOIN 
+                        key k_previous ON ms.idpreviewkey = k_previous.id
+                    JOIN 
+                        roomskey rk_previous ON k_previous.id = rk_previous.keyid
+                    JOIN 
+                        rooms previous_rooms ON previous_rooms.id = rk_previous.roomid
+                    JOIN 
+                        soldier soldier_name ON soldier_name.id = ms.idsoldier;`);
+
+                const data = result_soldior.rows;
+                const data_move = result_move.rows;
+
+                // Release the client back to the pool
+                client.release();
+
+                // Create a new Excel workbook
+                const workbook = new excelJS.Workbook();
+
+                // Sheet 1: Soldier Data
+                const worksheet1 = workbook.addWorksheet('Soldier Data');
+
+                // Sheet 2: Soldier Data
+                const worksheet2 = workbook.addWorksheet('Soldier Move Data');
+
+                // Add custom column titles for the first sheet
+                const headers1 = ['Soldier Name', 'Country', 'Accommodation Date', 'Release Date', 'Meal card', 'Laundry bag'];
+                const headerRow1 = worksheet1.addRow(headers1);
+
+                // Add custom column titles for the first sheet
+                const headers2 = ['Previous Room', 'New Room', 'Soldier', 'Date Relocation'];
+                const headerRow2 = worksheet2.addRow(headers2);
+
+                // Apply styling to the headers
+                headerRow1.eachCell((cell) => {
+                    cell.font = { bold: true, size: 12 };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
+                // Apply styling to the headers
+                headerRow2.eachCell((cell) => {
+                    cell.font = { bold: true, size: 12 };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
+                // Set column widths for sheet 1
+                worksheet1.columns = [
+                    { width: 12 }, // Row Number
+                    { width: 20 }, // Bike Name
+                    { width: 25 }, // Soldier Name
+                    { width: 20 }, // Time Range
+                    { width: 12 }, // Time Range
+                    { width: 12 }  // Time Range
+                ];
+
+                // Set column widths for sheet 2
+                worksheet2.columns = [
+                    { width: 12 }, // Previous Room
+                    { width: 20 }, // New Room
+                    { width: 25 }, // Soldier Name
+                    { width: 20 } // Date Relocation
+                ];
+
+                // Add data rows to the first sheet with alternating row color styling
+                data.forEach((row, index) => {
+                    const dataRow = worksheet1.addRow(Object.values(row));
+
+                    // Apply borders and alternating row color
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                });
+
+                // Add data rows to the first sheet with alternating row color styling
+                data_move.forEach((row, index) => {
+                    const dataRow = worksheet2.addRow(Object.values(row));
+
+                    // Apply borders and alternating row color
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                });
+
+                // Set the response headers for file download
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx');
+
+                // Write the workbook to the response stream
+                await workbook.xlsx.write(res);
+                res.end(); // End the response
+
+            } catch (error) {
+                console.log('Error:', error);
+                res.status(500).send('An error occurred');
+            }
+
+        });
+
+        this.app.post("/accommodation/moveSoldier", this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaMoveSoldier.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { keyId, soldId, keyMoveId, soldMoveId } = req.body;
+
+            try {
+                const client = await pool.connect();
+
+                if (soldMoveId) {
+                    await client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]);
+                    await client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyId, keyMoveId, soldMoveId]);
+
+                    await client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldId, keyMoveId]);
+                    await client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldMoveId, keyId]);
+
+                } else {
+                    await client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]);
+
+                    await client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldId, keyMoveId]);
+                    await client.query("UPDATE key SET soldierid = NULL WHERE id = $1;", [keyId]);
+                }
+
+                client.release();
+
+                res.redirect('/accommodation');
+
+            } catch (error) {
+                console.log('Error:', error);
+                res.status(500).send('An error occurred');
+            }
+
+        });
+
+        this.app.post('/accommodation/addSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAddSoldier.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
+            }
+
+            const { soldierId, soldierName, soldierCountry } = req.body;
+
+            try {
+
+                const client = await pool.connect();
+
+                // Inside the backend function, when checking for duplicates
+                const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [soldierId]);
+
+                if (result.rows.length > 0) {
+                    // Duplicate soldierId found
+                    return res.status(400).json({ message: `Soldier with id: '${soldierId}' already exists.` });
+                }
+
+                await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [soldierId, soldierName, soldierCountry]);
+
+                client.release();
+
+                return res.status(200).json({ message: 'Data saved successfully' });
+
+            } catch (error) {
+                console.log('Error:', error);
+                res.status(500).send('An error occurred');
+            }
+
+        });
+
+        this.app.post('/accommodation/uploadSoldier', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+
+            const client = await pool.connect();
+            const errors = [];
+
+            try {
+                if (!req.file) {
+                    return res.status(400).json({ error: 'No file uploaded.' });
+                }
+
+                const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet);
+
+                await Promise.all(data.map(async (row) => {
+
+                    const { error } = schemaAddSoldier.validate(row);
+
+                    if (error) {
+                        errors.push({ type: 'Validation', details: error.details, row });
+                        return;
+                    }
+
+                    // Inside the backend function, when checking for duplicates
+                    const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [row.soldierId]);
+
+                    if (result.rows.length > 0) {
+                        // Duplicate soldierId found
+                        errors.push({ type: 'Duplicate', soldierId: row.soldierId, message: `Soldier '${row.soldierName}' already exists.` });
+                        return;
+                    }
+
+                }));
+
+                if (errors.length > 0) {
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row) => {
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [row.soldierId, row.soldierName, row.soldierCountry]);
+                }));
+
+                return res.status(200).json({ message: 'File processed successfully' });
+
+            } catch (error) {
+                console.error('Error processing file:', error);
+                return res.status(500).json({ error: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/accommodation/uploadSoldier/download', async (req, res) => {
+
+            // Create a new Excel workbook
+            const workbook = new excelJS.Workbook();
+
+            // Sheet 1: Soldier Data
+            const worksheet = workbook.addWorksheet('Add Multipul Soldiers');
+
+            // Add custom column titles for the first sheet
+            const headers = ['soldierId', 'soldierName', 'soldierCountry'];
+            const headerRow = worksheet.addRow(headers);
+
+            // Apply styling to the headers
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, size: 12 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+
+            // Set column widths for sheet 1
+            worksheet.columns = [
+                { width: 12 }, // Row Number
+                { width: 20 }, // Bike Name
+                { width: 25 }, // Soldier Name
+                { width: 20 } // Time Range
+            ];
+
+            // Set the response headers for file download
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=templateAddSoldier.xlsx');
+
+            // Write the workbook to the response stream
+            await workbook.xlsx.write(res);
+            res.end(); // End the response
+
+        });
+
+        this.app.get('/accommodation/multiSoldier/download', this.isLoggedIn.bind(this), async (req, res) => {
+
+            // Connect to PostgreSQL
+            const client = await pool.connect();
+
+            // Query data
+            const result = await client.query(`
+                SELECT nameKey, k.id AS keyNumber, namesoldier AS soldierId, meal_card AS mealCard, laundry_bag_id AS laundryBag
+                FROM rooms r
+                LEFT JOIN roomskey rk ON r.id = rk.roomid
+                LEFT JOIN key k ON k.id = rk.keyid
+                LEFT JOIN soldier s ON s.id = k.soldierid
+                LEFT JOIN buildroom br ON br.roomid = r.id
+                LEFT JOIN buildings b ON br.buildid = b.id
+                WHERE nameroom NOT LIKE '%/E_' AND SUBSTRING(nameroom, POSITION('/E' IN nameroom) + 2, 1) BETWEEN '0' AND '9'
+                AND nameroom NOT LIKE '%/D_' AND SUBSTRING(nameroom, POSITION('/D' IN nameroom) + 2, 1) BETWEEN '0' AND '9'
+				AND namesoldier IS NULL AND k.id IS NOT NULL AND b.type = 'Accommodation'
+                ORDER BY nameroom, namekey;`);
+
+            client.release();
+
+            const data = result.rows;
+
+            // Create a new Excel workbook
+            const workbook = new excelJS.Workbook();
+
+            // Sheet 1: Accommodation Multipul Soldiers
+            const worksheet = workbook.addWorksheet('Accommodation Multipul Soldiers');
+
+            // Add column headers (modify based on your table structure)
+            worksheet.columns = Object.keys(data[0]).map((key) => ({
+                header: key,
+                key: key,
+                width: 15,
+            }));
+
+            // Add rows
+            data.forEach((row) => {
+                worksheet.addRow(row);
+            });
+
+            // Set the response headers for file download
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=templateAccommodationSoldier.xlsx');
+
+            // Write the workbook to the response stream
+            await workbook.xlsx.write(res);
+            res.end(); // End the response
+
+        });
+
+        this.app.post('/accommodation/uploadMultiSoldier', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+
+            const client = await pool.connect();
+            const errors = [];
+            const bagSet = [];
+
+            try {
+                if (!req.file) {
+                    return res.status(400).json({ error: 'No file uploaded.' });
+                }
+
+                const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet);
+
+                // Create a Set to track unique soldier IDs within the data array
+                const uniqueSoldierIds = new Set();
+
+                await Promise.all(data.map(async (row) => {
+
+                    if (!row.soldierid) {
+                        return;
+                    }
+
+                    const { error } = schemaUploadSoldier.validate(row);
+
+                    if (error) {
+                        errors.push({ type: 'Validation', details: error.details, row });
+                        return;
+                    }
+
+                    // Check for duplicates within the data array
+                    if (uniqueSoldierIds.has(row.soldierid)) {
+                        errors.push({ type: 'UniqueIdCheck', message: `Duplicate soldierId '${row.soldierid}' found within the data.` });
+                        return;
+                    }
+
+                    // Add soldier ID to the Set after checking
+                    uniqueSoldierIds.add(row.soldierid);
+
+                    // Inside the backend function, when checking for duplicates
+                    const result = await client.query("SELECT * FROM soldier WHERE id = $1 and (date_accommodation is not null or date_free is not null);",
+                        [row.soldierid]);
+
+                    const result_exist = await client.query("SELECT * FROM soldier WHERE id = $1;", [row.soldierid]);
+
+                    const result_check_bag = await client.query("SELECT * FROM laundrybags where code = $1;", [row.laundrybag]);
+
+                    if (result.rows.length > 0) {
+                        // Duplicate soldierId found
+                        errors.push({ type: 'CheckId', message: `Soldier with number '${row.soldierid}' is already accommodation or left.` });
+                        return;
+                    }
+
+                    if (result_exist.rows.length === 0) {
+                        errors.push({ type: 'CheckExist', message: `Soldier with number '${row.soldierid}' is not exists.` });
+                        return;
+                    }
+
+                    if (result_check_bag.rows.length === 0) {
+                        errors.push({ type: 'CheckBag', message: `The bag with number '${row.laundrybag}' is not exists.` });
+                        return;
+                    } else {
+                        bagSet.push({ id: result_check_bag.rows[0].id, code: result_check_bag.rows[0].code });
+                    }
+
+                }));
+
+                if (errors.length > 0) {
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row) => {
+
+                    if (!row.soldierid) {
+                        return;
+                    }
+
+                    await client.query(
+                        "UPDATE key SET soldierid = $1 WHERE id = $2;",
+                        [row.soldierid, row.keynumber]
+                    );
+
+                    await client.query(
+                        "UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3 WHERE id = $1;",
+                        [row.soldierid, row.mealcard, bagSet.find(code => code.code === row.laundrybag).id]
+                    );
+
+                }));
+
+                return res.status(200).json({ message: 'File processed successfully' });
+
+            } catch (error) {
+                console.error('Error processing file:', error);
+                return res.status(500).json({ error: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/accommodation/deleteSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+
+                const res_query = await client.query(
+                    `SELECT k.id, soldierid FROM key k
+                    LEFT JOIN soldier s ON s.id = k.soldierid
+                    WHERE soldierid IS NOT NULL AND country <> 'None';`
+                );
+
+                res_query.rows.forEach(async (row) => {
+
+                    await client.query(
+                        "UPDATE key SET soldierid = NULL WHERE id = $1;",
+                        [row.id]
+                    );
+
+                    await client.query(
+                        "UPDATE soldier SET date_free = CURRENT_DATE WHERE id = $1;",
+                        [row.soldierid]
+                    );
+                });
+
+                return res.status(200).json({ message: 'All rooms are vacated' });
+
+            } catch (error) {
+                console.error('Error processing file:', error);
+                return res.status(500).json({ error: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+
+        });
+
+        this.app.post('/accommodation/addDestination', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAddDestination.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { buildId, buildName, buildType } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                const result_build = await client.query(
+                    `SELECT * FROM buildings WHERE id = $1;`, [buildId]
+                );
+
+                if (result_build.rows.length > 0) {
+                    return res.status(401).json({ message: 'This destination already exists!' });
+                }
+
+                await client.query(
+                    `INSERT INTO buildings VALUES ($1, $2, $3);`, [buildId, buildName, buildType]
+                );
+
+                return res.status(200).json({ message: 'Add destination is successfully' });
+
+            } catch (error) {
+                console.error('Error add destination:', error);
+                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/accommodation/removeDestination', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaRemoveDestination.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { buildId } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query("DELETE FROM buildings WHERE id = $1;", [buildId]);
+                return res.status(200).send();
+
+            } catch (error) {
+                return res.status(500).json({ message: 'Failed to delete destination. Please remove all rooms and try again.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/accommodation/addRoomToDestination', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaRoomToDestination.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { roomId, roomName, clickBuild } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                const buildingName = clickBuild ?? roomName.split('/')[0];
+
+                const result_build = await client.query(
+                    `SELECT * FROM rooms WHERE id = $1;`, [roomId]
+                );
+
+                if (result_build.rows.length > 0) {
+                    return res.status(401).json({ message: 'This room already exists!' });
+                }
+
+                await client.query("INSERT INTO rooms VALUES ($1, $2)", [roomId, roomName]);
+                await client.query("INSERT INTO buildroom VALUES ($1, $2)", [buildingName, roomId]);
+
+                return res.status(200).send({ message: `The room ${roomName} was added into building ${buildingName}.` });
+
+            } catch (error) {
+                console.error('Error add destination:', error);
+                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/specialRooms', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaSpecialRoom.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { numBuild } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                var result;
+
+                if (numBuild) {
+
+                    result = await client.query(`
+                    SELECT r.* 
+                    FROM rooms r
+                    LEFT JOIN buildroom br ON br.roomid = r.id
+                    WHERE br.buildid = $1
+                    AND nameroom NOT SIMILAR TO '%/(E|D)[0-9]%';`, [numBuild]);
+
+                } else {
+
+                    result = await client.query(`
+                        SELECT r.* 
+                        FROM rooms r
+                        WHERE nameroom SIMILAR TO '%/(E|D)[0-9]%';`);
+                }
+
+                const result_room_data = result.rows;
+                let total_res = [];
+
+                result_room_data.forEach(row => {
+                    total_res.push({ id: row.id, name: row.nameroom });
+                });
+
+                return res.status(200).send(total_res);
+
+            } catch (error) {
+                console.error('Error add destination:', error);
+                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/specialKeys', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaSpecialKey.validate(req.body);
+            if (error) {
+                console.log(error);
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { numBuild, numRoom } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                var result;
+
+                if (numBuild === 'D') {
+
+                    result = await client.query(`
+                    SELECT k.*
+                    FROM key k
+                    LEFT JOIN roomskey rk ON rk.keyid = k.id
+                    LEFT JOIN rooms r ON r.id = rk.roomid
+                    WHERE r.id = $1
+                    AND r.nameroom SIMILAR TO '%/(D)[0-9]%';`, [numRoom]);
+
+                } else if (numBuild === 'E') {
+
+                    result = await client.query(`
+                    SELECT k.*
+                    FROM key k
+                    LEFT JOIN roomskey rk ON rk.keyid = k.id
+                    LEFT JOIN rooms r ON r.id = rk.roomid
+                    WHERE r.id = $1
+                    AND r.nameroom SIMILAR TO '%/(E)[0-9]%';`, [numRoom]);
+
+                } else {
+
+                    result = await client.query(`
+                    SELECT k.*
+                    FROM key k
+					LEFT JOIN roomskey rk ON rk.keyid = k.id
+					LEFT JOIN rooms r ON r.id = rk.roomid
+                    WHERE r.id = $1
+                    AND r.nameroom NOT SIMILAR TO '%/(E|D)[0-9]%';`, [numRoom]);
+                }
+
+                const result_key_data = result.rows;
+                let total_res = [];
+
+                result_key_data.forEach(row => {
+                    total_res.push({ id: row.id, name: row.namekey });
+                });
+
+                return res.status(200).send(total_res);
+
+            } catch (error) {
+                console.error('Error add destination:', error);
+                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/accommodation/removeRoomToDestination', async (req, res) => {
+
+            const { error } = schemaRemoveRoom.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { roomId } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query(`DELETE FROM buildroom WHERE roomid = $1;`, [roomId]);
+                await client.query(`DELETE FROM rooms WHERE id = $1;`, [roomId]);
+
+                return res.status(200).send({ message: `The room was removed successfully.` });
+
+            } catch (error) {
+                return res.status(500).json({ message: 'Failed to delete room. Please remove all keys and try again.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/accommodation/addKeyToRoom', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaKeyToRoom.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { keyId, keyName, selectedRoomForKey } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                const result_key = await client.query(
+                    `SELECT * FROM key WHERE id = $1;`, [keyId]
+                );
+
+                if (result_key.rows.length > 0) {
+                    return res.status(401).json({ message: 'This key already exists!' });
+                }
+
+                await client.query("INSERT INTO key VALUES ($1, $2)", [keyId, keyName]);
+                await client.query("INSERT INTO roomskey VALUES ($1, $2)", [selectedRoomForKey, keyId]);
+
+                return res.status(200).send({ message: `The key ${keyName} was added into this building.` });
+
+            } catch (error) {
+                console.error('Error add destination:', error);
+                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/accommodation/removeKeyToRoom', async (req, res) => {
+
+            const { error } = schemaRemoveKey.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { keyId } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query(`DELETE FROM roomskey WHERE keyid = $1;`, [keyId]);
+                await client.query(`DELETE FROM key WHERE id = $1;`, [keyId]);
+
+                return res.status(200).send({ message: `The key was removed successfully.` });
+
+            } catch (error) {
+                return res.status(500).json({ message: 'Failed to delete key. Try again later.' });
+
+            } finally {
+                client.release();
+            }
+        });
+    }
+
+    defineRoutesFitnes() {
+
+        this.app.post('/sendClientData', async (req, res) => {
+            // Validate the request body using Joi
+            const { error } = clientDataSchema.validate(req.body);
+        
+            if (error) {
+                // If validation fails, return 400 with the error message
+                return res.status(400).json({ message: error.details[0].message });
+            }
+        
+            const { userId } = req.body;
+        
+            if (!userId) {
+                return res.status(400).json({ message: 'User ID is required.' });
+            }
+        
+            const client = await pool.connect();
+        
+            try {
+                // Save data to the database and get the inserted id
+                const query = 'INSERT INTO fitness (id, soldierid) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM fitness), $1) RETURNING id';
+                const values = [userId];
+                const result = await client.query(query, values);
+        
+                // Extract the inserted id
+                const soldierId = result.rows[0].id;
+        
+                // Save the soldierId in the session
+                req.session.soldierid = soldierId;
+        
+                // Respond with a success message
+                res.status(200).json({ message: 'Client saved successfully', soldierId });
+        
+            } catch (error) {
+                console.error('Error inserting data:', error);
+                res.status(500).json({ message: 'Error saving client data to the database' });
+        
+            } finally {
+                client.release();
+            }
+        });
+        
+        this.app.post('/sendEmojiData', async (req, res) => {
+            // Validate the request body using Joi
+            const { error } = emojiDataSchema.validate(req.body);
+        
+            if (error) {
+                // If validation fails, return 400 with the error message
+                return res.status(400).json({ message: error.details[0].message });
+            }
+        
+            const { emoji } = req.body;
+        
+            if (!emoji) {
+                return res.status(400).json({ message: 'Emoji is required.' });
+            }
+        
+            // Check if soldierId exists in the session
+            const soldierId = req.session.soldierid;
+        
+            if (!soldierId) {
+                return res.status(400).json({ message: 'Soldier ID not found in session.' });
+            }
+        
+            const client = await pool.connect();
+        
+            try {
+                // Update the fitness table with the emoji
+                const query = 'UPDATE fitness SET emoji = $2 WHERE id = $1';
+                const values = [soldierId, emoji];
+                await client.query(query, values);
+        
+                // Respond with a success message
+                res.status(200).json({ message: 'Emoji saved successfully' });
+        
+            } catch (error) {
+                console.error('Error updating data:', error);
+                res.status(500).json({ message: 'Error saving emoji data to the database' });
+        
+            } finally {
+                client.release();
+            }
+        });        
+
+        this.app.get('/fitness', this.isLoggedIn.bind(this), async (req, res) => {
+
+            // Get a client from the pool
+            const client = await pool.connect();
+
+            try {
+
+                const data_emoji = await client.query(`
+                    SELECT 
+                        CASE
+                            WHEN AVG(CASE
+                                WHEN f.emoji = '😞' THEN 1
+                                WHEN f.emoji = '😐' THEN 2
+                                WHEN f.emoji = '😁' THEN 3
+                                ELSE NULL
+                            END) <= 1.5 THEN '😞'
+                            WHEN AVG(CASE
+                                WHEN f.emoji = '😞' THEN 1
+                                WHEN f.emoji = '😐' THEN 2
+                                WHEN f.emoji = '😁' THEN 3
+                                ELSE NULL
+                            END) <= 2.5 THEN '😐'
+                            ELSE '😁'
+                        END AS average_emoji,
+                        f.created_at::date AS created_date,
+                        COUNT(f.soldierid) AS soldier_count
+                    FROM fitness f
+                    LEFT JOIN soldier s ON f.soldierid = s.id
+                    GROUP BY s.namesoldier, created_date
+                    ORDER BY created_date;`);
+
+                const result_percent_emoji = await client.query(`
+                    SELECT 
+                        COUNT(CASE WHEN f.emoji = '😞' THEN 1 END) AS percent_sad,
+                        COUNT(CASE WHEN f.emoji = '😐' THEN 1 END) AS percent_neutral,
+                        COUNT(CASE WHEN f.emoji = '😁' THEN 1 END) AS percent_very_happy
+                    FROM fitness f`);
+
+                const data = data_emoji.rows;
+                const dataPerEmj = result_percent_emoji.rows[0];
+
+                this.giveSpecificPermissionFitness(req.session.username, [0, 1, 2, 3, 4], res, data, dataPerEmj);
+
+            } catch (error) {
+                console.error('Error inserting data:', error);
+                res.status(500).json({ message: 'Error saving emoji data to the database' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/getAllEmoji', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { date1, date2 } = req.body;
+
+            // Get a client from the pool
+            const client = await pool.connect();
+
+            try {
+                // Query for emoji data based on the date range
+                const data_emoji = await client.query(`
+                SELECT 
+                    CASE
+                            WHEN AVG(CASE
+                                WHEN f.emoji = '😞' THEN 1
+                                WHEN f.emoji = '😐' THEN 2
+                                WHEN f.emoji = '😁' THEN 3
+                                ELSE NULL
+                            END) <= 1.5 THEN '😞'
+                            WHEN AVG(CASE
+                                WHEN f.emoji = '😞' THEN 1
+                                WHEN f.emoji = '😐' THEN 2
+                                WHEN f.emoji = '😁' THEN 3
+                                ELSE NULL
+                            END) <= 2.5 THEN '😐'
+                            ELSE '😁'
+                    END AS average_emoji,
+                    f.created_at::date AS created_date,
+                    COUNT(f.soldierid) AS soldier_count
+                FROM fitness f
+                LEFT JOIN soldier s ON f.soldierid = s.id
+                WHERE f.created_at::date BETWEEN $1 AND $2
+                GROUP BY s.namesoldier, created_date
+                ORDER BY created_date;`, [date1, date2]);
+
+                const data_emoji_total = await client.query(`
+                    SELECT 
+                        COUNT(CASE WHEN f.emoji = '😞' THEN 1 END) AS percent_sad,
+                        COUNT(CASE WHEN f.emoji = '😐' THEN 1 END) AS percent_neutral,
+                        COUNT(CASE WHEN f.emoji = '😁' THEN 1 END) AS percent_very_happy
+                    FROM fitness f
+                    WHERE f.created_at::date BETWEEN $1 AND $2`, [date1, date2]);
+
+                const total_data = data_emoji_total.rows[0];
+                const data = data_emoji.rows;
+
+                res.status(200).json({ data: data, total_data: total_data });
+
+            } catch (error) {
+                console.error('Error fetching emoji data:', error);
+                res.status(500).json({ message: 'Error fetching emoji data from the database' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/fitness/report', this.isLoggedIn.bind(this), async (req, res) => {
+            try {
+                const { data } = req.body;
+
+                // Create a new Excel workbook
+                const workbook = new excelJS.Workbook();
+                const worksheet = workbook.addWorksheet('Gym Usage Data');
+
+                // Define headers
+                const headers = ['Date', 'Average Emoji Rating', 'Number of Visits'];
+                worksheet.addRow(headers).eachCell((cell) => {
+                    cell.font = { bold: true, size: 12 };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
+                // Set column widths
+                worksheet.columns = [
+                    { width: 20 }, // Date
+                    { width: 20 }, // Average Emoji Rating
+                    { width: 20 }, // Number of Visits
+                ];
+
+                // Populate data rows
+                data.forEach((row, index) => {
+                    const formattedDate = row[0]; // Use the sent date from front-end
+                    const averageEmoji = row[1]; // Use the sent average rating
+                    const soldierCount = row[2]; // Use the sent number of visits
+                
+                    const dataRow = worksheet.addRow([formattedDate, averageEmoji, soldierCount]);
+                
+                    // Style each cell
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                
+                    // Apply alternating row color
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                });
+                
+                // Set headers for file download
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                res.setHeader('Content-Disposition', 'attachment; filename="report_gym.xlsx"');
+
+                // Write the Excel file to the response
+                await workbook.xlsx.write(res);
+                res.end();
+
+            } catch (error) {
+                console.error('Error generating Excel report:', error);
+                res.status(500).send('Failed to generate report.');
+            }
+        });
+    }
+
+    // Method to start the server
+    start() {
+        this.app.listen(this.port, () => {
+            console.log(`Server running at http://localhost:${this.port}/`);
+        });
+    }
+}
+
+const server = new Server(PORT);
+server.start();

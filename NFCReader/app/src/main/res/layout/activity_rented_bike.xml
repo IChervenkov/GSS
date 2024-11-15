@@ -1,0 +1,63 @@
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/nfcTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bike code: None"
+            android:textSize="24sp"
+            android:layout_marginTop="50dp"
+            android:layout_centerHorizontal="true" />
+
+        <!-- Spinner (Dropdown) -->
+        <AutoCompleteTextView
+            android:id="@+id/clientAutoCompleteTextView"
+            android:layout_width="550px"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/nfcTextView"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:hint="Select Client" />
+
+        <!-- DatePicker -->
+        <DatePicker
+            android:id="@+id/datePicker"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/clientAutoCompleteTextView"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:calendarViewShown="true" />
+
+        <!-- TimePicker -->
+        <TimePicker
+            android:id="@+id/timePicker"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/datePicker"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:timePickerMode="spinner" />
+
+        <!-- Submit Button -->
+        <Button
+            android:id="@+id/submitButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rent"
+            android:layout_below="@id/timePicker"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp"
+            android:textColor="@android:color/white"
+            android:backgroundTint="@android:color/holo_green_dark"/>
+
+    </RelativeLayout>
+</ScrollView>

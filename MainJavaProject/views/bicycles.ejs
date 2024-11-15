@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bicycles</title>
+  <link rel="stylesheet" href="../style/stylesBicycles.css" />
+  <link rel="icon" href="./icon/logo.jpg">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+
+</head>
+
+<body>
+  <form action="bicycles" method="POST" id="form1">
+    <!-- Horizontal Navigation Bar -->
+    <div class="horizontal-nav">
+      <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
+      <ul id="nav-links">
+        <% horizontalNavItems.forEach(function(item) { %>
+          <li><a href="<%= item.href %>">
+              <%= item.name %>
+            </a></li>
+          <% }); %>
+      </ul>
+    </div>
+
+    <div class="main-content">
+
+      <button type="button" id="menu-toggle-left" class="menu-toggle-left" aria-label="Toggle sidebar navigation">
+        <span id="arrow">&#9651;</span> Setting parameters
+      </button>
+      <div class="left-nav">
+
+        <ul id="data-list"></ul>
+
+        <!-- Bike Selection with Custom Search -->
+        <div class="mb-3 search-container">
+          <label for="bikeSearch" class="form-label">Bike:</label>
+          <div class="input-group">
+            <input type="text" id="bikeSearch" class="form-control" placeholder="Search for a bike...">
+            <button class="btn btn-outline-secondary" type="button" id="searchButtonBike">
+              <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+            </button>
+          </div>
+          <ul id="bikeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+          <input type="hidden" id="selectedBikeId" name="bikeId" value=""> <!-- To store the selected bike ID -->
+        </div>
+
+
+        <!-- Client Selection with Custom Search -->
+        <div class="mb-3 search-container">
+          <label for="clientSearch" class="form-label">Client:</label>
+          <div class="input-group">
+            <input type="text" id="clientSearch" class="form-control" placeholder="Search for a client...">
+            <button class="btn btn-outline-secondary" type="button" id="searchButtonClient">
+              <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+            </button>
+          </div>
+          <ul id="clientDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+          <input type="hidden" id="selectedClientId" name="clientId" value=""> <!-- To store the selected bike ID -->
+        </div>
+
+        <div class="calendar" id="calendarMain">
+          <header>
+            <h3></h3>
+            <nav>
+              <button type="button" id="prev"></button>
+              <button type="button" id="next"></button>
+            </nav>
+          </header>
+          <section>
+            <ul class="days">
+              <li>Sun</li>
+              <li>Mon</li>
+              <li>Tue</li>
+              <li>Wed</li>
+              <li>Thu</li>
+              <li>Fri</li>
+              <li>Sat</li>
+            </ul>
+            <ul class="dates"></ul>
+          </section>
+          <input class="show-date" id="selectedDateMail" value="None">
+        </div>
+
+        <!-- Buttons below the calendar -->
+        <div class="button-container">
+          <button type="button" class="login-btn" id="rentBtn">Rent</button>
+          <button type="button" class="login-btn" id="returnBtn">Return</button>
+
+          <input type="hidden" id="action" name="actionId" value="">
+          <input type="hidden" id="date" name="dateId" value="">
+
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div class="content">
+        <!-- Data Visualization Table -->
+        <div class="visualization-header">
+          <h3 class="d-flex align-items-center gap-2">
+            <%= startMessage %>
+              <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold"
+                id="addBike">+</button>
+              <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                id="removeBike">−</button>
+          </h3>
+
+          <div class="virtual-warehouse-labels">
+            <label class="virtual-warehouse-label">Total Bike: <%= totalBike %></label>
+            <label id="rentedBike" class="virtual-warehouse-label">Rented: <%= rentedBike %></label>
+            <label id="availableBike" class="virtual-warehouse-label">Available: <%= availableBike %></label>
+            <label id="repairBike" class="virtual-warehouse-label">Repair: <%= repairBike %></label>
+            <label id="lateBike" class="virtual-warehouse-label">Late: <%= lateBike %></label>
+            <label id="longTermBike" class="virtual-warehouse-label">Long Term: <%= longTermBike %></label>
+
+            <button type="button" id="btnReport" class="login-btn-report">Reports</button>
+          </div>
+          <div class="button-container-report">
+            <button type="button" id="btnReportPhone" class="login-btn-report">Reports</button>
+            <button type="button" class="download-btn <% if(username == 'guest') { %> disabled-button <% } %>" id="downloadBtn">Download App</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table id="mainTable">
+            <thead>
+              <tr>
+                <th>Bike Name</th>
+                <th>Status</th>
+                <th>Hired by</th>
+                <th>Date From</th>
+              </tr>
+            </thead>
+            <% if (data) { %>
+              <tbody id="tableBody">
+                <% data.forEach(function(item) { %>
+                  <tr>
+                    <td>
+                      <%= item.name %>
+                    </td>
+                    <td>
+                      <% if(item.status=="Available" ) { %>
+                        <img src="../icon/available.png" alt="Available" class="table-icon">
+                        <% } %>
+
+                          <% if(item.status=="Rented" ) { %>
+                            <img src="../icon/unavailable.png" alt="Rented" class="table-icon">
+                            <% } %>
+
+                              <% if(item.status=="Repair" ) { %>
+                                <img src="../icon/repire.png" alt="Repair" class="table-icon">
+                                <% } %>
+
+                                  <% if(item.status=="Late" ) { %>
+                                    <img src="../icon/timeout.png" alt="Late" class="table-icon">
+                                    <% } %>
+
+                                      <% if(item.status=="Long term" ) { %>
+                                        <img src="../icon/long-term.png" alt="Long-term" class="table-icon">
+                                        <% } %>
+                    </td>
+                    <td>
+                      <%= item.hiredby %>
+                    </td>
+                    <td>
+                      <%= item.datefrom %>
+                    </td>
+                  </tr>
+                  <% }); } %>
+              </tbody>
+          </table>
+        </div>
+
+        <nav aria-label="Table pagination">
+          <ul id="pagination" class="pagination justify-content-center"></ul>
+        </nav>
+
+      </div>
+    </div>
+
+    <!-- The Modal -->
+    <div id="myModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <label>Select Date:</label>
+        <p name="modalText" id="modalText">None</p>
+
+        <!-- Bike and Client Labels Inside the Modal -->
+        <div class="bike-client-selection">
+          <div class="mb-3">
+            <label class="form-label">Bike:</label>
+            <label class="none-selected" id="modalBikeLabel">None</label> <!-- Default set to "None" -->
+          </div>
+
+          <div class="mb-3">
+            <label id="labelClient" class="form-label">Client:</label>
+            <label class="none-selected" id="modalClientLabel">None</label> <!-- Default set to "None" -->
+          </div>
+        </div>
+
+        <!-- Hour and Minute Select Fields Inside the Modal -->
+        <div class="time-selection">
+          <div class="mb-3">
+            <label for="hourSelect" class="form-label">Hour:</label>
+            <select name="hourSelectId" class="form-select" id="hourSelect" aria-label="Select Hour">
+              <option selected>Select Hour</option>
+              <% optionHour.forEach(function(item) { %>
+                <option value="<%= item.value %>">
+                  <%= item.name %>
+                </option>
+                <% }); %>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="minuteSelect" class="form-label">Minutes:</label>
+            <select name="minuteSelect" class="form-select" id="minuteSelect" aria-label="Select Minutes">
+              <option selected>Select Minutes</option>
+              <% optionMinute.forEach(function(item) { %>
+                <option value="<%= item.value %>">
+                  <%= item.name %>
+                </option>
+                <% }); %>
+            </select>
+          </div>
+        </div>
+
+        <!-- Checkbox and "Check" Button -->
+        <div class="checkbox-container">
+          <input type="checkbox" id="confirmationCheckbox">
+          <label class="form-check-label" for="confirmationCheckbox" id="confirmationCheckboxLabel"></label>
+
+          <input type="checkbox" id="longTermCheckbox" name="ltstatus" value="true">
+          <label class="form-check-label" for="longTermCheckbox" id="longTermCheckboxLabel">Long term</label>
+        </div>
+
+        <!-- "Check" Button in New Line -->
+        <div class="button-container " <% if(username == 'guest') { %> style="cursor: not-allowed" <% } %>>
+          <button type="button" id="checkBtn" class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Save</button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- The Modal Message -->
+    <div id="myMessage" class="modal">
+      <div class="modal-content-mess">
+        <span class="close">&times;</span>
+
+        <img src="../icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon">
+        <p id="mess-text">Are you sure you want to proceed?</p>
+        <div class="button-container-mess">
+          <button id="btnYes" type="submit" class="login-btn-mess confirm-btn">Ok</button>
+        </div>
+      </div>
+    </div>
+
+  </form>
+
+  <!-- The Modal for Reports -->
+  <div id="reportModal" class="modal">
+    <div class="modal-content-multi-calendar">
+      <span class="close">&times;</span>
+      <h3 class="header-modal-report">Reports - Select Date Range (From/To Date)</h3>
+
+      <!-- Container for two side-by-side calendars -->
+      <div class="calendar-container">
+        <div class="calendar" id="calendar1">
+          <header>
+            <h3></h3>
+            <nav>
+              <button type="button" id="prev"></button>
+              <button type="button" id="next"></button>
+            </nav>
+          </header>
+          <section>
+            <ul class="days">
+              <li>Sun</li>
+              <li>Mon</li>
+              <li>Tue</li>
+              <li>Wed</li>
+              <li>Thu</li>
+              <li>Fri</li>
+              <li>Sat</li>
+            </ul>
+            <ul class="dates"></ul>
+          </section>
+        </div>
+
+        <div class="calendar" id="calendar2">
+          <header>
+            <h3></h3>
+            <nav>
+              <button type="button" id="prev"></button>
+              <button type="button" id="next"></button>
+            </nav>
+          </header>
+          <section>
+            <ul class="days">
+              <li>Sun</li>
+              <li>Mon</li>
+              <li>Tue</li>
+              <li>Wed</li>
+              <li>Thu</li>
+              <li>Fri</li>
+              <li>Sat</li>
+            </ul>
+            <ul class="dates"></ul>
+          </section>
+        </div>
+      </div>
+
+      <!-- Buttons for confirming the selection -->
+      <div class="button-container">
+        <button id="confirmReportBtn" class="login-btn">View Report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Modal for Reports View -->
+  <div id="reportViewModal" class="modal">
+    <form class="modal-content-view" action="/bicycles/report" method="POST" id="form2">
+      <span class="close">&times;</span>
+      <h3 class="header-modal-report">Reports View</h3>
+
+      <div class="table-container">
+        <table id="bikeUsageTable">
+          <thead>
+            <tr>
+              <th>Bike Name</th>
+              <th>Soldier Name</th>
+              <th>Date From</th>
+              <th>Date To</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-container">
+        <table id="bikeTotalsTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Total Bikes Used</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+      </div>
+
+      <input name="selectedDate1" class="show-date" id="selectedDate1" value="None">
+      <input name="selectedDate2" class="show-date" id="selectedDate2" value="None">
+
+      <!-- Buttons for confirming the selection -->
+      <div class="button-container">
+        <button id="confirmReportBtn" class="login-btn">Generate Report</button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- The Modal for Reports -->
+  <div id="totalRentBikeModal" class="modal">
+    <div class="modal-content-total-info">
+      <span class="close">&times;</span>
+      <h3 class="header-modal-report">All Rented Bike</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Id</th>
+              <th>Bike Name</th>
+              <th>Hired by</th>
+            </tr>
+          </thead>
+          <% if (data) { %>
+            <tbody>
+              <% data.forEach(function(item, index) { if (item.status==="Rented" ) {%>
+                <tr>
+                  <td>
+                    <%= index + 1 %>
+                  </td>
+                  <td>
+                    <%= item.name %>
+                  </td>
+                  <td>
+                    <%= item.hiredby %>
+                  </td>
+                </tr>
+                <% } %>
+                  <% }); } %>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Modal for Reports -->
+  <div id="totalAvailableBikeModal" class="modal">
+    <div class="modal-content-total-info">
+      <span class="close">&times;</span>
+      <h3 class="header-modal-report">All Available Bike</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Id</th>
+              <th>Bike Name</th>
+              <th>Hired by</th>
+            </tr>
+          </thead>
+          <% if (data) { %>
+            <tbody>
+              <% data.forEach(function(item, index) { if (item.status==="Available" ) {%>
+                <tr>
+                  <td>
+                    <%= index + 1 %>
+                  </td>
+                  <td>
+                    <%= item.name %>
+                  </td>
+                  <td>
+                    <%= item.hiredby %>
+                  </td>
+                </tr>
+                <% } %>
+                  <% }); } %>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Modal for Reports -->
+  <div id="totalRepireBikeModal" class="modal">
+    <div class="modal-content-total-info">
+      <span class="close">&times;</span>
+      <h3 class="header-modal-report">All Repire Bike</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Id</th>
+              <th>Bike Name</th>
+              <th>Hired by</th>
+            </tr>
+          </thead>
+          <% if (data) { %>
+            <tbody>
+              <% data.forEach(function(item, index) { if (item.status==="Repair" ) {%>
+                <tr>
+                  <td>
+                    <%= index + 1 %>
+                  </td>
+                  <td>
+                    <%= item.name %>
+                  </td>
+                  <td>
+                    <%= item.hiredby %>
+                  </td>
+                </tr>
+                <% } %>
+                  <% }); } %>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Modal for Reports -->
+  <div id="totalLateBikeModal" class="modal">
+    <div class="modal-content-total-info">
+      <span class="close">&times;</span>
+      <h3 class="header-modal-report">All Late Bike</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Id</th>
+              <th>Bike Name</th>
+              <th>Hired by</th>
+            </tr>
+          </thead>
+          <% if (data) { %>
+            <tbody>
+              <% data.forEach(function(item, index) { if (item.status==="Late" ) {%>
+                <tr>
+                  <td>
+                    <%= index + 1 %>
+                  </td>
+                  <td>
+                    <%= item.name %>
+                  </td>
+                  <td>
+                    <%= item.hiredby %>
+                  </td>
+                </tr>
+                <% } %>
+                  <% }); } %>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Modal for Reports -->
+  <div id="totalLongTermBikeModal" class="modal">
+    <div class="modal-content-total-info">
+      <span class="close">&times;</span>
+      <h3 class="header-modal-report">All Long Term Bike</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Id</th>
+              <th>Bike Name</th>
+              <th>Hired by</th>
+            </tr>
+          </thead>
+          <% if (data) { %>
+            <tbody>
+              <% data.forEach(function(item, index) { if (item.status==="Long term" ) {%>
+                <tr>
+                  <td>
+                    <%= index + 1 %>
+                  </td>
+                  <td>
+                    <%= item.name %>
+                  </td>
+                  <td>
+                    <%= item.hiredby %>
+                  </td>
+                </tr>
+                <% } %>
+                  <% }); } %>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="searchBikeModal" class="modal">
+    <div class="modal-content-total-info">
+      <span class="close">&times;</span>
+      <h3 class="header-modal-report">History of the bike</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Client Name</th>
+              <th>Date From</th>
+              <th>Date To</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="searchClientModal" class="modal">
+    <div class="modal-content-total-info">
+      <span class="close">&times;</span>
+      <h3 class="header-modal-report">History of the soldier</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Bike Name</th>
+              <th>Date From</th>
+              <th>Date To</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Modal for Add Soldier -->
+  <div id="addBikeModal" class="modal">
+    <form class="modal-content" action="/bicycles/addBike" method="POST" id="form3">
+      <span class="close">&times;</span>
+
+      <h2>Add bike</h2>
+
+      <div class="mb-3">
+        <label for="bike-number" class="form-label">Bike Number:</label>
+        <div class="input-group">
+          <input type="text" id="bike-number" name="bikeAddId" class="form-control" placeholder="Bike Number"
+            pattern="[A-Za-z0-9]+" required>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="bike-name" class="form-label">Bike Name:</label>
+        <div class="input-group">
+          <input type="text" id="bike-name" name="bikeName" class="form-control"
+            placeholder="Bike Name (number bike/model bike)" pattern="^[0-9]+\/[A-Za-z\s]+$" required>
+        </div>
+      </div>
+
+      <!-- Buttons for confirming the selection -->
+      <div class="button-container" <% if(username == 'guest') { %> style="cursor: not-allowed" <% } %>>
+        <button type="submit" id="confirmAddBikeBtn" class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Add bicycle</button>
+        <button type="button" id="confirmAddMultiBikeBtn" class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Add multiple
+          bicycles</button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- The Modal for Add Soldier -->
+  <div id="removeBikeModal" class="modal">
+    <form class="modal-content" action="/bicycles/removeBike" method="POST" id="form4">
+      <span class="close">&times;</span>
+
+      <h2>Remove bike</h2>
+
+      <!-- Bike Selection with Custom Search -->
+      <div class="mb-3 search-container">
+        <label for="removeBikeSearch" class="form-label">Bike Name:</label>
+        <div class="input-group">
+          <input type="text" id="removeBikeSearch" class="form-control" placeholder="Bike Name" required>
+        </div>
+        <ul id="removeBikeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+        <input type="hidden" id="selectedRemoveBikeId" name="removeBikeId" value="">
+        <!-- To store the selected bike ID -->
+      </div>
+
+      <!-- Buttons for confirming the selection -->
+      <div class="button-container" <% if(username == 'guest') { %> style="cursor: not-allowed" <% } %>>
+        <button type="submit" id="confirmRemoveBikeBtn" class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Remove bicycle</button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Modal Structure -->
+  <div id="addMultiBikeModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+
+      <h2>Accommodation multiple bicycles <a href="/bicycles/multiBike/download"><i class="bi bi-download"></i></a></h2>
+
+      <div class="mb-3">
+        <label for="fileInputBike" class="form-label">Upload File:</label>
+        <input type="file" id="fileInputBike" class="form-control" accept=".xlsx">
+        <!-- Accept specific file types -->
+      </div>
+
+      <div class="progress-bar">
+        <div class="custom-progress" id="progress-multi-bike">
+        </div>
+      </div>
+
+      <button type="button" id="upload-multi-bike-btn" class="login-btn">Upload</button>
+    </div>
+  </div>
+
+
+  <div id="myMessageReport" class="modal">
+    <div class="modal-content-mess">
+      <span class="close">&times;</span>
+
+      <img src="../icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon-rep">
+      <p id="mess-text-rep">Are you sure you want to proceed?</p>
+      <div class="button-container-mess">
+        <button id="btnMess" class="login-btn-mess confirm-btn">Ok</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../java/pageNumber.js"></script>
+  <script src="../java/downloald-app.js"></script>
+  <script src="../java/modal_wind.js"></script>
+  <script src="../java/calendar.js" defer></script>
+  <script src="../java/phoneMenu.js"></script>
+
+</body>
+
+</html>
