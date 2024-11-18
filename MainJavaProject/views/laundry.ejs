@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+        <%= title %>
+    </title>
+    <link rel="stylesheet" href="../style/stylesLaundry.css" />
+    <link rel="icon" href="./icon/logo.jpg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+
+</head>
+
+<body>
+
+    <!-- Horizontal Navigation Bar -->
+    <div class="horizontal-nav">
+        <ul>
+            <% horizontalNavItems.forEach(function(item) { %>
+                <li><a href="<%= item.href %>">
+                        <%= item.name %>
+                    </a></li>
+                <% }); %>
+        </ul>
+    </div>
+
+    <div class="container">
+
+        <h2 class="h2-top-left">
+            <%= title %>
+        </h2>
+
+        <div class="status-row">
+            <div class="status-box">
+                <h3>Bags: <span id="bags-drop-off">
+                        <%= totalCounts['drop off'] || 0 %>
+                    </span></h3>
+                <div id="all-type-drop-off">
+                    <% if (bagData['drop off']) { %>
+                        <% bagData['drop off'].forEach(item=> { %>
+                            <p>
+                                <%= item.type %>: <%= item.count %>
+                            </p>
+                            <% }) %>
+                                <% } else { %>
+                                    <p>No data available</p>
+                                    <% } %>
+                </div>
+                <div class="progress-box">
+                    <button class="main-btn">Drop off</button>
+                </div>
+                <p class="avg-in">Average Time IN: <span id="avg-in-drop-off">
+                        <%= avgTimeData['drop off'] || '0 mins' %>
+                    </span></p>
+            </div>
+
+            <div class="status-box">
+                <h3>Bags: <span id="bags-transportation-to-laundry-facility">
+                        <%= totalCounts['transportation to laundry facility'] || 0 %>
+                    </span></h3>
+                <div id="all-type-transportation-to-laundry-facility">
+                    <% if (bagData['transportation to laundry facility']) { %>
+                        <% bagData['transportation to laundry facility'].forEach(item=> { %>
+                            <p>
+                                <%= item.type %>: <%= item.count %>
+                            </p>
+                            <% }) %>
+                                <% } else { %>
+                                    <p>No data available</p>
+                                    <% } %>
+                </div>
+                <div class="progress-box">
+                    <button class="main-btn">Transportation to laundry facility</button>
+                </div>
+                <p class="avg-in">Average Time IN: <span id="avg-in-transportation-to-laundry-facility">
+                        <%= avgTimeData['transportation to laundry facility'] || '0 mins' %>
+                    </span> </p>
+            </div>
+
+            <div class="status-box">
+                <h3>Bags: <span id="bags-laundry-facility">
+                        <%= totalCounts['laundry facility'] || 0 %>
+                    </span></h3>
+                <div id="all-type-laundry-facility">
+                    <% if (bagData['laundry facility']) { %>
+                        <% bagData['laundry facility'].forEach(item=> { %>
+                            <p>
+                                <%= item.type %>: <%= item.count %>
+                            </p>
+                            <% }) %>
+                                <% } else { %>
+                                    <p>No data available</p>
+                                    <% } %>
+                </div>
+                <div class="progress-box">
+                    <button class="main-btn">Laundry facility</button>
+                </div>
+                <p class="avg-in">Average Time IN: <span id="avg-in-laundry-facility">
+                    <%= avgTimeData['laundry facility'] || '0 mins' %>
+                </span></p>
+            </div>
+
+            <div class="status-box">
+                <h3>Bags: <span id="bags-transportation-to-drop-off">
+                        <%= totalCounts['transportation to drop off'] || 0 %>
+                    </span></h3>
+                <div id="all-type-transportation-to-drop-off">
+                    <% if (bagData['transportation to drop off']) { %>
+                        <% bagData['transportation to drop off'].forEach(item=> { %>
+                            <p>
+                                <%= item.type %>: <%= item.count %>
+                            </p>
+                            <% }) %>
+                                <% } else { %>
+                                    <p>No data available</p>
+                                    <% } %>
+                </div>
+                <div class="progress-box">
+                    <button class="main-btn">Transportation to drop off</button>
+                </div>
+                <p class="avg-in">Average Time IN: <span id="avg-in-transportation-to-drop-off">
+                    <%= avgTimeData['transportation to drop off'] || '0 mins' %>
+                </span></p>
+            </div>
+
+            <div class="status-box">
+                <h3>Bags: <span id="bags-ready-to-pick-up">
+                        <%= totalCounts['ready to pick up'] || 0 %>
+                    </span></h3>
+                <div id="all-type-ready-to-pick-up">
+                    <% if (bagData['ready to pick up']) { %>
+                        <% bagData['ready to pick up'].forEach(item=> { %>
+                            <p>
+                                <%= item.type %>: <%= item.count %>
+                            </p>
+                            <% }) %>
+                                <% } else { %>
+                                    <p>No data available</p>
+                                    <% } %>
+                </div>
+                <div class="progress-box">
+                    <button class="main-btn">Ready to pick up</button>
+                </div>
+
+                <p class="avg-in">Average Time IN: <span id="avg-in-ready-to-pick-up">
+                    <%= avgTimeData['ready to pick up'] || '0 mins' %>
+                </span></p>
+            </div>
+        </div>
+
+        <!-- Summary and Report Button Row -->
+        <div class="summary-row d-flex justify-content-between align-items-center w-100">
+            <div class="summary">
+                <p>Total Bags For Last Month: <span>0</span></p>
+                <p>Average Washing Time: <span><%= overallAverageFormatted %></span></p>
+            </div>
+
+            <button class="report-button">Report</button>
+        </div>
+
+    </div>
+
+     <!-- Modal Structure -->
+     <div id="dropOffModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2>Drop off</h2>
+
+        </div>
+    </div>
+
+    <!-- The Modal Message -->
+    <div id="myMessage" class="modal">
+        <div class="modal-content-mess">
+            <span class="close-btn">&times;</span>
+
+            <img src="../icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon">
+            <p id="mess-global-text"></p>
+        </div>
+    </div>
+
+</body>
+
+</html>

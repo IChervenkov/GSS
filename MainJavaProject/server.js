@@ -35,6 +35,7 @@ const pool = new Pool({
 });
 
 const Joi = require('joi');
+const { count } = require('console');
 
 const schemaLogIn = Joi.object({
     username: Joi.string().alphanum().required(),
@@ -185,8 +186,9 @@ const navItems = [];
 
 const horizontalNavItems = [
     { href: '/', name: 'Main Page' },
+    { href: 'laundry', name: 'Laundry' },
     { href: 'fitness', name: 'Gym' },
-    { href: 'accommodation', name: 'Accommodation' },
+    { href: 'accommodation', name: 'Accommodation and keys' },
     { href: 'bicycles', name: 'Bicycles' },
     { href: 'logout', name: 'Logout' }
 ];
@@ -214,27 +216,17 @@ class Server {
             next();
         });
 
-        // Session middleware
+        // Use Redis as the session store
         this.app.use(session({
-            secret: process.env.SESSION_SECRET || 'default_secret', // Use an environment variable for the secret
+            secret: process.env.SESSION_SECRET || 'default_secret',
             resave: false,
             saveUninitialized: false,
             cookie: {
-                secure: false, // Set to true in production with HTTPS
+                secure: false,
                 httpOnly: true,
-                sameSite: 'lax',
-                maxAge: 6 * 60 * 60 * 1000 // Session expires in 6 houres
+                sameSite: 'lax'
             }
         }));
-
-        // Middleware to prevent session refreshing
-        this.app.use((req, res, next) => {
-            if (req.session) {
-                // Avoid resetting session's maxAge on activity
-                req.session._lastActivity = Date.now(); // Track last activity time
-            }
-            next();
-        });
 
         this.app.use((err, req, res, next) => {
             console.error(err.stack); // Log the error stack trace
@@ -250,16 +242,18 @@ class Server {
         this.defineRoutesBicycles();
         this.defineRoutesAccommodation();
         this.defineRoutesFitnes();
+        this.defineRoutesLaundry();
     }
 
     giveSpecificPermissionMain(username, indexs, res) {
+
         res.render('mainPage', {
             title: 'Main Page Layout',
             navItems: navItems,
             horizontalNavItems: indexs.map(index => horizontalNavItems[index]),
             headerTable: null,
             data: null,
-            startMessage: "Welcom to Global Supoport System (GSS)",
+            startMessage: "Welcom to Global Support System (GSS)",
             username: username
         });
     }
@@ -284,59 +278,52 @@ class Server {
 
     giveSpecificPermissionAccommodation(username, indexs, res, navBuild, totalFreeBeds, totalOccupiedBeds, type, titlePage, countBeds, headerTable, nameroomSetCount, numBuild) {
 
-        switch (username) {
-            case "admin":
-                res.render('accommodation', {
-                    title: "Accommodation",
-                    navItems: navBuild,
-                    horizontalNavItems: horizontalNavItems,
-                    headerTable: headerTable,
-                    totalFreeBeds: totalFreeBeds,
-                    totalOccupiedBeds: totalOccupiedBeds,
-                    type: type,
-                    titlePage: titlePage,
-                    countBeds: countBeds,
-                    nameroomSetCount: nameroomSetCount,
-                    numBuild: numBuild
-                });
-                break;
-
-            default:
-                res.render('accommodation', {
-                    title: "Accommodation",
-                    navItems: navBuild,
-                    horizontalNavItems: indexs.map(index => horizontalNavItems[index]),
-                    headerTable: headerTable,
-                    totalFreeBeds: totalFreeBeds,
-                    totalOccupiedBeds: totalOccupiedBeds,
-                    type: type,
-                    titlePage: titlePage,
-                    countBeds: countBeds,
-                    nameroomSetCount: nameroomSetCount,
-                    numBuild: numBuild
-                });
-                break;
-        }
+        res.render('accommodation', {
+            title: "Accommodation and keys",
+            navItems: navBuild,
+            horizontalNavItems: indexs.map(index => horizontalNavItems[index]),
+            headerTable: headerTable,
+            totalFreeBeds: totalFreeBeds,
+            totalOccupiedBeds: totalOccupiedBeds,
+            type: type,
+            titlePage: titlePage,
+            countBeds: countBeds,
+            nameroomSetCount: nameroomSetCount,
+            numBuild: numBuild
+        });
     }
 
     giveSpecificPermissionFitness(username, indexs, res, data, dataPerEmj) {
 
+        res.render('fitness', {
+            title: "Gym",
+            horizontalNavItems: indexs.map(index => horizontalNavItems[index]),
+            data: data,
+            dataPerEmj: dataPerEmj
+        });
+    }
+
+    giveSpecificPermissionLaundry(username, indexes, res, bagData, totalCounts, avgTimeData, overallAverageFormatted) {
         switch (username) {
             case "admin":
-                res.render('fitness', {
-                    title: "Gym",
+                res.render('laundry', {
+                    title: "Laundry",
                     horizontalNavItems: horizontalNavItems,
-                    data: data,
-                    dataPerEmj: dataPerEmj
+                    bagData: bagData,
+                    totalCounts: totalCounts,
+                    avgTimeData: avgTimeData,
+                    overallAverageFormatted: overallAverageFormatted
                 });
                 break;
 
             default:
-                res.render('fitness', {
-                    title: "Gym",
-                    horizontalNavItems: indexs.map(index => horizontalNavItems[index]),
-                    data: data,
-                    dataPerEmj: dataPerEmj
+                res.render('laundry', {
+                    title: "Laundry",
+                    horizontalNavItems: indexes.map(index => horizontalNavItems[index]),
+                    bagData: bagData,
+                    totalCounts: totalCounts,
+                    avgTimeData: avgTimeData,
+                    overallAverageFormatted: overallAverageFormatted
                 });
                 break;
         }
@@ -363,7 +350,7 @@ class Server {
 
     // Middleware to check if the user is logged in
     isLoggedIn(req, res, next) {
-        if (req.session && req.session.username) {
+        if (req.session && req.session.username && req.session.username !== 'PhoneUser') {
             return next(); // User is logged in, proceed to the route
         } else {
             return res.redirect('/login'); // Redirect to login if not logged in
@@ -421,13 +408,13 @@ class Server {
 
             switch (req.session.username) {
                 case 'guest':
-                    this.giveSpecificPermissionMain(req.session.username, [0, 3, 4], res);
+                    this.giveSpecificPermissionMain(req.session.username, [0, 4, 5], res);
                     break;
                 case 'helpDesk':
-                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4], res);
+                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4, 5], res);
                     break;
                 default:
-                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4], res);
+                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4, 5], res);
                     break;
             }
 
@@ -620,6 +607,12 @@ class Server {
                     [nfcData, selectClient, recDate]
                 );
 
+                const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1;`, [nfcData]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
+                    [`Rented Bike with name ${bikeResult.rows[0].namebike}`]);
+
                 // Release the client back to the pool
                 client.release();
 
@@ -644,9 +637,9 @@ class Server {
             const dateText = `${date} ${time}`;
             const recDate = new Date(dateText);
 
-            try {
+            const client = await pool.connect();
 
-                const client = await pool.connect();
+            try {
 
                 await client.query(
                     "UPDATE bicycles SET status = 'Available' WHERE id = $1",
@@ -658,11 +651,19 @@ class Server {
                     [recDate, nfcData]
                 );
 
+                const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1;`, [nfcData]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
+                    [`Return Bike with name ${bikeResult.rows[0].namebike}`]);
+
                 res.status(200).send('Data return received successfully');
 
             } catch (error) {
                 console.error('Error executing database query', error);
                 res.status(500).send('An error occurred. Please try again later.');
+            } finally {
+                client.release()
             }
         });
     }
@@ -788,13 +789,13 @@ class Server {
 
             switch (req.session.username) {
                 case 'guest':
-                    this.giveSpecificPermissionBicycles(req.session.username, [0, 3, 4], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                    this.giveSpecificPermissionBicycles(req.session.username, [0, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
                     break;
                 case 'helpDesk':
-                    this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                    this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
                     break;
                 default:
-                    this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                    this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
                     break;
             }
         });
@@ -829,6 +830,8 @@ class Server {
             try {
                 const client = await pool.connect();
 
+                const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1`, [bikeId]);
+
                 if (actionId === 'Rent') {
 
                     // Update bike status and assign to client
@@ -860,6 +863,10 @@ class Server {
                         [bikeId, clientId, recDate]
                     );
 
+                    // Query the database for the user
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Rented Bike with name ${bikeResult.rows[0].namebike}`]);
+
                 } else {
                     // Update bike status and clear client assignment
 
@@ -872,6 +879,10 @@ class Server {
                         "UPDATE bikesoldier SET dateto = $1 WHERE bikeid = $2 AND dateto IS NULL",
                         [recDate, bikeId]
                     );
+
+                    // Query the database for the user
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Return Bike with name ${bikeResult.rows[0].namebike}`]);
                 }
 
                 // Release the client back to the pool
@@ -1189,6 +1200,16 @@ class Server {
                 // Insert new bike if bikeAddId doesn't exist
                 await client.query(`INSERT INTO bicycles VALUES ($1, $2, 'Available');`, [bikeAddId, bikeName]);
 
+                // Query the database for the user
+                await client.query(
+                    `INSERT INTO usermonitoring (user_id, location)
+                     VALUES (
+                       COALESCE((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = 'PhoneUser')),
+                       $2
+                     )`,
+                    [req.session.username, `Add Bike with name ${bikeName}`]
+                );
+
                 return res.status(200).json({ message: 'Bike added successfully.' });
             } catch (err) {
                 console.error('Database error:', err);
@@ -1211,7 +1232,20 @@ class Server {
 
             try {
 
+                const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1`, [bikeRemoveId]);
+
+                // Query the database for the user
+                await client.query(
+                    `INSERT INTO usermonitoring (user_id, location)
+                     VALUES (
+                       COALESCE((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = 'PhoneUser')),
+                       $2
+                     )`,
+                    [req.session.username, `Remove Bike with number ${bikeResult.rows[0].namebike}`]
+                );
+
                 await client.query(`DELETE FROM bicycles WHERE id = $1;`, [bikeRemoveId]);
+
                 return res.status(200).json({ message: 'Bike remove successfully.' });
 
             } catch (err) {
@@ -1322,6 +1356,9 @@ class Server {
                     );
 
                 }));
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), 'Multi Add Bike')", [req.session.username]);
 
                 return res.status(200).json({ message: 'File processed successfully' });
 
@@ -1717,10 +1754,35 @@ class Server {
                 res.json(nameroomSetCount);
 
             } else if (selectBuildType === 'Accommodation') {
-                this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
 
+                switch (req.session.username) {
+                    case 'guest':
+                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
+                        break;
+
+                    case 'helpDesk':
+                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
+                        break;
+
+                    default:
+                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
+                        break;
+                }
             } else {
-                this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+
+                switch (req.session.username) {
+                    case 'guest':
+                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+                        break;
+
+                    case 'helpDesk':
+                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+                        break;
+
+                    default:
+                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+                        break;
+                }
             }
         });
 
@@ -1777,6 +1839,10 @@ class Server {
                     [soldierId, keyCodeId]
                 );
 
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Give key ${keyCodeId} to ${soldierId}`]);
+
             } else if (soldierId !== '' && countryId !== 'None') {
                 await client.query(
                     "UPDATE key SET soldierid = $1 where id = $2;",
@@ -1799,6 +1865,12 @@ class Server {
                     );
                 }
 
+                const bagsRes = await client.query(`SELECT code FROM laundrybags WHERE id = $1;`, [bagId]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Accommodated soldier with number ${soldierId} with meal card ${mealCardId} and bag ${bagsRes.rows[0].code}`]);
+
             } else if (soldierId === '' && countryId !== 'None') {
 
                 const res_query = await client.query(
@@ -1816,11 +1888,19 @@ class Server {
                     [res_query.rows[0].soldierid]
                 );
 
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Release soldier with number ${res_query.rows[0].soldierid}`]);
+
             } else {
                 await client.query(
                     "UPDATE key SET soldierid = NULL where id = $1;",
                     [keyCodeId]
                 );
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Return key ${keyCodeId}`]);
             }
 
             // Release the client back to the pool
@@ -2086,6 +2166,10 @@ class Server {
                     await client.query("UPDATE key SET soldierid = NULL WHERE id = $1;", [keyId]);
                 }
 
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Move soldier ${soldId} from room ${keyId} to room ${keyMoveId}`]);
+
                 client.release();
 
                 res.redirect('/accommodation');
@@ -2119,6 +2203,10 @@ class Server {
                 }
 
                 await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [soldierId, soldierName, soldierCountry]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Add soldier ${soldierName}`]);
 
                 client.release();
 
@@ -2173,6 +2261,10 @@ class Server {
                 await Promise.all(data.map(async (row) => {
                     await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [row.soldierId, row.soldierName, row.soldierCountry]);
                 }));
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Add multi soldier`]);
 
                 return res.status(200).json({ message: 'File processed successfully' });
 
@@ -2369,6 +2461,10 @@ class Server {
 
                 }));
 
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Accommodated multi soldier`]);
+
                 return res.status(200).json({ message: 'File processed successfully' });
 
             } catch (error) {
@@ -2404,6 +2500,10 @@ class Server {
                         [row.soldierid]
                     );
                 });
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Release all soldier`]);
 
                 return res.status(200).json({ message: 'All rooms are vacated' });
 
@@ -2442,6 +2542,10 @@ class Server {
                     `INSERT INTO buildings VALUES ($1, $2, $3);`, [buildId, buildName, buildType]
                 );
 
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Add destination ${buildName}`]);
+
                 return res.status(200).json({ message: 'Add destination is successfully' });
 
             } catch (error) {
@@ -2466,6 +2570,11 @@ class Server {
 
             try {
                 await client.query("DELETE FROM buildings WHERE id = $1;", [buildId]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Remove destination ${buildId}`]);
+
                 return res.status(200).send();
 
             } catch (error) {
@@ -2501,6 +2610,10 @@ class Server {
 
                 await client.query("INSERT INTO rooms VALUES ($1, $2)", [roomId, roomName]);
                 await client.query("INSERT INTO buildroom VALUES ($1, $2)", [buildingName, roomId]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Add room ${roomName} to ${buildingName}`]);
 
                 return res.status(200).send({ message: `The room ${roomName} was added into building ${buildingName}.` });
 
@@ -2643,6 +2756,10 @@ class Server {
                 await client.query(`DELETE FROM buildroom WHERE roomid = $1;`, [roomId]);
                 await client.query(`DELETE FROM rooms WHERE id = $1;`, [roomId]);
 
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Remove room ${roomId}`]);
+
                 return res.status(200).send({ message: `The room was removed successfully.` });
 
             } catch (error) {
@@ -2677,6 +2794,10 @@ class Server {
                 await client.query("INSERT INTO key VALUES ($1, $2)", [keyId, keyName]);
                 await client.query("INSERT INTO roomskey VALUES ($1, $2)", [selectedRoomForKey, keyId]);
 
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Add key ${keyName} to room ${selectedRoomForKey}`]);
+
                 return res.status(200).send({ message: `The key ${keyName} was added into this building.` });
 
             } catch (error) {
@@ -2703,6 +2824,10 @@ class Server {
                 await client.query(`DELETE FROM roomskey WHERE keyid = $1;`, [keyId]);
                 await client.query(`DELETE FROM key WHERE id = $1;`, [keyId]);
 
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Remove key ${keyId}`]);
+
                 return res.status(200).send({ message: `The key was removed successfully.` });
 
             } catch (error) {
@@ -2719,85 +2844,85 @@ class Server {
         this.app.post('/sendClientData', async (req, res) => {
             // Validate the request body using Joi
             const { error } = clientDataSchema.validate(req.body);
-        
+
             if (error) {
                 // If validation fails, return 400 with the error message
                 return res.status(400).json({ message: error.details[0].message });
             }
-        
+
             const { userId } = req.body;
-        
+
             if (!userId) {
                 return res.status(400).json({ message: 'User ID is required.' });
             }
-        
+
             const client = await pool.connect();
-        
+
             try {
                 // Save data to the database and get the inserted id
                 const query = 'INSERT INTO fitness (id, soldierid) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM fitness), $1) RETURNING id';
                 const values = [userId];
                 const result = await client.query(query, values);
-        
+
                 // Extract the inserted id
                 const soldierId = result.rows[0].id;
-        
+
                 // Save the soldierId in the session
                 req.session.soldierid = soldierId;
-        
+
                 // Respond with a success message
                 res.status(200).json({ message: 'Client saved successfully', soldierId });
-        
+
             } catch (error) {
                 console.error('Error inserting data:', error);
                 res.status(500).json({ message: 'Error saving client data to the database' });
-        
+
             } finally {
                 client.release();
             }
         });
-        
+
         this.app.post('/sendEmojiData', async (req, res) => {
             // Validate the request body using Joi
             const { error } = emojiDataSchema.validate(req.body);
-        
+
             if (error) {
                 // If validation fails, return 400 with the error message
                 return res.status(400).json({ message: error.details[0].message });
             }
-        
+
             const { emoji } = req.body;
-        
+
             if (!emoji) {
                 return res.status(400).json({ message: 'Emoji is required.' });
             }
-        
+
             // Check if soldierId exists in the session
             const soldierId = req.session.soldierid;
-        
+
             if (!soldierId) {
                 return res.status(400).json({ message: 'Soldier ID not found in session.' });
             }
-        
+
             const client = await pool.connect();
-        
+
             try {
                 // Update the fitness table with the emoji
                 const query = 'UPDATE fitness SET emoji = $2 WHERE id = $1';
                 const values = [soldierId, emoji];
                 await client.query(query, values);
-        
+
                 // Respond with a success message
                 res.status(200).json({ message: 'Emoji saved successfully' });
-        
+
             } catch (error) {
                 console.error('Error updating data:', error);
                 res.status(500).json({ message: 'Error saving emoji data to the database' });
-        
+
             } finally {
                 client.release();
             }
-        });        
+        });
 
         this.app.get('/fitness', this.isLoggedIn.bind(this), async (req, res) => {
 
@@ -2840,7 +2965,20 @@ class Server {
                 const data = data_emoji.rows;
                 const dataPerEmj = result_percent_emoji.rows[0];
 
-                this.giveSpecificPermissionFitness(req.session.username, [0, 1, 2, 3, 4], res, data, dataPerEmj);
+                switch (req.session.username) {
+                    case 'guest':
+                        this.giveSpecificPermissionFitness(req.session.username, [0, 4, 5], res, data, dataPerEmj);
+                        break;
+
+                    case 'helpDesk':
+                        this.giveSpecificPermissionFitness(req.session.username, [0, 1, 2, 3, 4, 5], res, data, dataPerEmj);
+                        break;
+
+                    default:
+                        this.giveSpecificPermissionFitness(req.session.username, [0, 1, 2, 3, 4, 5], res, data, dataPerEmj);
+                        break;
+
+                }
 
             } catch (error) {
                 console.error('Error inserting data:', error);
@@ -2938,9 +3076,9 @@ class Server {
                     const formattedDate = row[0]; // Use the sent date from front-end
                     const averageEmoji = row[1]; // Use the sent average rating
                     const soldierCount = row[2]; // Use the sent number of visits
-                
+
                     const dataRow = worksheet.addRow([formattedDate, averageEmoji, soldierCount]);
-                
+
                     // Style each cell
                     dataRow.eachCell((cell) => {
                         cell.border = {
@@ -2950,7 +3088,7 @@ class Server {
                             right: { style: 'thin' },
                         };
                     });
-                
+
                     // Apply alternating row color
                     if (index % 2 === 0) {
                         dataRow.eachCell((cell) => {
@@ -2962,7 +3100,7 @@ class Server {
                         });
                     }
                 });
-                
+
                 // Set headers for file download
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                 res.setHeader('Content-Disposition', 'attachment; filename="report_gym.xlsx"');
@@ -2974,6 +3112,124 @@ class Server {
             } catch (error) {
                 console.error('Error generating Excel report:', error);
                 res.status(500).send('Failed to generate report.');
+            }
+        });
+    }
+
+    defineRoutesLaundry() {
+
+        function formatTime(seconds) {
+            if (!seconds || seconds <= 0) return '0 mins';
+
+            const days = Math.floor(seconds / (24 * 3600));
+            const hours = Math.floor((seconds % (24 * 3600)) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+
+            let timeString = '';
+
+            if (days > 0) timeString += `${days} day${days > 1 ? 's' : ''}, `;
+            if (hours > 0) timeString += `${hours} hour${hours > 1 ? 's' : ''}, `;
+            timeString += `${minutes} min${minutes > 1 ? 's' : ''}`;
+
+            return timeString;
+        }
+
+        this.app.get('/laundry', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const statusMapping = {
+                'drop off': 'avg_drop_off_duration',
+                'transportation to laundry facility': 'avg_transportation_duration',
+                'laundry facility': 'avg_laundry_duration',
+                'transportation to drop off': 'avg_transportation_drop_off_duration',
+                'ready to pick up': 'avg_ready_to_pick_up_duration'
+            };
+
+            const client = await pool.connect();
+
+            try {
+                // Query to get the count of bags grouped by status and type
+                const result = await client.query(`
+                    SELECT
+                        status,
+                        type,
+                        COUNT(*) AS count
+                    FROM laundrybags
+                    GROUP BY status, type;
+                `);
+
+                // Query to calculate average time in seconds for each status
+                const avgTimeResult = await client.query(`
+                    SELECT
+                        status,
+                        AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds
+                    FROM laundrybags
+                    WHERE timeout IS NOT NULL AND timein IS NOT NULL
+                    GROUP BY status;
+                `);
+
+                const bagData = {};
+                const totalCounts = {};
+                const avgTimeData = {};
+
+                let totalAvgTimeInSeconds = 0;
+                let count = 0;
+
+                // Process the count data
+                result.rows.forEach(row => {
+                    const { status, type, count } = row;
+                    const normalizedStatus = status.toLowerCase().trim();
+
+                    if (!bagData[normalizedStatus]) {
+                        bagData[normalizedStatus] = [];
+                        totalCounts[normalizedStatus] = 0;
+                    }
+
+                    bagData[normalizedStatus].push({ type, count });
+                    totalCounts[normalizedStatus] += parseInt(count);
+                });
+
+                // Process the average time data
+                const updatePromises = avgTimeResult.rows.map(async (row) => {
+                    const { status, avg_time_in_seconds } = row;
+                    const normalizedStatus = status.toLowerCase().trim();
+                    const columnName = statusMapping[normalizedStatus];
+
+                    if (!columnName) return;
+
+                    const timeInSeconds = Math.floor(avg_time_in_seconds);
+
+                    const query = `
+                        UPDATE laundrybags
+                        SET ${columnName} = $1
+                        WHERE status = $2
+                        RETURNING ${columnName};`;
+
+                    const avg_res = await client.query(query, [timeInSeconds, status]);
+
+                    if (avg_res.rows.length > 0) {
+                        const updatedTime = avg_res.rows[0][columnName];
+                        totalAvgTimeInSeconds += parseInt(updatedTime, 10) || 0;
+                        count += 1;
+
+                        avgTimeData[normalizedStatus] = formatTime(updatedTime);
+                    }
+                });
+
+                // Wait for all update queries to complete
+                await Promise.all(updatePromises);
+
+                const overallAverageTimeInSeconds = count > 0 ? Math.floor(totalAvgTimeInSeconds / count) : 0;
+                const overallAverageFormatted = formatTime(overallAverageTimeInSeconds);
+
+                // Continue with the response
+                this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 2, 3, 4, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted);
+
+            } catch (error) {
+                console.error('Error fetching bag types or average times:', error);
+                res.status(500).send('Server Error');
+
+            } finally {
+                client.release();
             }
         });
     }
