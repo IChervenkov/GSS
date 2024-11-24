@@ -249,3 +249,65 @@ thead th {
         padding: 6px;
     }
 }
+
+
+/* Keyframes for slide-down animation */
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+/* Keyframes for slide-up animation */
+@keyframes slideUp {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-100%);
+    }
+}
+
+/* Style for pinned message */
+.pinned-message {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 10px;
+    text-align: center;
+    font-weight: bold;
+    z-index: 1000;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    transform: translateY(-100%);
+    /* Start hidden */
+    transition: transform 0.5s ease-in-out;
+    /* Fallback for smooth animation */
+}
+
+/* Show animation */
+.pinned-message.show {
+    animation: slideDown 0.5s forwards;
+}
+
+/* Hide animation */
+.pinned-message.hide {
+    animation: slideUp 0.5s forwards;
+}
+
+/* Close button */
+.pinned-message button {
+    background: none;
+    border: none;
+    font-size: 16px;
+    margin-left: 10px;
+    cursor: pointer;
+    color: #721c24;
+}

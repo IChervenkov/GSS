@@ -1,0 +1,18 @@
+<div id="<%= id %>Modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2><%= title %></h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <% headerTable.forEach(item => { %>
+                            <th><%= item.name %></th>
+                        <% }); %>
+                    </tr>
+                </thead>
+                <tbody id="<%= id %>TableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>

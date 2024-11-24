@@ -96,9 +96,12 @@
                 </h3>
 
                 <div class="virtual-warehouse-labels">
-                    <label id="percentSad" class="virtual-warehouse-label">Total Sad (😞): <%= dataPerEmj.percent_sad %></label>
-                    <label id="percentNeutral" class="virtual-warehouse-label">Total Neutral (😐): <%= dataPerEmj.percent_neutral %></label>
-                    <label id="percentVeryHappy" class="virtual-warehouse-label">Total Very Happy (😁): <%= dataPerEmj.percent_very_happy %></label>
+                    <label id="percentSad" class="virtual-warehouse-label">Total Sad (😞): <%= dataPerEmj.percent_sad %>
+                            </label>
+                    <label id="percentNeutral" class="virtual-warehouse-label">Total Neutral (😐): <%=
+                            dataPerEmj.percent_neutral %></label>
+                    <label id="percentVeryHappy" class="virtual-warehouse-label">Total Very Happy (😁): <%=
+                            dataPerEmj.percent_very_happy %></label>
 
                     <button type="button" id="btnReport" class="btn-report">Report</button>
                 </div>
@@ -144,10 +147,17 @@
         </div>
 
     </div>
+
+    <div id="pinned-message" class="pinned-message" style="display: none;">
+        <p id="pinned-message-text"></p>
+        <button id="close-pinned-message">✖</button>
+    </div>
+
 </body>
 
 <script src="../java/calendar.js" defer></script>
 <script src="../java/pageNumber.js"></script>
 <script src="../java/showSpecialRow.js"></script>
+<script src="../java/showPinMessage.js"></script>
 
 </html>

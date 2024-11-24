@@ -35,7 +35,6 @@ const pool = new Pool({
 });
 
 const Joi = require('joi');
-const { count } = require('console');
 
 const schemaLogIn = Joi.object({
     username: Joi.string().alphanum().required(),
@@ -45,6 +44,21 @@ const schemaLogIn = Joi.object({
 // Define the schema
 const emojiDataSchema = Joi.object({
     emoji: Joi.string().max(10).required() // emoji should be a string, maximum 10 characters, and is required
+});
+
+const getAllEmojiSchema = Joi.object({
+    date1: Joi.date().iso().required(),
+    date2: Joi.date().iso().required()
+});
+
+const checkBagsSchema = Joi.object({
+    code: Joi.string().alphanum().required()
+});
+
+const updateBagsSchema = Joi.object({
+    code: Joi.string().alphanum().required(),
+    destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up').required(),
+    prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required()
 });
 
 const clientDataSchema = Joi.object({
@@ -182,6 +196,10 @@ const schemaNFCBikeRead = Joi.object({
     nfcData: Joi.string().required(), // nfcData should be a string and is required
 });
 
+const schemaGetBagsByStatus = Joi.object({
+    status: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up').required(),
+})
+
 const navItems = [];
 
 const horizontalNavItems = [
@@ -253,7 +271,7 @@ class Server {
             horizontalNavItems: indexs.map(index => horizontalNavItems[index]),
             headerTable: null,
             data: null,
-            startMessage: "Welcom to Global Support System (GSS)",
+            startMessage: "Welcome to Global Support System (GSS)",
             username: username
         });
     }
@@ -289,7 +307,8 @@ class Server {
             titlePage: titlePage,
             countBeds: countBeds,
             nameroomSetCount: nameroomSetCount,
-            numBuild: numBuild
+            numBuild: numBuild,
+            username: username
         });
     }
 
@@ -303,7 +322,7 @@ class Server {
         });
     }
 
-    giveSpecificPermissionLaundry(username, indexes, res, bagData, totalCounts, avgTimeData, overallAverageFormatted) {
+    giveSpecificPermissionLaundry(username, indexes, res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted) {
         switch (username) {
             case "admin":
                 res.render('laundry', {
@@ -312,7 +331,9 @@ class Server {
                     bagData: bagData,
                     totalCounts: totalCounts,
                     avgTimeData: avgTimeData,
-                    overallAverageFormatted: overallAverageFormatted
+                    overallAverageFormatted: overallAverageFormatted,
+                    headerTable: headerTable,
+                    overallTotalMountFormatted: overallTotalMountFormatted
                 });
                 break;
 
@@ -323,7 +344,9 @@ class Server {
                     bagData: bagData,
                     totalCounts: totalCounts,
                     avgTimeData: avgTimeData,
-                    overallAverageFormatted: overallAverageFormatted
+                    overallAverageFormatted: overallAverageFormatted,
+                    headerTable: headerTable,
+                    overallTotalMountFormatted: overallTotalMountFormatted
                 });
                 break;
         }
@@ -1399,7 +1422,7 @@ class Server {
             var optionClient = [];
 
             const client = await pool.connect();
-            const result_client = await client.query(`SELECT id, namesoldier, country FROM soldier WHERE date_free IS NULL;`);
+            const result_client = await client.query(`SELECT id, namesoldier, country FROM soldier;`);
             client.release();
 
             result_client.rows.forEach(element => {
@@ -1430,29 +1453,20 @@ class Server {
 
         this.app.get('/bags', this.isLoggedIn.bind(this), async (req, res) => {
 
-            var optionBag = [];
             var optionAllBag = [];
 
             const client = await pool.connect();
-            const result_client = await client.query(`
-                SELECT lb.* FROM laundrybags lb
-                LEFT JOIN soldier s ON s.laundry_bag_id = lb.id
-                WHERE s.laundry_bag_id is null;`);
 
             const result_all_bags = await client.query(`
                     SELECT * FROM laundrybags`);
 
             client.release();
 
-            result_client.rows.forEach(element => {
-                optionBag.push({ id: element.id, name: element.code });
-            });
-
             result_all_bags.rows.forEach(element => {
                 optionAllBag.push({ id: element.id, name: element.code });
             });
 
-            res.json({ bags: optionBag, allBags: optionAllBag });
+            res.json({ allBags: optionAllBag });
         });
 
         this.app.post('/move/getSoldier', this.isLoggedIn.bind(this), async (req, res) => {
@@ -1786,6 +1800,46 @@ class Server {
             }
         });
 
+        this.app.post('/getKeyBuildigType', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaRemoveKey.validate(req.body);
+
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { keyId } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                const resultAccomm = await client.query(`
+                    SELECT CASE
+                        WHEN r.nameroom SIMILAR TO '%/(E)[0-9]%' THEN 'Entry'
+                        WHEN r.nameroom SIMILAR TO '%/(D)[0-9]%' THEN 'Dray'
+                        ELSE b.type
+                    END AS type
+                    FROM key k
+                    JOIN roomskey rk ON rk.keyid = k.id
+                    JOIN buildroom br ON rk.roomid = br.roomid
+                    JOIN buildings b ON b.id = br.buildid
+                    JOIN rooms r ON r.id = rk.roomid
+                    WHERE k.id = $1`, [keyId]);
+
+                const type = resultAccomm.rows[0].type;
+
+                res.status(200).json({ type: type });
+
+            } catch (error) {
+                console.error(error);
+                res.status(500).send("Server error");
+
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.post('/getRoomKeys', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaViewKey.validate(req.body);
@@ -1825,7 +1879,7 @@ class Server {
 
             const { error } = schemaSaveSoldier.validate(req.body);
             if (error) {
-                return res.status(400).send({ error: error.details[0].message });
+                return res.status(400).send({ message: error.details[0].message });
             }
 
             const { keyCodeId, soldierId, countryId, bagId, mealCardId } = req.body;
@@ -1844,10 +1898,27 @@ class Server {
                     [req.session.username, `Give key ${keyCodeId} to ${soldierId}`]);
 
             } else if (soldierId !== '' && countryId !== 'None') {
+
+                const result_alrady_accommodation_soldier = await client.query(`SELECT * FROM key WHERE soldierid = $1`,
+                    [soldierId]
+                );
+
+                if (result_alrady_accommodation_soldier.rows.length > 0)
+                    return res.status(401).send({ message: "This soldier is already accommodation" });
+
+                const result_alrady_bag_get = await client.query(`SELECT * FROM soldier WHERE date_free IS NULL AND laundry_bag_id = $1;`,
+                    [bagId]
+                );
+
+                if (result_alrady_bag_get.rows.length > 0)
+                    return res.status(401).send({ message: "This bag has already been used" });
+
                 await client.query(
                     "UPDATE key SET soldierid = $1 where id = $2;",
                     [soldierId, keyCodeId]
                 );
+
+                await client.query(`UPDATE soldier SET date_free = NULL, date_accommodation = NULL WHERE date_free IS NOT NULL AND id = $1;`, [soldierId]);
 
                 const result_accommodation_soldier = await client.query(`SELECT * FROM soldier WHERE date_accommodation IS NOT NULL AND id = $1`,
                     [soldierId]
@@ -1906,7 +1977,7 @@ class Server {
             // Release the client back to the pool
             client.release();
 
-            res.redirect('/accommodation');
+            return res.status(200).json({ message: 'Data saved successfully' });
         });
 
         this.app.get('/accommodation/viewReport', async (req, res) => {
@@ -2741,6 +2812,42 @@ class Server {
             }
         });
 
+        this.app.get('/allKeys', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+
+                const result = await client.query(`
+                    SELECT k.id, k.namekey, s.namesoldier, s.country, s.meal_card, l.code FROM key k
+                    LEFT JOIN soldier s ON s.id = k.soldierid
+                    LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id;`);
+
+                const result_key_data = result.rows;
+                let total_res = [];
+
+                result_key_data.forEach(row => {
+                    total_res.push({
+                        id: row.id,
+                        name: row.namekey,
+                        soldierName: row.namesoldier ? row.namesoldier : 'Free',
+                        country: row.country ? row.country : 'Undefined',
+                        maleCard: row.meal_card ? row.meal_card : 'Undefined',
+                        laundryBag: row.code ? row.code : 'Undefined'
+                    });
+                });
+
+                return res.status(200).send(total_res);
+
+            } catch (error) {
+                console.error('Error add destination:', error);
+                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.post('/accommodation/removeRoomToDestination', async (req, res) => {
 
             const { error } = schemaRemoveRoom.validate(req.body);
@@ -2990,6 +3097,13 @@ class Server {
 
         this.app.post('/getAllEmoji', this.isLoggedIn.bind(this), async (req, res) => {
 
+            const { error } = getAllEmojiSchema.validate(req.body);
+
+            if (error) {
+                // If validation fails, return 400 with the error message
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
             const { date1, date2 } = req.body;
 
             // Get a client from the pool
@@ -3118,6 +3232,14 @@ class Server {
 
     defineRoutesLaundry() {
 
+        const statusMapping = {
+            'drop off': 'avg_drop_off_duration',
+            'transportation to laundry facility': 'avg_transportation_duration',
+            'laundry facility': 'avg_laundry_duration',
+            'transportation to drop off': 'avg_transportation_drop_off_duration',
+            'ready to pick up': 'avg_ready_to_pick_up_duration'
+        };
+
         function formatTime(seconds) {
             if (!seconds || seconds <= 0) return '0 mins';
 
@@ -3135,48 +3257,38 @@ class Server {
         }
 
         this.app.get('/laundry', this.isLoggedIn.bind(this), async (req, res) => {
-
-            const statusMapping = {
-                'drop off': 'avg_drop_off_duration',
-                'transportation to laundry facility': 'avg_transportation_duration',
-                'laundry facility': 'avg_laundry_duration',
-                'transportation to drop off': 'avg_transportation_drop_off_duration',
-                'ready to pick up': 'avg_ready_to_pick_up_duration'
-            };
-
             const client = await pool.connect();
+            let overallTotalMountFormatted = 0;
 
             try {
+
                 // Query to get the count of bags grouped by status and type
                 const result = await client.query(`
                     SELECT
                         status,
                         type,
-                        COUNT(*) AS count
+                        COUNT(*) AS count,
+                        SUM(laundrycount)
                     FROM laundrybags
-                    GROUP BY status, type;
-                `);
-
-                // Query to calculate average time in seconds for each status
-                const avgTimeResult = await client.query(`
-                    SELECT
-                        status,
-                        AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds
-                    FROM laundrybags
-                    WHERE timeout IS NOT NULL AND timein IS NOT NULL
-                    GROUP BY status;
-                `);
+                    WHERE status <> 'None'
+                    GROUP BY status, type;`);
 
                 const bagData = {};
                 const totalCounts = {};
                 const avgTimeData = {};
+
+                const headerTable = [
+                    { name: "Bag code" },
+                    { name: "Soldier" },
+                    { name: "Status" }
+                ];
 
                 let totalAvgTimeInSeconds = 0;
                 let count = 0;
 
                 // Process the count data
                 result.rows.forEach(row => {
-                    const { status, type, count } = row;
+                    const { status, type, count, sum } = row;
                     const normalizedStatus = status.toLowerCase().trim();
 
                     if (!bagData[normalizedStatus]) {
@@ -3186,52 +3298,257 @@ class Server {
 
                     bagData[normalizedStatus].push({ type, count });
                     totalCounts[normalizedStatus] += parseInt(count);
+
+                    // Ensure overallTotalMountFormatted is an integer
+                    overallTotalMountFormatted += parseInt(sum);  // Or use parseInt(sum)
                 });
 
-                // Process the average time data
-                const updatePromises = avgTimeResult.rows.map(async (row) => {
-                    const { status, avg_time_in_seconds } = row;
-                    const normalizedStatus = status.toLowerCase().trim();
-                    const columnName = statusMapping[normalizedStatus];
-
-                    if (!columnName) return;
-
-                    const timeInSeconds = Math.floor(avg_time_in_seconds);
-
+                for (const [status, column] of Object.entries(statusMapping)) {
                     const query = `
-                        UPDATE laundrybags
-                        SET ${columnName} = $1
-                        WHERE status = $2
-                        RETURNING ${columnName};`;
+                        SELECT ${column} as value
+                        FROM laundrybags
+                        WHERE ${column} <> 0
+                        GROUP BY ${column};`;
 
-                    const avg_res = await client.query(query, [timeInSeconds, status]);
+                    try {
+                        const results = await client.query(query);
+                        var updatedTime;
 
-                    if (avg_res.rows.length > 0) {
-                        const updatedTime = avg_res.rows[0][columnName];
-                        totalAvgTimeInSeconds += parseInt(updatedTime, 10) || 0;
-                        count += 1;
+                        if (results.rows.length > 0) {
+                            updatedTime = results.rows[0].value;
+                            totalAvgTimeInSeconds += parseInt(updatedTime, 10) || 0;
+                            count += 1;
+                        } else {
+                            updatedTime = 0;
+                        }
 
-                        avgTimeData[normalizedStatus] = formatTime(updatedTime);
+                        avgTimeData[status] = formatTime(updatedTime);
+
+                    } catch (error) {
+                        console.error(`Error executing query for status "${status}":`, error);
                     }
-                });
-
-                // Wait for all update queries to complete
-                await Promise.all(updatePromises);
+                }
 
                 const overallAverageTimeInSeconds = count > 0 ? Math.floor(totalAvgTimeInSeconds / count) : 0;
                 const overallAverageFormatted = formatTime(overallAverageTimeInSeconds);
 
                 // Continue with the response
-                this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 2, 3, 4, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted);
+                this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 2, 3, 4, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
 
             } catch (error) {
                 console.error('Error fetching bag types or average times:', error);
                 res.status(500).send('Server Error');
+            } finally {
+                client.release();
+            }
+        });
+
+        // POST route to handle RFID codes (only accessible after login)
+        this.app.post('/check-bag', async (req, res) => {
+
+            const { error } = checkBagsSchema.validate(req.body);
+
+            if (error) {
+                // If validation fails, return 400 with the error message
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { code } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                const result = await client.query(
+                    'SELECT * FROM laundrybags WHERE id = $1',
+                    [code] // Replace $1 with the scanned EPC code
+                );
+
+                if (result.rows.length > 0) {
+                    res.json({ exists: true }); // Bag exists
+                } else {
+                    res.json({ exists: false }); // Bag does not exist
+                }
+
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ message: "Internal server error" });
 
             } finally {
                 client.release();
             }
         });
+
+        this.app.post('/changeStatus', async (req, res) => {
+            const { error } = updateBagsSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { code, destination, prev_destination } = req.body;
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(`
+                    SELECT l.code, s.id, l.status, l.betake
+                    FROM laundrybags l
+                    JOIN soldier s ON s.laundry_bag_id = l.id
+                    WHERE l.id = $1;`, [code]);
+
+                if (result.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(404).json({ message: "Laundry bag not found" });
+                }
+
+                const bag = result.rows[0];
+
+                if (prev_destination === 'None')
+                    await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
+                        avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0, betake = false;`);
+
+                if (bag.status !== prev_destination && !bag.betake) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${bag.status}, not ${prev_destination}.` });
+
+                } else if (bag.status !== "Ready to pick up" && bag.betake) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is must return of soldier. This happen only in mode 'Ready to pick up'` });
+                }
+
+                if (destination === 'Ready to pick up' && bag.betake) {
+
+                    await client.query(`UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP, laundrycount = laundrycount + 1 WHERE id = $1;`, [code]);
+
+                    const avgTimeResult = await client.query(`
+                        SELECT AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds
+                        FROM laundrybags
+                        WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1;`, [destination]);
+
+                    await client.query(`UPDATE laundrybags SET betake = false, status = 'None' WHERE id = $1;`, [code]);
+
+                    const avgTimeRow = avgTimeResult.rows[0];
+                    if (avgTimeRow) {
+                        const columnName = statusMapping[destination.toLowerCase().trim()];
+                        if (columnName) {
+                            await client.query(`
+                                UPDATE laundrybags
+                                SET ${columnName} = $1
+                                WHERE status = $2;`, [Math.floor(avgTimeRow.avg_time_in_seconds), destination]);
+                        }
+                    }
+
+                    await client.query('COMMIT');
+                    return res.status(200).json({ code: bag.code, soldierId: bag.id });
+
+                } else if (prev_destination !== 'None') {
+
+                    await client.query(`UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP WHERE id = $1;`, [code]);
+
+                    const avgTimeResult = await client.query(`
+                        SELECT AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds
+                        FROM laundrybags
+                        WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1;`, [prev_destination]);
+
+                    const avgTimeRow = avgTimeResult.rows[0];
+                    if (avgTimeRow) {
+                        const columnName = statusMapping[prev_destination.toLowerCase().trim()];
+                        if (columnName) {
+                            await client.query(`
+                                UPDATE laundrybags
+                                SET ${columnName} = $1
+                                WHERE status = $2;`, [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination]);
+                        }
+                    }
+                }
+
+                if (destination === 'Ready to pick up' && !bag.betake)
+                    await client.query(`
+                        UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP, betake = true WHERE id = $2;`, [destination, code]);
+                else
+                    await client.query(`
+                        UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP WHERE id = $2;`, [destination, code]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ code: bag.code, soldierId: bag.id });
+
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error(err); // Log detailed error for debugging
+                res.status(500).json({ message: "Internal server error" });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/checkLateBags', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+
+                const result = await client.query(`
+                    SELECT * 
+                    FROM laundrybags 
+                    WHERE status = 'Ready to pick up' 
+                    AND timein < NOW() - INTERVAL '1 week';`);
+
+                if (result.rows.length > 0)
+                    res.status(400).json({ message: "Latte bags!" });
+                else
+                    res.status(200).json({ message: "All is OK" });
+
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ message: "Internal server error" });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/getBagsByStatus', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaGetBagsByStatus.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { status } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                const result = await client.query(`
+                    SELECT 
+                        l.code, 
+                        s.namesoldier, 
+                        CASE 
+                            WHEN l.status = 'Ready to pick up' THEN timein < NOW() - INTERVAL '24 hours'
+                            ELSE FALSE
+                        END AS islate
+                    FROM 
+                        laundrybags l
+                    LEFT JOIN 
+                        soldier s ON s.laundry_bag_id = l.id
+                    WHERE 
+                        l.status = $1
+                    ORDER BY islate ASC; `, [status]);
+
+                // Send the result rows back to the client
+                res.status(200).json(result.rows);
+
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ message: "Internal server error" });
+            } finally {
+                client.release();
+            }
+        });
+
     }
 
     // Method to start the server

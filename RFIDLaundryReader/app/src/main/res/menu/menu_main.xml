@@ -1,4 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-
+    <item
+        android:id="@+id/menu_drop_off"
+        android:title="Drop off" />
+    <item
+        android:id="@+id/menu_transportation_to_laundry"
+        android:title="Transportation to laundry" />
+    <item
+        android:id="@+id/menu_laundry"
+        android:title="Laundry" />
+    <item
+        android:id="@+id/menu_transportation_to_drop_off"
+        android:title="Transportation to drop off" />
+    <item
+        android:id="@+id/menu_ready_to_pick_up"
+        android:title="Ready to pick up" />
 </menu>

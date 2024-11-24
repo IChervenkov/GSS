@@ -121,7 +121,8 @@
           </div>
           <div class="button-container-report">
             <button type="button" id="btnReportPhone" class="login-btn-report">Reports</button>
-            <button type="button" class="download-btn <% if(username == 'guest') { %> disabled-button <% } %>" id="downloadBtn">Download App</button>
+            <button type="button" class="download-btn <% if(username == 'guest') { %> disabled-button <% } %>"
+              id="downloadBtn">Download App</button>
           </div>
         </div>
 
@@ -239,8 +240,9 @@
         </div>
 
         <!-- "Check" Button in New Line -->
-        <div class="button-container " <% if(username == 'guest') { %> style="cursor: not-allowed" <% } %>>
-          <button type="button" id="checkBtn" class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Save</button>
+        <div class="button-container " <% if(username=='guest' ) { %> style="cursor: not-allowed" <% } %>>
+            <button type="button" id="checkBtn"
+              class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Save</button>
         </div>
       </div>
     </div>
@@ -607,10 +609,12 @@
       </div>
 
       <!-- Buttons for confirming the selection -->
-      <div class="button-container" <% if(username == 'guest') { %> style="cursor: not-allowed" <% } %>>
-        <button type="submit" id="confirmAddBikeBtn" class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Add bicycle</button>
-        <button type="button" id="confirmAddMultiBikeBtn" class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Add multiple
-          bicycles</button>
+      <div class="button-container" <% if(username=='guest' ) { %> style="cursor: not-allowed" <% } %>>
+          <button type="submit" id="confirmAddBikeBtn"
+            class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Add bicycle</button>
+          <button type="button" id="confirmAddMultiBikeBtn"
+            class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Add multiple
+            bicycles</button>
       </div>
 
     </form>
@@ -635,8 +639,9 @@
       </div>
 
       <!-- Buttons for confirming the selection -->
-      <div class="button-container" <% if(username == 'guest') { %> style="cursor: not-allowed" <% } %>>
-        <button type="submit" id="confirmRemoveBikeBtn" class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Remove bicycle</button>
+      <div class="button-container" <% if(username=='guest' ) { %> style="cursor: not-allowed" <% } %>>
+          <button type="submit" id="confirmRemoveBikeBtn"
+            class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">Remove bicycle</button>
       </div>
 
     </form>
@@ -677,12 +682,23 @@
     </div>
   </div>
 
-  <script src="../java/pageNumber.js"></script>
-  <script src="../java/downloald-app.js"></script>
-  <script src="../java/modal_wind.js"></script>
-  <script src="../java/calendar.js" defer></script>
-  <script src="../java/phoneMenu.js"></script>
+  <% if(username != 'guest' ) { %>
+    <div id="pinned-message" class="pinned-message" style="display: none;">
+      <p id="pinned-message-text"></p>
+      <button id="close-pinned-message">✖</button>
+    </div>
+    <% } %>
 
 </body>
+
+<script src="../java/pageNumber.js"></script>
+<script src="../java/downloald-app.js"></script>
+<script src="../java/modal_wind.js"></script>
+<script src="../java/calendar.js" defer></script>
+<script src="../java/phoneMenu.js"></script>
+
+<% if(username !='guest' ) { %>
+  <script src="../java/showPinMessage.js"></script>
+  <% } %>
 
 </html>

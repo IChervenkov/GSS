@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Title TextView in the top left corner -->
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="No destination"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:padding="10dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="10dp" />
+
+    <!-- Three vertical dots button (Menu) in the top right corner -->
+    <ImageButton
+        android:id="@+id/menuButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="10dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Menu"
+        android:src="@android:drawable/ic_menu_more"
+        tools:ignore="TouchTargetSizeCheck" />
+
+    <!-- Container to hold header and scrollable content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/title"
+        android:orientation="vertical">
+
+        <!-- Header row -->
+        <TableLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#51B435"
+            android:padding="10dp">
+
+            <TableRow>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Bag number" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Soldier number" />
+            </TableRow>
+
+        </TableLayout>
+
+        <!-- ScrollView to allow vertical scrolling of data rows -->
+        <ScrollView
+
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            tools:ignore="SpeakableTextPresentCheck">
+
+            <!-- TableLayout to hold the dynamic rows -->
+            <TableLayout
+                android:id="@+id/tableLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp">
+
+                <!-- Dynamic rows will be added here programmatically -->
+
+            </TableLayout>
+
+        </ScrollView
+            >
+
+    </LinearLayout>
+
+</RelativeLayout>

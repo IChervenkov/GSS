@@ -47,11 +47,11 @@
                             </p>
                             <% }) %>
                                 <% } else { %>
-                                    <p>No data available</p>
+                                    <p>There are no bags in this section</p>
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button class="main-btn">Drop off</button>
+                    <button id="drop-off" class="main-btn">Drop off</button>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-drop-off">
                         <%= avgTimeData['drop off'] || '0 mins' %>
@@ -70,11 +70,12 @@
                             </p>
                             <% }) %>
                                 <% } else { %>
-                                    <p>No data available</p>
+                                    <p>There are no bags in this section</p>
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button class="main-btn">Transportation to laundry facility</button>
+                    <button id="transportation-to-laundry-facility" class="main-btn">Transportation to laundry
+                        facility</button>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-transportation-to-laundry-facility">
                         <%= avgTimeData['transportation to laundry facility'] || '0 mins' %>
@@ -93,15 +94,15 @@
                             </p>
                             <% }) %>
                                 <% } else { %>
-                                    <p>No data available</p>
+                                    <p>There are no bags in this section</p>
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button class="main-btn">Laundry facility</button>
+                    <button id="laundry-facility" class="main-btn">Laundry facility</button>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-laundry-facility">
-                    <%= avgTimeData['laundry facility'] || '0 mins' %>
-                </span></p>
+                        <%= avgTimeData['laundry facility'] || '0 mins' %>
+                    </span></p>
             </div>
 
             <div class="status-box">
@@ -116,15 +117,15 @@
                             </p>
                             <% }) %>
                                 <% } else { %>
-                                    <p>No data available</p>
+                                    <p>There are no bags in this section</p>
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button class="main-btn">Transportation to drop off</button>
+                    <button id="transportation-to-drop-off" class="main-btn">Transportation to drop off</button>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-transportation-to-drop-off">
-                    <%= avgTimeData['transportation to drop off'] || '0 mins' %>
-                </span></p>
+                        <%= avgTimeData['transportation to drop off'] || '0 mins' %>
+                    </span></p>
             </div>
 
             <div class="status-box">
@@ -139,24 +140,28 @@
                             </p>
                             <% }) %>
                                 <% } else { %>
-                                    <p>No data available</p>
+                                    <p>There are no bags in this section</p>
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button class="main-btn">Ready to pick up</button>
+                    <button id="ready-to-pick-up" class="main-btn">Ready to pick up</button>
                 </div>
 
                 <p class="avg-in">Average Time IN: <span id="avg-in-ready-to-pick-up">
-                    <%= avgTimeData['ready to pick up'] || '0 mins' %>
-                </span></p>
+                        <%= avgTimeData['ready to pick up'] || '0 mins' %>
+                    </span></p>
             </div>
         </div>
 
         <!-- Summary and Report Button Row -->
         <div class="summary-row d-flex justify-content-between align-items-center w-100">
             <div class="summary">
-                <p>Total Bags For Last Month: <span>0</span></p>
-                <p>Average Washing Time: <span><%= overallAverageFormatted %></span></p>
+                <p>Total Bags For Last Month: <span>
+                    <%= overallTotalMountFormatted %>
+                </span></p>
+                <p>Average Washing Time: <span>
+                        <%= overallAverageFormatted %>
+                    </span></p>
             </div>
 
             <button class="report-button">Report</button>
@@ -164,26 +169,24 @@
 
     </div>
 
-     <!-- Modal Structure -->
-     <div id="dropOffModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
+    <%- include('partials/modal_laundry', { id: 'dropOff' , title: 'Drop Off' , headerTable }) %>
+        <%- include('partials/modal_laundry', { id: 'transportationToLaundryFacility' ,
+            title: 'Transportation to Laundry Facility' , headerTable }) %>
+            <%- include('partials/modal_laundry', { id: 'laundryFacility' , title: 'Laundry facility' , headerTable })
+                %>
+                <%- include('partials/modal_laundry', { id: 'transportationToDropOff' ,
+                    title: 'Transportation to drop off' , headerTable }) %>
+                    <%- include('partials/modal_laundry', { id: 'readyToPickUp' , title: 'Ready to pick up' ,
+                        headerTable }) %>
 
-            <h2>Drop off</h2>
-
-        </div>
-    </div>
-
-    <!-- The Modal Message -->
-    <div id="myMessage" class="modal">
-        <div class="modal-content-mess">
-            <span class="close-btn">&times;</span>
-
-            <img src="../icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon">
-            <p id="mess-global-text"></p>
-        </div>
-    </div>
+                        <div id="pinned-message" class="pinned-message" style="display: none;">
+                            <p id="pinned-message-text"></p>
+                            <button id="close-pinned-message">✖</button>
+                        </div>
 
 </body>
+
+<script src="../java/showPinMessage.js"></script>
+<script src="../java/laundryBag.js"></script>
 
 </html>

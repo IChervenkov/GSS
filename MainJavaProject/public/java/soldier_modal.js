@@ -59,6 +59,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectKeyDropdown = document.getElementById('keyDropdown');
     const selectedKeyId = document.getElementById('selectedKeyId');
 
+    const selectAllKeyInput = document.getElementById('allKeySearch');
+    const selectAllKeyDropdown = document.getElementById('allKeyDropdown');
+
     const selectRoomInput = document.getElementById('roomSearch');
     const selectRoomDropdown = document.getElementById('roomDropdown');
     const selectedRoomId = document.getElementById('selectedRoomId');
@@ -77,19 +80,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let soldiers = [];
     let rooms = [];
-    let bags = [];
     let allBags = [];
     let specialRooms = [];
     let specialKeys = [];
+    let allKeys = [];
 
     var isWarning = false;
-
-    const url = 'http://localhost:3000';
 
     // Function to fetch soldier from the server
     async function fetchSpecialRoom(numBuild) {
         try {
-            const responseBike = await fetch(`${url}/specialRooms`, {
+            const responseBike = await fetch(`/specialRooms`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -152,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch soldier from the server
     async function fetchSpecialKey(numBuild, numRoom) {
         try {
-            const responseBike = await fetch(`${url}/specialKeys`, {
+            const responseBike = await fetch(`/specialKeys`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -212,10 +213,98 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Function to fetch all keys from the server
+    async function fetchAllKey() {
+        try {
+            const responseBike = await fetch(`/allKeys`, {
+                method: 'GET'
+            });
+
+            if (!responseBike.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            allKeys = await responseBike.json(); // Store fetched bikes in the global variable
+
+        } catch (error) {
+            console.log(error);
+            showGlobalMess('Error', 'There was a problem with the fetch operation');
+        }
+    }
+
+    // Show filtered key in the dropdown
+    function filterAllKey(query) {
+        selectAllKeyDropdown.innerHTML = '';
+        const filteredAllKey = allKeys.filter( key =>
+            key.name.toLowerCase().includes(query.toLowerCase()) ||
+            key.id.toString().includes(query)
+        );
+
+        if (filteredAllKey.length > 0) {
+            selectAllKeyDropdown.style.display = 'block';
+            filteredAllKey.forEach(key => {
+                const li = document.createElement('li');
+                li.textContent = `${key.name} (Number: ${key.id})`;
+                li.setAttribute('data-id', key.id);
+                li.setAttribute('data-name', key.name);
+                li.setAttribute('data-name-soldier', key.soldierName);
+                li.setAttribute('data-country', key.country);
+                li.setAttribute('data-male-card', key.maleCard);
+                li.setAttribute('data-laundry-bag', key.laundryBag);
+                selectAllKeyDropdown.appendChild(li);
+            });
+        } else {
+            selectAllKeyDropdown.style.display = 'none';
+        }
+    }
+
+    // Handle input change
+    selectAllKeyInput.addEventListener('input', function () {
+        const query = selectAllKeyInput.value;
+        if (query.length > 0) {
+            filterAllKey(query);
+        } else {
+            selectAllKeyDropdown.style.display = 'none';
+        }
+    });
+
+    // Handle bike selection
+    selectAllKeyDropdown.addEventListener('click', async function (event) {
+
+        const selectedAllKey = event.target;
+
+
+        if (selectedAllKey && selectedAllKey.dataset.id) {
+
+            const keycode = selectedAllKey.getAttribute('data-id');
+            const keynum = selectedAllKey.getAttribute('data-name');
+            const soldierName = selectedAllKey.getAttribute('data-name-soldier');
+            const country = selectedAllKey.getAttribute('data-country');
+            const maleCard = selectedAllKey.getAttribute('data-male-card');
+            const laundryBag = selectedAllKey.getAttribute('data-laundry-bag');
+
+            const response = await fetch('/getKeyBuildigType', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ keyId: keycode })});
+
+            const result  = await response.json();
+            typeBuild.value = result.type;
+
+            // Open the modal with the soldier's cleaned data
+            openModal(keynum, soldierName, country, keycode, maleCard, laundryBag);
+
+            selectAllKeyDropdown.style.display = 'none';
+            selectAllKeyInput.value = '';
+        }
+    });
+
     // Function to fetch soldier from the server
     async function fetchItem() {
         try {
-            const responseBike = await fetch(`${url}/clients`);
+            const responseBike = await fetch(`/clients`);
             if (!responseBike.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -272,13 +361,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch soldier from the server
     async function fetchBag() {
         try {
-            const responseBag = await fetch(`${url}/bags`);
+            const responseBag = await fetch(`/bags`);
             if (!responseBag.ok) {
                 throw new Error('Network response was not ok');
             }
 
             const data = await responseBag.json(); // Store the parsed JSON response once
-            bags = data.bags; // Access bags from the parsed data
             allBags = data.allBags; // Access allBags from the parsed data
 
         } catch (error) {
@@ -289,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered soldiers in the dropdown
     function filterBags(query) {
         bagSearchDropdown.innerHTML = '';
-        const filteredBag = bags.filter(bag => bag.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredBag = allBags.filter(bag => bag.name.toLowerCase().includes(query.toLowerCase()));
 
         if (filteredBag.length > 0) {
             bagSearchDropdown.style.display = 'block';
@@ -328,7 +416,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch room from the server
     async function fetchRoom() {
         try {
-            const responseBike = await fetch(`${url}/rooms`);
+            const responseBike = await fetch(`/rooms`);
             if (!responseBike.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -376,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedSoldierMoveId.value = selectedSoldier.getAttribute('data-id');
             soldierSearchMoveDropdown.style.display = 'none';
 
-            const responseSoldier = await fetch(`${url}/move/getSoldier`, {
+            const responseSoldier = await fetch(`/move/getSoldier`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -413,6 +501,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Fetch the bags when the script loads
     fetchBag();
+
+    // Fetch all keys when the script loads
+    fetchAllKey();
 
     function openModal(keynum, soldierName, country, keycode, maleCard, laundryBag) {
 
@@ -465,6 +556,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 break;
         }
+
+        typeBuild.value = document.getElementById('previewTypeBuild').value;
 
         function handleOtherInputs() {
             moveButton.style.display = 'none';
@@ -1146,7 +1239,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function fetchReport() {
         try {
 
-            const response = await fetch(`${url}/accommodation/viewReport`, {
+            const response = await fetch(`/accommodation/viewReport`, {
                 method: 'GET',
             });
 
@@ -1496,6 +1589,42 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             closeDeleteModal();
+
+        } catch (error) {
+            showGlobalMess('Error', `Network error: ${error.message}`);
+        }
+    };
+
+    document.getElementById('form1').onsubmit = async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        const data = {
+            keyCodeId: document.getElementById('key-code-value').value,
+            soldierId: document.getElementById('selectedSoldierId').value,
+            countryId: document.getElementById('country-value').value,
+            bagId: document.getElementById('selectedBagId').value,
+            mealCardId: document.getElementById('meal-card-value').value
+        };
+
+        try {
+            const response = await fetch(this.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                showGlobalMess('Error', errorData.message);
+            } else {
+                const data = await response.json();
+                showGlobalMess('Info', data.message);
+            }
+
+            closeMessModal();
 
         } catch (error) {
             showGlobalMess('Error', `Network error: ${error.message}`);

@@ -80,11 +80,13 @@ CREATE TABLE laundryBags (
 	status TEXT,
 	timein TIMESTAMP
 	timeout TIMESTAMP,
+	betake BOOLEAN DEFAULT FALSE,
 	avg_drop_off_duration BIGINT DEFAULT 0,
 	avg_transportation_duration BIGINT DEFAULT 0,
 	avg_laundry_duration BIGINT DEFAULT 0,
 	avg_ready_to_pick_up_duration BIGINT DEFAULT 0,
-	avg_transportation_drop_off_duration BIGINT DEFAULT 0
+	avg_transportation_drop_off_duration BIGINT DEFAULT 0,
+	laundrycount BIGINT DEFAULT 0
 );
 
 CREATE TABLE fitnes (

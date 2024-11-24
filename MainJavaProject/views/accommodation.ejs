@@ -37,8 +37,9 @@
             <!-- Left Navigation Bar -->
             <div class="left-nav">
                 <div class="title-container mb-2 sticky-top p-3 w-100 transparent-bg">
-                    <button type="button" id="btnAddDestination" class="btn-add-destination w-100">Add
-                        Destination</button>
+                        <button type="button" id="btnAddDestination"
+                            class="btn-add-destination w-100">Add
+                            Destination</button>
                 </div>
                 <ul>
                     <% navItems.forEach(function(item) { %>
@@ -55,11 +56,11 @@
                                 <button type="button" class="btn btn-danger btn-sm btn-remove"
                                     name="<%= item.numBuild %>">−</button>
                                 <% if(item.numBuild) { %>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm"
-                                        name="<%= item.numBuild %>" data-name-room="<%= item.name %>">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                    <% } %>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            name="<%= item.numBuild %>" data-name-room="<%= item.name %>">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        <% } %>                                  
                             </div>
                         </li>
                         <% }); %>
@@ -79,6 +80,18 @@
                                     </span>
                                     <% }; %>
                         </h3>
+
+                        <!-- Soldier Selection with Custom Search -->
+                        <div class="search-container" id="search-all-key-container">
+                            <div class="input-group">
+                                <input type="text" id="allKeySearch" class="form-control" placeholder="Search..."
+                                    required>
+                            </div>
+                            <ul id="allKeyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                            <input type="hidden" id="selectedAllKeyId" name="allKeySelectId" value="">
+                            <!-- To store the selected soldier ID -->
+                        </div>
+
                         <div class="virtual-warehouse-labels">
                             <label class="virtual-warehouse-label">Free Beds: <%= totalFreeBeds %></label>
                             <label class="virtual-warehouse-label">Occupied Beds: <%= totalOccupiedBeds %></label>
@@ -148,6 +161,7 @@
     </div>
 
     <input type="hidden" id="typeBuild" value="<%= type %>">
+    <input type="hidden" id="previewTypeBuild" value="<%= type %>">
     <input type="hidden" id="numBuild" value="<%= numBuild %>">
 
     <!-- The Modal for Reports View -->
@@ -567,8 +581,8 @@
         </form>
     </div>
 
-     <!-- Modal Structure -->
-     <div id="keyRemoveModal" class="modal">
+    <!-- Modal Structure -->
+    <div id="keyRemoveModal" class="modal">
         <form class="modal-content" action="/accommodation/removeKeyToRoom" method="post" id="form10">
             <span class="close-btn">&times;</span>
 
@@ -599,10 +613,16 @@
         </div>
     </div>
 
-    <script src="../java/autoSearch.js"></script>
-    <script src="../java/soldier_modal.js"></script>
-    <script src="../java/pageNumber.js"></script>
+    <div id="pinned-message" class="pinned-message" style="z-index: 1050;">
+        <p id="pinned-message-text"></p>
+        <button id="close-pinned-message">✖</button>
+    </div>
 
 </body>
+
+<script src="../java/autoSearch.js"></script>
+<script src="../java/soldier_modal.js"></script>
+<script src="../java/pageNumber.js"></script>
+<script src="../java/showPinMessage.js"></script>
 
 </html>

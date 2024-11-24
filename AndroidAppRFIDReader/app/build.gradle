@@ -43,6 +43,6 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
 
     //noinspection GradlePath
-    implementation files("C:/Users/ivajl/Desktop/GlobalRTSRFIDProject/API_Ver20231208/DeviceAPI_20231208/DeviceAPI_ver20231208_release.aar")
+    implementation files("C:/Users/ivajl/Desktop/GSS/API_Ver20231208/DeviceAPI_20231208/DeviceAPI_ver20231208_release.aar")
 
 }
