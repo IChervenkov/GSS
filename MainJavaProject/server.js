@@ -723,14 +723,14 @@ class Server {
         this.app.get('/download-apk-bike', this.isLoggedIn.bind(this), (req, res) => {
 
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'adroidApp', 'app-nfc-bike-global-rts.apk'); // Update path to your APK file
+            const apkFilePath = path.join(__dirname, 'adroidApp', 'RFIDLaundryReader-1.0-release.apk'); // Update path to your APK file
 
             if (!this.checkApkFileLegality(apkFilePath, res)) {
                 return;
             }
 
             // Use res.download() to download the APK file
-            res.download(apkFilePath, 'app-nfc-bike-global-rts.apk', (err) => {
+            res.download(apkFilePath, 'RFIDLaundryReader-1.0-release.apk', (err) => {
                 if (err) {
                     console.error('Error downloading file:', err);
                     res.status(500).send('Could not download the file');

@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         const a = document.createElement('a');
                         a.style.display = 'none';
                         a.href = url;
-                        a.download = 'app-nfc-bike-global-rts.apk'; 
+                        a.download = 'RFIDLaundryReader-1.0-release.apk'; 
                         document.body.appendChild(a);
                         a.click();
                         window.URL.revokeObjectURL(url);
