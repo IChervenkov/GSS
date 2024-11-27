@@ -3422,7 +3422,7 @@ class Server {
                     SELECT l.code, s.id, l.status
                     FROM laundrybags l
                     JOIN soldier s ON s.laundry_bag_id = l.id
-                    WHERE l.id = $1;`, [code]);
+                    WHERE s.date_free IS NULL AND l.id = $1;`, [code]);
 
                 if (result.rows.length === 0) {
                     await client.query('ROLLBACK');
@@ -3502,14 +3502,14 @@ class Server {
                     SELECT l.code, s.id, l.status, l.laundrycount, l.maxcountlandry
                     FROM laundrybags l
                     JOIN soldier s ON s.laundry_bag_id = l.id
-                    WHERE l.id = $1;`, [code]);
+                    WHERE s.date_free IS NULL AND l.id = $1;`, [code]);
 
                 if (result.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.status(404).json({ message: "Laundry bag not found" });
                 }
 
-                if(result.rows[0].laundrycount > result.rows[0].maxcountlandry) {
+                if (result.rows[0].laundrycount > result.rows[0].maxcountlandry) {
                     await client.query('ROLLBACK');
                     return res.status(403).json({ message: `This bag has exceeded the ${result.rows[0].maxcountlandry} wash per month limit` });
                 }
@@ -3520,7 +3520,7 @@ class Server {
                     await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
                         avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]);
 
-                } else if(destination === 'None') {
+                } else if (destination === 'None') {
 
                     await client.query(`UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP WHERE id = $1;`, [code]);
 
@@ -3612,6 +3612,7 @@ class Server {
                     LEFT JOIN 
                         soldier s ON s.laundry_bag_id = l.id
                     WHERE 
+                        s.date_free IS NULL AND 
                         l.status = $1
                     ORDER BY 
                         islate ASC;`, [status]);
@@ -3641,12 +3642,14 @@ class Server {
                         TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD') AS date_ready_to_pick_up
                     FROM laundrybags l
 					JOIN laundryreport lr ON lr.bag_id = l.id
-                    JOIN soldier s ON l.id = s.laundry_bag_id;`);
+                    JOIN soldier s ON l.id = s.laundry_bag_id
+                    WHERE s.date_free IS NULL;`);
 
                 const result_nationality = await client.query(`
                     SELECT SUM(l.laundrycount) AS total_count_bags, s.country
                     FROM laundrybags l
                     JOIN soldier s ON l.id = s.laundry_bag_id
+                    WHERE s.date_free IS NULL
                     GROUP BY s.country;`);
 
                 res.status(200).json({ data: result.rows, data_nationality: result_nationality.rows });
@@ -3673,12 +3676,14 @@ class Server {
                         COALESCE(TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD'), 'No departure date') AS date_ready_to_pick_up
                     FROM laundrybags l
 					JOIN laundryreport lr ON lr.bag_id = l.id
-                    JOIN soldier s ON l.id = s.laundry_bag_id;`);
+                    JOIN soldier s ON l.id = s.laundry_bag_id
+                    WHERE s.date_free IS NULL;`);
 
                 const result_nationality = await client.query(`
                     SELECT SUM(l.laundrycount) AS total_count_bags, s.country
                     FROM laundrybags l
                     JOIN soldier s ON l.id = s.laundry_bag_id
+                    WHERE s.date_free IS NULL
                     GROUP BY s.country;`);
 
                 // Create a new Excel workbook
