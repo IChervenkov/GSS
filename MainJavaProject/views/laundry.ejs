@@ -157,35 +157,121 @@
         <div class="summary-row d-flex justify-content-between align-items-center w-100">
             <div class="summary">
                 <p>Total Bags For Last Month: <span>
-                    <%= overallTotalMountFormatted %>
-                </span></p>
+                        <%= overallTotalMountFormatted %>
+                    </span></p>
                 <p>Average Washing Time: <span>
                         <%= overallAverageFormatted %>
                     </span></p>
             </div>
 
-            <button class="report-button">Report</button>
+            <button id="reportButton" class="report-button">Report</button>
         </div>
 
     </div>
 
-    <%- include('partials/modal_laundry', { id: 'dropOff' , title: 'Drop Off' , headerTable }) %>
+    <%- include('partials/modal_laundry', { id: 'dropOff' , title: 'Drop Off' , headerTable, destination: 'Drop off' ,
+        previewDestination: 'None' }) %>
+
         <%- include('partials/modal_laundry', { id: 'transportationToLaundryFacility' ,
-            title: 'Transportation to Laundry Facility' , headerTable }) %>
-            <%- include('partials/modal_laundry', { id: 'laundryFacility' , title: 'Laundry facility' , headerTable })
-                %>
+            title: 'Transportation to laundry Facility' , headerTable, destination: 'Laundry facility'
+            , previewDestination: 'Transportation to laundry facility' }) %>
+
+            <%- include('partials/modal_laundry', { id: 'laundryFacility' , title: 'Laundry facility' , headerTable,
+                destination: 'Transportation to drop off' , previewDestination: 'Laundry facility' }) %>
+
                 <%- include('partials/modal_laundry', { id: 'transportationToDropOff' ,
-                    title: 'Transportation to drop off' , headerTable }) %>
+                    title: 'Transportation to drop off' , headerTable, destination: 'Ready to pick up' ,
+                    previewDestination: 'Transportation to drop off' }) %>
+
                     <%- include('partials/modal_laundry', { id: 'readyToPickUp' , title: 'Ready to pick up' ,
-                        headerTable }) %>
+                        headerTable, destination: 'None' , previewDestination: 'Ready to pick up'
+                        }) %>
 
                         <div id="pinned-message" class="pinned-message" style="display: none;">
                             <p id="pinned-message-text"></p>
                             <button id="close-pinned-message">✖</button>
                         </div>
 
+                        <div id="reportViewModal" class="modal">
+                            <form class="modal-content-report" action="/laundry/report" method="GET" id="form1">
+                                <span class="close-btn">&times;</span>
+                                <h2>Reports View</h2>
+
+                                <div class="table-container">
+                                    <table id="bagsWashedTable">
+                                        <thead>
+                                            <tr>
+                                                <th><input type="text" class="search-input-view-laundry"
+                                                        placeholder="Search...">Bag number</th>
+                                                <th><input type="text" class="search-input-view-laundry"
+                                                        placeholder="Search...">Soldier name</th>
+                                                <th><input type="text" class="search-input-view-laundry"
+                                                        placeholder="Search...">Date of issue</th>
+                                                <th><input type="text" class="search-input-view-laundry"
+                                                        placeholder="Search...">Collection date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="table-container">
+                                    <table id="bagsWashedNationalityTable">
+                                        <thead>
+                                            <tr>
+                                                <th><input type="text" class="search-input-view-laundry-second"
+                                                        placeholder="Search...">Nationality</th>
+                                                <th><input type="text" class="search-input-view-laundry-second"
+                                                        placeholder="Search...">Number of bags washed</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Buttons for confirming the selection -->
+                                <div class="button-container">
+                                    <button type="submit" id="confirmReportBtnReport" class="modal-button">Generate
+                                        Report</button>
+                                </div>
+
+                            </form>
+                        </div>
+
+                        <%- include('partials/modal_laundry_action', { id: 'addBag' ,
+                            destination: '/changeStatusConsole' , formId: 'form2' , title: 'Add bag' ,
+                            searchId: 'search-bags' , inputSearchId: 'search-add-input-bags' , labelSearch: 'Bag Number' ,
+                            dropDownSearchId: 'addBagDropDown' , selectSearchId: 'addBagSelectId' , buttonId: 'add-btn'
+                            , buttonText: 'Add bag' }) %>
+
+                            <%- include('partials/modal_laundry_action', { id: 'moveBag' ,
+                            destination: '/changeStatusConsole' , formId: 'form3' , title: 'Move bag' ,
+                            searchId: 'search-bags' , inputSearchId: 'search-move-input-bags' , labelSearch: 'Bag Number' ,
+                            dropDownSearchId: 'moveBagDropDown' , selectSearchId: 'moveBagSelectId' , buttonId: 'move-btn'
+                            , buttonText: 'Move bag' }) %>
+
+                            <%- include('partials/modal_laundry_action', { id: 'removeBag' ,
+                            destination: '/changeStatusConsole' , formId: 'form4' , title: 'Remove bag' ,
+                            searchId: 'search-bags' , inputSearchId: 'search-remove-input-bags' , labelSearch: 'Bag Number' ,
+                            dropDownSearchId: 'removeBagDropDown' , selectSearchId: 'removeBagSelectId' , buttonId: 'remove-btn'
+                            , buttonText: 'Remove bag' }) %>
+
+                            <!-- The Modal Message -->
+                            <div id="myMessage" class="modal">
+                                <div class="modal-content-mess">
+                                    <span class="close-btn">&times;</span>
+
+                                    <img src="../icon/information.png" alt="Confirmation Image" class="modal-image"
+                                        id="mess-global-icon">
+                                    <p id="mess-global-text"></p>
+                                </div>
+                            </div>
+
 </body>
 
+<script src="../java/autoSearch.js"></script>
 <script src="../java/showPinMessage.js"></script>
 <script src="../java/laundryBag.js"></script>
 

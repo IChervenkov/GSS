@@ -1,68 +1,47 @@
 document.addEventListener('DOMContentLoaded', function () {
-    
-    document.querySelectorAll('.search-input').forEach(function (input, index) {
-        input.addEventListener('input', function () {
-            applyFilters();
-        });
-    });
-
-    document.querySelectorAll('.search-input-view').forEach(function (input, index) {
-        input.addEventListener('input', function () {
-            applyViewFilters();
-        });
-    });
-
-    function applyViewFilters() {
-        const table = document.getElementById('soldierUsageTable');
+    // General function to apply filters on a table
+    function applyFilters(tableId, filterClass) {
+        const table = document.getElementById(tableId);
         const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-        const filters = document.querySelectorAll('.search-input-view');
+        const filters = document.querySelectorAll(`.${filterClass}`);
         
-        // Show all rows initially to reset the state before applying filters
+        // Show all rows initially
         for (let i = 0; i < rows.length; i++) {
             rows[i].style.display = '';
         }
 
-        // Apply each filter one by one
-        filters.forEach(function (input, columnIndex) {
-            const searchTerm = input.value.toLowerCase();
-
+        // Apply filters column by column
+        filters.forEach((input, columnIndex) => {
+            const searchTerm = input.value.trim().toLowerCase();
             if (searchTerm) {
                 for (let i = 0; i < rows.length; i++) {
                     const cell = rows[i].getElementsByTagName('td')[columnIndex];
-                    const cellText = cell.textContent.toLowerCase();
-
-                    if (!cellText.includes(searchTerm)) {
-                        rows[i].style.display = 'none';  // Hide row if it doesn't match
+                    if (cell) {
+                        const cellText = cell.textContent.toLowerCase();
+                        if (!cellText.includes(searchTerm)) {
+                            rows[i].style.display = 'none'; // Hide unmatched row
+                        }
                     }
                 }
             }
         });
     }
 
-    function applyFilters() {
-        const table = document.getElementById('data-table');
-        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-        const filters = document.querySelectorAll('.search-input');
-        
-        // Show all rows initially to reset the state before applying filters
-        for (let i = 0; i < rows.length; i++) {
-            rows[i].style.display = '';
-        }
-
-        // Apply each filter one by one
-        filters.forEach(function (input, columnIndex) {
-            const searchTerm = input.value.toLowerCase();
-
-            if (searchTerm) {
-                for (let i = 0; i < rows.length; i++) {
-                    const cell = rows[i].getElementsByTagName('td')[columnIndex];
-                    const cellText = cell.textContent.toLowerCase();
-
-                    if (!cellText.includes(searchTerm)) {
-                        rows[i].style.display = 'none';  // Hide row if it doesn't match
-                    }
-                }
-            }
+    // Attach event listeners to inputs
+    function attachFilterEvents(tableId, filterClass) {
+        document.querySelectorAll(`.${filterClass}`).forEach((input) => {
+            input.addEventListener('input', () => {
+                applyFilters(tableId, filterClass);
+            });
         });
     }
+
+    // Apply for each table
+    attachFilterEvents('soldierUsageTable', 'search-input-view');
+    attachFilterEvents('soldierMoveTable', 'search-input-view-second');
+    attachFilterEvents('bagsWashedTable', 'search-input-view-laundry');
+    attachFilterEvents('bagsWashedNationalityTable', 'search-input-view-laundry-second');
+    attachFilterEvents('data-table', 'search-input');
+    attachFilterEvents('bikeUsageTable', 'search-input-view-bike');
+    attachFilterEvents('bikeTotalsTable', 'search-input-view-total-bike');
 });

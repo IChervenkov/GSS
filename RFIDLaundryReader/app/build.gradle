@@ -21,6 +21,22 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+
+        // add the code from below line.
+        applicationVariants.all{
+                // this method is use to rename your all apk weather
+                // it may be signed or unsigned(debug apk)
+            variant ->
+                variant.outputs.each{
+                        // on below line we are setting a
+                        // name to our apk as GFG.apk
+                    output->
+                        def name = "RFIDLaundryReader-${versionName}-release.apk"
+                        // on below line we are setting the
+                        // outputFile Name to our apk file.
+                        output.outputFileName = name
+                }
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
@@ -38,9 +54,9 @@ dependencies {
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 
-    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
-    implementation("androidx.preference:preference-ktx:1.2.0")
+    implementation libs.retrofit
+    implementation libs.converter.gson
+    implementation(libs.preference.ktx)
 
     //noinspection GradlePath
     implementation files("C:/Users/ivajl/Desktop/GSS/API_Ver20231208/DeviceAPI_20231208/DeviceAPI_ver20231208_release.aar")

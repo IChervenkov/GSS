@@ -233,6 +233,33 @@ body {
     transition: opacity 0.3s ease;
 }
 
+.modal-content-report {
+    margin-left: 20%;
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    max-width: 60%;
+    max-height: 90%;
+    border-radius: 10px;
+    text-align: left;
+    position: relative;
+    transform: translateY(-200px);
+    /* Initial position for sliding */
+    opacity: 0;
+    /* Hidden initially */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    /* Slide and fade effect */
+}
+
+/* Custom Scrollbar */
+.modal-content-report .table-container {
+    height: 30vh;
+    /* Set height relative to viewport */
+    max-height: 30vh;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
 .modal.show {
     display: block;
     opacity: 1;
@@ -240,15 +267,41 @@ body {
 }
 
 .modal-content.slide-in,
+.modal-content-report.slide-in,
 .modal-content-mess.slide-in {
     animation: slideIn 0.4s forwards;
     /* Slide in animation */
 }
 
 .modal-content.slide-out,
+.modal-content-report.slide-out,
 .modal-content-mess.slide-out {
     animation: slideOut 0.4s forwards;
     /* Slide out animation */
+}
+
+.modal-content-mess {
+    margin-top: 10%;
+    margin-left: 35%;
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    max-width: 30%;
+    border-radius: 10px;
+    text-align: center;
+    position: relative;
+    transform: translateY(-200px);
+    /* Initial position for sliding */
+    opacity: 0;
+    /* Hidden initially */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    /* Slide and fade effect */
+}
+
+.modal-content-mess.show {
+    transform: translateY(0);
+    /* Slide into view */
+    opacity: 1;
 }
 
 .modal-content {
@@ -268,6 +321,20 @@ body {
     /* Hidden initially */
     transition: transform 0.4s ease, opacity 0.4s ease;
     /* Slide and fade effect */
+}
+
+#form2, #form3, #form4 {
+    margin-top: 5%;
+}
+
+.modal-image {
+    display: block;
+    margin: 0 auto;
+    margin-bottom: 15px;
+    max-width: 20%;
+    /* Adjust as needed */
+    height: auto;
+    /* Keeps aspect ratio */
 }
 
 /* Keyframes for sliding in and out */
@@ -369,4 +436,109 @@ thead th {
 tbody tr:nth-child(even) {
     background-color: #f9f9f9;
     /* Alternating row color */
+}
+
+.button-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    /* Add space between the buttons */
+    gap: 10px;
+    /* Optional: adds space between buttons */
+}
+
+.modal-button {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 20px;
+}
+
+/* Input Field Styling Above Headers */
+thead th input {
+    width: 90%;
+    padding: 8px;
+    margin-bottom: 8px;
+    font-size: 1em;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s;
+}
+
+thead th input:focus {
+    border-color: #28a745;
+    outline: none;
+}
+
+.group-button {
+    margin-left: 15px;
+    display: flex;
+    gap: 5px;
+    /* Optional, adjusts spacing between buttons */
+}
+
+.modal-content h2 {
+    display: flex;
+    align-items: center;
+}
+
+/* Styling for the custom dropdown */
+.search-container {
+    position: relative;
+}
+
+#addBagDropDown,
+#moveBagDropDown,
+#removeBagDropDown {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    border: 1px solid #ddd;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    background-color: white;
+}
+
+#addBagDropDown li,
+#moveBagDropDown li,
+#removeBagDropDown li {
+    padding: 10px;
+    cursor: pointer;
+}
+
+#addBagDropDown li:hover,
+#moveBagDropDown li:hover,
+#removeBagDropDown li:hover {
+    background-color: #218838;
+    color: white;
+}
+
+#addBagDropDown.list-group::-webkit-scrollbar,
+#moveBagDropDown.list-group::-webkit-scrollbar,
+#removeBagDropDown.list-group::-webkit-scrollbar {
+    width: 10px;
+}
+
+#addBagDropDown.list-group::-webkit-scrollbar-thumb,
+#moveBagDropDown.list-group::-webkit-scrollbar-thumb,
+#removeBagDropDown.list-group::-webkit-scrollbar-thumb {
+    background-color: #28a745;
+    border-radius: 4px;
+}
+
+#addBagDropDown.list-group::-webkit-scrollbar-thumb:hover,
+#moveBagDropDown.list-group::-webkit-scrollbar-thumb:hover,
+#removeBagDropDown.list-group::-webkit-scrollbar-thumb:hover {
+    background-color: #1e7e34;
 }

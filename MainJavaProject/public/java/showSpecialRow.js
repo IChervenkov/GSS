@@ -7,8 +7,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const total_percent_neutral = document.getElementById('percentNeutral');
     const total_percent_very_happy = document.getElementById('percentVeryHappy');
 
-    const url = 'http://localhost:3000';
-
     function formatDate(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -32,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const formattedDate2 = date2 ? formatDate(date2) : formatDate(now);
 
         // Fetch data from the backend
-        const response = await fetch(`${url}/getAllEmoji`, {
+        const response = await fetch(`/getAllEmoji`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -113,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 data.push([date, averageRating, numberOfVisits]);
             });
 
-            const response = await fetch(`${url}/fitness/report`, {
+            const response = await fetch(`/fitness/report`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

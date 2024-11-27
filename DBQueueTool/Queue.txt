@@ -80,13 +80,13 @@ CREATE TABLE laundryBags (
 	status TEXT,
 	timein TIMESTAMP
 	timeout TIMESTAMP,
-	betake BOOLEAN DEFAULT FALSE,
 	avg_drop_off_duration BIGINT DEFAULT 0,
 	avg_transportation_duration BIGINT DEFAULT 0,
 	avg_laundry_duration BIGINT DEFAULT 0,
 	avg_ready_to_pick_up_duration BIGINT DEFAULT 0,
 	avg_transportation_drop_off_duration BIGINT DEFAULT 0,
-	laundrycount BIGINT DEFAULT 0
+	laundrycount BIGINT DEFAULT 0,
+	maxcountlandry INTEGER DEFAULT 1
 );
 
 CREATE TABLE fitnes (
@@ -102,4 +102,11 @@ CREATE TABLE usermonitoring (
 	location TEXT,
 	accept_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
+CREATE TABLE laundryreport (
+	bag_id TEXT,
+	date_drop_off TIMESTAMP,
+	date_ready_to_pick_up TIMESTAMP,
+	FOREIGN KEY(bag_id) REFERENCES laundrybags(id)
 );

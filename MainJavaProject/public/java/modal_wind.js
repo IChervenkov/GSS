@@ -20,8 +20,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalAddMultiBike = document.getElementById('addMultiBikeModal');
     const modalAddMultiBikeContent = modalAddMultiBike.querySelector('.modal-content');
 
-    const url = 'http://localhost:3000';
-
     // Get the modal
     var modal = document.getElementById("myModal");
     var modalContent = modal.querySelector('.modal-content');
@@ -177,13 +175,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch bikes from the server
     async function fetchItem() {
         try {
-            const responseBike = await fetch(`${url}/bikes`);
+            const responseBike = await fetch(`/bikes`);
             if (!responseBike.ok) {
                 throw new Error('Network response was not ok');
             }
             bikes = await responseBike.json(); // Store fetched bikes in the global variable
 
-            const responseClient = await fetch(`${url}/clients`);
+            const responseClient = await fetch(`/clients`);
             if (!responseClient.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -438,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 // Fetch bike status
-                const response = await fetch(`${url}/checkBike`, {
+                const response = await fetch(`/checkBike`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -689,7 +687,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (bikeContent.length != 0) {
 
             // Fetch bike data from server
-            fetch(`${url}/searchBikes`, {
+            fetch(`/searchBikes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -750,7 +748,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (clientContent.length != 0) {
 
             // Fetch bike data from server
-            fetch(`${url}/searchClient`, {
+            fetch(`/searchClient`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -803,7 +801,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectedDate1 = document.getElementById('selectedDate1').value;
             const selectedDate2 = document.getElementById('selectedDate2').value;
 
-            const response = await fetch(`${url}/bicycles/viewReport`, {
+            const response = await fetch(`/bicycles/viewReport`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

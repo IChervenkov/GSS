@@ -237,7 +237,8 @@ document.addEventListener('DOMContentLoaded', function () {
         selectAllKeyDropdown.innerHTML = '';
         const filteredAllKey = allKeys.filter( key =>
             key.name.toLowerCase().includes(query.toLowerCase()) ||
-            key.id.toString().includes(query)
+            key.id.toString().includes(query) ||
+            key.soldierName.toLowerCase().includes(query.toLowerCase())
         );
 
         if (filteredAllKey.length > 0) {

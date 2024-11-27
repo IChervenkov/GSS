@@ -9,6 +9,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const XLSX = require('xlsx');
+// const RedisStore = require('connect-redis').default;
+// const redis = require('redis');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -52,12 +54,13 @@ const getAllEmojiSchema = Joi.object({
 });
 
 const checkBagsSchema = Joi.object({
-    code: Joi.string().alphanum().required()
+    code: Joi.string().alphanum().required(),
+    permCount: Joi.number().required()
 });
 
 const updateBagsSchema = Joi.object({
     code: Joi.string().alphanum().required(),
-    destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up').required(),
+    destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
     prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required()
 });
 
@@ -197,7 +200,7 @@ const schemaNFCBikeRead = Joi.object({
 });
 
 const schemaGetBagsByStatus = Joi.object({
-    status: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up').required(),
+    status: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
 })
 
 const navItems = [];
@@ -234,8 +237,31 @@ class Server {
             next();
         });
 
+        // Replace with your SuperHosting Redis server details
+        // const redisClient = redis.createClient({
+        //     socket: {
+        //         host: process.env.HOST_REDIS, // Provided by SuperHosting
+        //         port: process.env.PORT_REDIS, // Default Redis port
+        //         keepAlive: true
+        //     }
+        // });
+
+        // redisClient.on('error', (err) => {
+        //     //   console.error('Redis Client Error:', err);
+        // });
+
+        // // Use Redis as the session store
+        // (async () => {
+        //     try {
+        //         await redisClient.connect();
+        //     } catch (err) {
+        //         console.error('Connection Error:', err);
+        //     }
+        // })();
+
         // Use Redis as the session store
         this.app.use(session({
+            // store: new RedisStore({ client: redisClient }),
             secret: process.env.SESSION_SECRET || 'default_secret',
             resave: false,
             saveUninitialized: false,
@@ -3268,9 +3294,8 @@ class Server {
                         status,
                         type,
                         COUNT(*) AS count,
-                        SUM(laundrycount)
+                        SUM(laundrycount) AS sum
                     FROM laundrybags
-                    WHERE status <> 'None'
                     GROUP BY status, type;`);
 
                 const bagData = {};
@@ -3279,6 +3304,7 @@ class Server {
 
                 const headerTable = [
                     { name: "Bag code" },
+                    { name: "Date of entry" },
                     { name: "Soldier" },
                     { name: "Status" }
                 ];
@@ -3353,7 +3379,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { code } = req.body;
+            const { code, permCount } = req.body;
 
             const client = await pool.connect();
 
@@ -3364,7 +3390,7 @@ class Server {
                     [code] // Replace $1 with the scanned EPC code
                 );
 
-                if (result.rows.length > 0) {
+                if (result.rows.length > 0 && result.rows[0].laundrycount < permCount) {
                     res.json({ exists: true }); // Bag exists
                 } else {
                     res.json({ exists: false }); // Bag does not exist
@@ -3393,7 +3419,7 @@ class Server {
                 await client.query('BEGIN');
 
                 const result = await client.query(`
-                    SELECT l.code, s.id, l.status, l.betake
+                    SELECT l.code, s.id, l.status
                     FROM laundrybags l
                     JOIN soldier s ON s.laundry_bag_id = l.id
                     WHERE l.id = $1;`, [code]);
@@ -3405,45 +3431,96 @@ class Server {
 
                 const bag = result.rows[0];
 
-                if (prev_destination === 'None')
+                if (prev_destination === 'None') {
+                    await client.query(`INSERT INTO laundryreport VALUES ($1, CURRENT_DATE, NULL);`, [code]);
+
                     await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
-                        avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0, betake = false;`);
-
-                if (bag.status !== prev_destination && !bag.betake) {
-                    await client.query('ROLLBACK');
-                    return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${bag.status}, not ${prev_destination}.` });
-
-                } else if (bag.status !== "Ready to pick up" && bag.betake) {
-                    await client.query('ROLLBACK');
-                    return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is must return of soldier. This happen only in mode 'Ready to pick up'` });
+                        avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]);
                 }
 
-                if (destination === 'Ready to pick up' && bag.betake) {
+                if (bag.status !== prev_destination) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${bag.status}, not ${prev_destination}.` });
+                }
 
-                    await client.query(`UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP, laundrycount = laundrycount + 1 WHERE id = $1;`, [code]);
+                await client.query(`UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP WHERE id = $1;`, [code]);
 
-                    const avgTimeResult = await client.query(`
+                const avgTimeResult = await client.query(`
                         SELECT AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds
                         FROM laundrybags
-                        WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1;`, [destination]);
+                        WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1;`, [prev_destination]);
 
-                    await client.query(`UPDATE laundrybags SET betake = false, status = 'None' WHERE id = $1;`, [code]);
-
-                    const avgTimeRow = avgTimeResult.rows[0];
-                    if (avgTimeRow) {
-                        const columnName = statusMapping[destination.toLowerCase().trim()];
-                        if (columnName) {
-                            await client.query(`
+                const avgTimeRow = avgTimeResult.rows[0];
+                if (avgTimeRow) {
+                    const columnName = statusMapping[prev_destination.toLowerCase().trim()];
+                    if (columnName) {
+                        await client.query(`
                                 UPDATE laundrybags
                                 SET ${columnName} = $1
-                                WHERE status = $2;`, [Math.floor(avgTimeRow.avg_time_in_seconds), destination]);
-                        }
+                                WHERE status = $2;`, [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination]);
                     }
+                }
 
-                    await client.query('COMMIT');
-                    return res.status(200).json({ code: bag.code, soldierId: bag.id });
+                if (destination !== 'None')
+                    await client.query(`
+                        UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP WHERE id = $2;`, [destination, code]);
 
-                } else if (prev_destination !== 'None') {
+                else {
+                    await client.query(`UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_DATE WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
+
+                    await client.query(`
+                        UPDATE laundrybags SET status = $1, laundrycount = laundrycount + 1 WHERE id = $2;`, [destination, code]);
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ code: bag.code, soldierId: bag.id, message: "The status of the bag has been changed" });
+
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error(err); // Log detailed error for debugging
+                res.status(500).json({ message: "Internal server error" });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/changeStatusConsole', this.isLoggedIn.bind(this), async (req, res) => {
+            const { error } = updateBagsSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { code, destination, prev_destination } = req.body;
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(`
+                    SELECT l.code, s.id, l.status, l.laundrycount, l.maxcountlandry
+                    FROM laundrybags l
+                    JOIN soldier s ON s.laundry_bag_id = l.id
+                    WHERE l.id = $1;`, [code]);
+
+                if (result.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(404).json({ message: "Laundry bag not found" });
+                }
+
+                if(result.rows[0].laundrycount > result.rows[0].maxcountlandry) {
+                    await client.query('ROLLBACK');
+                    return res.status(403).json({ message: `This bag has exceeded the ${result.rows[0].maxcountlandry} wash per month limit` });
+                }
+
+                const bag = result.rows[0];
+
+                if (prev_destination === 'None') {
+                    await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
+                        avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]);
+
+                } else if(destination === 'None') {
 
                     await client.query(`UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP WHERE id = $1;`, [code]);
 
@@ -3464,15 +3541,11 @@ class Server {
                     }
                 }
 
-                if (destination === 'Ready to pick up' && !bag.betake)
-                    await client.query(`
-                        UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP, betake = true WHERE id = $2;`, [destination, code]);
-                else
-                    await client.query(`
-                        UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP WHERE id = $2;`, [destination, code]);
+                await client.query(`
+                    UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP WHERE id = $2;`, [destination, code]);
 
                 await client.query('COMMIT');
-                res.status(200).json({ code: bag.code, soldierId: bag.id });
+                res.status(200).json({ code: bag.code, soldierId: bag.id, message: "The status of the bag has been changed" });
 
             } catch (err) {
                 await client.query('ROLLBACK');
@@ -3520,14 +3593,18 @@ class Server {
             const { status } = req.body;
 
             const client = await pool.connect();
+            let result;
 
             try {
-                const result = await client.query(`
-                    SELECT 
+
+                result = await client.query(`
+                    SELECT
+                        l.id,
                         l.code, 
+                        TO_CHAR(l.timein, 'YYYY-MM-DD HH24:MI') AS timein, 
                         s.namesoldier, 
                         CASE 
-                            WHEN l.status = 'Ready to pick up' THEN timein < NOW() - INTERVAL '24 hours'
+                            WHEN l.status = 'Ready to pick up' AND l.timein < NOW() - INTERVAL '24 hours' THEN TRUE
                             ELSE FALSE
                         END AS islate
                     FROM 
@@ -3536,7 +3613,8 @@ class Server {
                         soldier s ON s.laundry_bag_id = l.id
                     WHERE 
                         l.status = $1
-                    ORDER BY islate ASC; `, [status]);
+                    ORDER BY 
+                        islate ASC;`, [status]);
 
                 // Send the result rows back to the client
                 res.status(200).json(result.rows);
@@ -3549,6 +3627,179 @@ class Server {
             }
         });
 
+        this.app.get('/laundry/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+
+                const result = await client.query(`
+                    SELECT 
+                        l.code, 
+                        s.namesoldier, 
+                        TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD') AS date_drop_off, 
+                        TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD') AS date_ready_to_pick_up
+                    FROM laundrybags l
+					JOIN laundryreport lr ON lr.bag_id = l.id
+                    JOIN soldier s ON l.id = s.laundry_bag_id;`);
+
+                const result_nationality = await client.query(`
+                    SELECT SUM(l.laundrycount) AS total_count_bags, s.country
+                    FROM laundrybags l
+                    JOIN soldier s ON l.id = s.laundry_bag_id
+                    GROUP BY s.country;`);
+
+                res.status(200).json({ data: result.rows, data_nationality: result_nationality.rows });
+
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ message: "Internal server error" });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/laundry/report', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+                const result = await client.query(`
+                    SELECT 
+                        l.code, 
+                        s.namesoldier, 
+                        TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD') AS date_drop_off, 
+                        COALESCE(TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD'), 'No departure date') AS date_ready_to_pick_up
+                    FROM laundrybags l
+					JOIN laundryreport lr ON lr.bag_id = l.id
+                    JOIN soldier s ON l.id = s.laundry_bag_id;`);
+
+                const result_nationality = await client.query(`
+                    SELECT SUM(l.laundrycount) AS total_count_bags, s.country
+                    FROM laundrybags l
+                    JOIN soldier s ON l.id = s.laundry_bag_id
+                    GROUP BY s.country;`);
+
+                // Create a new Excel workbook
+                const workbook = new excelJS.Workbook();
+                const worksheet1 = workbook.addWorksheet('Washed bags');
+                const worksheet2 = workbook.addWorksheet('Number of bags by nationality');
+
+                // Define headers
+                const headers1 = ['Bag number', 'Soldier name', 'Date of issue', 'Collection date'];
+                worksheet1.addRow(headers1).eachCell((cell) => {
+                    cell.font = { bold: true, size: 12 };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
+                // Define headers
+                const headers2 = ['Nationality', 'Number of bags washed'];
+                worksheet2.addRow(headers2).eachCell((cell) => {
+                    cell.font = { bold: true, size: 12 };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
+                // Set column widths
+                worksheet1.columns = headers1.map((header, colIndex) => {
+                    const maxContentLength = Math.max(
+                        header.length,
+                        ...result.rows.map(row => (row[colIndex] ? row[colIndex].toString().length : 0))
+                    );
+                    return { width: maxContentLength + 2 }; // Add padding
+                });
+
+
+                // Set column widths
+                worksheet2.columns = headers2.map((header, colIndex) => {
+                    const maxContentLength = Math.max(
+                        header.length,
+                        ...result.rows.map(row => (row[colIndex] ? row[colIndex].toString().length : 0))
+                    );
+                    return { width: maxContentLength + 2 }; // Add padding
+                });
+
+
+                // Populate data rows
+                result.rows.forEach(({ code, namesoldier, date_drop_off, date_ready_to_pick_up }, index) => {
+                    const dataRow = worksheet1.addRow([code, namesoldier, date_drop_off, date_ready_to_pick_up]);
+
+                    // Style each cell
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+
+                    // Apply alternating row color
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                });
+
+                // Populate data rows
+                result_nationality.rows.forEach(({ total_count_bags, country }, index) => {
+                    const dataRow = worksheet2.addRow([country, total_count_bags]);
+
+                    // Style each cell
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+
+                    // Apply alternating row color
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                });
+
+                // Set headers for file download
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                res.setHeader('Content-Disposition', 'attachment; filename="report_laundry.xlsx"');
+
+                // Write the Excel file to the response
+                await workbook.xlsx.write(res);
+                res.end();
+
+            } catch (error) {
+                console.error('Error generating Excel report:', error);
+                res.status(500).send('Failed to generate report.');
+
+            } finally {
+                client.release();
+            }
+        });
     }
 
     // Method to start the server

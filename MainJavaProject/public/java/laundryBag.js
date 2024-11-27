@@ -15,6 +15,175 @@ document.addEventListener('DOMContentLoaded', () => {
     const readyToPickUpModal = document.getElementById('readyToPickUpModal');
     const readyToPickUpModalContent = readyToPickUpModal.querySelector('.modal-content');
 
+    const reportViewModal = document.getElementById('reportViewModal');
+    const reportViewModalContent = reportViewModal.querySelector('.modal-content-report');
+
+    const addBagModal = document.getElementById('addBagModal');
+    const addBagModalContent = addBagModal.querySelector('.modal-content');
+
+    const moveBagModal = document.getElementById('moveBagModal');
+    const moveBagModalContent = moveBagModal.querySelector('.modal-content');
+
+    const removeBagModal = document.getElementById('removeBagModal');
+    const removeBagModalContent = removeBagModal.querySelector('.modal-content');
+
+    const addBagSearchInput = document.getElementById('search-add-input-bags');
+    const addBagSearchDropdown = document.getElementById('addBagDropDown');
+    const selectedAddBagId = document.getElementById('addBagSelectId');
+
+    const moveBagSearchInput = document.getElementById('search-move-input-bags');
+    const moveBagSearchDropdown = document.getElementById('moveBagDropDown');
+    const selectedMoveBagId = document.getElementById('moveBagSelectId');
+
+    const removeBagSearchInput = document.getElementById('search-remove-input-bags');
+    const removeBagSearchDropdown = document.getElementById('removeBagDropDown');
+    const selectedRemoveBagId = document.getElementById('removeBagSelectId');
+
+    const modalMess = document.getElementById("myMessage");
+    const modalMessContent = modalMess.querySelector('.modal-content-mess');
+
+    const destinationByBtn = document.getElementById('destination');
+    const prevDestinationByBtn = document.getElementById('prev_destination');
+
+    let bags = [];
+
+    // Function to fetch bags from the server
+    async function fetchBags(status = 'None') {
+        try {
+
+            if (bags.length > 0)
+                bags = [];
+
+            const response = await fetch(`/getBagsByStatus`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: status })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                openMess('Error', errorData.message);
+            }
+
+            bags = await response.json(); // Store fetched bags in the global variable
+
+        } catch (error) {
+            console.error('There was a problem with the fetch operation:', error);
+        }
+    }
+
+    // Function to filter and display dropdown options
+    function filterBag(inputElement, dropdownElement) {
+        const query = inputElement.value.toLowerCase();
+        dropdownElement.innerHTML = '';
+        const filteredBags = bags.filter(bag => bag.code.toLowerCase().includes(query));
+
+        if (filteredBags.length > 0) {
+            dropdownElement.style.display = 'block';
+            filteredBags.forEach(bag => {
+                const li = document.createElement('li');
+                li.textContent = bag.code;
+                li.setAttribute('data-id', bag.id);
+                dropdownElement.appendChild(li);
+            });
+        } else {
+            dropdownElement.style.display = 'none';
+        }
+    }
+
+    // Function to handle dropdown click and select a bag
+    function handleDropdownClick(event, inputElement, hiddenInputElement, dropdownElement) {
+        const selectedBag = event.target;
+        if (selectedBag && selectedBag.dataset.id) {
+            inputElement.value = selectedBag.textContent;
+            hiddenInputElement.value = selectedBag.getAttribute('data-id');
+            dropdownElement.style.display = 'none';
+        }
+    }
+
+    // Function to initialize bag search behavior
+    function initializeBagSearch(inputElement, dropdownElement, hiddenInputElement) {
+        // Handle input change
+        inputElement.addEventListener('input', function () {
+
+            if (inputElement.value.length > 0) {
+                filterBag(inputElement, dropdownElement);
+            } else {
+                dropdownElement.style.display = 'none';
+                hiddenInputElement.value = '';
+            }
+        });
+
+        // Handle dropdown click
+        dropdownElement.addEventListener('click', function (event) {
+            handleDropdownClick(event, inputElement, hiddenInputElement, dropdownElement);
+        });
+    }
+
+    // Initialize for Add Bag search
+    initializeBagSearch(addBagSearchInput, addBagSearchDropdown, selectedAddBagId);
+
+    // Initialize for Move Bag search
+    initializeBagSearch(moveBagSearchInput, moveBagSearchDropdown, selectedMoveBagId);
+
+    // Initialize for Remove Bag search
+    initializeBagSearch(removeBagSearchInput, removeBagSearchDropdown, selectedRemoveBagId);
+
+
+    function openMess(type, message) {
+
+        const icon = document.getElementById('mess-global-icon');
+
+        switch (type) {
+
+            case 'Warning':
+                icon.src = "../icon/delete_warning.png";
+                document.getElementById('mess-global-text').textContent = message;
+                isWarning = true;
+                break;
+
+            case 'Error':
+                icon.src = "../icon/error.png";
+                document.getElementById('mess-global-text').textContent = message;
+                isWarning = true;
+                break;
+
+            default:
+                icon.src = "../icon/information.png";
+                document.getElementById('mess-global-text').textContent = message;
+                isWarning = false;
+                break;
+        }
+
+        // Add the slide-in effect by adding the necessary classes
+        modalMess.classList.add('show');
+        modalMessContent.classList.add('show');
+        modalMessContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalMessContent.classList.remove('slide-out');
+    }
+
+    function closeMessModal() {
+        // Add the slide-out effect
+        modalMessContent.classList.add('slide-out');
+        modalMessContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            modalMess.classList.remove('show');
+            modalMessContent.classList.remove('show');
+
+            if (!isWarning) {
+                // Refresh the page after the modal is closed
+                window.location.reload();
+            }
+
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
     function openDropOffModal() {
 
         // Add the slide-in effect by adding the necessary classes
@@ -130,11 +299,120 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    function openReportModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        reportViewModal.classList.add('show');
+        reportViewModalContent.classList.add('show');
+        reportViewModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        reportViewModalContent.classList.remove('slide-out');
+    }
+
+    function closeReportModal() {
+        // Add the slide-out effect
+        reportViewModalContent.classList.add('slide-out');
+        reportViewModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            reportViewModal.classList.remove('show');
+            reportViewModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openAddBagModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        addBagModal.classList.add('show');
+        addBagModalContent.classList.add('show');
+        addBagModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        addBagModalContent.classList.remove('slide-out');
+    }
+
+    function closeAddBagModal() {
+        // Add the slide-out effect
+        addBagModalContent.classList.add('slide-out');
+        addBagModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            addBagSearchDropdown.style.display = 'none';
+            addBagSearchInput.value = '';
+
+            addBagModal.classList.remove('show');
+            addBagModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openMoveBagModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        moveBagModal.classList.add('show');
+        moveBagModalContent.classList.add('show');
+        moveBagModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        moveBagModalContent.classList.remove('slide-out');
+    }
+
+    function closeMoveBagModal() {
+        // Add the slide-out effect
+        moveBagModalContent.classList.add('slide-out');
+        moveBagModalContent.classList.remove('slide-in');
+
+
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            moveBagSearchDropdown.style.display = 'none';
+            moveBagSearchInput.value = '';
+
+            moveBagModal.classList.remove('show');
+            moveBagModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openRemoveBagModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        removeBagModal.classList.add('show');
+        removeBagModalContent.classList.add('show');
+        removeBagModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        removeBagModalContent.classList.remove('slide-out');
+    }
+
+    function closeRemoveBagModal() {
+        // Add the slide-out effect
+        removeBagModalContent.classList.add('slide-out');
+        removeBagModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            removeBagSearchDropdown.style.display = 'none';
+            removeBagSearchInput.value = '';
+
+            removeBagModal.classList.remove('show');
+            removeBagModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
     document.getElementsByClassName('close-btn')[0].onclick = closeDropOffModal;
     document.getElementsByClassName('close-btn')[1].onclick = closeTransportationToLaundryFacilityModal;
     document.getElementsByClassName('close-btn')[2].onclick = closeLaundryFacilityModal;
     document.getElementsByClassName('close-btn')[3].onclick = closeTransportationToDropOffModal;
     document.getElementsByClassName('close-btn')[4].onclick = closeReadyToPickUpModal;
+    document.getElementsByClassName('close-btn')[5].onclick = closeReportModal;
+    document.getElementsByClassName('close-btn')[6].onclick = closeAddBagModal;
+    document.getElementsByClassName('close-btn')[7].onclick = closeMoveBagModal;
+    document.getElementsByClassName('close-btn')[8].onclick = closeRemoveBagModal;
+    document.getElementsByClassName('close-btn')[9].onclick = closeMessModal;
 
     window.onclick = function (event) {
 
@@ -156,8 +434,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
 
             case readyToPickUpModal:
-            closeReadyToPickUpModal();
-            break;
+                closeReadyToPickUpModal();
+                break;
+
+            case reportViewModal:
+                closeReportModal();
+                break;
+
+            case addBagModal:
+                closeAddBagModal();
+                break;
+
+            case moveBagModal:
+                closeMoveBagModal();
+                break;
+
+            case modalMess:
+                closeMessModal();
+                break;
+
+            case removeBagModal:
+                closeRemoveBagModal();
+                break;
         }
     };
 
@@ -176,7 +474,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error('Failed to fetch data');
                 }
 
-                const data = await result.json();
+                const result_from_response = await result.json();
+                const data = result_from_response.map(({ id, ...rest }) => rest);
 
                 const tbody = document.getElementById(`${tableContent}`);
                 tbody.innerHTML = ''; // Clear existing rows
@@ -244,4 +543,135 @@ document.addEventListener('DOMContentLoaded', () => {
     openModalWhenClick('Laundry facility', 'laundry-facility', 'laundryFacilityTableBody');
     openModalWhenClick('Transportation to drop off', 'transportation-to-drop-off', 'transportationToDropOffTableBody');
     openModalWhenClick('Ready to pick up', 'ready-to-pick-up', 'readyToPickUpTableBody');
+
+    document.getElementById('reportButton').addEventListener('click', () => {
+        fetchReport();
+        openReportModal();
+    });
+
+    document.querySelectorAll('#addBag, #moveBag, #removeBag').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            const button = event.target;
+
+            const button_type = button.getAttribute('id');
+            const destination = button.getAttribute('data-destination');
+            const prev_destination = button.getAttribute('data-preview');
+
+            destinationByBtn.value = destination;
+            prevDestinationByBtn.value = prev_destination;
+
+            switch (button_type) {
+                case 'addBag':
+                    fetchBags();
+                    openAddBagModal();
+                    break;
+
+                case 'moveBag':
+                    fetchBags(prev_destination);
+                    openMoveBagModal();
+                    break;
+
+                case 'removeBag':
+                    fetchBags(prev_destination);
+                    openRemoveBagModal();
+                    break;
+            }
+        });
+    });
+
+
+    async function fetchReport() {
+        try {
+
+            const response = await fetch(`/laundry/viewReport`, {
+                method: 'GET',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Error fetching the report:', error.details || 'Network response was not ok');
+            }
+
+            const { data, data_nationality } = await response.json();
+
+            // Clear existing rows from bike usage details table
+            const bagsWashedTableBody = document.getElementById('bagsWashedTable').getElementsByTagName('tbody')[0];
+            const bagsWashedNationalityTableBody = document.getElementById('bagsWashedNationalityTable').getElementsByTagName('tbody')[0];
+
+            bagsWashedTableBody.innerHTML = '';
+            bagsWashedNationalityTableBody.innerHTML = '';
+
+            data.forEach(row => {
+                const newRow = bagsWashedTableBody.insertRow();
+                newRow.insertCell().textContent = row.code;
+                newRow.insertCell().textContent = row.namesoldier;
+                newRow.insertCell().textContent = row.date_drop_off ? row.date_drop_off : 'Not accommodated';
+                newRow.insertCell().textContent = row.date_free ? row.date_free : 'No departure date';
+            });
+
+            data_nationality.forEach(row => {
+                const newRow = bagsWashedNationalityTableBody.insertRow();
+                newRow.insertCell().textContent = row.country;
+                newRow.insertCell().textContent = row.total_count_bags;
+            });
+
+        } catch (error) {
+            console.error('Error fetching the report:', error);
+        }
+    }
+
+    function stopEnter(formId) {
+        document.getElementById(formId).addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+            }
+        });
+    }
+
+    stopEnter('form1');
+    stopEnter('form2');
+    stopEnter('form3');
+    stopEnter('form4');
+
+    async function handleFormSubmit(event, formId, modalCloseFn, bagId, destination = null, prevDestination = null) {
+
+        event.preventDefault();
+    
+        const data = {
+            code: bagId.value,
+            destination: destination ? destination.value : 'None',
+            prev_destination: prevDestination ? prevDestination.value : 'None'
+        };
+    
+        try {
+            const response = await fetch(document.getElementById(formId).action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+    
+            const responseData = await response.json();
+            if (!response.ok) {
+                openMess('Error', responseData.message);
+            } else {
+                openMess('Info', responseData.message);
+            }
+    
+            modalCloseFn();
+    
+        } catch (error) {
+            openMess('Error', `Network error: ${error.message}`);
+        }
+    }
+    
+    // Attach the handler to each form
+    document.getElementById('form2').onsubmit = (event) =>
+        handleFormSubmit(event, 'form2', closeAddBagModal, selectedAddBagId, prevDestinationByBtn, null);
+    
+    document.getElementById('form3').onsubmit = (event) =>
+        handleFormSubmit(event, 'form3', closeMoveBagModal, selectedMoveBagId, destinationByBtn, prevDestinationByBtn);
+
+    document.getElementById('form4').onsubmit = (event) =>
+        handleFormSubmit(event, 'form4', closeRemoveBagModal, selectedRemoveBagId, null, destinationByBtn);
+    
 });

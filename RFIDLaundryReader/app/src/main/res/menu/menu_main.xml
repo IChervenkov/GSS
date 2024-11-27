@@ -15,4 +15,7 @@
     <item
         android:id="@+id/menu_ready_to_pick_up"
         android:title="Ready to pick up" />
+    <item
+        android:id="@+id/menu_taking_from_soldier"
+        android:title="Тaking from soldier" />
 </menu>

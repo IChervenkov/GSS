@@ -36,9 +36,10 @@
         <% if(navItems) { %>
             <!-- Left Navigation Bar -->
             <div class="left-nav">
-                <div class="title-container mb-2 sticky-top p-3 w-100 transparent-bg">
+                <div class="title-container mb-2 sticky-top p-3 w-100 transparent-bg" <% if(username !='helpDeskNikolay'
+                    && username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
                         <button type="button" id="btnAddDestination"
-                            class="btn-add-destination w-100">Add
+                            class="btn-add-destination w-100 <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Add
                             Destination</button>
                 </div>
                 <ul>
@@ -50,17 +51,21 @@
                                         <%= item.nameAdd %>
                                     </span>
                             </a>
-                            <div class="button-group">
-                                <button type="button" class="btn btn-success btn-sm me-1 btn-add"
-                                    name="<%= item.numBuild %>">+</button>
-                                <button type="button" class="btn btn-danger btn-sm btn-remove"
-                                    name="<%= item.numBuild %>">−</button>
-                                <% if(item.numBuild) { %>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                            <div class="button-group" <% if(username !='helpDeskNikolay' && username !='admin' ) { %>
+                                style="cursor: not-allowed" <% } %>>
+                                    <button type="button"
+                                        class="btn btn-success btn-sm me-1 btn-add <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
+                                        name="<%= item.numBuild %>">+</button>
+                                    <button type="button"
+                                        class="btn btn-danger btn-sm btn-remove <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
+                                        name="<%= item.numBuild %>">−</button>
+                                    <% if(item.numBuild) { %>
+                                        <button type="button"
+                                            class="btn btn-outline-secondary btn-sm <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
                                             name="<%= item.numBuild %>" data-name-room="<%= item.name %>">
                                             <i class="bi bi-trash"></i>
                                         </button>
-                                        <% } %>                                  
+                                        <% } %>
                             </div>
                         </li>
                         <% }); %>
@@ -95,11 +100,19 @@
                         <div class="virtual-warehouse-labels">
                             <label class="virtual-warehouse-label">Free Beds: <%= totalFreeBeds %></label>
                             <label class="virtual-warehouse-label">Occupied Beds: <%= totalOccupiedBeds %></label>
-                            <button type="button" id="btnAddSoldier" class="btn-add-soldier">Add soldier</button>
-                            <button type="button" id="btnAccommSoldier" class="btn-add-soldier">Accommodation
-                                soldiers</button>
-                            <button type="button" id="btnFreeAllRoom" class="btn-free-soldier">Release all
-                                rooms</button>
+                            <div <% if(username !='helpDeskNikolay' && username !='admin' ) { %>
+                                style="cursor: not-allowed" <% } %>>
+                                <button type="button" id="btnAddSoldier"
+                                    class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Add
+                                    soldier</button>
+                                <button type="button" id="btnAccommSoldier"
+                                    class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Accommodation
+                                    soldiers</button>
+                                <button type="button" id="btnFreeAllRoom"
+                                    class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Release
+                                    all
+                                    rooms</button>
+                            </div>
                             <button type="button" id="btnReport" class="btn-report">Reports</button>
                         </div>
                     </div>
@@ -300,9 +313,9 @@
                         <tr>
                             <th><input type="text" class="search-input-view-second" placeholder="Search...">Previous
                                 Room</th>
-                            <th><input type="text" class="search-input-second" placeholder="Search...">New Room</th>
-                            <th><input type="text" class="search-input-second" placeholder="Search...">Soldier</th>
-                            <th><input type="text" class="search-input-second" placeholder="Search...">Date
+                            <th><input type="text" class="search-input-view-second" placeholder="Search...">New Room</th>
+                            <th><input type="text" class="search-input-view-second" placeholder="Search...">Soldier</th>
+                            <th><input type="text" class="search-input-view-second" placeholder="Search...">Date
                                 Relocation
                             </th>
                         </tr>

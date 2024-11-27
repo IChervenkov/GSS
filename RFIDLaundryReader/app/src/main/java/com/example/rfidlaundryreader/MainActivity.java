@@ -19,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.rscja.deviceapi.RFIDWithUHFUART;
 import com.rscja.deviceapi.entity.UHFTAGInfo;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.InterruptedIOException;
@@ -39,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isInventory = false;
     private String destination;
     private String prev_destination;
+    private int perm_count;
     private TextView title;
     private ThreadInventory threadInventory;
     private HashSet<String> uniqueEpcSet = new HashSet<>();
@@ -55,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
 
         destination = GlobalVariable.getVariable(this);
         prev_destination = GlobalVariable.getPrevDestination(this);  // Retrieving the previous destination
+        perm_count = 1;
 
         title.setText(destination);
 
@@ -227,7 +230,15 @@ public class MainActivity extends AppCompatActivity {
     private boolean checkBagCode(String epc) {
         try {
             MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-            String jsonData = "{\"code\":\"" + epc + "\"}";
+            JSONObject jsonPayload = new JSONObject();
+            try {
+                jsonPayload.put("code", epc);
+                jsonPayload.put("permCount", perm_count );
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            String jsonData = jsonPayload.toString();
+
             RequestBody body = RequestBody.create(JSON, jsonData);
 
             Request request = new Request.Builder()
@@ -371,6 +382,9 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.menu_ready_to_pick_up) {
                 updateMode("Ready to pick up", "Transportation to drop off");
                 return true;
+            } else if (itemId == R.id.menu_taking_from_soldier) {
+                updateMode("None", "Ready to pick up");
+                return true;
             }
             return false;
         });
@@ -380,13 +394,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateMode(String destination, String prevDestination) {
-        Toast.makeText(this, "Change mode to " + destination, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Change mode to " + (destination.equals("None") ? "Taking from soldier" : destination), Toast.LENGTH_SHORT).show();
         this.destination = destination;
         if (prevDestination != null) {
             this.prev_destination = prevDestination;
             GlobalVariable.savePrevDestination(this, prevDestination);
         }
-        title.setText(destination);
+        title.setText(destination.equals("None") ? "Taking from soldier" : destination);
+
         GlobalVariable.saveVariable(this, destination);
     }
 
