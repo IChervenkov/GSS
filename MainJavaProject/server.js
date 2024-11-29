@@ -54,8 +54,19 @@ const getAllEmojiSchema = Joi.object({
 });
 
 const checkBagsSchema = Joi.object({
-    code: Joi.string().alphanum().required(),
-    permCount: Joi.number().required()
+    code: Joi.string().alphanum().required()
+});
+
+const updateBagsScanerSchema = Joi.object({
+    codes: Joi.array()
+        .items(Joi.string().alphanum())
+        .required(),
+    destination: Joi.string()
+        .valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None')
+        .required(),
+    prev_destination: Joi.string()
+        .valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None')
+        .required()
 });
 
 const updateBagsSchema = Joi.object({
@@ -63,6 +74,18 @@ const updateBagsSchema = Joi.object({
     destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
     prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required()
 });
+
+const checkScaningCodeSchema = Joi.object({
+    code: Joi.string().alphanum().required(),
+    prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
+    permCount: Joi.number().required()
+});
+
+const checkCountScaningCodesSchema = Joi.object({
+    countScaneCode: Joi.number().required(),
+    prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required()
+});
+
 
 const clientDataSchema = Joi.object({
     userId: Joi.string().required(), // userId should be a string and is required
@@ -254,6 +277,7 @@ class Server {
         // (async () => {
         //     try {
         //         await redisClient.connect();
+                
         //     } catch (err) {
         //         console.error('Connection Error:', err);
         //     }
@@ -3256,7 +3280,7 @@ class Server {
         });
     }
 
-    defineRoutesLaundry() {
+        defineRoutesLaundry() {
 
         const statusMapping = {
             'drop off': 'avg_drop_off_duration',
@@ -3379,7 +3403,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { code, permCount } = req.body;
+            const { code } = req.body;
 
             const client = await pool.connect();
 
@@ -3390,7 +3414,7 @@ class Server {
                     [code] // Replace $1 with the scanned EPC code
                 );
 
-                if (result.rows.length > 0 && result.rows[0].laundrycount < permCount) {
+                if (result.rows.length > 0) {
                     res.json({ exists: true }); // Bag exists
                 } else {
                     res.json({ exists: false }); // Bag does not exist
@@ -3405,13 +3429,81 @@ class Server {
             }
         });
 
-        this.app.post('/changeStatus', async (req, res) => {
-            const { error } = updateBagsSchema.validate(req.body);
+        this.app.post('/changeStatusBulk', async (req, res) => {
+
+            const { error } = updateBagsScanerSchema.validate(req.body);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { code, destination, prev_destination } = req.body;
+            const { codes, destination, prev_destination } = req.body;
+
+            codes.forEach(async code => {
+
+                const client = await pool.connect();
+                
+                try {
+
+                    await client.query('BEGIN');
+
+                    if (prev_destination === 'None') {
+                        await client.query(`INSERT INTO laundryreport VALUES ($1, CURRENT_DATE, NULL);`, [code]);
+
+                        await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
+                            avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]);
+                    }
+
+                    await client.query(`UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP WHERE id = $1;`, [code]);
+
+                    const avgTimeResult = await client.query(`
+                            SELECT AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds
+                            FROM laundrybags
+                            WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1;`, [prev_destination]);
+
+                    const avgTimeRow = avgTimeResult.rows[0];
+                    if (avgTimeRow) {
+                        const columnName = statusMapping[prev_destination.toLowerCase().trim()];
+                        if (columnName) {
+                            await client.query(`
+                                    UPDATE laundrybags
+                                    SET ${columnName} = $1
+                                    WHERE status = $2;`, [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination]);
+                        }
+                    }
+
+                    if (destination !== 'None')
+                        await client.query(`
+                            UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP WHERE id = $2;`, [destination, code]);
+
+                    else {
+                        await client.query(`UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_DATE WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
+
+                        await client.query(`
+                            UPDATE laundrybags SET status = $1, laundrycount = laundrycount + 1 WHERE id = $2;`, [destination, code]);
+                    }
+
+                    await client.query('COMMIT');
+                    res.status(200).json();
+
+                } catch (err) {
+                    await client.query('ROLLBACK');
+                    console.error(err); // Log detailed error for debugging
+                    res.status(500).json({ message: "Internal server error" });
+
+                } finally {
+                    client.release();
+                }
+            })
+        });
+
+        this.app.post('/checkScaningCode', async (req, res) => {
+
+            const { error } = checkScaningCodeSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { code, prev_destination, permCount } = req.body;
             const client = await pool.connect();
 
             try {
@@ -3419,10 +3511,10 @@ class Server {
                 await client.query('BEGIN');
 
                 const result = await client.query(`
-                    SELECT l.code, s.id, l.status
-                    FROM laundrybags l
-                    JOIN soldier s ON s.laundry_bag_id = l.id
-                    WHERE s.date_free IS NULL AND l.id = $1;`, [code]);
+                        SELECT l.code, s.id, l.status, l.laundrycount
+                        FROM laundrybags l
+                        JOIN soldier s ON s.laundry_bag_id = l.id
+                        WHERE s.date_free IS NULL AND l.id = $1;`, [code]);
 
                 if (result.rows.length === 0) {
                     await client.query('ROLLBACK');
@@ -3430,50 +3522,60 @@ class Server {
                 }
 
                 const bag = result.rows[0];
-
-                if (prev_destination === 'None') {
-                    await client.query(`INSERT INTO laundryreport VALUES ($1, CURRENT_DATE, NULL);`, [code]);
-
-                    await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
-                        avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]);
+                
+                if(bag.laundrycount >= permCount) {
+                    await client.query('ROLLBACK');
+                    return res.status(402).json({ message: `Bag number ${bag.code} has already been laundered. The maximum laundry limit per month for one bag is ${permCount}` });
                 }
-
                 if (bag.status !== prev_destination) {
                     await client.query('ROLLBACK');
                     return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${bag.status}, not ${prev_destination}.` });
                 }
 
-                await client.query(`UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP WHERE id = $1;`, [code]);
+                
 
-                const avgTimeResult = await client.query(`
-                        SELECT AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds
-                        FROM laundrybags
-                        WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1;`, [prev_destination]);
+                await client.query('COMMIT');
+                res.status(200).json({ code: bag.code, soldierId: bag.id });
 
-                const avgTimeRow = avgTimeResult.rows[0];
-                if (avgTimeRow) {
-                    const columnName = statusMapping[prev_destination.toLowerCase().trim()];
-                    if (columnName) {
-                        await client.query(`
-                                UPDATE laundrybags
-                                SET ${columnName} = $1
-                                WHERE status = $2;`, [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination]);
-                    }
-                }
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error(err); // Log detailed error for debugging
+                res.status(500).json({ message: "Internal server error" });
 
-                if (destination !== 'None')
-                    await client.query(`
-                        UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP WHERE id = $2;`, [destination, code]);
+            } finally {
+                client.release();
+            }
+        });
 
-                else {
-                    await client.query(`UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_DATE WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
+        this.app.post('/checkCountScanningCodes', async (req, res) => {
 
-                    await client.query(`
-                        UPDATE laundrybags SET status = $1, laundrycount = laundrycount + 1 WHERE id = $2;`, [destination, code]);
+            const { error } = checkCountScaningCodesSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { countScaneCode, prev_destination } = req.body;
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(`
+                        SELECT *
+                        FROM laundrybags l
+                        JOIN soldier s ON s.laundry_bag_id = l.id
+                        WHERE s.date_free IS NULL AND l.status = $1;`, [prev_destination]);
+
+                const bag = result.rows;
+                
+                if(prev_destination !== 'None' && prev_destination !== 'Ready to pick up' && bag.length !== countScaneCode) {
+                    await client.query('ROLLBACK');
+                    return res.status(404).json({ request: false, message: `Not all bags are scanned. Please scan all ${bag.length} bags from the ${prev_destination}.` });
                 }
 
                 await client.query('COMMIT');
-                res.status(200).json({ code: bag.code, soldierId: bag.id, message: "The status of the bag has been changed" });
+                res.status(200).json({ request: true });
 
             } catch (err) {
                 await client.query('ROLLBACK');
@@ -3810,7 +3912,7 @@ class Server {
     // Method to start the server
     start() {
         this.app.listen(this.port, () => {
-            console.log(`Server running at http://localhost:${this.port}/`);
+            console.log(`The server is started in http://localhost:${PORT}`)
         });
     }
 }

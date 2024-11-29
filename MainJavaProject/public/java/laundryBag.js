@@ -606,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 newRow.insertCell().textContent = row.code;
                 newRow.insertCell().textContent = row.namesoldier;
                 newRow.insertCell().textContent = row.date_drop_off ? row.date_drop_off : 'Not accommodated';
-                newRow.insertCell().textContent = row.date_free ? row.date_free : 'No departure date';
+                newRow.insertCell().textContent = row.date_ready_to_pick_up ? row.date_ready_to_pick_up : 'No departure date';
             });
 
             data_nationality.forEach(row => {
