@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bicycles</title>
-  <link rel="stylesheet" href="../style/stylesBicycles.css" />
+  <link rel="stylesheet" href="/style/stylesBicycles.css" />
   <link rel="icon" href="/icon/logoPage.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -145,23 +145,23 @@
                     </td>
                     <td>
                       <% if(item.status=="Available" ) { %>
-                        <img src="../icon/available.png" alt="Available" class="table-icon">
+                        <img src="/icon/available.png" alt="Available" class="table-icon">
                         <% } %>
 
                           <% if(item.status=="Rented" ) { %>
-                            <img src="../icon/unavailable.png" alt="Rented" class="table-icon">
+                            <img src="/icon/unavailable.png" alt="Rented" class="table-icon">
                             <% } %>
 
                               <% if(item.status=="Repair" ) { %>
-                                <img src="../icon/repire.png" alt="Repair" class="table-icon">
+                                <img src="/icon/repire.png" alt="Repair" class="table-icon">
                                 <% } %>
 
                                   <% if(item.status=="Late" ) { %>
-                                    <img src="../icon/timeout.png" alt="Late" class="table-icon">
+                                    <img src="/icon/timeout.png" alt="Late" class="table-icon">
                                     <% } %>
 
                                       <% if(item.status=="Long term" ) { %>
-                                        <img src="../icon/long-term.png" alt="Long-term" class="table-icon">
+                                        <img src="/icon/long-term.png" alt="Long-term" class="table-icon">
                                         <% } %>
                     </td>
                     <td>
@@ -253,7 +253,7 @@
       <div class="modal-content-mess">
         <span class="close">&times;</span>
 
-        <img src="../icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon">
+        <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon">
         <p id="mess-text">Are you sure you want to proceed?</p>
         <div class="button-container-mess">
           <button id="btnYes" type="submit" class="login-btn-mess confirm-btn">Ok</button>
@@ -601,8 +601,14 @@
       <div class="mb-3">
         <label for="bike-number" class="form-label">Bike Number:</label>
         <div class="input-group">
-          <input type="text" id="bike-number" name="bikeAddId" class="form-control" placeholder="Bike Number"
-            pattern="[A-Za-z0-9]+" required>
+          <input type="text" id="bike-number" name="bikeAddId" class="form-control"
+            placeholder="Bike number (e.g., AB1234)" pattern="^[A-Za-z0-9]+$" required>
+          <div class="invalid-feedback">
+            Please enter a valid bike number (alphanumeric only, no spaces or special characters).
+          </div>
+          <div class="valid-feedback">
+            Valid bike number.
+          </div>
         </div>
       </div>
 
@@ -610,7 +616,13 @@
         <label for="bike-name" class="form-label">Bike Name:</label>
         <div class="input-group">
           <input type="text" id="bike-name" name="bikeName" class="form-control"
-            placeholder="Bike Name (number bike/model bike)" pattern="^[0-9]+\/[A-Za-z\s]+$" required>
+            placeholder="Bike name (e.g., 123/Bike Model)" pattern="^[0-9]+\/[A-Za-z\s]+$" required>
+          <div class="invalid-feedback">
+            Please enter a valid bike name in the format: number/bike model (e.g., 123/Bike Model).
+          </div>
+          <div class="valid-feedback">
+            Valid bike name.
+          </div>
         </div>
       </div>
 
@@ -680,7 +692,7 @@
     <div class="modal-content-mess">
       <span class="close">&times;</span>
 
-      <img src="../icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon-rep">
+      <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon-rep">
       <p id="mess-text-rep">Are you sure you want to proceed?</p>
       <div class="button-container-mess">
         <button id="btnMess" class="login-btn-mess confirm-btn">Ok</button>
@@ -697,15 +709,15 @@
 
 </body>
 
-<script src="../java/autoSearch.js"></script>
-<script src="../java/pageNumber.js"></script>
-<script src="../java/downloald-app.js"></script>
-<script src="../java/modal_wind.js"></script>
-<script src="../java/calendar.js" defer></script>
-<script src="../java/phoneMenu.js"></script>
+<script src="/java/autoSearch.js"></script>
+<script src="/java/pageNumber.js"></script>
+<script src="/java/downloald-app.js"></script>
+<script src="/java/modal_wind.js"></script>
+<script src="/java/calendar.js" defer></script>
+<script src="/java/phoneMenu.js"></script>
 
 <% if(username !='guest' ) { %>
-  <script src="../java/showPinMessage.js"></script>
+  <script src="/java/showPinMessage.js"></script>
   <% } %>
 
 </html>

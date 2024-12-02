@@ -86,6 +86,16 @@ const checkCountScaningCodesSchema = Joi.object({
     prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required()
 });
 
+const schemaAddBag = Joi.object({
+    epc: Joi.string().alphanum().required(),
+    code: Joi.string().alphanum().required(),
+    type: Joi.string().alphanum().required(),
+    maxcount: Joi.number().required()
+});
+
+const schemaRemoveBag = Joi.object({
+    bagId: Joi.string().alphanum().required()
+});
 
 const clientDataSchema = Joi.object({
     userId: Joi.string().required(), // userId should be a string and is required
@@ -277,7 +287,7 @@ class Server {
         // (async () => {
         //     try {
         //         await redisClient.connect();
-                
+
         //     } catch (err) {
         //         console.error('Connection Error:', err);
         //     }
@@ -513,18 +523,19 @@ class Server {
 
             const { username, password } = req.body;
 
+            // Get a client from the pool
+            const client = await pool.connect();
+
             try {
-                // Get a client from the pool
-                const client = await pool.connect();
+
+                await client.query('BEGIN');
 
                 // Query the database for the user
                 const result = await client.query("SELECT * FROM users WHERE username = $1", [username]);
 
-                // Release the client back to the pool
-                client.release();
-
                 // Check if the user exists in the result
                 if (result.rows.length === 0) {
+                    await client.query('ROLLBACK');
                     return res.render('index', { title: 'LogIn', errorMessage: 'Invalid username or password' });
                 }
 
@@ -532,6 +543,7 @@ class Server {
 
                 // Check if the user is blocked due to failed login attempts
                 if (this.isBlocked(username)) {
+                    await client.query('ROLLBACK');
                     return res.render('index', { title: 'LogIn', errorMessage: 'Too many failed attempts. Please try again later.' });
                 }
 
@@ -543,6 +555,7 @@ class Server {
                     // Reset failed login attempts on successful login
                     failedLoginAttempts[username] = { failedAttempts: 0 };
 
+                    await client.query('COMMIT');
                     return res.redirect('/');
                 } else {
                     // Increment failed attempts or initialize tracking
@@ -554,11 +567,15 @@ class Server {
                     }
                     failedLoginAttempts[username] = record;
 
+                    await client.query('ROLLBACK');
                     return res.render('index', { title: 'LogIn', errorMessage: 'Invalid username or password' });
                 }
             } catch (err) {
+                await client.query('ROLLBACK');
                 console.error('Error querying the database', err);
                 return res.render('index', { title: 'LogIn', errorMessage: 'An error occurred. Please try again later.' });
+            } finally {
+                client.release();
             }
         });
 
@@ -599,37 +616,53 @@ class Server {
 
             const client = await pool.connect();
 
-            const result = await client.query(`
-                SELECT SPLIT_PART(namebike, '/', 1) AS namebike
-                FROM bicycles
-                WHERE id = $1;`, [nfcData]);
+            try {
+                await client.query('BEGIN');
 
-            client.release();
+                const result = await client.query(`
+                    SELECT SPLIT_PART(namebike, '/', 1) AS namebike
+                    FROM bicycles
+                    WHERE id = $1;`, [nfcData]);
 
-            // Check if a result was found
-            if (result.rows.length === 0) {
-                return res.status(404).json({ error: 'Bike not found for the provided NFC data.' });
+                // Check if a result was found
+                if (result.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(404).json({ error: 'Bike not found for the provided NFC data.' });
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ namebike: result.rows[0].namebike });
+
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error('Error querying the database', err);
+                res.status(500).json({ error: 'Internal Server Error' });
+            } finally {
+                client.release();
             }
-
-            res.status(200).json({ namebike: result.rows[0].namebike });
-
         });
 
         // Endpoint to get all available bikes
         this.app.get('/getClient', async (req, res) => {
+
+            const client = await pool.connect();
+
             try {
 
-                const client = await pool.connect();
+                await client.query('BEGIN');
 
                 const result = await client.query('SELECT id, namesoldier FROM soldier');
 
-                client.release();
-
+                await client.query('COMMIT');
                 res.status(200).json(result.rows);
 
             } catch (err) {
+                await client.query('ROLLBACK');
                 console.error('Error querying the database', err);
                 res.status(500).json({ error: 'Internal Server Error' });
+
+            } finally {
+                client.release();
             }
         });
 
@@ -645,9 +678,11 @@ class Server {
             const dateText = `${date} ${time}`;
             const recDate = new Date(dateText);
 
+            const client = await pool.connect();
+
             try {
 
-                const client = await pool.connect();
+                await client.query('BEGIN');
 
                 // Update bike status and assign to client
 
@@ -686,15 +721,17 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
                     [`Rented Bike with name ${bikeResult.rows[0].namebike}`]);
 
-                // Release the client back to the pool
-                client.release();
-
+                await client.query('COMMIT');
                 // Redirect or respond with a success message
                 res.status(200).send('Data rent received successfully');
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error executing database query', error);
                 res.status(500).send('An error occurred. Please try again later.');
+            } finally {
+                // Release the client back to the pool
+                client.release();
             }
         });
 
@@ -714,6 +751,8 @@ class Server {
 
             try {
 
+                await client.query('BEGIN');
+
                 await client.query(
                     "UPDATE bicycles SET status = 'Available' WHERE id = $1",
                     [nfcData]
@@ -730,13 +769,15 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
                     [`Return Bike with name ${bikeResult.rows[0].namebike}`]);
 
+                await client.query('COMMIT');
                 res.status(200).send('Data return received successfully');
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error executing database query', error);
                 res.status(500).send('An error occurred. Please try again later.');
             } finally {
-                client.release()
+                client.release();
             }
         });
     }
@@ -747,14 +788,14 @@ class Server {
         this.app.get('/download-apk-bike', this.isLoggedIn.bind(this), (req, res) => {
 
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'adroidApp', 'RFIDLaundryReader-1.0-release.apk'); // Update path to your APK file
+            const apkFilePath = path.join(__dirname, 'adroidApp', 'NFCReader-1.0-release.apk'); // Update path to your APK file
 
             if (!this.checkApkFileLegality(apkFilePath, res)) {
                 return;
             }
 
             // Use res.download() to download the APK file
-            res.download(apkFilePath, 'RFIDLaundryReader-1.0-release.apk', (err) => {
+            res.download(apkFilePath, 'NFCReader-1.0-release.apk', (err) => {
                 if (err) {
                     console.error('Error downloading file:', err);
                     res.status(500).send('Could not download the file');
@@ -780,7 +821,11 @@ class Server {
             // Get a client from the pool
             const client = await pool.connect();
 
-            await client.query(`
+            try {
+
+                await client.query('BEGIN');
+
+                await client.query(`
                 WITH bike_times AS (
                 SELECT 
                     b.id AS bike_id, 
@@ -803,9 +848,9 @@ class Server {
                 AND bike_times.hours_passed > 24
                 AND bike_times.status = 'Rented';`);
 
-            // Query the database for the user
-            const result_bike = await client.query(
-                `SELECT 
+                // Query the database for the user
+                const result_bike = await client.query(
+                    `SELECT 
                     namebike, 
                     b.status, 
                     namesoldier, 
@@ -814,62 +859,70 @@ class Server {
                 LEFT JOIN (SELECT bikeId, soldierId, datefrom, ROW_NUMBER() OVER (PARTITION BY bikeId ORDER BY id DESC) AS rn FROM bikeSoldier) lb ON b.id = lb.bikeId AND lb.rn = 1 
                 LEFT JOIN soldier s ON lb.soldierId = s.id
                 ORDER BY CASE WHEN b.status = 'Late' THEN 0 WHEN b.status = 'Repair' THEN 1 WHEN b.status = 'Rented' THEN 2 WHEN b.status = 'Available' THEN 3 ELSE 4 END, b.status;`
-            );
+                );
 
-            // Release the client back to the pool
-            client.release();
 
-            result_bike.rows.forEach(element => {
-                data.push({
-                    name: element.namebike,
-                    status: element.status,
-                    hiredby: element.status == "Available" ? "None" : element.namesoldier,
-                    datefrom: element.status == "Available" ? "None" : element.formatted_date
+                result_bike.rows.forEach(element => {
+                    data.push({
+                        name: element.namebike,
+                        status: element.status,
+                        hiredby: element.status == "Available" ? "None" : element.namesoldier,
+                        datefrom: element.status == "Available" ? "None" : element.formatted_date
+                    });
+
+                    switch (element.status) {
+                        case 'Rented':
+                            rentedBike++;
+                            break;
+
+                        case 'Available':
+                            availableBike++;
+                            break;
+
+                        case 'Repair':
+                            repairBike++;
+                            break;
+
+                        case 'Late':
+                            lateBike++;
+                            break;
+
+                        case 'Long term':
+                            longTermBike++;
+                            break;
+                    }
+
+                    totalBike++;
                 });
 
-                switch (element.status) {
-                    case 'Rented':
-                        rentedBike++;
-                        break;
-
-                    case 'Available':
-                        availableBike++;
-                        break;
-
-                    case 'Repair':
-                        repairBike++;
-                        break;
-
-                    case 'Late':
-                        lateBike++;
-                        break;
-
-                    case 'Long term':
-                        longTermBike++;
-                        break;
+                for (let index = 0; index < 24; index++) {
+                    optionHour.push({ value: index, name: index });
                 }
 
-                totalBike++;
-            });
+                for (let index = 0; index < 60; index++) {
+                    optionMinute.push({ value: index, name: index });
+                }
 
-            for (let index = 0; index < 24; index++) {
-                optionHour.push({ value: index, name: index });
-            }
+                await client.query('COMMIT');
 
-            for (let index = 0; index < 60; index++) {
-                optionMinute.push({ value: index, name: index });
-            }
+                switch (req.session.username) {
+                    case 'guest':
+                        this.giveSpecificPermissionBicycles(req.session.username, [0, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                        break;
+                    case 'helpDesk':
+                        this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                        break;
+                    default:
+                        this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                        break;
+                }
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error executing database query', error);
+                res.status(500).send('An error occurred. Please try again later.');
 
-            switch (req.session.username) {
-                case 'guest':
-                    this.giveSpecificPermissionBicycles(req.session.username, [0, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
-                    break;
-                case 'helpDesk':
-                    this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
-                    break;
-                default:
-                    this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
-                    break;
+            } finally {
+                client.release();
             }
         });
 
@@ -900,8 +953,11 @@ class Server {
                 return res.status(400).send('Invalid date format.');
             }
 
+            const client = await pool.connect();
+
             try {
-                const client = await pool.connect();
+
+                await client.query('BEGIN');
 
                 const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1`, [bikeId]);
 
@@ -958,15 +1014,16 @@ class Server {
                         [req.session.username, `Return Bike with name ${bikeResult.rows[0].namebike}`]);
                 }
 
-                // Release the client back to the pool
-                client.release();
-
+                await client.query('COMMIT');
                 // Redirect or respond with a success message
                 res.redirect('/bicycles');
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error executing database query', error);
                 res.status(500).send('An error occurred. Please try again later.');
+            } finally {
+                client.release();
             }
         });
 
@@ -979,12 +1036,14 @@ class Server {
 
             let { selectedDate1, selectedDate2 } = req.body;
 
+            const client = await pool.connect();
+            
             try {
 
                 selectedDate1 += " 00:00";
                 selectedDate2 += " 23:59";
 
-                const client = await pool.connect();
+                await client.query('BEGIN');
 
                 // Query for bike usage details
                 const result_soldior = await client.query(
@@ -1027,8 +1086,6 @@ class Server {
                     [selectedDate1, selectedDate2]
                 );
                 const dateTotals = result_bike_totals.rows;
-
-                client.release();
 
                 // Create a new Excel workbook
                 const workbook = new excelJS.Workbook();
@@ -1159,11 +1216,16 @@ class Server {
                 res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx');
 
                 await workbook.xlsx.write(res);
+
+                await client.query('COMMIT');
                 res.end();
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.log('Error:', error);
                 res.status(500).send('An error occurred');
+            } finally {
+                client.release();
             }
 
         });
@@ -1173,14 +1235,26 @@ class Server {
             var optionBike = [];
 
             const client = await pool.connect();
-            const result_bike = await client.query(`SELECT id, namebike, status FROM bicycles;`);
-            client.release();
 
-            result_bike.rows.forEach(element => {
-                optionBike.push({ id: element.id, name: element.namebike, status: element.status });
-            });
+            try {
+                await client.query('BEGIN');
+                const result_bike = await client.query(`SELECT id, namebike, status FROM bicycles;`);
 
-            res.json(optionBike);
+                result_bike.rows.forEach(element => {
+                    optionBike.push({ id: element.id, name: element.namebike, status: element.status });
+                });
+
+                await client.query('COMMIT');
+                res.status(200).json(optionBike);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.log('Error:', error);
+                res.status(500).send('An error occurred');
+            } finally {
+                client.release();
+            }
+
         });
 
         this.app.post('/bicycles/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
@@ -1193,12 +1267,15 @@ class Server {
             let { selectedDate1, selectedDate2 } = req.body;
 
             if (selectedDate1 !== "None" && selectedDate2 !== "None") {
+
+                const client = await pool.connect();
+
                 try {
+
+                    await client.query('BEGIN');
 
                     selectedDate1 += " 00:00";
                     selectedDate2 += " 23:59";
-
-                    const client = await pool.connect();
 
                     // Query for bike usage details
                     const result_soldior = await client.query(
@@ -1239,14 +1316,15 @@ class Server {
                     );
                     const dateTotals = result_bike_totals.rows;
 
-                    // Release the client back to the pool
-                    client.release();
-
+                    await client.query('COMMIT');
                     res.json({ data, dateTotals });
 
                 } catch (error) {
+                    await client.query('ROLLBACK');
                     console.log('Error:', error);
                     res.status(500).send('An error occurred');
+                } finally {
+                    client.release();
                 }
             }
         });
@@ -1263,10 +1341,14 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
+
                 // Check if bikeAddId already exists
                 const result = await client.query(`SELECT * FROM bicycles WHERE id = $1`, [bikeAddId]);
 
                 if (result.rows.length > 0) {
+                    await client.query('ROLLBACK');
                     return res.status(400).send({ error: 'This bike already exists.' });
                 }
 
@@ -1283,10 +1365,12 @@ class Server {
                     [req.session.username, `Add Bike with name ${bikeName}`]
                 );
 
+                await client.query('COMMIT');
                 return res.status(200).json({ message: 'Bike added successfully.' });
             } catch (err) {
+                await client.query('ROLLBACK');
                 console.error('Database error:', err);
-                return res.status(500).send({ error: 'Internal server error.' });
+                res.status(500).send({ error: 'Internal server error.' });
             } finally {
                 client.release();
             }
@@ -1305,6 +1389,8 @@ class Server {
 
             try {
 
+                await client.query('BEGIN');
+
                 const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1`, [bikeRemoveId]);
 
                 // Query the database for the user
@@ -1319,11 +1405,13 @@ class Server {
 
                 await client.query(`DELETE FROM bicycles WHERE id = $1;`, [bikeRemoveId]);
 
+                await client.query('COMMIT');
                 return res.status(200).json({ message: 'Bike remove successfully.' });
 
             } catch (err) {
+                await client.query('ROLLBACK');
                 console.error('Database error:', err);
-                return res.status(500).send({ error: 'Internal server error.' });
+                res.status(500).send({ error: 'Internal server error.' });
 
             } finally {
                 client.release();
@@ -1369,6 +1457,9 @@ class Server {
             const errors = [];
 
             try {
+
+                await client.query('BEGIN');
+
                 if (!req.file) {
                     return res.status(400).json({ error: 'No file uploaded.' });
                 }
@@ -1414,6 +1505,7 @@ class Server {
                 }));
 
                 if (errors.length > 0) {
+                    await client.query('ROLLBACK');
                     return res.status(400).json({ message: 'Some rows could not be processed', errors });
                 }
 
@@ -1433,11 +1525,13 @@ class Server {
                 // Query the database for the user
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), 'Multi Add Bike')", [req.session.username]);
 
+                await client.query('COMMIT');
                 return res.status(200).json({ message: 'File processed successfully' });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error processing file:', error);
-                return res.status(500).json({ message: 'An error occurred while processing the file.' });
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
 
             } finally {
                 client.release();
@@ -1450,20 +1544,33 @@ class Server {
 
             const client = await pool.connect();
 
-            const result_bike = await client.query(`
+            try {
+
+                await client.query('BEGIN');
+
+                const result_bike = await client.query(`
                 SELECT status, datefrom FROM bicycles b
                 LEFT JOIN bikesoldier bs ON bs.bikeid = b.id
                 WHERE b.id = $1 and b.status <> 'Available' AND dateto IS NULL;`, [bikeId]);
 
-            client.release();
+                if (result_bike.rows.length > 0) {
+                    const statusRes = result_bike.rows[0].status ? result_bike.rows[0].status : 'Available';
+                    const datefromRes = result_bike.rows[0].datefrom ? result_bike.rows[0].datefrom : 'None';
 
-            if (result_bike.rows.length > 0) {
-                const statusRes = result_bike.rows[0].status ? result_bike.rows[0].status : 'Available';
-                const datefromRes = result_bike.rows[0].datefrom ? result_bike.rows[0].datefrom : 'None';
+                    await client.query('COMMIT');
+                    res.json({ status: statusRes, datefrom: datefromRes });
+                } else {
+                    await client.query('COMMIT');
+                    res.json({ status: 'Available', datefrom: 'None' });
+                }
 
-                res.json({ status: statusRes, datefrom: datefromRes });
-            } else {
-                res.json({ status: 'Available', datefrom: 'None' });
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
             }
         });
 
@@ -1472,14 +1579,28 @@ class Server {
             var optionClient = [];
 
             const client = await pool.connect();
-            const result_client = await client.query(`SELECT id, namesoldier, country FROM soldier;`);
-            client.release();
 
-            result_client.rows.forEach(element => {
-                optionClient.push({ id: element.id, name: element.namesoldier, country: element.country });
-            });
+            try {
 
-            res.json(optionClient);
+                await client.query('BEGIN');
+
+                const result_client = await client.query(`SELECT id, namesoldier, country FROM soldier;`);
+
+                result_client.rows.forEach(element => {
+                    optionClient.push({ id: element.id, name: element.namesoldier, country: element.country });
+                });
+
+                await client.query('COMMIT');
+                res.json(optionClient);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
         });
     }
 
@@ -1491,14 +1612,27 @@ class Server {
             var optionRoom = [];
 
             const client = await pool.connect();
-            const result_client = await client.query(`SELECT id, namekey, soldierid FROM key;`);
-            client.release();
 
-            result_client.rows.forEach(element => {
-                optionRoom.push({ id: element.id, name: `${element.namekey}${element.soldierid ? ' 🚫' : ' ✅'}` });
-            });
+            try {
 
-            res.json(optionRoom);
+                await client.query('BEGIN');
+                const result_client = await client.query(`SELECT id, namekey, soldierid FROM key;`);
+
+                result_client.rows.forEach(element => {
+                    optionRoom.push({ id: element.id, name: `${element.namekey}${element.soldierid ? ' 🚫' : ' ✅'}` });
+                });
+
+                await client.query('COMMIT');
+                res.json(optionRoom);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
         });
 
         this.app.get('/bags', this.isLoggedIn.bind(this), async (req, res) => {
@@ -1507,16 +1641,27 @@ class Server {
 
             const client = await pool.connect();
 
-            const result_all_bags = await client.query(`
-                    SELECT * FROM laundrybags`);
+            try {
 
-            client.release();
+                await client.query('BEGIN');
 
-            result_all_bags.rows.forEach(element => {
-                optionAllBag.push({ id: element.id, name: element.code });
-            });
+                const result_all_bags = await client.query(`SELECT * FROM laundrybags`);
 
-            res.json({ allBags: optionAllBag });
+                result_all_bags.rows.forEach(element => {
+                    optionAllBag.push({ id: element.id, name: element.code, status: element.status });
+                });
+
+                await client.query('COMMIT');
+                res.json({ allBags: optionAllBag });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
         });
 
         this.app.post('/move/getSoldier', this.isLoggedIn.bind(this), async (req, res) => {
@@ -1530,17 +1675,29 @@ class Server {
 
             const client = await pool.connect();
 
-            const result_client = await client.query(`
+            try {
+
+                await client.query('BEGIN');
+
+                const result_client = await client.query(`
                 SELECT s.id, namesoldier FROM key k
                 JOIN soldier s ON s.id = k.soldierid
                 WHERE k.id = $1;`, [keyId]);
 
-            client.release();
+                const soldiername = result_client.rows.length === 0 ? 'None' : result_client.rows[0].namesoldier;
+                const soldierid = result_client.rows.length === 0 ? '' : result_client.rows[0].id;
 
-            const soldiername = result_client.rows.length === 0 ? 'None' : result_client.rows[0].namesoldier;
-            const soldierid = result_client.rows.length === 0 ? '' : result_client.rows[0].id;
+                await client.query('COMMIT');
+                res.json({ id: soldierid, name: soldiername });
 
-            res.json({ id: soldierid, name: soldiername });
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
         });
 
         this.app.post('/searchBikes', async (req, res) => {
@@ -1554,7 +1711,12 @@ class Server {
             var allBikeInfo = [];
 
             const client = await pool.connect();
-            const result_client = await client.query(`
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result_client = await client.query(`
                 SELECT namesoldier,
                 TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI') AS formatted_date_from, 
                 COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS formatted_date_to
@@ -1564,13 +1726,23 @@ class Server {
                 WHERE bikeid = $1
                 ORDER BY datefrom DESC
 				LIMIT 2;`, [selectBike]);
-            client.release();
 
-            result_client.rows.forEach(element => {
-                allBikeInfo.push({ namesoldier: element.namesoldier, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
-            });
 
-            res.json(allBikeInfo);
+                result_client.rows.forEach(element => {
+                    allBikeInfo.push({ namesoldier: element.namesoldier, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
+                });
+
+                await client.query('COMMIT');
+                res.json(allBikeInfo);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
         });
 
         this.app.post('/searchClient', async (req, res) => {
@@ -1584,7 +1756,12 @@ class Server {
             var allClientInfo = [];
 
             const client = await pool.connect();
-            const result_client = await client.query(`
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result_client = await client.query(`
                 SELECT namebike,
                 TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI') AS formatted_date_from,
                 COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS formatted_date_to
@@ -1594,13 +1771,22 @@ class Server {
                 WHERE soldierid = $1
                 ORDER BY datefrom DESC
 				LIMIT 2;`, [selectClient]);
-            client.release();
 
-            result_client.rows.forEach(element => {
-                allClientInfo.push({ namebike: element.namebike, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
-            });
+                result_client.rows.forEach(element => {
+                    allClientInfo.push({ namebike: element.namebike, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
+                });
 
-            res.json(allClientInfo);
+                await client.query('COMMIT');
+                res.json(allClientInfo);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
         });
 
         this.app.get('/accommodation', this.isLoggedIn.bind(this), async (req, res) => {
@@ -1630,9 +1816,13 @@ class Server {
             // Get a client from the pool
             const client = await pool.connect();
 
-            if (numBuild === 'E' || numBuild === 'D') {
+            try {
 
-                const resultData = await client.query(`
+                await client.query('BEGIN');
+
+                if (numBuild === 'E' || numBuild === 'D') {
+
+                    const resultData = await client.query(`
                     SELECT nameroom,
                            COUNT(CASE WHEN namesoldier IS NULL THEN 1 END) as unassigned_count
                     FROM rooms r
@@ -1645,20 +1835,20 @@ class Server {
                     GROUP BY nameroom
                     ORDER BY nameroom;`, [numBuild]);
 
-                // Initialize room counts using the query result
-                resultData.rows.forEach(row => {
-                    nameroomSet.add(row.nameroom);
-                    roomCounts[row.nameroom] = row.unassigned_count || 0;
-                });
+                    // Initialize room counts using the query result
+                    resultData.rows.forEach(row => {
+                        nameroomSet.add(row.nameroom);
+                        roomCounts[row.nameroom] = row.unassigned_count || 0;
+                    });
 
-                type = numBuild === 'E' ? "Entrance" : "Dryer";
-                title = numBuild === 'E' ? "Entrance" : "Dryer room";
+                    type = numBuild === 'E' ? "Entrance" : "Dryer";
+                    title = numBuild === 'E' ? "Entrance" : "Dryer room";
 
-                selectBuildType = '';
+                    selectBuildType = '';
 
-            } else if (numBuild) {
+                } else if (numBuild) {
 
-                const resultData = await client.query(`
+                    const resultData = await client.query(`
                     SELECT 
                         nameroom,
                         COUNT(CASE WHEN s.id IS NULL THEN k.id END) AS unassigned_count
@@ -1680,18 +1870,18 @@ class Server {
                     ORDER BY 
                         nameroom;`, [numBuild]);
 
-                // Initialize room counts using the query result
-                resultData.rows.forEach(row => {
-                    nameroomSet.add(row.nameroom);
-                    roomCounts[row.nameroom] = row.unassigned_count || 0;
-                });
+                    // Initialize room counts using the query result
+                    resultData.rows.forEach(row => {
+                        nameroomSet.add(row.nameroom);
+                        roomCounts[row.nameroom] = row.unassigned_count || 0;
+                    });
 
-                const res_type = await client.query('SELECT type FROM buildings WHERE id = $1', [numBuild]);
+                    const res_type = await client.query('SELECT type FROM buildings WHERE id = $1', [numBuild]);
 
-                type = res_type.rows[0].type;
-                title = `Building ${numBuild}`;
+                    type = res_type.rows[0].type;
+                    title = `Building ${numBuild}`;
 
-                const countFreeBedsResult = await client.query(`
+                    const countFreeBedsResult = await client.query(`
                     SELECT COUNT(*) AS freebeds
                     FROM rooms r
                     LEFT JOIN roomskey rk ON r.id = rk.roomid
@@ -1702,14 +1892,14 @@ class Server {
                     AND br.buildid = $1
                     AND r.nameroom LIKE '__/___';`, [numBuild]);
 
-                countFreeBeds = countFreeBedsResult.rows[0].freebeds;
+                    countFreeBeds = countFreeBedsResult.rows[0].freebeds;
 
-                const selectBuildTyperesult = await client.query(`SELECT type FROM buildings WHERE id = $1;`, [numBuild]);
-                selectBuildType = selectBuildTyperesult.rows[0].type;
+                    const selectBuildTyperesult = await client.query(`SELECT type FROM buildings WHERE id = $1;`, [numBuild]);
+                    selectBuildType = selectBuildTyperesult.rows[0].type;
 
-            } else {
+                } else {
 
-                const resultData = await client.query(`
+                    const resultData = await client.query(`
                     SELECT 
                         nameroom,
                         COUNT(CASE WHEN s.id IS NULL THEN k.id END) AS unassigned_count
@@ -1733,36 +1923,36 @@ class Server {
                     ORDER BY 
                         nameroom;`);
 
-                // Initialize room counts using the query result
-                resultData.rows.forEach(row => {
-                    nameroomSet.add(row.nameroom);
-                    roomCounts[row.nameroom] = row.unassigned_count || 0;
-                });
+                    // Initialize room counts using the query result
+                    resultData.rows.forEach(row => {
+                        nameroomSet.add(row.nameroom);
+                        roomCounts[row.nameroom] = row.unassigned_count || 0;
+                    });
 
-                title = "Accommodation"
+                    title = "Accommodation"
 
-                selectBuildType = '';
-            }
+                    selectBuildType = '';
+                }
 
-            switch (type) {
-                case 'Accommodation':
-                case '':
-                    // Add headers
-                    headerTable.push({ name: "Meal card" });
-                    headerTable.push({ name: "Laundry bag" });
-                    break;
-            }
+                switch (type) {
+                    case 'Accommodation':
+                    case '':
+                        // Add headers
+                        headerTable.push({ name: "Meal card" });
+                        headerTable.push({ name: "Laundry bag" });
+                        break;
+                }
 
-            const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings`);
+                const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings`);
 
-            var navBuild = [
-                { href: "accommodation?numBuild=E", name: "Entrance" },
-                { href: "accommodation?numBuild=D", name: "Dryer room" }
-            ];
+                var navBuild = [
+                    { href: "accommodation?numBuild=E", name: "Entrance" },
+                    { href: "accommodation?numBuild=D", name: "Dryer room" }
+                ];
 
-            var totalFreeBeds = 0;
+                var totalFreeBeds = 0;
 
-            const counttotalBeds = await client.query(`
+                const counttotalBeds = await client.query(`
                 SELECT COUNT(*) AS totalbed
                 FROM rooms r
                 LEFT JOIN roomskey rk ON r.id = rk.roomid
@@ -1771,9 +1961,9 @@ class Server {
                 LEFT JOIN buildroom br ON br.roomid = r.id
                 WHERE nameroom NOT LIKE '__/D_' AND nameroom NOT LIKE '__/_/E_';`);
 
-            for (const row of resultBuild.rows) {
-                try {
-                    const countFreeBedsResult = await client.query(`
+                for (const row of resultBuild.rows) {
+                    try {
+                        const countFreeBedsResult = await client.query(`
                         SELECT COUNT(*) AS freebeds
                         FROM rooms r
                         LEFT JOIN roomskey rk ON r.id = rk.roomid
@@ -1784,69 +1974,80 @@ class Server {
                         AND br.buildid = $1
                         AND r.nameroom LIKE '__/___';`, [row.id]);
 
-                    const selectBuildType = await client.query(`SELECT type FROM buildings WHERE id = $1;`, [row.id]);
+                        const selectBuildType = await client.query(`SELECT type FROM buildings WHERE id = $1;`, [row.id]);
 
-                    const countFreeBeds = countFreeBedsResult.rows[0].freebeds;
-                    totalFreeBeds += Number(countFreeBeds);
+                        const countFreeBeds = countFreeBedsResult.rows[0].freebeds;
+                        totalFreeBeds += Number(countFreeBeds);
 
-                    const url = `accommodation?numBuild=${row.id}`;
+                        const url = `accommodation?numBuild=${row.id}`;
 
-                    if (selectBuildType.rows[0].type === 'Accommodation') {
-                        navBuild.push({ href: url, name: `${row.namebuilding}`, nameAdd: `(${countFreeBeds} free beds)`, numBuild: row.id });
+                        if (selectBuildType.rows[0].type === 'Accommodation') {
+                            navBuild.push({ href: url, name: `${row.namebuilding}`, nameAdd: `(${countFreeBeds} free beds)`, numBuild: row.id });
 
-                    } else {
-                        navBuild.push({ href: url, name: `${row.namebuilding}`, numBuild: row.id });
+                        } else {
+                            navBuild.push({ href: url, name: `${row.namebuilding}`, numBuild: row.id });
+                        }
+
+                    } catch (error) {
+                        await client.query('ROLLBACK');
+                        console.error(`Error fetching data for building ${row.id}:`, error);
                     }
-
-                } catch (error) {
-                    console.error(`Error fetching data for building ${row.id}:`, error);
                 }
-            }
 
-            var totalOccupiedBeds = counttotalBeds.rows[0].totalbed - totalFreeBeds;
+                var totalOccupiedBeds = counttotalBeds.rows[0].totalbed - totalFreeBeds;
 
-            // Release the client back to the pool
-            client.release();
+                let nameroomSetCount = [];
 
-            let nameroomSetCount = [];
+                nameroomSet.forEach(room => {
+                    nameroomSetCount.push({ nameroom: room, countFreeBeds: roomCounts[room] });
+                });
 
-            nameroomSet.forEach(room => {
-                nameroomSetCount.push({ nameroom: room, countFreeBeds: roomCounts[room] });
-            });
+                if (isFirstTime) {
+                    await client.query('COMMIT');
+                    res.status(200).json(nameroomSetCount);
 
-            if (isFirstTime) {
-                res.json(nameroomSetCount);
+                } else if (selectBuildType === 'Accommodation') {
 
-            } else if (selectBuildType === 'Accommodation') {
+                    await client.query('COMMIT');
 
-                switch (req.session.username) {
-                    case 'guest':
-                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
-                        break;
+                    switch (req.session.username) {
+                        case 'guest':
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
+                            break;
 
-                    case 'helpDesk':
-                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
-                        break;
+                        case 'helpDesk':
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
+                            break;
 
-                    default:
-                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
-                        break;
+                        default:
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
+                            break;
+                    }
+                } else {
+
+                    await client.query('COMMIT');
+
+                    switch (req.session.username) {
+                        case 'guest':
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+                            break;
+
+                        case 'helpDesk':
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+                            break;
+
+                        default:
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+                            break;
+                    }
                 }
-            } else {
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
 
-                switch (req.session.username) {
-                    case 'guest':
-                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
-                        break;
-
-                    case 'helpDesk':
-                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
-                        break;
-
-                    default:
-                        this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
-                        break;
-                }
+            } finally {
+                client.release();
             }
         });
 
@@ -1864,6 +2065,8 @@ class Server {
 
             try {
 
+                await client.query('BEGIN');
+
                 const resultAccomm = await client.query(`
                     SELECT CASE
                         WHEN r.nameroom SIMILAR TO '%/(E)[0-9]%' THEN 'Entry'
@@ -1879,9 +2082,11 @@ class Server {
 
                 const type = resultAccomm.rows[0].type;
 
+                await client.query('COMMIT');
                 res.status(200).json({ type: type });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error(error);
                 res.status(500).send("Server error");
 
@@ -1903,6 +2108,7 @@ class Server {
 
             try {
 
+                await client.query('BEGIN');
                 const result = await client.query(`
                     SELECT namekey, k.id as code, namesoldier, country, meal_card as mealcard, lb.code as lbcode
                     FROM rooms r
@@ -1914,9 +2120,11 @@ class Server {
                     ORDER BY namekey;`, [roomNumber]);
 
                 // Send back filtered data for the specified room
+                await client.query('COMMIT');
                 res.json(result.rows);
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error("Error fetching room keys:", error);
                 res.status(500).send("Server error");
 
@@ -1937,104 +2145,117 @@ class Server {
             // Get a client from the pool
             const client = await pool.connect();
 
-            if (soldierId !== '' && countryId === 'None') {
-                await client.query(
-                    "UPDATE key SET soldierid = $1 where id = $2;",
-                    [soldierId, keyCodeId]
-                );
+            try {
 
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Give key ${keyCodeId} to ${soldierId}`]);
+                await client.query('BEGIN');
 
-            } else if (soldierId !== '' && countryId !== 'None') {
-
-                const result_alrady_accommodation_soldier = await client.query(`SELECT * FROM key WHERE soldierid = $1`,
-                    [soldierId]
-                );
-
-                if (result_alrady_accommodation_soldier.rows.length > 0)
-                    return res.status(401).send({ message: "This soldier is already accommodation" });
-
-                const result_alrady_bag_get = await client.query(`SELECT * FROM soldier WHERE date_free IS NULL AND laundry_bag_id = $1;`,
-                    [bagId]
-                );
-
-                if (result_alrady_bag_get.rows.length > 0)
-                    return res.status(401).send({ message: "This bag has already been used" });
-
-                await client.query(
-                    "UPDATE key SET soldierid = $1 where id = $2;",
-                    [soldierId, keyCodeId]
-                );
-
-                await client.query(`UPDATE soldier SET date_free = NULL, date_accommodation = NULL WHERE date_free IS NOT NULL AND id = $1;`, [soldierId]);
-
-                const result_accommodation_soldier = await client.query(`SELECT * FROM soldier WHERE date_accommodation IS NOT NULL AND id = $1`,
-                    [soldierId]
-                );
-
-                if (result_accommodation_soldier.rows.length === 0) {
+                if (soldierId !== '' && countryId === 'None') {
                     await client.query(
-                        "UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3 where id = $1;",
-                        [soldierId, mealCardId, bagId]
+                        "UPDATE key SET soldierid = $1 where id = $2;",
+                        [soldierId, keyCodeId]
                     );
+
+                    // Query the database for the user
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Give key ${keyCodeId} to ${soldierId}`]);
+
+                } else if (soldierId !== '' && countryId !== 'None') {
+
+                    const result_alrady_accommodation_soldier = await client.query(`SELECT * FROM key WHERE soldierid = $1`,
+                        [soldierId]
+                    );
+
+                    if (result_alrady_accommodation_soldier.rows.length > 0)
+                        return res.status(401).send({ message: "This soldier is already accommodation" });
+
+                    const result_alrady_bag_get = await client.query(`SELECT * FROM soldier WHERE date_free IS NULL AND laundry_bag_id = $1;`,
+                        [bagId]
+                    );
+
+                    if (result_alrady_bag_get.rows.length > 0)
+                        return res.status(401).send({ message: "This bag has already been used" });
+
+                    await client.query(
+                        "UPDATE key SET soldierid = $1 where id = $2;",
+                        [soldierId, keyCodeId]
+                    );
+
+                    await client.query(`UPDATE soldier SET date_free = NULL, date_accommodation = NULL WHERE date_free IS NOT NULL AND id = $1;`, [soldierId]);
+
+                    const result_accommodation_soldier = await client.query(`SELECT * FROM soldier WHERE date_accommodation IS NOT NULL AND id = $1`,
+                        [soldierId]
+                    );
+
+                    if (result_accommodation_soldier.rows.length === 0) {
+                        await client.query(
+                            "UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3 where id = $1;",
+                            [soldierId, mealCardId, bagId]
+                        );
+                    } else {
+                        await client.query(
+                            "UPDATE soldier SET meal_card = $2, laundry_bag_id = $3 where id = $1;",
+                            [soldierId, mealCardId, bagId]
+                        );
+                    }
+
+                    const bagsRes = await client.query(`SELECT code FROM laundrybags WHERE id = $1;`, [bagId]);
+
+                    // Query the database for the user
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Accommodated soldier with number ${soldierId} with meal card ${mealCardId} and bag ${bagsRes.rows[0].code}`]);
+
+                } else if (soldierId === '' && countryId !== 'None') {
+
+                    const res_query = await client.query(
+                        "SELECT soldierid FROM key WHERE id = $1;",
+                        [keyCodeId]
+                    );
+
+                    await client.query(
+                        "UPDATE key SET soldierid = NULL where id = $1;",
+                        [keyCodeId]
+                    );
+
+                    await client.query(
+                        "UPDATE soldier SET date_free = CURRENT_DATE where id = $1;",
+                        [res_query.rows[0].soldierid]
+                    );
+
+                    // Query the database for the user
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Release soldier with number ${res_query.rows[0].soldierid}`]);
+
                 } else {
                     await client.query(
-                        "UPDATE soldier SET meal_card = $2, laundry_bag_id = $3 where id = $1;",
-                        [soldierId, mealCardId, bagId]
+                        "UPDATE key SET soldierid = NULL where id = $1;",
+                        [keyCodeId]
                     );
+
+                    // Query the database for the user
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Return key ${keyCodeId}`]);
                 }
 
-                const bagsRes = await client.query(`SELECT code FROM laundrybags WHERE id = $1;`, [bagId]);
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'Data saved successfully' });
 
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Accommodated soldier with number ${soldierId} with meal card ${mealCardId} and bag ${bagsRes.rows[0].code}`]);
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error("Error fetching room keys:", error);
+                res.status(500).send("Server error");
 
-            } else if (soldierId === '' && countryId !== 'None') {
-
-                const res_query = await client.query(
-                    "SELECT soldierid FROM key WHERE id = $1;",
-                    [keyCodeId]
-                );
-
-                await client.query(
-                    "UPDATE key SET soldierid = NULL where id = $1;",
-                    [keyCodeId]
-                );
-
-                await client.query(
-                    "UPDATE soldier SET date_free = CURRENT_DATE where id = $1;",
-                    [res_query.rows[0].soldierid]
-                );
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Release soldier with number ${res_query.rows[0].soldierid}`]);
-
-            } else {
-                await client.query(
-                    "UPDATE key SET soldierid = NULL where id = $1;",
-                    [keyCodeId]
-                );
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Return key ${keyCodeId}`]);
+            } finally {
+                client.release();
             }
-
-            // Release the client back to the pool
-            client.release();
-
-            return res.status(200).json({ message: 'Data saved successfully' });
         });
 
         this.app.get('/accommodation/viewReport', async (req, res) => {
 
+            const client = await pool.connect();
+
             try {
 
-                const client = await pool.connect();
+                await client.query('BEGIN');
 
                 // Query for bike usage details
                 const result_soldior = await client.query(`
@@ -2078,21 +2299,25 @@ class Server {
                 const data = result_soldior.rows;
                 const data_move = result_move.rows;
 
-                client.release();
-
+                await client.query('COMMIT');
                 res.json({ data, data_move });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.log('Error:', error);
                 res.status(500).send('An error occurred');
+            } finally {
+                client.release();
             }
         });
 
         this.app.post("/accommodation/report", this.isLoggedIn.bind(this), async (req, res) => {
 
+            const client = await pool.connect();
+
             try {
 
-                const client = await pool.connect();
+                await client.query('BEGIN');
 
                 // Query for bike usage details
                 const result_soldior = await client.query(`
@@ -2135,9 +2360,6 @@ class Server {
 
                 const data = result_soldior.rows;
                 const data_move = result_move.rows;
-
-                // Release the client back to the pool
-                client.release();
 
                 // Create a new Excel workbook
                 const workbook = new excelJS.Workbook();
@@ -2252,11 +2474,16 @@ class Server {
 
                 // Write the workbook to the response stream
                 await workbook.xlsx.write(res);
+
+                await client.query('COMMIT');
                 res.end(); // End the response
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.log('Error:', error);
                 res.status(500).send('An error occurred');
+            } finally {
+                client.release();
             }
 
         });
@@ -2269,9 +2496,10 @@ class Server {
             }
 
             const { keyId, soldId, keyMoveId, soldMoveId } = req.body;
+            const client = await pool.connect();
 
             try {
-                const client = await pool.connect();
+                await client.query('BEGIN');
 
                 if (soldMoveId) {
                     await client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]);
@@ -2291,13 +2519,16 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Move soldier ${soldId} from room ${keyId} to room ${keyMoveId}`]);
 
-                client.release();
-
+                await client.query('COMMIT');
                 res.redirect('/accommodation');
 
             } catch (error) {
-                console.log('Error:', error);
+                await client.query('ROLLBACK');
+                console.error('Error:', error);
                 res.status(500).send('An error occurred');
+
+            } finally {
+                client.release();
             }
 
         });
@@ -2310,16 +2541,18 @@ class Server {
             }
 
             const { soldierId, soldierName, soldierCountry } = req.body;
+            const client = await pool.connect();
 
             try {
 
-                const client = await pool.connect();
+                await client.query('BEGIN');
 
                 // Inside the backend function, when checking for duplicates
                 const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [soldierId]);
 
                 if (result.rows.length > 0) {
                     // Duplicate soldierId found
+                    await client.query('ROLLBACK');
                     return res.status(400).json({ message: `Soldier with id: '${soldierId}' already exists.` });
                 }
 
@@ -2329,15 +2562,16 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Add soldier ${soldierName}`]);
 
-                client.release();
-
+                await client.query('COMMIT');
                 return res.status(200).json({ message: 'Data saved successfully' });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.log('Error:', error);
                 res.status(500).send('An error occurred');
+            } finally {
+                client.release();
             }
-
         });
 
         this.app.post('/accommodation/uploadSoldier', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
@@ -2346,7 +2580,11 @@ class Server {
             const errors = [];
 
             try {
+
+                await client.query('BEGIN');
+
                 if (!req.file) {
+                    await client.query('ROLLBACK');
                     return res.status(400).json({ error: 'No file uploaded.' });
                 }
 
@@ -2376,6 +2614,7 @@ class Server {
                 }));
 
                 if (errors.length > 0) {
+                    await client.query('ROLLBACK');
                     return res.status(400).json({ message: 'Some rows could not be processed', errors });
                 }
 
@@ -2387,11 +2626,13 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Add multi soldier`]);
 
+                await client.query('COMMIT');
                 return res.status(200).json({ message: 'File processed successfully' });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error processing file:', error);
-                return res.status(500).json({ error: 'An error occurred while processing the file.' });
+                res.status(500).json({ error: 'An error occurred while processing the file.' });
 
             } finally {
                 client.release();
@@ -2445,8 +2686,11 @@ class Server {
             // Connect to PostgreSQL
             const client = await pool.connect();
 
-            // Query data
-            const result = await client.query(`
+            try {
+                await client.query('BEGIN');
+
+                // Query data
+                const result = await client.query(`
                 SELECT nameKey, k.id AS keyNumber, namesoldier AS soldierId, meal_card AS mealCard, laundry_bag_id AS laundryBag
                 FROM rooms r
                 LEFT JOIN roomskey rk ON r.id = rk.roomid
@@ -2459,36 +2703,44 @@ class Server {
 				AND namesoldier IS NULL AND k.id IS NOT NULL AND b.type = 'Accommodation'
                 ORDER BY nameroom, namekey;`);
 
-            client.release();
+                const data = result.rows;
 
-            const data = result.rows;
+                // Create a new Excel workbook
+                const workbook = new excelJS.Workbook();
 
-            // Create a new Excel workbook
-            const workbook = new excelJS.Workbook();
+                // Sheet 1: Accommodation Multipul Soldiers
+                const worksheet = workbook.addWorksheet('Accommodation Multipul Soldiers');
 
-            // Sheet 1: Accommodation Multipul Soldiers
-            const worksheet = workbook.addWorksheet('Accommodation Multipul Soldiers');
+                // Add column headers (modify based on your table structure)
+                worksheet.columns = Object.keys(data[0]).map((key) => ({
+                    header: key,
+                    key: key,
+                    width: 15,
+                }));
 
-            // Add column headers (modify based on your table structure)
-            worksheet.columns = Object.keys(data[0]).map((key) => ({
-                header: key,
-                key: key,
-                width: 15,
-            }));
+                // Add rows
+                data.forEach((row) => {
+                    worksheet.addRow(row);
+                });
 
-            // Add rows
-            data.forEach((row) => {
-                worksheet.addRow(row);
-            });
+                // Set the response headers for file download
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                res.setHeader('Content-Disposition', 'attachment; filename=templateAccommodationSoldier.xlsx');
 
-            // Set the response headers for file download
-            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            res.setHeader('Content-Disposition', 'attachment; filename=templateAccommodationSoldier.xlsx');
+                // Write the workbook to the response stream
+                await workbook.xlsx.write(res);
 
-            // Write the workbook to the response stream
-            await workbook.xlsx.write(res);
-            res.end(); // End the response
+                await client.query('COMMIT');
+                res.end(); // End the response
 
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ error: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
         });
 
         this.app.post('/accommodation/uploadMultiSoldier', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
@@ -2498,7 +2750,11 @@ class Server {
             const bagSet = [];
 
             try {
+
+                await client.query('BEGIN');
+
                 if (!req.file) {
+                    await client.query('ROLLBACK');
                     return res.status(400).json({ error: 'No file uploaded.' });
                 }
 
@@ -2554,6 +2810,7 @@ class Server {
                     if (result_check_bag.rows.length === 0) {
                         errors.push({ type: 'CheckBag', message: `The bag with number '${row.laundrybag}' is not exists.` });
                         return;
+
                     } else {
                         bagSet.push({ id: result_check_bag.rows[0].id, code: result_check_bag.rows[0].code });
                     }
@@ -2561,6 +2818,7 @@ class Server {
                 }));
 
                 if (errors.length > 0) {
+                    await client.query('ROLLBACK');
                     return res.status(400).json({ message: 'Some rows could not be processed', errors });
                 }
 
@@ -2586,11 +2844,13 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Accommodated multi soldier`]);
 
+                await client.query('COMMIT');
                 return res.status(200).json({ message: 'File processed successfully' });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error processing file:', error);
-                return res.status(500).json({ error: 'An error occurred while processing the file.' });
+                res.status(500).json({ error: 'An error occurred while processing the file.' });
 
             } finally {
                 client.release();
@@ -2602,6 +2862,8 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
 
                 const res_query = await client.query(
                     `SELECT k.id, soldierid FROM key k
@@ -2626,11 +2888,13 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Release all soldier`]);
 
+                await client.query('COMMIT');
                 return res.status(200).json({ message: 'All rooms are vacated' });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error processing file:', error);
-                return res.status(500).json({ error: 'An error occurred while processing the data.' });
+                res.status(500).json({ error: 'An error occurred while processing the data.' });
 
             } finally {
                 client.release();
@@ -2651,11 +2915,14 @@ class Server {
 
             try {
 
+                await client.query('BEGIN');
+
                 const result_build = await client.query(
                     `SELECT * FROM buildings WHERE id = $1;`, [buildId]
                 );
 
                 if (result_build.rows.length > 0) {
+                    await client.query('ROLLBACK');
                     return res.status(401).json({ message: 'This destination already exists!' });
                 }
 
@@ -2667,11 +2934,13 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Add destination ${buildName}`]);
 
+                await client.query('COMMIT');
                 return res.status(200).json({ message: 'Add destination is successfully' });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error add destination:', error);
-                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
 
             } finally {
                 client.release();
@@ -2690,16 +2959,21 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
+
                 await client.query("DELETE FROM buildings WHERE id = $1;", [buildId]);
 
                 // Query the database for the user
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Remove destination ${buildId}`]);
 
+                await client.query('COMMIT');
                 return res.status(200).send();
 
             } catch (error) {
-                return res.status(500).json({ message: 'Failed to delete destination. Please remove all rooms and try again.' });
+                await client.query('ROLLBACK');
+                res.status(500).json({ message: 'Failed to delete destination. Please remove all rooms and try again.' });
 
             } finally {
                 client.release();
@@ -2719,6 +2993,8 @@ class Server {
 
             try {
 
+                await client.query('BEGIN');
+
                 const buildingName = clickBuild ?? roomName.split('/')[0];
 
                 const result_build = await client.query(
@@ -2726,6 +3002,7 @@ class Server {
                 );
 
                 if (result_build.rows.length > 0) {
+                    await client.query('ROLLBACK');
                     return res.status(401).json({ message: 'This room already exists!' });
                 }
 
@@ -2736,11 +3013,13 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Add room ${roomName} to ${buildingName}`]);
 
+                await client.query('COMMIT');
                 return res.status(200).send({ message: `The room ${roomName} was added into building ${buildingName}.` });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error add destination:', error);
-                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
 
             } finally {
                 client.release();
@@ -2759,6 +3038,8 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
 
                 var result;
 
@@ -2786,11 +3067,13 @@ class Server {
                     total_res.push({ id: row.id, name: row.nameroom });
                 });
 
+                await client.query('COMMIT');
                 return res.status(200).send(total_res);
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error add destination:', error);
-                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
 
             } finally {
                 client.release();
@@ -2801,7 +3084,7 @@ class Server {
 
             const { error } = schemaSpecialKey.validate(req.body);
             if (error) {
-                console.log(error);
+                console.error(error);
                 return res.status(400).send({ message: error.details[0].message });
             }
 
@@ -2810,6 +3093,8 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
 
                 var result;
 
@@ -2851,11 +3136,13 @@ class Server {
                     total_res.push({ id: row.id, name: row.namekey });
                 });
 
+                await client.query('COMMIT');
                 return res.status(200).send(total_res);
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error add destination:', error);
-                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
 
             } finally {
                 client.release();
@@ -2867,6 +3154,8 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
 
                 const result = await client.query(`
                     SELECT k.id, k.namekey, s.namesoldier, s.country, s.meal_card, l.code FROM key k
@@ -2887,11 +3176,13 @@ class Server {
                     });
                 });
 
+                await client.query('COMMIT');
                 return res.status(200).send(total_res);
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error add destination:', error);
-                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
 
             } finally {
                 client.release();
@@ -2910,6 +3201,9 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
+
                 await client.query(`DELETE FROM buildroom WHERE roomid = $1;`, [roomId]);
                 await client.query(`DELETE FROM rooms WHERE id = $1;`, [roomId]);
 
@@ -2917,10 +3211,12 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Remove room ${roomId}`]);
 
+                await client.query('COMMIT');
                 return res.status(200).send({ message: `The room was removed successfully.` });
 
             } catch (error) {
-                return res.status(500).json({ message: 'Failed to delete room. Please remove all keys and try again.' });
+                await client.query('ROLLBACK');
+                res.status(500).json({ message: 'Failed to delete room. Please remove all keys and try again.' });
 
             } finally {
                 client.release();
@@ -2940,11 +3236,14 @@ class Server {
 
             try {
 
+                await client.query('BEGIN');
+
                 const result_key = await client.query(
                     `SELECT * FROM key WHERE id = $1;`, [keyId]
                 );
 
                 if (result_key.rows.length > 0) {
+                    await client.query('ROLLBACK');
                     return res.status(401).json({ message: 'This key already exists!' });
                 }
 
@@ -2955,11 +3254,13 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Add key ${keyName} to room ${selectedRoomForKey}`]);
 
+                await client.query('COMMIT');
                 return res.status(200).send({ message: `The key ${keyName} was added into this building.` });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error add destination:', error);
-                return res.status(500).json({ message: 'An error occurred while processing the data.' });
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
 
             } finally {
                 client.release();
@@ -2978,6 +3279,9 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
+
                 await client.query(`DELETE FROM roomskey WHERE keyid = $1;`, [keyId]);
                 await client.query(`DELETE FROM key WHERE id = $1;`, [keyId]);
 
@@ -2985,10 +3289,12 @@ class Server {
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Remove key ${keyId}`]);
 
+                await client.query('COMMIT');
                 return res.status(200).send({ message: `The key was removed successfully.` });
 
             } catch (error) {
-                return res.status(500).json({ message: 'Failed to delete key. Try again later.' });
+                await client.query('ROLLBACK');
+                res.status(500).json({ message: 'Failed to delete key. Try again later.' });
 
             } finally {
                 client.release();
@@ -3016,6 +3322,9 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
+
                 // Save data to the database and get the inserted id
                 const query = 'INSERT INTO fitness (id, soldierid) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM fitness), $1) RETURNING id';
                 const values = [userId];
@@ -3028,9 +3337,11 @@ class Server {
                 req.session.soldierid = soldierId;
 
                 // Respond with a success message
+                await client.query('COMMIT');
                 res.status(200).json({ message: 'Client saved successfully', soldierId });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error inserting data:', error);
                 res.status(500).json({ message: 'Error saving client data to the database' });
 
@@ -3064,15 +3375,20 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
+
                 // Update the fitness table with the emoji
                 const query = 'UPDATE fitness SET emoji = $2 WHERE id = $1';
                 const values = [soldierId, emoji];
                 await client.query(query, values);
 
                 // Respond with a success message
+                await client.query('COMMIT');
                 res.status(200).json({ message: 'Emoji saved successfully' });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error updating data:', error);
                 res.status(500).json({ message: 'Error saving emoji data to the database' });
 
@@ -3087,6 +3403,8 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
 
                 const data_emoji = await client.query(`
                     SELECT 
@@ -3122,6 +3440,8 @@ class Server {
                 const data = data_emoji.rows;
                 const dataPerEmj = result_percent_emoji.rows[0];
 
+                await client.query('COMMIT');
+
                 switch (req.session.username) {
                     case 'guest':
                         this.giveSpecificPermissionFitness(req.session.username, [0, 4, 5], res, data, dataPerEmj);
@@ -3134,12 +3454,13 @@ class Server {
                     default:
                         this.giveSpecificPermissionFitness(req.session.username, [0, 1, 2, 3, 4, 5], res, data, dataPerEmj);
                         break;
-
                 }
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error inserting data:', error);
                 res.status(500).json({ message: 'Error saving emoji data to the database' });
+
             } finally {
                 client.release();
             }
@@ -3160,6 +3481,9 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
+
                 // Query for emoji data based on the date range
                 const data_emoji = await client.query(`
                 SELECT 
@@ -3197,9 +3521,11 @@ class Server {
                 const total_data = data_emoji_total.rows[0];
                 const data = data_emoji.rows;
 
+                await client.query('COMMIT');
                 res.status(200).json({ data: data, total_data: total_data });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error fetching emoji data:', error);
                 res.status(500).json({ message: 'Error fetching emoji data from the database' });
             } finally {
@@ -3280,7 +3606,7 @@ class Server {
         });
     }
 
-        defineRoutesLaundry() {
+    defineRoutesLaundry() {
 
         const statusMapping = {
             'drop off': 'avg_drop_off_duration',
@@ -3311,6 +3637,8 @@ class Server {
             let overallTotalMountFormatted = 0;
 
             try {
+
+                await client.query('BEGIN');
 
                 // Query to get the count of bags grouped by status and type
                 const result = await client.query(`
@@ -3382,10 +3710,12 @@ class Server {
                 const overallAverageTimeInSeconds = count > 0 ? Math.floor(totalAvgTimeInSeconds / count) : 0;
                 const overallAverageFormatted = formatTime(overallAverageTimeInSeconds);
 
+                await client.query('COMMIT');
                 // Continue with the response
                 this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 2, 3, 4, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error fetching bag types or average times:', error);
                 res.status(500).send('Server Error');
             } finally {
@@ -3409,18 +3739,23 @@ class Server {
 
             try {
 
+                await client.query('BEGIN');
+
                 const result = await client.query(
                     'SELECT * FROM laundrybags WHERE id = $1',
                     [code] // Replace $1 with the scanned EPC code
                 );
 
                 if (result.rows.length > 0) {
+                    await client.query('COMMIT');
                     res.json({ exists: true }); // Bag exists
                 } else {
+                    await client.query('COMMIT');
                     res.json({ exists: false }); // Bag does not exist
                 }
 
             } catch (err) {
+                await client.query('ROLLBACK');
                 console.error(err);
                 res.status(500).json({ message: "Internal server error" });
 
@@ -3441,7 +3776,7 @@ class Server {
             codes.forEach(async code => {
 
                 const client = await pool.connect();
-                
+
                 try {
 
                     await client.query('BEGIN');
@@ -3522,8 +3857,8 @@ class Server {
                 }
 
                 const bag = result.rows[0];
-                
-                if(bag.laundrycount >= permCount) {
+
+                if (bag.laundrycount >= permCount) {
                     await client.query('ROLLBACK');
                     return res.status(402).json({ message: `Bag number ${bag.code} has already been laundered. The maximum laundry limit per month for one bag is ${permCount}` });
                 }
@@ -3531,8 +3866,6 @@ class Server {
                     await client.query('ROLLBACK');
                     return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${bag.status}, not ${prev_destination}.` });
                 }
-
-                
 
                 await client.query('COMMIT');
                 res.status(200).json({ code: bag.code, soldierId: bag.id });
@@ -3568,8 +3901,8 @@ class Server {
                         WHERE s.date_free IS NULL AND l.status = $1;`, [prev_destination]);
 
                 const bag = result.rows;
-                
-                if(prev_destination !== 'None' && prev_destination !== 'Ready to pick up' && bag.length !== countScaneCode) {
+
+                if (prev_destination !== 'None' && prev_destination !== 'Ready to pick up' && bag.length !== countScaneCode) {
                     await client.query('ROLLBACK');
                     return res.status(404).json({ request: false, message: `Not all bags are scanned. Please scan all ${bag.length} bags from the ${prev_destination}.` });
                 }
@@ -3608,7 +3941,7 @@ class Server {
 
                 if (result.rows.length === 0) {
                     await client.query('ROLLBACK');
-                    return res.status(404).json({ message: "Laundry bag not found" });
+                    return res.status(404).json({ message: "Laundry bag is in storage" });
                 }
 
                 if (result.rows[0].laundrycount > result.rows[0].maxcountlandry) {
@@ -3618,7 +3951,18 @@ class Server {
 
                 const bag = result.rows[0];
 
+                if(destination === 'None') {
+                    await client.query(`
+                        UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_DATE WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
+
+                    await client.query(`
+                        UPDATE laundrybags SET status = $1 WHERE id = $2;`, [destination, code]);
+                }
+
                 if (prev_destination === 'None') {
+
+                    await client.query(`INSERT INTO laundryreport VALUES ($1, CURRENT_DATE, NULL);`, [code]);
+
                     await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
                         avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]);
 
@@ -3665,18 +4009,24 @@ class Server {
 
             try {
 
+                await client.query('BEGIN');
+
                 const result = await client.query(`
                     SELECT * 
                     FROM laundrybags 
                     WHERE status = 'Ready to pick up' 
                     AND timein < NOW() - INTERVAL '1 week';`);
 
-                if (result.rows.length > 0)
-                    res.status(400).json({ message: "Latte bags!" });
-                else
-                    res.status(200).json({ message: "All is OK" });
+                if (result.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "Latte bags!" });
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: "All is OK" });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error(error);
                 res.status(500).json({ message: "Internal server error" });
 
@@ -3699,6 +4049,8 @@ class Server {
 
             try {
 
+                await client.query('BEGIN');
+
                 result = await client.query(`
                     SELECT
                         l.id,
@@ -3719,10 +4071,12 @@ class Server {
                     ORDER BY 
                         islate ASC;`, [status]);
 
+                await client.query('COMMIT');
                 // Send the result rows back to the client
                 res.status(200).json(result.rows);
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error(error);
                 res.status(500).json({ message: "Internal server error" });
             } finally {
@@ -3735,6 +4089,8 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
 
                 const result = await client.query(`
                     SELECT 
@@ -3754,9 +4110,11 @@ class Server {
                     WHERE s.date_free IS NULL
                     GROUP BY s.country;`);
 
+                await client.query('COMMIT');
                 res.status(200).json({ data: result.rows, data_nationality: result_nationality.rows });
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error(error);
                 res.status(500).json({ message: "Internal server error" });
 
@@ -3770,6 +4128,9 @@ class Server {
             const client = await pool.connect();
 
             try {
+
+                await client.query('BEGIN');
+
                 const result = await client.query(`
                     SELECT 
                         l.code, 
@@ -3897,11 +4258,83 @@ class Server {
 
                 // Write the Excel file to the response
                 await workbook.xlsx.write(res);
+
+                await client.query('COMMIT');
                 res.end();
 
             } catch (error) {
+                await client.query('ROLLBACK');
                 console.error('Error generating Excel report:', error);
                 res.status(500).send('Failed to generate report.');
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/laundry/addBag', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAddBag.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { epc, code, type, maxcount } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const check_exist = await client.query(`SELECT * FROM laundrybags WHERE id = $1;`, [epc]);
+
+                if (check_exist.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: 'This bag already exists!' });
+                }
+
+                await client.query(`INSERT INTO laundrybags(id, code, type, status, timein, timeout, maxcountlandry) VALUES ($1, $2, $3, 'None', null, null, $4);`,
+                    [epc, code, type, maxcount]
+                );
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'Bag added successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error generating Excel report:', error);
+                res.status(500).json({ message: 'Failed to generate report.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/laundry/deleteBag', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaRemoveBag.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { bagId } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                await client.query(`DELETE FROM laundrybags WHERE id = $1`, [bagId]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The bag was successfully removed' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error generating Excel report:', error);
+                res.status(500).json({ message: 'Failed to generate report.' });
 
             } finally {
                 client.release();

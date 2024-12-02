@@ -135,6 +135,7 @@ body {
     transition: background-color 0.3s ease;
     display: flex;
     justify-content: right;
+    margin-right: 15px;
 }
 
 .main-btn {
@@ -457,7 +458,6 @@ tbody tr:nth-child(even) {
     font-size: 16px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    margin-top: 20px;
 }
 
 /* Input Field Styling Above Headers */
@@ -487,6 +487,7 @@ thead th input:focus {
 .modal-content h2 {
     display: flex;
     align-items: center;
+    margin-bottom: 4%;
 }
 
 /* Styling for the custom dropdown */
@@ -494,6 +495,7 @@ thead th input:focus {
     position: relative;
 }
 
+#deleteBagDropdown,
 #addBagDropDown,
 #moveBagDropDown,
 #removeBagDropDown {
@@ -510,6 +512,7 @@ thead th input:focus {
     background-color: white;
 }
 
+#deleteBagDropdown li,
 #addBagDropDown li,
 #moveBagDropDown li,
 #removeBagDropDown li {
@@ -517,6 +520,7 @@ thead th input:focus {
     cursor: pointer;
 }
 
+#deleteBagDropdown li:hover,
 #addBagDropDown li:hover,
 #moveBagDropDown li:hover,
 #removeBagDropDown li:hover {
@@ -524,12 +528,14 @@ thead th input:focus {
     color: white;
 }
 
+#deleteBagDropdown.list-group::-webkit-scrollbar,
 #addBagDropDown.list-group::-webkit-scrollbar,
 #moveBagDropDown.list-group::-webkit-scrollbar,
 #removeBagDropDown.list-group::-webkit-scrollbar {
     width: 10px;
 }
 
+#deleteBagDropdown.list-group::-webkit-scrollbar-thumb,
 #addBagDropDown.list-group::-webkit-scrollbar-thumb,
 #moveBagDropDown.list-group::-webkit-scrollbar-thumb,
 #removeBagDropDown.list-group::-webkit-scrollbar-thumb {
@@ -537,6 +543,7 @@ thead th input:focus {
     border-radius: 4px;
 }
 
+#deleteBagDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #addBagDropDown.list-group::-webkit-scrollbar-thumb:hover,
 #moveBagDropDown.list-group::-webkit-scrollbar-thumb:hover,
 #removeBagDropDown.list-group::-webkit-scrollbar-thumb:hover {

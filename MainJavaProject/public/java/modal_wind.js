@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } else {
 
-            icon.src = "../icon/error.png";
+            icon.src = "/icon/error.png";
             message.textContent = "Invalid time period";
             btnYes.style.display = "none";
 
@@ -471,27 +471,27 @@ document.addEventListener('DOMContentLoaded', function () {
                 ));
 
                 if (isInvalidInput) {
-                    icon.src = "../icon/error.png";
+                    icon.src = "/icon/error.png";
                     message.textContent = "Please select all fields";
                     btnYes.style.display = "none";
                 } else if (action === "Rent" && data.status !== 'Available') {
-                    icon.src = "../icon/error.png";
+                    icon.src = "/icon/error.png";
                     message.textContent = "The bike is already rented!";
                     btnYes.style.display = "none";
                 } else if (action === "Return" && data.status === 'Available') {
-                    icon.src = "../icon/error.png";
+                    icon.src = "/icon/error.png";
                     message.textContent = "This bike is not rented!";
                     btnYes.style.display = "none";
                 } else if (action === "Return" && dateFrom > dateTo) {
-                    icon.src = "../icon/error.png";
+                    icon.src = "/icon/error.png";
                     message.textContent = "Invalid return date!";
                     btnYes.style.display = "none";
                 } else if (dateTo > dateNow) {
-                    icon.src = "../icon/error.png";
+                    icon.src = "/icon/error.png";
                     message.textContent = "Invalid rent date!";
                     btnYes.style.display = "none";
                 } else {
-                    icon.src = "../icon/information.png";
+                    icon.src = "/icon/information.png";
                     message.textContent = "Are you sure you want to proceed?";
                     btnYes.style.display = "block";
                 }
@@ -500,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 console.error("Unexpected error:", error);
-                icon.src = "../icon/error.png";
+                icon.src = "/icon/error.png";
                 message.textContent = "An error occurred while checking the bike status.";
                 btnYes.style.display = "none";
                 openModal(modalMess, modalMessContent);
@@ -514,8 +514,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             switch (modal) {
                 case modalAddBike:
-                    document.getElementById('bike-number').value = '';
-                    document.getElementById('bike-name').value = '';
+                    document.querySelectorAll('#bike-number, #bike-name').forEach((input) => {
+
+                        input.classList.remove('is-valid');
+                        input.classList.remove('is-invalid');
+
+                        input.value = '';
+                    });
                     break;
 
                 case modalRemoveBike:
@@ -607,8 +612,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case modalAddBike:
                 closeModal(modalAddBike, modalAddBikeContent);
-                document.getElementById('bike-number').value = '';
-                document.getElementById('bike-name').value = '';
+                document.querySelectorAll('#bike-number, #bike-name').forEach((input) => {
+
+                    input.classList.remove('is-valid');
+                    input.classList.remove('is-invalid');
+
+                    input.value = '';
+                });
                 break;
 
             case modalRemoveBike:
@@ -871,7 +881,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (response.ok) {
                 message.textContent = result.message;
             } else {
-                icon.src = "../icon/error.png";
+                icon.src = "/icon/error.png";
                 message.textContent = result.error || 'An unexpected error occurred.';
             }
             btnYes.style.display = "none";
@@ -879,12 +889,24 @@ document.addEventListener('DOMContentLoaded', function () {
             this.reset();
 
         } catch (error) {
-            icon.src = "../icon/error.png";
+            icon.src = "/icon/error.png";
             message.textContent = 'An error occurred while processing your request.';
             btnYes.style.display = "none";
             openModal(modalMessRep, modalMessRepContent);
             this.reset();
         }
+    });
+
+    document.querySelectorAll('#bike-number, #bike-name').forEach((input) => {
+        input.addEventListener('input', function () {
+            if (input.checkValidity()) {
+                input.classList.add('is-valid');
+                input.classList.remove('is-invalid');
+            } else {
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+            }
+        });
     });
 
     document.getElementById('form4').addEventListener('submit', async function (event) {
@@ -914,7 +936,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (response.ok) {
                 message.textContent = result.message;
             } else {
-                icon.src = "../icon/error.png";
+                icon.src = "/icon/error.png";
                 message.textContent = result.error || 'An unexpected error occurred.';
             }
             btnYes.style.display = "none";
@@ -922,7 +944,7 @@ document.addEventListener('DOMContentLoaded', function () {
             this.reset();
 
         } catch (error) {
-            icon.src = "../icon/error.png";
+            icon.src = "/icon/error.png";
             message.textContent = 'An error occurred while processing your request.';
             btnYes.style.display = "none";
             openModal(modalMessRep, modalMessRepContent);
@@ -939,7 +961,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const message = document.getElementById("mess-text-rep");
         const btnYes = document.getElementById("btnMess");
 
-        icon.src = '../icon/error.png';
+        icon.src = '/icon/error.png';
         btnYes.style.display = 'none';
 
         if (!file) {
@@ -977,7 +999,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.getElementById("progress-multi-bike").style.width = 0 + "%";
                     document.getElementById('fileInputBike').value = '';
                     closeModal(modalAddMultiBike, modalAddMultiBikeContent);
-                    icon.src = '../icon/information.png';
+                    icon.src = '/icon/information.png';
                     message.textContent = 'File uploaded successfully!';
                     openModal(modalMessRep, modalMessRepContent);
                 }, 1000);
@@ -992,13 +1014,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         switch (error.type) {
                             case 'Validation':
-                                icon.src = '../icon/error.png';
+                                icon.src = '/icon/error.png';
                                 message.textContent = 'Check the syntax of all rows in the table';
                                 openModal(modalMessRep, modalMessRepContent);
                                 break;
 
                             default:
-                                icon.src = '../icon/error.png';
+                                icon.src = '/icon/error.png';
                                 message.textContent = error.message;
                                 openModal(modalMessRep, modalMessRepContent);
                                 break;
@@ -1006,7 +1028,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
 
                 } else {
-                    icon.src = '../icon/error.png';
+                    icon.src = '/icon/error.png';
                     message.textContent = data.error || "File upload failed.";
                     openModal(modalMessRep, modalMessRepContent);
                 }
@@ -1023,7 +1045,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('fileInputBike').value = '';
             closeModal(modalAddMultiBike, modalAddMultiBikeContent);
 
-            icon.src = '../icon/error.png';
+            icon.src = '/icon/error.png';
             message.textContent = "An unexpected error occurred.";
             openModal(modalMessRep, modalMessRepContent);
         };

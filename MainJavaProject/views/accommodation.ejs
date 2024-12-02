@@ -8,11 +8,10 @@
         <%= title %>
     </title>
     <link rel="icon" href="/icon/logoPage.png">
-    <link rel="stylesheet" href="../style/styleAccommodation.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/style/styleAccommodation.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
 </head>
 
 <body>
@@ -89,8 +88,7 @@
                         <!-- Soldier Selection with Custom Search -->
                         <div class="search-container" id="search-all-key-container">
                             <div class="input-group">
-                                <input type="text" id="allKeySearch" class="form-control" placeholder="Search..."
-                                    required>
+                                <input type="text" id="allKeySearch" class="form-control" placeholder="Search...">
                             </div>
                             <ul id="allKeyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                             <input type="hidden" id="selectedAllKeyId" name="allKeySelectId" value="">
@@ -102,16 +100,16 @@
                             <label class="virtual-warehouse-label">Occupied Beds: <%= totalOccupiedBeds %></label>
                             <div <% if(username !='helpDeskNikolay' && username !='admin' ) { %>
                                 style="cursor: not-allowed" <% } %>>
-                                <button type="button" id="btnAddSoldier"
-                                    class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Add
-                                    soldier</button>
-                                <button type="button" id="btnAccommSoldier"
-                                    class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Accommodation
-                                    soldiers</button>
-                                <button type="button" id="btnFreeAllRoom"
-                                    class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Release
-                                    all
-                                    rooms</button>
+                                    <button type="button" id="btnAddSoldier"
+                                        class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Add
+                                        soldier</button>
+                                    <button type="button" id="btnAccommSoldier"
+                                        class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Accommodation
+                                        soldiers</button>
+                                    <button type="button" id="btnFreeAllRoom"
+                                        class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Release
+                                        all
+                                        rooms</button>
                             </div>
                             <button type="button" id="btnReport" class="btn-report">Reports</button>
                         </div>
@@ -313,7 +311,8 @@
                         <tr>
                             <th><input type="text" class="search-input-view-second" placeholder="Search...">Previous
                                 Room</th>
-                            <th><input type="text" class="search-input-view-second" placeholder="Search...">New Room</th>
+                            <th><input type="text" class="search-input-view-second" placeholder="Search...">New Room
+                            </th>
                             <th><input type="text" class="search-input-view-second" placeholder="Search...">Soldier</th>
                             <th><input type="text" class="search-input-view-second" placeholder="Search...">Date
                                 Relocation
@@ -361,8 +360,11 @@
                 <!-- Soldier Selection with Custom Search -->
                 <div class="mb-3 search-container" id="search-soldier-container-move">
                     <div class="input-group">
-                        <input type="text" id="soldierSearchMove" class="form-control" placeholder="Key Number"
-                            required>
+                        <input type="text" id="soldierSearchMove" class="form-control" placeholder="Key Number">
+                        <div class="invalid-feedback">
+                            Please choose a key number
+                        </div>
+                        <div class="valid-feedback"></div>
                     </div>
                     <ul id="soldierDropdownMove" class="list-group"></ul> <!-- Custom dropdown for search -->
                     <input type="hidden" id="selectedKeyMoveId" name="keyMoveId" value="">
@@ -393,7 +395,12 @@
                 <label for="soldier-number" class="form-label">Soldier Number:</label>
                 <div class="input-group">
                     <input type="text" id="soldier-number" name="soldierId" class="form-control"
-                        placeholder="Soldier Number" pattern="[A-Za-z0-9]+" required>
+                        placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
+
+                    <div class="invalid-feedback">
+                        Please enter a valid soldier number (only letters and numbers)
+                    </div>
+                    <div class="valid-feedback"></div>
                 </div>
             </div>
 
@@ -401,7 +408,12 @@
                 <label for="soldier-name" class="form-label">Soldier Name:</label>
                 <div class="input-group">
                     <input type="text" id="soldier-name" name="soldierName" class="form-control"
-                        placeholder="Soldier Name" pattern="[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+" required>
+                        placeholder="Soldier Name" pattern="^[0-9]+ [A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$">
+
+                    <div class="invalid-feedback">
+                        Please enter a valid soldier name (only letters, numbers, space and dash)
+                    </div>
+                    <div class="valid-feedback"></div>
                 </div>
             </div>
 
@@ -409,7 +421,12 @@
                 <label for="soldier-country" class="form-label">Soldier Country:</label>
                 <div class="input-group">
                     <input type="text" id="soldier-country" name="soldierCountry" class="form-control"
-                        placeholder="Soldier Country" pattern="[A-Za-z\s]+" required>
+                        placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
+
+                    <div class="invalid-feedback">
+                        Please enter a valid soldier country (only letters and space)
+                    </div>
+                    <div class="valid-feedback"></div>
                 </div>
             </div>
 
@@ -498,20 +515,32 @@
 
             <div class="mb-3">
                 <label for="build-id" class="form-label">Building Number:</label>
-                <input type="text" id="build-id" name="buildId" class="form-control" placeholder="Building Number"
-                    required>
+                <input type="text" id="build-id" name="buildId" class="form-control" placeholder="Building Number">
+
+                <div class="invalid-feedback">
+                    Please enter a build number
+                </div>
+                <div class="valid-feedback"></div>
             </div>
 
             <div class="mb-3">
                 <label for="build-name" class="form-label">Building Name:</label>
-                <input type="text" id="build-name" name="buildName" class="form-control" placeholder="Building Name"
-                    required>
+                <input type="text" id="build-name" name="buildName" class="form-control" placeholder="Building Name">
+
+                <div class="invalid-feedback">
+                    Please enter a build name
+                </div>
+                <div class="valid-feedback"></div>
             </div>
 
             <div class="mb-3">
                 <label for="build-type" class="form-label">Building Type:</label>
-                <input type="text" id="build-type" name="buildType" class="form-control" placeholder="Building Type"
-                    required>
+                <input type="text" id="build-type" name="buildType" class="form-control" placeholder="Building Type">
+
+                <div class="invalid-feedback">
+                    Please enter a build type
+                </div>
+                <div class="valid-feedback"></div>
             </div>
 
             <button type="submit" id="add-destination-btn" class="modal-button">Add destination</button>
@@ -528,13 +557,25 @@
 
             <div class="mb-3">
                 <label for="room-id" class="form-label">Room Number:</label>
-                <input type="text" id="room-id" name="roomId" class="form-control" placeholder="Room Number" required>
+                <input type="text" id="room-id" name="roomId" class="form-control" placeholder="Room Number">
+
+                <div class="invalid-feedback">
+                    Please enter a room number
+                </div>
+                <div class="valid-feedback"></div>
             </div>
 
             <div class="mb-3">
                 <label for="room-name" class="form-label">Room Name:</label>
                 <input type="text" id="room-name" name="roomName" class="form-control" pattern="^[^\/]+\/.+$"
-                    placeholder="Room Name" required>
+                    placeholder="Room Name">
+
+                <div class="invalid-feedback">
+                    Please enter a valid room nama (format: build number/room number)
+                </div>
+                <div class="valid-feedback">
+                    Valid room nama
+                </div>
             </div>
 
             <input type="hidden" id="click-build" name="clickBuild">
@@ -555,7 +596,10 @@
             <div class="mb-3 search-container" id="search-room-container">
                 <label for="roomSearch" class="form-label">Room Name:</label>
                 <div class="input-group">
-                    <input type="text" id="roomSearch" class="form-control" placeholder="Room Name" required>
+                    <input type="text" id="roomSearch" class="form-control" placeholder="Room Name">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
                 </div>
                 <ul id="roomDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedRoomId" name="roomSelectId" value="">
@@ -578,13 +622,25 @@
 
             <div class="mb-3">
                 <label for="key-id" class="form-label">Key Number:</label>
-                <input type="text" id="key-id" name="keyId" class="form-control" placeholder="Key Number" required>
+                <input type="text" id="key-id" name="keyId" class="form-control" placeholder="Key Number">
+
+                <div class="invalid-feedback">
+                    Please enter a key number
+                </div>
+                <div class="valid-feedback"></div>
             </div>
 
             <div class="mb-3">
                 <label for="key-name" class="form-label">Key Name:</label>
                 <input type="text" id="key-name" name="keyName" class="form-control" pattern="^[^\/]+\/[^\/]+\/.+$"
-                    placeholder="Key Name" required>
+                    placeholder="Key Name">
+
+                <div class="invalid-feedback">
+                    Please enter a valid key name (format: build number/room number/key number)
+                </div>
+                <div class="valid-feedback">
+                    Valid key name
+                </div>
             </div>
 
             <input type="hidden" id="selected-room-for-key" name="selectedRoomForKey">
@@ -604,7 +660,12 @@
             <div class="mb-3 search-container" id="search-key-container">
                 <label for="keySearch" class="form-label">Key Name:</label>
                 <div class="input-group">
-                    <input type="text" id="keySearch" class="form-control" placeholder="Key Name" required>
+                    <input type="text" id="keySearch" class="form-control" placeholder="Key Name">
+
+                    <div class="invalid-feedback">
+                        Please enter a key name
+                    </div>
+                    <div class="valid-feedback"></div>
                 </div>
                 <ul id="keyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedKeyId" name="keySelectId" value="">
@@ -621,7 +682,7 @@
         <div class="modal-content-mess">
             <span class="close-btn">&times;</span>
 
-            <img src="../icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-global-icon">
+            <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-global-icon">
             <p id="mess-global-text"></p>
         </div>
     </div>
@@ -633,9 +694,9 @@
 
 </body>
 
-<script src="../java/autoSearch.js"></script>
-<script src="../java/soldier_modal.js"></script>
-<script src="../java/pageNumber.js"></script>
-<script src="../java/showPinMessage.js"></script>
+<script src="/java/autoSearch.js"></script>
+<script src="/java/soldier_modal.js"></script>
+<script src="/java/pageNumber.js"></script>
+<script src="/java/showPinMessage.js"></script>
 
 </html>

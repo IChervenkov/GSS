@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const notificationSound = new Audio('../audio/notification.wav'); // Path to your .wav file
+    const notificationSound = new Audio('/audio/notification.wav'); // Path to your .wav file
 
     // Function to show the pinned message with animation
     function showPinnedMessage(message) {

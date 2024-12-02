@@ -76,6 +76,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const soldierSearchMoveDropdown = document.getElementById('soldierDropdownMove');
     const selectedSoldierMoveId = document.getElementById('selectedKeyMoveId');
 
+    const buildId = document.getElementById('build-id');
+    const buildName = document.getElementById('build-name');
+    const buildType = document.getElementById('build-type');
+
+    const roomId = document.getElementById('room-id');
+    const roomName = document.getElementById('room-name');
+    const clickBuild = document.getElementById('click-build');
+
+    const soldierId = document.getElementById('soldier-number');
+    const soldierName = document.getElementById('soldier-name');
+    const soldierCountry = document.getElementById('soldier-country');
+
+    const keyId = document.getElementById('key-id');
+    const keyName = document.getElementById('key-name');
+    const selectedRoomForKey = document.getElementById('selected-room-for-key');
+
     const isAccommodation = document.getElementById('isAccommodation');
 
     let soldiers = [];
@@ -136,6 +152,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             selectRoomDropdown.style.display = 'none';
             selectedRoomId.value = '';
+
+            selectRoomInput.classList.remove('is-valid');
+            selectRoomInput.classList.add('is-invalid');
         }
     });
 
@@ -143,6 +162,10 @@ document.addEventListener('DOMContentLoaded', function () {
     selectRoomDropdown.addEventListener('click', function (event) {
         const selectedRoom = event.target;
         if (selectedRoom && selectedRoom.dataset.id) {
+
+            selectRoomInput.classList.add('is-valid');
+            selectRoomInput.classList.remove('is-invalid');
+
             selectRoomInput.value = selectedRoom.textContent;
             selectedRoomId.value = selectedRoom.getAttribute('data-id');
 
@@ -199,6 +222,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             selectKeyDropdown.style.display = 'none';
             selectedKeyId.value = '';
+
+            selectKeyInput.classList.remove('is-valid');
+            selectKeyInput.classList.add('is-invalid');
         }
     });
 
@@ -206,6 +232,10 @@ document.addEventListener('DOMContentLoaded', function () {
     selectKeyDropdown.addEventListener('click', function (event) {
         const selectedKey = event.target;
         if (selectedKey && selectedKey.dataset.id) {
+
+            selectKeyInput.classList.add('is-valid');
+            selectKeyInput.classList.remove('is-invalid');
+
             selectKeyInput.value = selectedKey.textContent;
             selectedKeyId.value = selectedKey.getAttribute('data-id');
 
@@ -235,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered key in the dropdown
     function filterAllKey(query) {
         selectAllKeyDropdown.innerHTML = '';
-        const filteredAllKey = allKeys.filter( key =>
+        const filteredAllKey = allKeys.filter(key =>
             key.name.toLowerCase().includes(query.toLowerCase()) ||
             key.id.toString().includes(query) ||
             key.soldierName.toLowerCase().includes(query.toLowerCase())
@@ -289,9 +319,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ keyId: keycode })});
+                body: JSON.stringify({ keyId: keycode })
+            });
 
-            const result  = await response.json();
+            const result = await response.json();
             typeBuild.value = result.type;
 
             // Open the modal with the soldier's cleaned data
@@ -461,6 +492,10 @@ document.addEventListener('DOMContentLoaded', function () {
     soldierSearchMoveDropdown.addEventListener('click', async function (event) {
         const selectedSoldier = event.target;
         if (selectedSoldier && selectedSoldier.dataset.id) {
+
+            soldierSearchMoveInput.classList.remove("is-invalid");
+            soldierSearchMoveInput.classList.add("is-valid");
+
             soldierSearchMoveInput.value = selectedSoldier.textContent;
             selectedSoldierMoveId.value = selectedSoldier.getAttribute('data-id');
             soldierSearchMoveDropdown.style.display = 'none';
@@ -603,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Ensure that any 'slide-out' class is removed if it was previously added
         modalKeyContent.classList.remove('slide-out');
 
-        document.getElementById('selected-room-for-key').value = cleanedRoomNumber;
+        selectedRoomForKey.value = cleanedRoomNumber;
 
         // Fetch and display keys only for the specific room using POST request with body
         fetch('/getRoomKeys', {
@@ -732,9 +767,14 @@ document.addEventListener('DOMContentLoaded', function () {
         modalAddSoldierContent.classList.add('slide-out');
         modalAddSoldierContent.classList.remove('slide-in');
 
-        document.getElementById('soldier-number').value = '';
-        document.getElementById('soldier-name').value = '';
-        document.getElementById('soldier-country').value = '';
+        document.querySelectorAll('#soldier-number, #soldier-name, #soldier-country').forEach((input) => {
+
+            input.classList.remove('is-valid');
+            input.classList.remove('is-invalid');
+
+            input.value = '';
+
+        });
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
@@ -798,6 +838,9 @@ document.addEventListener('DOMContentLoaded', function () {
             modalMove.classList.remove('show');
             modalMoveContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
+
+        soldierSearchMoveInput.classList.remove("is-invalid");
+        soldierSearchMoveInput.classList.remove("is-valid");
 
         soldierSearchMoveInput.value = '';
         selectedSoldierMoveId.value = '';
@@ -895,9 +938,18 @@ document.addEventListener('DOMContentLoaded', function () {
         modalAddDestContent.classList.add('slide-out');
         modalAddDestContent.classList.remove('slide-in');
 
-        document.getElementById('build-id').value = '';
-        document.getElementById('build-name').value = '';
-        document.getElementById('build-type').value = '';
+        buildId.value = '';
+        buildName.value = '';
+        buildType.value = '';
+
+        buildId.classList.remove('is-valid');
+        buildId.classList.remove('is-invalid');
+
+        buildName.classList.remove('is-valid');
+        buildName.classList.remove('is-invalid');
+
+        buildType.classList.remove('is-valid');
+        buildType.classList.remove('is-invalid');
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
@@ -912,10 +964,6 @@ document.addEventListener('DOMContentLoaded', function () {
         modalRoomAddModalContent.classList.add('show');
         modalRoomAddModalContent.classList.add('slide-in');
 
-        document.getElementById('room-id').value = '';
-        document.getElementById('room-name').value = '';
-        document.getElementById('add-room-btn').value = '';
-
         // Ensure that any 'slide-out' class is removed if it was previously added
         modalRoomAddModalContent.classList.remove('slide-out');
     }
@@ -924,6 +972,18 @@ document.addEventListener('DOMContentLoaded', function () {
         // Add the slide-out effect
         modalRoomAddModalContent.classList.add('slide-out');
         modalRoomAddModalContent.classList.remove('slide-in');
+
+        roomId.value = '';
+        document.getElementById('add-room-btn').value = '';
+
+        document.querySelectorAll('#room-name, #room-id').forEach((input) => {
+
+            input.classList.remove('is-valid');
+            input.classList.remove('is-invalid');
+
+            input.value = '';
+
+        });
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
@@ -938,9 +998,6 @@ document.addEventListener('DOMContentLoaded', function () {
         modalKeyAddModalContent.classList.add('show');
         modalKeyAddModalContent.classList.add('slide-in');
 
-        document.getElementById('key-id').value = '';
-        document.getElementById('key-name').value = '';
-
         // Ensure that any 'slide-out' class is removed if it was previously added
         modalKeyAddModalContent.classList.remove('slide-out');
     }
@@ -949,6 +1006,15 @@ document.addEventListener('DOMContentLoaded', function () {
         // Add the slide-out effect
         modalKeyAddModalContent.classList.add('slide-out');
         modalKeyAddModalContent.classList.remove('slide-in');
+
+        document.querySelectorAll('#key-name, #key-id').forEach((input) => {
+
+            input.classList.remove('is-valid');
+            input.classList.remove('is-invalid');
+
+            input.value = '';
+
+        });
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
@@ -977,6 +1043,9 @@ document.addEventListener('DOMContentLoaded', function () {
         selectRoomDropdown.style.display = 'none';
         selectedRoomId.value = '';
 
+        selectRoomInput.classList.remove('is-valid');
+        selectRoomInput.classList.remove('is-invalid');
+
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
             modalRoomRemoveModal.classList.remove('show');
@@ -1003,6 +1072,9 @@ document.addEventListener('DOMContentLoaded', function () {
         selectKeyInput.value = '';
         selectKeyDropdown.style.display = 'none';
         selectedKeyId.value = '';
+
+        selectKeyInput.classList.remove('is-valid');
+        selectKeyInput.classList.remove('is-invalid');
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
@@ -1094,7 +1166,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('tr.data-room').forEach(cell => {
         cell.addEventListener('click', function () {
             const roomnumber = this.querySelector('td:nth-child(1)').textContent;
-            
+
             openModalKey(roomnumber);
         });
     });
@@ -1119,11 +1191,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const icon = document.getElementById('mess-icon');
 
         if (type === "Error") {
-            icon.src = "../icon/error.png";
+            icon.src = "/icon/error.png";
             document.getElementById('btnYes').style.display = 'none';
             document.getElementById('mess-text').textContent = message;
         } else {
-            icon.src = "../icon/information.png";
+            icon.src = "/icon/information.png";
             document.getElementById('btnYes').style.display = 'block';
             document.getElementById('mess-text').textContent = message;
         }
@@ -1144,19 +1216,19 @@ document.addEventListener('DOMContentLoaded', function () {
         switch (type) {
 
             case 'Warning':
-                icon.src = "../icon/delete_warning.png";
+                icon.src = "/icon/delete_warning.png";
                 document.getElementById('mess-global-text').textContent = message;
                 isWarning = true;
                 break;
 
             case 'Error':
-                icon.src = "../icon/error.png";
+                icon.src = "/icon/error.png";
                 document.getElementById('mess-global-text').textContent = message;
                 isWarning = true;
                 break;
 
             default:
-                icon.src = "../icon/information.png";
+                icon.src = "/icon/information.png";
                 document.getElementById('mess-global-text').textContent = message;
                 isWarning = false;
                 break;
@@ -1523,10 +1595,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
+        if(soldierId.value  === "") {
+            soldierId.classList.remove('is-valid');
+            soldierId.classList.add('is-invalid');
+            return;
+        }
+
+        if(soldierName.value  === "") {
+            soldierName.classList.remove('is-valid');
+            soldierName.classList.add('is-invalid');
+            return;
+        }
+
+        if(soldierCountry.value  === "") {
+            soldierCountry.classList.remove('is-valid');
+            soldierCountry.classList.add('is-invalid');
+            return;
+        }
+
         const data = {
-            soldierId: document.getElementById('soldier-number').value,
-            soldierName: document.getElementById('soldier-name').value,
-            soldierCountry: document.getElementById('soldier-country').value
+            soldierId: soldierId.value,
+            soldierName: soldierName.value,
+            soldierCountry: soldierCountry.value
         };
 
         try {
@@ -1550,6 +1640,18 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', `Network error: ${error.message}`);
         }
     };
+
+    document.querySelectorAll('#soldier-number, #soldier-name, #soldier-country').forEach((input) => {
+        input.addEventListener('input', function () {
+            if (input.value !== "" && input.checkValidity()) {
+                input.classList.add('is-valid');
+                input.classList.remove('is-invalid');
+            } else {
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+            }
+        });
+    });
 
     document.getElementById('btnAddDestination').addEventListener("click", () => {
         openModalDest();
@@ -1632,14 +1734,62 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    buildId.addEventListener('input', () => {
+        if (buildId.value === "") {
+            buildId.classList.remove('is-valid');
+            buildId.classList.add('is-invalid');
+        } else {
+            buildId.classList.add('is-valid');
+            buildId.classList.remove('is-invalid');
+        }
+    });
+
+    buildName.addEventListener('input', () => {
+        if (buildName.value === "") {
+            buildName.classList.remove('is-valid');
+            buildName.classList.add('is-invalid');
+        } else {
+            buildName.classList.add('is-valid');
+            buildName.classList.remove('is-invalid');
+        }
+    });
+
+    buildType.addEventListener('input', () => {
+        if (buildType.value === "") {
+            buildType.classList.remove('is-valid');
+            buildType.classList.add('is-invalid');
+        } else {
+            buildType.classList.add('is-valid');
+            buildType.classList.remove('is-invalid');
+        }
+    });
+
     document.getElementById('form6').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
 
+        if (buildId.value === "") {
+            buildId.classList.remove('is-valid');
+            buildId.classList.add('is-invalid');
+            return;
+        }
+
+        if (buildName.value === "") {
+            buildName.classList.remove('is-valid');
+            buildName.classList.add('is-invalid');
+            return;
+        }
+
+        if (buildType.value === "") {
+            buildType.classList.remove('is-valid');
+            buildType.classList.add('is-invalid');
+            return;
+        }
+
         const data = {
-            buildId: document.getElementById('build-id').value,
-            buildName: document.getElementById('build-name').value,
-            buildType: document.getElementById('build-type').value
+            buildId: buildId.value,
+            buildName: buildName.value,
+            buildType: buildType.value
         };
 
         try {
@@ -1668,15 +1818,34 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    roomId.addEventListener('input', () => {
+        if (roomId.value === "") {
+            roomId.classList.remove('is-valid');
+            roomId.classList.add('is-invalid');
+        } else {
+            roomId.classList.add('is-valid');
+            roomId.classList.remove('is-invalid');
+        }
+    });
+
     document.getElementById('form7').onsubmit = async function (event) {
+
         event.preventDefault(); // Prevent default form submission
 
-        const roomId = document.getElementById('room-id').value;
-        const roomName = document.getElementById('room-name').value;
-        const clickBuild = document.getElementById('click-build').value;
+        if (roomId.value === "") {
+            roomId.classList.remove('is-valid');
+            roomId.classList.add('is-invalid');
+            return;
+        }
+
+        if (roomName.value === "") {
+            roomName.classList.remove('is-valid');
+            roomName.classList.add('is-invalid');
+            return;
+        }
 
         // Remove all '/' from roomId
-        const cleanedRoomName = roomName.replace(/\//g, '');
+        const cleanedRoomName = roomName.value.replace(/\//g, '');
 
         // Check if the cleaned roomId is equal to the original roomId
         if (roomId !== cleanedRoomName) {
@@ -1685,9 +1854,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const data = {
-            roomId: roomId,
-            roomName: roomName,
-            clickBuild: clickBuild
+            roomId: roomId.value,
+            roomName: roomName.value,
+            clickBuild: clickBuild.value
         };
 
         try {
@@ -1714,10 +1883,29 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    document.querySelectorAll('#room-name').forEach((input) => {
+        input.addEventListener('input', function () {
+            if (input.value !== "" && input.checkValidity()) {
+                input.classList.add('is-valid');
+                input.classList.remove('is-invalid');
+            } else {
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+            }
+        });
+    });
+
     document.getElementById('form8').onsubmit = async function (event) {
+
         event.preventDefault(); // Prevent default form submission
 
-        const roomId = document.getElementById('selectedRoomId').value;
+        const roomId = selectedRoomId.value;
+
+        if(roomId === "") {
+            selectRoomInput.classList.remove('is-valid');
+            selectRoomInput.classList.add('is-invalid');
+            return;
+        }
 
         const data = {
             roomId: roomId
@@ -1748,13 +1936,22 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     document.getElementById('form9').onsubmit = async function (event) {
+
         event.preventDefault(); // Prevent default form submission
 
-        const keyId = document.getElementById('key-id').value;
-        const keyName = document.getElementById('key-name').value;
-        const selectedRoomForKey = document.getElementById('selected-room-for-key').value;
+        if(keyId.value === "") {
+            keyId.classList.remove('is-valid');
+            keyId.classList.add('is-invalid');
+            return;
+        }
 
-        const cleanedKeyName = keyName.replace(/\//g, '');
+        if(keyName.value === "") {
+            keyName.classList.remove('is-valid');
+            keyName.classList.add('is-invalid');
+            return;
+        }
+
+        const cleanedKeyName = keyName.value.replace(/\//g, '');
 
         // Check if the cleaned roomId is equal to the original roomId
         if (keyId !== cleanedKeyName) {
@@ -1792,13 +1989,33 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    document.querySelectorAll('#key-name, #key-id').forEach((input) => {
+        input.addEventListener('input', function () {
+            if (input.value !== "" && input.checkValidity()) {
+                input.classList.add('is-valid');
+                input.classList.remove('is-invalid');
+            } else {
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+            }
+        });
+    });
+
     document.getElementById('form10').onsubmit = async function (event) {
+
         event.preventDefault(); // Prevent default form submission
 
-        const keyId = document.getElementById('selectedKeyId').value;
+        if(selectedKeyId.value === "") {
+            selectKeyInput.classList.remove('is-valid');
+            selectKeyInput.classList.add('is-invalid');
+            return;
+        } else {
+            selectKeyInput.classList.add('is-valid');
+            selectKeyInput.classList.remove('is-invalid');
+        }
 
         const data = {
-            keyId: keyId,
+            keyId: selectedKeyId.value
         };
 
         try {
@@ -1817,6 +2034,50 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 const responseData = await response.json();
                 showGlobalMess('Info', responseData.message);
+            }
+
+            closeModalRemoveKey();
+
+        } catch (error) {
+            showGlobalMess('Error', `Network error: ${error.message}`);
+        }
+    };
+
+    document.getElementById('form3').onsubmit = async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        if (selectedSoldierMoveId.value === "") {
+            soldierSearchMoveInput.classList.add("is-invalid");
+            soldierSearchMoveInput.classList.remove("is-valid");
+            return;
+        }
+
+        const keyId = document.getElementById('previewKey').value;
+        const soldId = document.getElementById('previewSoldier').value;
+        const keyMoveId = document.getElementById('selectedKeyMoveId').value;
+        const soldMoveId = document.getElementById('selectedSoldMoveId').value;
+
+        const data = {
+            keyId: keyId,
+            soldId: soldId,
+            keyMoveId: keyMoveId,
+            soldMoveId: soldMoveId
+        };
+
+        try {
+            const response = await fetch(this.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                showGlobalMess('Error', errorData.message);
+
             }
 
             closeModalRemoveKey();
@@ -2041,7 +2302,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const button = event.target.closest('button');
             const numBuild = button.name;
 
-            document.getElementById('click-build').value = numBuild;
+            clickBuild.value = numBuild;
             openModalAddRoom();
 
         }

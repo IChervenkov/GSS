@@ -7,12 +7,11 @@
     <title>
         <%= title %>
     </title>
-    <link rel="stylesheet" href="../style/stylesLaundry.css" />
+    <link rel="stylesheet" href="/style/stylesLaundry.css" />
     <link rel="icon" href="/icon/logoPage.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
-
 </head>
 
 <body>
@@ -165,16 +164,18 @@
             </div>
 
             <button id="reportButton" class="report-button">Report</button>
+            <button id="addButton" class="report-button">Add bag</button>
+            <button id="removeButton" class="report-button">Reemove bag</button>
         </div>
 
     </div>
 
-    <%- include('partials/modal_laundry', { id: 'dropOff' , title: 'Drop Off' , headerTable, destination: 'Drop off' ,
-        previewDestination: 'None' }) %>
+    <%- include('partials/modal_laundry', { id: 'dropOff' , title: 'Drop Off' , headerTable,
+        destination: 'Transportation to laundry facility' , previewDestination: 'Drop off' }) %>
 
         <%- include('partials/modal_laundry', { id: 'transportationToLaundryFacility' ,
-            title: 'Transportation to laundry Facility' , headerTable, destination: 'Laundry facility'
-            , previewDestination: 'Transportation to laundry facility' }) %>
+            title: 'Transportation to laundry Facility' , headerTable, destination: 'Laundry facility' ,
+            previewDestination: 'Transportation to laundry facility' }) %>
 
             <%- include('partials/modal_laundry', { id: 'laundryFacility' , title: 'Laundry facility' , headerTable,
                 destination: 'Transportation to drop off' , previewDestination: 'Laundry facility' }) %>
@@ -184,8 +185,7 @@
                     previewDestination: 'Transportation to drop off' }) %>
 
                     <%- include('partials/modal_laundry', { id: 'readyToPickUp' , title: 'Ready to pick up' ,
-                        headerTable, destination: 'None' , previewDestination: 'Ready to pick up'
-                        }) %>
+                        headerTable, destination: 'None' , previewDestination: 'Ready to pick up' }) %>
 
                         <div id="pinned-message" class="pinned-message" style="display: none;">
                             <p id="pinned-message-text"></p>
@@ -242,37 +242,132 @@
 
                         <%- include('partials/modal_laundry_action', { id: 'addBag' ,
                             destination: '/changeStatusConsole' , formId: 'form2' , title: 'Add bag' ,
-                            searchId: 'search-bags' , inputSearchId: 'search-add-input-bags' , labelSearch: 'Bag Number' ,
-                            dropDownSearchId: 'addBagDropDown' , selectSearchId: 'addBagSelectId' , buttonId: 'add-btn'
-                            , buttonText: 'Add bag' }) %>
+                            searchId: 'search-bags' , inputSearchId: 'search-add-input-bags' , labelSearch: 'Bag Number'
+                            , dropDownSearchId: 'addBagDropDown' , selectSearchId: 'addBagSelectId' ,
+                            buttonId: 'add-btn' , buttonText: 'Add bag' }) %>
 
                             <%- include('partials/modal_laundry_action', { id: 'moveBag' ,
-                            destination: '/changeStatusConsole' , formId: 'form3' , title: 'Move bag' ,
-                            searchId: 'search-bags' , inputSearchId: 'search-move-input-bags' , labelSearch: 'Bag Number' ,
-                            dropDownSearchId: 'moveBagDropDown' , selectSearchId: 'moveBagSelectId' , buttonId: 'move-btn'
-                            , buttonText: 'Move bag' }) %>
+                                destination: '/changeStatusConsole' , formId: 'form3' , title: 'Move bag' ,
+                                searchId: 'search-bags' , inputSearchId: 'search-move-input-bags' ,
+                                labelSearch: 'Bag Number' , dropDownSearchId: 'moveBagDropDown' ,
+                                selectSearchId: 'moveBagSelectId' , buttonId: 'move-btn' , buttonText: 'Move bag' }) %>
 
-                            <%- include('partials/modal_laundry_action', { id: 'removeBag' ,
-                            destination: '/changeStatusConsole' , formId: 'form4' , title: 'Remove bag' ,
-                            searchId: 'search-bags' , inputSearchId: 'search-remove-input-bags' , labelSearch: 'Bag Number' ,
-                            dropDownSearchId: 'removeBagDropDown' , selectSearchId: 'removeBagSelectId' , buttonId: 'remove-btn'
-                            , buttonText: 'Remove bag' }) %>
+                                <%- include('partials/modal_laundry_action', { id: 'removeBag' ,
+                                    destination: '/changeStatusConsole' , formId: 'form4' , title: 'Remove bag' ,
+                                    searchId: 'search-bags' , inputSearchId: 'search-remove-input-bags' ,
+                                    labelSearch: 'Bag Number' , dropDownSearchId: 'removeBagDropDown' ,
+                                    selectSearchId: 'removeBagSelectId' , buttonId: 'remove-btn' ,
+                                    buttonText: 'Remove bag' }) %>
 
-                            <!-- The Modal Message -->
-                            <div id="myMessage" class="modal">
-                                <div class="modal-content-mess">
-                                    <span class="close-btn">&times;</span>
+                                    <div id="insertBagModal" class="modal">
+                                        <form class="modal-content" action="/laundry/addBag" method="POST" id="form5">
+                                            <span class="close-btn">&times;</span>
+                                            <h2>Add bag</h2>
 
-                                    <img src="../icon/information.png" alt="Confirmation Image" class="modal-image"
-                                        id="mess-global-icon">
-                                    <p id="mess-global-text"></p>
-                                </div>
-                            </div>
+                                            <div class="mb-3">
+                                                <label for="epc-bag" class="form-label">EPC code:</label>
+                                                <div class="input-group">
+                                                    <input type="text" id="epc-bag" name="epcBag" class="form-control"
+                                                        placeholder="EPC code" pattern="^[a-zA-Z0-9]+$">
+                                                    <div class="invalid-feedback">
+                                                        Please enter a valid EPC code (only letters and numbers)
+                                                    </div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="code-bag" class="form-label">Bag code:</label>
+                                                <div class="input-group">
+                                                    <input type="text" id="code-bag" name="codeBag" class="form-control"
+                                                        placeholder="Code bag" pattern="^[a-zA-Z0-9]+$">
+                                                    <div class="invalid-feedback">
+                                                        Please enter a valid bag code (only letters and numbers)
+                                                    </div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="type-bag" class="form-label">Bag type:</label>
+                                                <div class="input-group">
+                                                    <input type="text" id="type-bag" name="typeBag" class="form-control"
+                                                        placeholder="Type bag" pattern="^[a-zA-Z0-9]+$">
+
+                                                    <div class="invalid-feedback">
+                                                        Please enter a valid bag type (only letters and numbers).
+                                                    </div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="max-count-wash-bag" class="form-label">Maximum number of
+                                                    washes:</label>
+                                                <div class="input-group">
+                                                    <input type="text" id="max-count-wash-bag" name="maxCountWashBag"
+                                                        class="form-control" placeholder="Maximum number of washes"
+                                                        pattern="^[0-9]+$">
+
+                                                    <div class="invalid-feedback">
+                                                        Please enter a valid max wash number (only numbers).
+                                                    </div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Buttons for confirming the selection -->
+
+                                            <button type="submit" id="addBagButton" class="modal-button">Add</button>
+
+                                        </form>
+                                    </div>
+
+                                    <div id="deleteBagModal" class="modal">
+                                        <form class="modal-content" action="/laundry/deleteBag" method="GET" id="form6">
+                                            <span class="close-btn">&times;</span>
+                                            <h2>Remove bag</h2>
+
+                                            <!-- Bag Selection with Custom Search -->
+                                            <div class="mb-3 search-container" id="search-remove-bag">
+                                                <div class="input-group">
+                                                    <input type="text" id="bagRemoveSearch" class="form-control"
+                                                        placeholder="Bag code">
+                                                    <div class="invalid-feedback">
+                                                        Please choose a bag code
+                                                    </div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+                                                <ul id="deleteBagDropdown" class="list-group"></ul>
+                                                <!-- Custom dropdown for search -->
+                                                <input type="hidden" id="selectedRemoveBagId" name="removeBagId" value="">
+                                                <!-- To store the selected soldier ID -->
+                                            </div>
+
+                                            <!-- Buttons for confirming the selection -->
+                                            <div class="button-container">
+                                                <button type="submit" id="removeBagButton"
+                                                    class="modal-button">Remove</button>
+                                            </div>
+
+                                        </form>
+                                    </div>
+
+                                    <!-- The Modal Message -->
+                                    <div id="myMessage" class="modal">
+                                        <div class="modal-content-mess">
+                                            <span class="close-btn">&times;</span>
+
+                                            <img src="/icon/information.png" alt="Confirmation Image"
+                                                class="modal-image" id="mess-global-icon">
+                                            <p id="mess-global-text"></p>
+                                        </div>
+                                    </div>
 
 </body>
 
-<script src="../java/autoSearch.js"></script>
-<script src="../java/showPinMessage.js"></script>
-<script src="../java/laundryBag.js"></script>
+<script src="/java/autoSearch.js"></script>
+<script src="/java/showPinMessage.js"></script>
+<script src="/java/laundryBag.js"></script>
 
 </html>

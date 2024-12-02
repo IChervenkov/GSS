@@ -27,6 +27,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeBagModal = document.getElementById('removeBagModal');
     const removeBagModalContent = removeBagModal.querySelector('.modal-content');
 
+    const insertBagModal = document.getElementById('insertBagModal');
+    const insertBagModalContent = insertBagModal.querySelector('.modal-content');
+
+    const deleteBagModal = document.getElementById('deleteBagModal');
+    const deleteBagModalContent = deleteBagModal.querySelector('.modal-content');
+    
+    const deleteBagSearchInput = document.getElementById('bagRemoveSearch');
+    const deleteBagSearchDropdown = document.getElementById('deleteBagDropdown');
+    const selectedDeleteBagId = document.getElementById('selectedRemoveBagId');
+
     const addBagSearchInput = document.getElementById('search-add-input-bags');
     const addBagSearchDropdown = document.getElementById('addBagDropDown');
     const selectedAddBagId = document.getElementById('addBagSelectId');
@@ -46,6 +56,82 @@ document.addEventListener('DOMContentLoaded', () => {
     const prevDestinationByBtn = document.getElementById('prev_destination');
 
     let bags = [];
+    let allBags = [];
+
+    document.querySelectorAll('#epc-bag, #code-bag, #type-bag, #max-count-wash-bag').forEach((input) => {
+        input.addEventListener('input', function () {
+            if (input.value !== "" && input.checkValidity()) {
+                input.classList.add('is-valid');
+                input.classList.remove('is-invalid');
+            } else {
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+            }
+        });
+    });
+
+    // Function to fetch bags from the server
+    async function fetchAllBags() {
+        try {
+
+            const response = await fetch(`/bags`, {
+                method: 'GET'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                openMess('Error', errorData.message);
+            }
+
+            const request = await response.json(); // Store fetched bags in the global variable
+            allBags = request.allBags.filter(bag => bag.status === 'None');
+
+        } catch (error) {
+            console.error('There was a problem with the fetch operation:', error);
+        }
+    }
+
+    fetchAllBags();
+
+    // Function to filter and display dropdown options
+    function filterAllBag(inputElement, dropdownElement) {
+        const query = inputElement.value.toLowerCase();
+        dropdownElement.innerHTML = '';
+        const filteredBags = allBags.filter(bag => bag.name.toLowerCase().includes(query));
+
+        if (filteredBags.length > 0) {
+            dropdownElement.style.display = 'block';
+            filteredBags.forEach(bag => {
+                const li = document.createElement('li');
+                li.textContent = bag.name;
+                li.setAttribute('data-id', bag.id);
+                dropdownElement.appendChild(li);
+            });
+        } else {
+            dropdownElement.style.display = 'none';
+        }
+    }
+
+    // Function to initialize bag search behavior
+    function initializeAllBagSearch(inputElement, dropdownElement, hiddenInputElement) {
+        // Handle input change
+        inputElement.addEventListener('input', function () {
+
+            if (inputElement.value.length > 0) {
+                filterAllBag(inputElement, dropdownElement);
+            } else {
+                dropdownElement.style.display = 'none';
+                hiddenInputElement.value = '';
+            }
+        });
+
+        // Handle dropdown click
+        dropdownElement.addEventListener('click', function (event) {
+            handleDropdownClick(event, inputElement, hiddenInputElement, dropdownElement);
+        });
+    }
+
+    initializeAllBagSearch(deleteBagSearchInput, deleteBagSearchDropdown, selectedDeleteBagId);
 
     // Function to fetch bags from the server
     async function fetchBags(status = 'None') {
@@ -97,6 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleDropdownClick(event, inputElement, hiddenInputElement, dropdownElement) {
         const selectedBag = event.target;
         if (selectedBag && selectedBag.dataset.id) {
+            inputElement.classList.remove("is-invalid");
+            inputElement.classList.add("is-valid");
             inputElement.value = selectedBag.textContent;
             hiddenInputElement.value = selectedBag.getAttribute('data-id');
             dropdownElement.style.display = 'none';
@@ -139,19 +227,19 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (type) {
 
             case 'Warning':
-                icon.src = "../icon/delete_warning.png";
+                icon.src = "/icon/delete_warning.png";
                 document.getElementById('mess-global-text').textContent = message;
                 isWarning = true;
                 break;
 
             case 'Error':
-                icon.src = "../icon/error.png";
+                icon.src = "/icon/error.png";
                 document.getElementById('mess-global-text').textContent = message;
                 isWarning = true;
                 break;
 
             default:
-                icon.src = "../icon/information.png";
+                icon.src = "/icon/information.png";
                 document.getElementById('mess-global-text').textContent = message;
                 isWarning = false;
                 break;
@@ -343,8 +431,77 @@ document.addEventListener('DOMContentLoaded', () => {
             addBagSearchDropdown.style.display = 'none';
             addBagSearchInput.value = '';
 
+            addBagSearchInput.classList.remove("is-invalid");
+            addBagSearchInput.classList.remove("is-valid");
+
             addBagModal.classList.remove('show');
             addBagModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openInsertBagModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        insertBagModal.classList.add('show');
+        insertBagModalContent.classList.add('show');
+        insertBagModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        insertBagModalContent.classList.remove('slide-out');
+    }
+
+    function closeInsertBagModal() {
+        // Add the slide-out effect
+        insertBagModalContent.classList.add('slide-out');
+        insertBagModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('#epc-bag, #code-bag, #type-bag, #max-count-wash-bag').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+
+            });
+
+            insertBagModal.classList.remove('show');
+            insertBagModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openDeleteBagModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        deleteBagModal.classList.add('show');
+        deleteBagModalContent.classList.add('show');
+        deleteBagModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        deleteBagModalContent.classList.remove('slide-out');
+    }
+
+    function closeDeleteBagModal() {
+        // Add the slide-out effect
+        deleteBagModalContent.classList.add('slide-out');
+        deleteBagModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('#bagRemoveSearch, #selectedRemoveBagId').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+
+            });
+
+            deleteBagModal.classList.remove('show');
+            deleteBagModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
     }
 
@@ -364,12 +521,13 @@ document.addEventListener('DOMContentLoaded', () => {
         moveBagModalContent.classList.add('slide-out');
         moveBagModalContent.classList.remove('slide-in');
 
-
-
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
             moveBagSearchDropdown.style.display = 'none';
             moveBagSearchInput.value = '';
+
+            moveBagSearchInput.classList.remove("is-invalid");
+            moveBagSearchInput.classList.remove("is-valid");
 
             moveBagModal.classList.remove('show');
             moveBagModalContent.classList.remove('show');
@@ -398,6 +556,9 @@ document.addEventListener('DOMContentLoaded', () => {
             removeBagSearchDropdown.style.display = 'none';
             removeBagSearchInput.value = '';
 
+            removeBagSearchInput.classList.remove("is-invalid");
+            removeBagSearchInput.classList.remove("is-valid");
+
             removeBagModal.classList.remove('show');
             removeBagModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
@@ -412,7 +573,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementsByClassName('close-btn')[6].onclick = closeAddBagModal;
     document.getElementsByClassName('close-btn')[7].onclick = closeMoveBagModal;
     document.getElementsByClassName('close-btn')[8].onclick = closeRemoveBagModal;
-    document.getElementsByClassName('close-btn')[9].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[9].onclick = closeInsertBagModal;
+    document.getElementsByClassName('close-btn')[10].onclick = closeDeleteBagModal;
+    document.getElementsByClassName('close-btn')[11].onclick = closeMessModal;
 
     window.onclick = function (event) {
 
@@ -456,6 +619,14 @@ document.addEventListener('DOMContentLoaded', () => {
             case removeBagModal:
                 closeRemoveBagModal();
                 break;
+
+            case insertBagModal:
+                closeInsertBagModal();
+                break;
+
+            case deleteBagModal:
+                closeDeleteBagModal();
+                break;
         }
     };
 
@@ -492,8 +663,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // Add an image depending on the value of `islate`
                                 const img = document.createElement('img');
                                 img.src = item[key]
-                                    ? '../icon/timeout.png' // Warning image path
-                                    : '../icon/available.png'; // OK image path
+                                    ? '/icon/timeout.png' // Warning image path
+                                    : '/icon/available.png'; // OK image path
                                 img.alt = item[key] ? 'Warning' : 'OK';
                                 img.style.width = '24px'; // Adjust image size
                                 img.style.height = '24px';
@@ -547,6 +718,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('reportButton').addEventListener('click', () => {
         fetchReport();
         openReportModal();
+    });
+
+    document.getElementById('addButton').addEventListener('click', () => {
+        openInsertBagModal();
+    });
+
+    document.getElementById('removeButton').addEventListener('click', () => {
+        openDeleteBagModal();
     });
 
     document.querySelectorAll('#addBag, #moveBag, #removeBag').forEach((button) => {
@@ -632,46 +811,152 @@ document.addEventListener('DOMContentLoaded', () => {
     stopEnter('form2');
     stopEnter('form3');
     stopEnter('form4');
+    stopEnter('form5');
+    stopEnter('form6');
 
-    async function handleFormSubmit(event, formId, modalCloseFn, bagId, destination = null, prevDestination = null) {
+    async function handleFormSubmit(event, formId, modalCloseFn, bagId, destination = null, prevDestination = null, input) {
 
         event.preventDefault();
-    
+
+        if (bagId.value === "") {
+            input.classList.add("is-invalid");
+            input.classList.remove("is-valid");
+            return;
+        }
+
         const data = {
             code: bagId.value,
             destination: destination ? destination.value : 'None',
             prev_destination: prevDestination ? prevDestination.value : 'None'
         };
-    
+
         try {
             const response = await fetch(document.getElementById(formId).action, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-    
+
             const responseData = await response.json();
             if (!response.ok) {
                 openMess('Error', responseData.message);
             } else {
                 openMess('Info', responseData.message);
             }
-    
+
             modalCloseFn();
-    
+
         } catch (error) {
             openMess('Error', `Network error: ${error.message}`);
         }
     }
-    
+
     // Attach the handler to each form
     document.getElementById('form2').onsubmit = (event) =>
-        handleFormSubmit(event, 'form2', closeAddBagModal, selectedAddBagId, prevDestinationByBtn, null);
-    
+        handleFormSubmit(event, 'form2', closeAddBagModal, selectedAddBagId, prevDestinationByBtn, null, addBagSearchInput);
+
     document.getElementById('form3').onsubmit = (event) =>
-        handleFormSubmit(event, 'form3', closeMoveBagModal, selectedMoveBagId, destinationByBtn, prevDestinationByBtn);
+        handleFormSubmit(event, 'form3', closeMoveBagModal, selectedMoveBagId, destinationByBtn, prevDestinationByBtn, moveBagSearchInput);
 
     document.getElementById('form4').onsubmit = (event) =>
-        handleFormSubmit(event, 'form4', closeRemoveBagModal, selectedRemoveBagId, null, destinationByBtn);
+        handleFormSubmit(event, 'form4', closeRemoveBagModal, selectedRemoveBagId, null, destinationByBtn, removeBagSearchInput);
+
+    document.getElementById('form5').onsubmit = async (event) => {
+
+        event.preventDefault();
+
+        const epc = document.getElementById('epc-bag');
+        const code = document.getElementById('code-bag');
+        const type = document.getElementById('type-bag');
+        const maxcount = document.getElementById('max-count-wash-bag');
+
+        if(epc.value === '') {
+            epc.classList.remove('is-valid');
+            epc.classList.add('is-invalid');
+            return;
+        }
+
+        if(code.value === '') {
+            code.classList.remove('is-valid');
+            code.classList.add('is-invalid');
+            return;
+        }
+
+        if(type.value === '') {
+            type.classList.remove('is-valid');
+            type.classList.add('is-invalid');
+            return;
+        }
+
+        if(maxcount.value === '') {
+            maxcount.classList.remove('is-valid');
+            maxcount.classList.add('is-invalid');
+            return;
+        }
+
+        const data = {
+            epc: epc.value,
+            code: code.value,
+            type: type.value,
+            maxcount: maxcount.value
+        };
+
+        try {
+            const response = await fetch(document.getElementById('form5').action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                openMess('Error', responseData.message);
+            } else {
+                openMess('Info', responseData.message);
+            }
+
+            closeInsertBagModal();
+
+        } catch (error) {
+            openMess('Error', `Network error: ${error.message}`);
+        }
+    }
+
+    document.getElementById('form6').onsubmit = async (event) => {
+
+        event.preventDefault();
+
+        if(selectedDeleteBagId.value === '') {
+            deleteBagSearchInput.classList.remove('is-valid');
+            deleteBagSearchInput.classList.add('is-invalid');
+            return;
+        }
+
+        const data = {
+            bagId: selectedDeleteBagId.value,
+        };
+
+        try {
+            const response = await fetch(document.getElementById('form6').action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                openMess('Error', responseData.message);
+            } else {
+                openMess('Info', responseData.message);
+            }
+
+            closeDeleteBagModal();
+
+        } catch (error) {
+            openMess('Error', `Network error: ${error.message}`);
+        }
+    }
     
 });

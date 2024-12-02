@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const icon = document.getElementById('mess-icon');
 
-        icon.src = "../icon/error.png";
+        icon.src = "/icon/error.png";
         document.getElementById('btnYes').style.display = 'none';
         document.getElementById('mess-text').textContent = 'The file is not correct. Please contact support!';
 
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         const a = document.createElement('a');
                         a.style.display = 'none';
                         a.href = url;
-                        a.download = 'RFIDLaundryReader-1.0-release.apk'; 
+                        a.download = 'NFCReader-1.0-release.apk'; 
                         document.body.appendChild(a);
                         a.click();
                         window.URL.revokeObjectURL(url);
