@@ -202,6 +202,11 @@ const schemaRemoveKey = Joi.object({
     keyId: Joi.string().alphanum().required()
 });
 
+const schemaRenameKey = Joi.object({
+    oldKeyId: Joi.string().alphanum().required(),
+    newKeyId: Joi.string().alphanum().required()
+});
+
 const schemaAddSoldier = Joi.object({
     soldierId: Joi.string().alphanum().required(),
     soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$/).required(),
@@ -3127,33 +3132,68 @@ class Server {
         });
 
         this.app.post('/accommodation/removeKeyToRoom', async (req, res) => {
-
-            const { error } = schemaRemoveKey.validate(req.body);
+            const { error } = schemaRenameKey.validate(req.body);
             if (error) {
                 return res.status(400).send({ message: error.details[0].message });
             }
 
-            const { keyId } = req.body;
+            const { oldKeyId, newKeyId } = req.body;
 
             const client = await pool.connect();
 
             try {
-
                 await client.query('BEGIN');
 
-                await client.query(`DELETE FROM roomskey WHERE keyid = $1;`, [keyId]);
-                await client.query(`DELETE FROM key WHERE id = $1;`, [keyId]);
+                // Drop foreign key constraint
+                await client.query(`
+                    ALTER TABLE roomskey
+                    DROP CONSTRAINT IF EXISTS roomskey_keyid_fkey;
+                `);
 
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Remove key ${keyId}`]);
+                // Drop foreign key constraint
+                await client.query(`
+                    ALTER TABLE movesoldier
+                    DROP CONSTRAINT IF EXISTS movesoldier_idnewkey_fkey,
+                    DROP CONSTRAINT IF EXISTS movesoldier_idpreviewkey_fkey;
+                `);
+
+                // Update key IDs in relevant tables
+                await client.query(`UPDATE roomskey SET keyid = $1 WHERE keyid = $2;`, [newKeyId, oldKeyId]);
+                await client.query(`UPDATE key SET id = $1 WHERE id = $2;`, [newKeyId, oldKeyId]);
+                await client.query(`UPDATE movesoldier SET idnewkey = $1 WHERE idnewkey = $2;`, [newKeyId, oldKeyId]);
+                await client.query(`UPDATE movesoldier SET idpreviewkey = $1 WHERE idpreviewkey = $2;`, [newKeyId, oldKeyId]);
+
+                // Re-add foreign key constraint
+                await client.query(`
+                    ALTER TABLE roomskey
+                    ADD CONSTRAINT roomskey_keyid_fkey
+                    FOREIGN KEY (keyid)
+                    REFERENCES key(id);
+                `);
+
+                // Re-add foreign key constraint
+                await client.query(`
+                    ALTER TABLE movesoldier
+                    ADD CONSTRAINT movesoldier_idnewkey_fkey FOREIGN KEY (idnewkey) REFERENCES key(id),
+                    ADD CONSTRAINT movesoldier_idpreviewkey_fkey FOREIGN KEY (idpreviewkey) REFERENCES key(id);
+                `);
+
+                // Log user action
+                await client.query(`
+                    INSERT INTO usermonitoring (user_id, location) 
+                    VALUES (
+                        (SELECT id FROM users WHERE username = $1),
+                        $2
+                    )
+                `, [req.session.username, `Replace key ${oldKeyId} with ${newKeyId}`]);
 
                 await client.query('COMMIT');
-                return res.status(200).send({ message: `The key was removed successfully.` });
+                return res.status(200).send({ message: `The key was replaced successfully.` });
 
-            } catch (error) {
+            } catch (err) {
                 await client.query('ROLLBACK');
-                res.status(500).json({ message: 'Failed to delete key. Try again later.' });
+                console.error('Error during key replacement:', err.message);
+                return res.status(500).json({ message: 'Failed to replace key. Try again later.' });
 
             } finally {
                 client.release();
@@ -4063,7 +4103,7 @@ class Server {
                 const worksheet1 = workbook.addWorksheet('Washed Bags');
                 const worksheet2 = workbook.addWorksheet('Bags by Nationality');
 
-                const headers1 = ['Bag number', 'Soldier name', 'Nationality', 'Bag type', 'Date of issue', 'Collection date' ];
+                const headers1 = ['Bag number', 'Soldier name', 'Nationality', 'Bag type', 'Date of issue', 'Collection date'];
                 worksheet1.addRow(headers1).eachCell((cell) => {
                     cell.font = { bold: true };
                     cell.alignment = { horizontal: 'center' };

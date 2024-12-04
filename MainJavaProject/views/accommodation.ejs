@@ -664,18 +664,24 @@
             <h2>Remove Key</h2>
 
             <div class="mb-3 search-container" id="search-key-container">
-                <label for="keySearch" class="form-label">Key Name:</label>
+                <label for="keySearch" class="form-label">Old key name:</label>
                 <div class="input-group">
                     <input type="text" id="keySearch" class="form-control" placeholder="Key Name">
 
-                    <div class="invalid-feedback">
-                        Please enter a key name
-                    </div>
+                    <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
                 <ul id="keyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedKeyId" name="keySelectId" value="">
                 <!-- To store the selected soldier ID -->
+            </div>
+
+            <label for="newKeyName" class="form-label">New key name:</label>
+            <div class="input-group">
+                <input type="text" id="newKeyName" class="form-control" placeholder="Key Name">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
             </div>
 
             <button type="submit" id="remove-room-btn" class="modal-button">Remove key</button>

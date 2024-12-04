@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectKeyInput = document.getElementById('keySearch');
     const selectKeyDropdown = document.getElementById('keyDropdown');
     const selectedKeyId = document.getElementById('selectedKeyId');
+    const newKeyName = document.getElementById('newKeyName');
 
     const selectAllKeyInput = document.getElementById('allKeySearch');
     const selectAllKeyDropdown = document.getElementById('allKeyDropdown');
@@ -1072,9 +1073,13 @@ document.addEventListener('DOMContentLoaded', function () {
         selectKeyInput.value = '';
         selectKeyDropdown.style.display = 'none';
         selectedKeyId.value = '';
+        newKeyName.value = '';
 
         selectKeyInput.classList.remove('is-valid');
         selectKeyInput.classList.remove('is-invalid');
+
+        newKeyName.classList.remove('is-valid');
+        newKeyName.classList.remove('is-invalid');
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
@@ -2066,8 +2071,18 @@ document.addEventListener('DOMContentLoaded', function () {
             selectKeyInput.classList.remove('is-invalid');
         }
 
+        if(newKeyName.value === "") {
+            newKeyName.classList.remove('is-valid');
+            newKeyName.classList.add('is-invalid');
+            return;
+        } else {
+            newKeyName.classList.add('is-valid');
+            newKeyName.classList.remove('is-invalid');
+        }
+
         const data = {
-            keyId: selectedKeyId.value
+            oldKeyId: selectedKeyId.value,
+            newKeyId: newKeyName.value
         };
 
         try {
@@ -2376,4 +2391,14 @@ document.addEventListener('DOMContentLoaded', function () {
         openModalRemoveKey();
     });
 
+    document.getElementById('newKeyName').addEventListener('input', function () {
+        if(newKeyName.value === "") {
+            newKeyName.classList.remove('is-valid');
+            newKeyName.classList.add('is-invalid');
+            return;
+        } else {
+            newKeyName.classList.add('is-valid');
+            newKeyName.classList.remove('is-invalid');
+        }
+    });
 });
