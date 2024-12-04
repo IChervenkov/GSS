@@ -784,6 +784,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newRow = bagsWashedTableBody.insertRow();
                 newRow.insertCell().textContent = row.code;
                 newRow.insertCell().textContent = row.namesoldier;
+                newRow.insertCell().textContent = row.country;
+                newRow.insertCell().textContent = row.type;
                 newRow.insertCell().textContent = row.date_drop_off ? row.date_drop_off : 'Not accommodated';
                 newRow.insertCell().textContent = row.date_ready_to_pick_up ? row.date_ready_to_pick_up : 'No departure date';
             });
@@ -958,5 +960,61 @@ document.addEventListener('DOMContentLoaded', () => {
             openMess('Error', `Network error: ${error.message}`);
         }
     }
+
+    document.getElementById('form1').onsubmit = async (event) => {
+
+        event.preventDefault();
+    
+        try {
+            const table1 = document.getElementById("bagsWashedTable");
+            const rows1 = Array.from(table1.querySelectorAll("tbody tr"));
+
+            const table2 = document.getElementById("bagsWashedNationalityTable");
+            const rows2 = Array.from(table2.querySelectorAll("tbody tr"));
+    
+            const data = rows1
+            .filter(row => row.style.display !== 'none')
+            .map((row) => {
+                const cells = row.querySelectorAll("td");
+                return {
+                    bagNumber: cells[0]?.innerText.trim(),
+                    soldierName: cells[1]?.innerText.trim(),
+                    dateIn: cells[2]?.innerText.trim(),
+                    dateOut: cells[3]?.innerText.trim(),
+                };
+            }).filter(row => row.bagNumber); // Exclude empty rows
+
+            const data_1 = rows2
+            .filter(row => row.style.display !== 'none')
+            .map((row) => {
+                const cells = row.querySelectorAll("td");
+                return {
+                    nationality: cells[0]?.innerText.trim(),
+                    bagCount: cells[1]?.innerText.trim(),
+                };
+            }).filter(row => row.nationality); // Exclude empty rows
+    
+            const response = await fetch(document.getElementById('form1').action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ result: data, result_nationality: data_1 })
+            });
+    
+            if (!response.ok) throw new Error(await response.text());
+    
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = 'report_laundry.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message || 'Failed to download the report.');
+        }
+    }    
     
 });

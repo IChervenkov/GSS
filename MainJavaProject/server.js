@@ -383,33 +383,19 @@ class Server {
     }
 
     giveSpecificPermissionLaundry(username, indexes, res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted) {
-        switch (username) {
-            case "admin":
-                res.render('laundry', {
-                    title: "Laundry",
-                    horizontalNavItems: horizontalNavItems,
-                    bagData: bagData,
-                    totalCounts: totalCounts,
-                    avgTimeData: avgTimeData,
-                    overallAverageFormatted: overallAverageFormatted,
-                    headerTable: headerTable,
-                    overallTotalMountFormatted: overallTotalMountFormatted
-                });
-                break;
 
-            default:
-                res.render('laundry', {
-                    title: "Laundry",
-                    horizontalNavItems: indexes.map(index => horizontalNavItems[index]),
-                    bagData: bagData,
-                    totalCounts: totalCounts,
-                    avgTimeData: avgTimeData,
-                    overallAverageFormatted: overallAverageFormatted,
-                    headerTable: headerTable,
-                    overallTotalMountFormatted: overallTotalMountFormatted
-                });
-                break;
-        }
+        res.render('laundry', {
+            title: "Laundry",
+            horizontalNavItems: indexes.map(index => horizontalNavItems[index]),
+            bagData: bagData,
+            totalCounts: totalCounts,
+            avgTimeData: avgTimeData,
+            overallAverageFormatted: overallAverageFormatted,
+            headerTable: headerTable,
+            overallTotalMountFormatted: overallTotalMountFormatted,
+            username: username
+        });
+
     }
 
     // Check if the IP or user is blocked due to too many failed login attempts
@@ -493,8 +479,8 @@ class Server {
                 case 'guest':
                     this.giveSpecificPermissionMain(req.session.username, [0, 4, 5], res);
                     break;
-                case 'helpDesk':
-                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4, 5], res);
+                case 'helpDeskGatis':
+                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 5], res);
                     break;
                 default:
                     this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4, 5], res);
@@ -909,8 +895,8 @@ class Server {
                     case 'guest':
                         this.giveSpecificPermissionBicycles(req.session.username, [0, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
                         break;
-                    case 'helpDesk':
-                        this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                    case 'helpDeskGatis':
+                        this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
                         break;
                     default:
                         this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
@@ -1037,7 +1023,7 @@ class Server {
             let { selectedDate1, selectedDate2 } = req.body;
 
             const client = await pool.connect();
-            
+
             try {
 
                 selectedDate1 += " 00:00";
@@ -2015,8 +2001,8 @@ class Server {
                             this.giveSpecificPermissionAccommodation(req.session.username, [0, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
                             break;
 
-                        case 'helpDesk':
-                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
+                        case 'helpDeskGatis':
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
                             break;
 
                         default:
@@ -2032,8 +2018,8 @@ class Server {
                             this.giveSpecificPermissionAccommodation(req.session.username, [0, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
                             break;
 
-                        case 'helpDesk':
-                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+                        case 'helpDeskGatis':
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
                             break;
 
                         default:
@@ -2161,13 +2147,6 @@ class Server {
 
                 } else if (soldierId !== '' && countryId !== 'None') {
 
-                    const result_alrady_accommodation_soldier = await client.query(`SELECT * FROM key WHERE soldierid = $1`,
-                        [soldierId]
-                    );
-
-                    if (result_alrady_accommodation_soldier.rows.length > 0)
-                        return res.status(401).send({ message: "This soldier is already accommodation" });
-
                     const result_alrady_bag_get = await client.query(`SELECT * FROM soldier WHERE date_free IS NULL AND laundry_bag_id = $1;`,
                         [bagId]
                     );
@@ -2189,20 +2168,27 @@ class Server {
                     if (result_accommodation_soldier.rows.length === 0) {
                         await client.query(
                             "UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3 where id = $1;",
-                            [soldierId, mealCardId, bagId]
+                            [soldierId, mealCardId, bagId === '' ? null : bagId]
                         );
                     } else {
                         await client.query(
                             "UPDATE soldier SET meal_card = $2, laundry_bag_id = $3 where id = $1;",
-                            [soldierId, mealCardId, bagId]
+                            [soldierId, mealCardId, bagId === '' ? null : bagId]
                         );
                     }
 
                     const bagsRes = await client.query(`SELECT code FROM laundrybags WHERE id = $1;`, [bagId]);
 
-                    // Query the database for the user
-                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                        [req.session.username, `Accommodated soldier with number ${soldierId} with meal card ${mealCardId} and bag ${bagsRes.rows[0].code}`]);
+                    if (bagsRes.rows.length === 0) {
+                        // Query the database for the user
+                        await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                            [req.session.username, `Accommodated soldier with number ${soldierId} and without meal card and bag`]);
+                            
+                    } else {
+                        // Query the database for the user
+                        await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                            [req.session.username, `Accommodated soldier with number ${soldierId} with meal card ${mealCardId} and bag ${bagsRes.rows[0].code}`]);
+                    }
 
                 } else if (soldierId === '' && countryId !== 'None') {
 
@@ -2313,177 +2299,50 @@ class Server {
 
         this.app.post("/accommodation/report", this.isLoggedIn.bind(this), async (req, res) => {
 
-            const client = await pool.connect();
+            const { result, result_nationality } = req.body;
+
+            if (!Array.isArray(result) || !Array.isArray(result_nationality)) {
+                return res.status(400).send('Invalid input data.');
+            }
 
             try {
 
-                await client.query('BEGIN');
-
-                // Query for bike usage details
-                const result_soldior = await client.query(`
-                    SELECT 
-                        namesoldier, 
-                        country, 
-                        COALESCE(TO_CHAR(date_accommodation, 'Mon DD, YYYY'), 'Not accommodated') AS date_accommodation, 
-                        COALESCE(TO_CHAR(date_free, 'Mon DD, YYYY'), 'No departure date	') AS date_free,
-                        COALESCE(meal_card, 'No meal card set') AS meal_card,
-						COALESCE(code, 'No bag set') AS code
-                    FROM 
-                        soldier s
-                    LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
-                    WHERE 
-                        country <> 'None';`);
-
-                // Query for bike usage details
-                const result_move = await client.query(`
-                    SELECT 
-                        current_rooms.nameroom AS current_room,
-                        previous_rooms.nameroom AS previous_room,
-                        soldier_name.namesoldier AS name_soldier,
-                        TO_CHAR(ms.datemove, 'YYYY-MM-DD') AS datemove
-                    FROM 
-                        movesoldier ms
-                    JOIN 
-                        key k_current ON ms.idnewkey = k_current.id
-                    JOIN 
-                        roomskey rk_current ON k_current.id = rk_current.keyid
-                    JOIN 
-                        rooms current_rooms ON current_rooms.id = rk_current.roomid
-                    JOIN 
-                        key k_previous ON ms.idpreviewkey = k_previous.id
-                    JOIN 
-                        roomskey rk_previous ON k_previous.id = rk_previous.keyid
-                    JOIN 
-                        rooms previous_rooms ON previous_rooms.id = rk_previous.roomid
-                    JOIN 
-                        soldier soldier_name ON soldier_name.id = ms.idsoldier;`);
-
-                const data = result_soldior.rows;
-                const data_move = result_move.rows;
-
-                // Create a new Excel workbook
                 const workbook = new excelJS.Workbook();
+                const worksheet1 = workbook.addWorksheet('Information about soldiers');
+                const worksheet2 = workbook.addWorksheet('Movement soldiers information');
 
-                // Sheet 1: Soldier Data
-                const worksheet1 = workbook.addWorksheet('Soldier Data');
-
-                // Sheet 2: Soldier Data
-                const worksheet2 = workbook.addWorksheet('Soldier Move Data');
-
-                // Add custom column titles for the first sheet
                 const headers1 = ['Soldier Name', 'Country', 'Accommodation Date', 'Release Date', 'Meal card', 'Laundry bag'];
-                const headerRow1 = worksheet1.addRow(headers1);
+                worksheet1.addRow(headers1).eachCell((cell) => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                });
 
-                // Add custom column titles for the first sheet
                 const headers2 = ['Previous Room', 'New Room', 'Soldier', 'Date Relocation'];
-                const headerRow2 = worksheet2.addRow(headers2);
-
-                // Apply styling to the headers
-                headerRow1.eachCell((cell) => {
-                    cell.font = { bold: true, size: 12 };
-                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
-                    cell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' },
-                    };
+                worksheet2.addRow(headers2).eachCell((cell) => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
                 });
 
-                // Apply styling to the headers
-                headerRow2.eachCell((cell) => {
-                    cell.font = { bold: true, size: 12 };
-                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
-                    cell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' },
-                    };
+                worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
+                worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
+
+                result.forEach(({ soldierName, country, dateIn, dateOut, mealCard, laundryBag }) => {
+                    worksheet1.addRow([soldierName, country, dateIn, dateOut, mealCard, laundryBag]);
                 });
 
-                // Set column widths for sheet 1
-                worksheet1.columns = [
-                    { width: 12 }, // Row Number
-                    { width: 20 }, // Bike Name
-                    { width: 25 }, // Soldier Name
-                    { width: 20 }, // Time Range
-                    { width: 12 }, // Time Range
-                    { width: 12 }  // Time Range
-                ];
-
-                // Set column widths for sheet 2
-                worksheet2.columns = [
-                    { width: 12 }, // Previous Room
-                    { width: 20 }, // New Room
-                    { width: 25 }, // Soldier Name
-                    { width: 20 } // Date Relocation
-                ];
-
-                // Add data rows to the first sheet with alternating row color styling
-                data.forEach((row, index) => {
-                    const dataRow = worksheet1.addRow(Object.values(row));
-
-                    // Apply borders and alternating row color
-                    dataRow.eachCell((cell) => {
-                        cell.border = {
-                            top: { style: 'thin' },
-                            left: { style: 'thin' },
-                            bottom: { style: 'thin' },
-                            right: { style: 'thin' },
-                        };
-                    });
-                    if (index % 2 === 0) {
-                        dataRow.eachCell((cell) => {
-                            cell.fill = {
-                                type: 'pattern',
-                                pattern: 'solid',
-                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
-                            };
-                        });
-                    }
+                result_nationality.forEach(({ oldRoom, newRoom, soldierName, dateRelock }) => {
+                    worksheet2.addRow([oldRoom, newRoom, soldierName, dateRelock]);
                 });
 
-                // Add data rows to the first sheet with alternating row color styling
-                data_move.forEach((row, index) => {
-                    const dataRow = worksheet2.addRow(Object.values(row));
-
-                    // Apply borders and alternating row color
-                    dataRow.eachCell((cell) => {
-                        cell.border = {
-                            top: { style: 'thin' },
-                            left: { style: 'thin' },
-                            bottom: { style: 'thin' },
-                            right: { style: 'thin' },
-                        };
-                    });
-                    if (index % 2 === 0) {
-                        dataRow.eachCell((cell) => {
-                            cell.fill = {
-                                type: 'pattern',
-                                pattern: 'solid',
-                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
-                            };
-                        });
-                    }
-                });
-
-                // Set the response headers for file download
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-                res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx');
+                res.setHeader('Content-Disposition', 'attachment; filename="report_laundry.xlsx"');
 
-                // Write the workbook to the response stream
                 await workbook.xlsx.write(res);
-
-                await client.query('COMMIT');
-                res.end(); // End the response
+                res.end();
 
             } catch (error) {
-                await client.query('ROLLBACK');
-                console.log('Error:', error);
-                res.status(500).send('An error occurred');
-            } finally {
-                client.release();
+                console.error(error);
+                res.status(500).send('Failed to generate the report.');
             }
 
         });
@@ -3447,8 +3306,8 @@ class Server {
                         this.giveSpecificPermissionFitness(req.session.username, [0, 4, 5], res, data, dataPerEmj);
                         break;
 
-                    case 'helpDesk':
-                        this.giveSpecificPermissionFitness(req.session.username, [0, 1, 2, 3, 4, 5], res, data, dataPerEmj);
+                    case 'helpDeskGatis':
+                        this.giveSpecificPermissionFitness(req.session.username, [0, 1, 5], res, data, dataPerEmj);
                         break;
 
                     default:
@@ -3711,8 +3570,18 @@ class Server {
                 const overallAverageFormatted = formatTime(overallAverageTimeInSeconds);
 
                 await client.query('COMMIT');
-                // Continue with the response
-                this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 2, 3, 4, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
+
+                switch (req.session.username) {
+                    case 'guest':
+                        this.giveSpecificPermissionLaundry(req.session.username, [0, 4, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
+                        break;
+                    case 'helpDeskGatis':
+                        this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
+                        break;
+                    default:
+                        this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 2, 3, 4, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
+                        break;
+                }
 
             } catch (error) {
                 await client.query('ROLLBACK');
@@ -3773,62 +3642,112 @@ class Server {
 
             const { codes, destination, prev_destination } = req.body;
 
-            codes.forEach(async code => {
+            if (!Array.isArray(codes) || codes.length === 0) {
+                return res.status(400).json({ message: "Invalid codes array" });
+            }
 
-                const client = await pool.connect();
+            const client = await pool.connect();
 
-                try {
+            try {
+                await client.query('BEGIN');
 
-                    await client.query('BEGIN');
+                if (prev_destination === 'None') {
+                    const codesPlaceholder = codes.map((_, i) => `$${i + 1}`).join(', ');
+                    const insertPromises = codes.map((code, index) =>
+                        client.query(
+                            `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_DATE, NULL) ON CONFLICT DO NOTHING;`,
+                            [code]
+                        )
+                    );
+                    await Promise.all(insertPromises);
 
-                    if (prev_destination === 'None') {
-                        await client.query(`INSERT INTO laundryreport VALUES ($1, CURRENT_DATE, NULL);`, [code]);
-
-                        await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
-                            avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]);
-                    }
-
-                    await client.query(`UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP WHERE id = $1;`, [code]);
-
-                    const avgTimeResult = await client.query(`
-                            SELECT AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds
-                            FROM laundrybags
-                            WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1;`, [prev_destination]);
-
-                    const avgTimeRow = avgTimeResult.rows[0];
-                    if (avgTimeRow) {
-                        const columnName = statusMapping[prev_destination.toLowerCase().trim()];
-                        if (columnName) {
-                            await client.query(`
-                                    UPDATE laundrybags
-                                    SET ${columnName} = $1
-                                    WHERE status = $2;`, [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination]);
-                        }
-                    }
-
-                    if (destination !== 'None')
-                        await client.query(`
-                            UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP WHERE id = $2;`, [destination, code]);
-
-                    else {
-                        await client.query(`UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_DATE WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
-
-                        await client.query(`
-                            UPDATE laundrybags SET status = $1, laundrycount = laundrycount + 1 WHERE id = $2;`, [destination, code]);
-                    }
-
-                    await client.query('COMMIT');
-                    res.status(200).json();
-
-                } catch (err) {
-                    await client.query('ROLLBACK');
-                    console.error(err); // Log detailed error for debugging
-                    res.status(500).json({ message: "Internal server error" });
-
-                } finally {
-                    client.release();
+                    await client.query(
+                        `UPDATE laundrybags 
+                         SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
+                             avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0
+                         WHERE id IN (${codesPlaceholder});`,
+                        codes
+                    );
                 }
-            })
+
+                const codesPlaceholder = codes.map((_, i) => `$${i + 1}`).join(', ');
+                await client.query(
+                    `UPDATE laundrybags 
+                     SET timeout = CURRENT_TIMESTAMP 
+                     WHERE id IN (${codesPlaceholder});`,
+                    codes
+                );
+
+                const avgTimeResult = await client.query(
+                    `SELECT AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds 
+                     FROM laundrybags 
+                     WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1;`,
+                    [prev_destination]
+                );
+
+                const avgTimeRow = avgTimeResult.rows[0];
+                if (avgTimeRow) {
+                    const columnName = statusMapping[prev_destination.toLowerCase().trim()];
+                    if (columnName) {
+                        await client.query(
+                            `UPDATE laundrybags 
+                             SET ${columnName} = $1 
+                             WHERE status = $2;`,
+                            [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination]
+                        );
+                    }
+                }
+
+                if (destination !== 'None') {
+                    const destinationParams = [destination, ...codes];
+                    const codesPlaceholders = codes.map((_, i) => `$${i + 2}`).join(', ');
+                    await client.query(
+                        `UPDATE laundrybags 
+                         SET status = $1, timein = CURRENT_TIMESTAMP 
+                         WHERE id IN (${codesPlaceholders});`,
+                        destinationParams
+                    );
+
+                    if (destination === 'Drop off') {
+                        const codesPlaceholders = codes.map((_, i) => `$${i + 1}`).join(', ');
+                        await client.query(
+                            `UPDATE laundrybags 
+                            SET laundrycount = laundrycount + 1
+                            WHERE id IN (${codesPlaceholders});`,
+                            codes);
+                    }
+
+                    if (destination === 'Ready to pick up') {
+                        const codesPlaceholders = codes.map((_, i) => `$${i + 1}`).join(', ');
+                        await client.query(
+                            `UPDATE laundryreport 
+                            SET date_ready_to_pick_up = CURRENT_DATE 
+                            WHERE bag_id IN (${codesPlaceholders}) AND date_ready_to_pick_up IS NULL;`,
+                            codes
+                        );
+                    }
+
+                } else {
+
+                    const destinationParams = [destination, ...codes];
+                    const codesPlaceholdersLaundrybags = codes.map((_, i) => `$${i + 2}`).join(', ');
+                    await client.query(
+                        `UPDATE laundrybags 
+                         SET status = $1
+                         WHERE id IN (${codesPlaceholdersLaundrybags});`,
+                        destinationParams
+                    );
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: "Bulk status change successful" });
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error(err); // Log the error
+                res.status(500).json({ message: "Internal server error" });
+            } finally {
+                client.release();
+            }
         });
 
         this.app.post('/checkScaningCode', async (req, res) => {
@@ -3858,10 +3777,11 @@ class Server {
 
                 const bag = result.rows[0];
 
-                if (bag.laundrycount >= permCount) {
-                    await client.query('ROLLBACK');
-                    return res.status(402).json({ message: `Bag number ${bag.code} has already been laundered. The maximum laundry limit per month for one bag is ${permCount}` });
-                }
+                // if (bag.laundrycount >= permCount) {
+                //     await client.query('ROLLBACK');
+                //     return res.status(402).json({ message: `Bag number ${bag.code} has already been laundered. The maximum laundry limit per month for one bag is ${permCount}` });
+                // }
+
                 if (bag.status !== prev_destination) {
                     await client.query('ROLLBACK');
                     return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${bag.status}, not ${prev_destination}.` });
@@ -3944,20 +3864,20 @@ class Server {
                     return res.status(404).json({ message: "Laundry bag is in storage" });
                 }
 
-                if (result.rows[0].laundrycount > result.rows[0].maxcountlandry) {
-                    await client.query('ROLLBACK');
-                    return res.status(403).json({ message: `This bag has exceeded the ${result.rows[0].maxcountlandry} wash per month limit` });
-                }
+                // if (result.rows[0].laundrycount > result.rows[0].maxcountlandry) {
+                //     await client.query('ROLLBACK');
+                //     return res.status(403).json({ message: `This bag has exceeded the ${result.rows[0].maxcountlandry} wash per month limit` });
+                // }
 
                 const bag = result.rows[0];
 
-                if(destination === 'None') {
+                if (destination === 'Ready to pick up')
                     await client.query(`
                         UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_DATE WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
 
+                if (destination === 'None')
                     await client.query(`
                         UPDATE laundrybags SET status = $1 WHERE id = $2;`, [destination, code]);
-                }
 
                 if (prev_destination === 'None') {
 
@@ -3989,6 +3909,10 @@ class Server {
 
                 await client.query(`
                     UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP WHERE id = $2;`, [destination, code]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Change bag ${code} status from ${prev_destination} to ${destination}`]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ code: bag.code, soldierId: bag.id, message: "The status of the bag has been changed" });
@@ -4094,8 +4018,10 @@ class Server {
 
                 const result = await client.query(`
                     SELECT 
-                        l.code, 
+                        l.code,
+                        l.type,
                         s.namesoldier, 
+                        s.country,
                         TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD') AS date_drop_off, 
                         TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD') AS date_ready_to_pick_up
                     FROM laundrybags l
@@ -4123,152 +4049,52 @@ class Server {
             }
         });
 
-        this.app.get('/laundry/report', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/laundry/report', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const client = await pool.connect();
+            const { result, result_nationality } = req.body;
+
+            if (!Array.isArray(result) || !Array.isArray(result_nationality)) {
+                return res.status(400).send('Invalid input data.');
+            }
 
             try {
 
-                await client.query('BEGIN');
-
-                const result = await client.query(`
-                    SELECT 
-                        l.code, 
-                        s.namesoldier, 
-                        TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD') AS date_drop_off, 
-                        COALESCE(TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD'), 'No departure date') AS date_ready_to_pick_up
-                    FROM laundrybags l
-					JOIN laundryreport lr ON lr.bag_id = l.id
-                    JOIN soldier s ON l.id = s.laundry_bag_id
-                    WHERE s.date_free IS NULL;`);
-
-                const result_nationality = await client.query(`
-                    SELECT SUM(l.laundrycount) AS total_count_bags, s.country
-                    FROM laundrybags l
-                    JOIN soldier s ON l.id = s.laundry_bag_id
-                    WHERE s.date_free IS NULL
-                    GROUP BY s.country;`);
-
-                // Create a new Excel workbook
                 const workbook = new excelJS.Workbook();
-                const worksheet1 = workbook.addWorksheet('Washed bags');
-                const worksheet2 = workbook.addWorksheet('Number of bags by nationality');
+                const worksheet1 = workbook.addWorksheet('Washed Bags');
+                const worksheet2 = workbook.addWorksheet('Bags by Nationality');
 
-                // Define headers
-                const headers1 = ['Bag number', 'Soldier name', 'Date of issue', 'Collection date'];
+                const headers1 = ['Bag Number', 'Soldier Name', 'Date of Issue', 'Collection Date'];
                 worksheet1.addRow(headers1).eachCell((cell) => {
-                    cell.font = { bold: true, size: 12 };
-                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
-                    cell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' },
-                    };
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
                 });
 
-                // Define headers
-                const headers2 = ['Nationality', 'Number of bags washed'];
+                const headers2 = ['Nationality', 'Number of Bags'];
                 worksheet2.addRow(headers2).eachCell((cell) => {
-                    cell.font = { bold: true, size: 12 };
-                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
-                    cell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' },
-                    };
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
                 });
 
-                // Set column widths
-                worksheet1.columns = headers1.map((header, colIndex) => {
-                    const maxContentLength = Math.max(
-                        header.length,
-                        ...result.rows.map(row => (row[colIndex] ? row[colIndex].toString().length : 0))
-                    );
-                    return { width: maxContentLength + 2 }; // Add padding
+                worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
+                worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
+
+                result.forEach(({ bagNumber, soldierName, dateIn, dateOut }) => {
+                    worksheet1.addRow([bagNumber, soldierName, dateIn, dateOut]);
                 });
 
-
-                // Set column widths
-                worksheet2.columns = headers2.map((header, colIndex) => {
-                    const maxContentLength = Math.max(
-                        header.length,
-                        ...result.rows.map(row => (row[colIndex] ? row[colIndex].toString().length : 0))
-                    );
-                    return { width: maxContentLength + 2 }; // Add padding
+                result_nationality.forEach(({ nationality, bagCount }) => {
+                    worksheet2.addRow([nationality, bagCount]);
                 });
 
-
-                // Populate data rows
-                result.rows.forEach(({ code, namesoldier, date_drop_off, date_ready_to_pick_up }, index) => {
-                    const dataRow = worksheet1.addRow([code, namesoldier, date_drop_off, date_ready_to_pick_up]);
-
-                    // Style each cell
-                    dataRow.eachCell((cell) => {
-                        cell.border = {
-                            top: { style: 'thin' },
-                            left: { style: 'thin' },
-                            bottom: { style: 'thin' },
-                            right: { style: 'thin' },
-                        };
-                    });
-
-                    // Apply alternating row color
-                    if (index % 2 === 0) {
-                        dataRow.eachCell((cell) => {
-                            cell.fill = {
-                                type: 'pattern',
-                                pattern: 'solid',
-                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
-                            };
-                        });
-                    }
-                });
-
-                // Populate data rows
-                result_nationality.rows.forEach(({ total_count_bags, country }, index) => {
-                    const dataRow = worksheet2.addRow([country, total_count_bags]);
-
-                    // Style each cell
-                    dataRow.eachCell((cell) => {
-                        cell.border = {
-                            top: { style: 'thin' },
-                            left: { style: 'thin' },
-                            bottom: { style: 'thin' },
-                            right: { style: 'thin' },
-                        };
-                    });
-
-                    // Apply alternating row color
-                    if (index % 2 === 0) {
-                        dataRow.eachCell((cell) => {
-                            cell.fill = {
-                                type: 'pattern',
-                                pattern: 'solid',
-                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
-                            };
-                        });
-                    }
-                });
-
-                // Set headers for file download
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                 res.setHeader('Content-Disposition', 'attachment; filename="report_laundry.xlsx"');
 
-                // Write the Excel file to the response
                 await workbook.xlsx.write(res);
-
-                await client.query('COMMIT');
                 res.end();
 
             } catch (error) {
-                await client.query('ROLLBACK');
-                console.error('Error generating Excel report:', error);
-                res.status(500).send('Failed to generate report.');
-
-            } finally {
-                client.release();
+                console.error(error);
+                res.status(500).send('Failed to generate the report.');
             }
         });
 
@@ -4298,6 +4124,10 @@ class Server {
                     [epc, code, type, maxcount]
                 );
 
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Add bag with code ${code}`]);
+
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'Bag added successfully' });
 
@@ -4326,7 +4156,14 @@ class Server {
 
                 await client.query('BEGIN');
 
+                const result = await client.query(`SELECT code FROM laundrybags WHERE id = $1;`, [bagId]);
+                const bagCode = result.rows[0].code;
+
                 await client.query(`DELETE FROM laundrybags WHERE id = $1`, [bagId]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Remove bag with code ${bagCode}`]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The bag was successfully removed' });

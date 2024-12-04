@@ -20,7 +20,8 @@
 
     <!-- Horizontal Navigation Bar -->
     <div class="horizontal-nav">
-        <ul>
+        <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
+        <ul id="nav-links">
             <% horizontalNavItems.forEach(function(item) { %>
                 <li><a href="<%= item.href %>">
                         <%= item.name %>
@@ -32,143 +33,148 @@
     <!-- Main Content Area -->
     <div class="main-content">
 
-        <% if(navItems) { %>
-            <!-- Left Navigation Bar -->
-            <div class="left-nav">
-                <div class="title-container mb-2 sticky-top p-3 w-100 transparent-bg" <% if(username !='helpDeskNikolay'
-                    && username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
-                        <button type="button" id="btnAddDestination"
-                            class="btn-add-destination w-100 <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Add
-                            Destination</button>
-                </div>
-                <ul>
-                    <% navItems.forEach(function(item) { %>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <a href="<%= item.href %>" class="flex-grow-1 text-decoration-none full-back">
-                                <%= item.name %>
-                                    <span class="name-add d-block">
-                                        <%= item.nameAdd %>
-                                    </span>
-                            </a>
-                            <div class="button-group" <% if(username !='helpDeskNikolay' && username !='admin' ) { %>
-                                style="cursor: not-allowed" <% } %>>
-                                    <button type="button"
-                                        class="btn btn-success btn-sm me-1 btn-add <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
-                                        name="<%= item.numBuild %>">+</button>
-                                    <button type="button"
-                                        class="btn btn-danger btn-sm btn-remove <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
-                                        name="<%= item.numBuild %>">−</button>
-                                    <% if(item.numBuild) { %>
-                                        <button type="button"
-                                            class="btn btn-outline-secondary btn-sm <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
-                                            name="<%= item.numBuild %>" data-name-room="<%= item.name %>">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                        <% } %>
-                            </div>
-                        </li>
-                        <% }); %>
-                </ul>
+        <button type="button" id="menu-toggle-left" class="menu-toggle-left" aria-label="Toggle sidebar navigation">
+            <span id="arrow">&#9651;</span> Setting parameters
+        </button>
+
+        <!-- Left Navigation Bar -->
+        <div class="left-nav">
+            <div class="title-container mb-2 sticky-top p-3 w-100 transparent-bg" <% if(username !='helpDeskNikolay' &&
+                username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
+                    <button type="button" id="btnAddDestination"
+                        class="btn-add-destination w-100 <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Add
+                        Destination</button>
             </div>
-            <% } %>
-
-                <!-- Main Content Area -->
-                <div class="content">
-
-                    <div class="visualization-header">
-                        <h3>
-                            <%= titlePage %>
-                                <% if(countBeds) { %>
-                                    <span class="name-add">
-                                        (<%= countBeds %> free beds)
-                                    </span>
-                                    <% }; %>
-                        </h3>
-
-                        <!-- Soldier Selection with Custom Search -->
-                        <div class="search-container" id="search-all-key-container">
-                            <div class="input-group">
-                                <input type="text" id="allKeySearch" class="form-control" placeholder="Search...">
-                            </div>
-                            <ul id="allKeyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
-                            <input type="hidden" id="selectedAllKeyId" name="allKeySelectId" value="">
-                            <!-- To store the selected soldier ID -->
+            <ul>
+                <% navItems.forEach(function(item) { %>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <a href="<%= item.href %>" class="flex-grow-1 text-decoration-none full-back">
+                            <%= item.name %>
+                                <span class="name-add d-block">
+                                    <%= item.nameAdd %>
+                                </span>
+                        </a>
+                        <div class="button-group" <% if(username !='helpDeskNikolay' && username !='admin' ) { %>
+                            style="cursor: not-allowed" <% } %>>
+                                <button type="button"
+                                    class="btn btn-success btn-sm me-1 btn-add <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
+                                    name="<%= item.numBuild %>">+</button>
+                                <button type="button"
+                                    class="btn btn-danger btn-sm btn-remove <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
+                                    name="<%= item.numBuild %>">−</button>
+                                <% if(item.numBuild) { %>
+                                    <button type="button"
+                                        class="btn btn-outline-secondary btn-sm <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
+                                        name="<%= item.numBuild %>" data-name-room="<%= item.name %>">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <% } %>
                         </div>
+                    </li>
+                    <% }); %>
+            </ul>
+        </div>
 
-                        <div class="virtual-warehouse-labels">
-                            <label class="virtual-warehouse-label">Free Beds: <%= totalFreeBeds %></label>
-                            <label class="virtual-warehouse-label">Occupied Beds: <%= totalOccupiedBeds %></label>
-                            <div <% if(username !='helpDeskNikolay' && username !='admin' ) { %>
-                                style="cursor: not-allowed" <% } %>>
-                                    <button type="button" id="btnAddSoldier"
-                                        class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Add
-                                        soldier</button>
-                                    <button type="button" id="btnAccommSoldier"
-                                        class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Accommodation
-                                        soldiers</button>
-                                    <button type="button" id="btnFreeAllRoom"
-                                        class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Release
-                                        all
-                                        rooms</button>
-                            </div>
-                            <button type="button" id="btnReport" class="btn-report">Reports</button>
-                        </div>
+        <!-- Main Content Area -->
+        <div class="content">
+
+            <div class="visualization-header">
+                <h3 class="d-flex align-items-center gap-2">
+                    <%= titlePage %>
+                        <% if(countBeds) { %>
+                            <span class="name-add">
+                                (<%= countBeds %> free beds)
+                            </span>
+                            <% }; %>
+
+
+                                <!-- Soldier Selection with Custom Search -->
+                                <div class="search-container" id="search-all-key-container">
+                                    <div class="input-group">
+                                        <input type="text" id="allKeySearch" class="form-control"
+                                            placeholder="Search...">
+                                    </div>
+                                    <ul id="allKeyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                                    <input type="hidden" id="selectedAllKeyId" name="allKeySelectId" value="">
+                                    <!-- To store the selected soldier ID -->
+                                </div>
+                </h3>
+
+                <div class="virtual-warehouse-labels">
+                    <label class="virtual-warehouse-label">Free Beds: <%= totalFreeBeds %></label>
+                    <label class="virtual-warehouse-label">Occupied Beds: <%= totalOccupiedBeds %></label>
+
+                    <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
+                        style="cursor: not-allowed" <% } %>>
+                            <button type="button" id="btnAddSoldier"
+                                class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">Add
+                                soldier</button>
+                            <button type="button" id="btnAccommSoldier"
+                                class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">Accommodation
+                                soldiers</button>
+                            <button type="button" id="btnFreeAllRoom"
+                                class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Release
+                                all
+                                rooms</button>
                     </div>
-
-                    <!-- Data Visualization Table -->
-
-                    <% if(headerTable) { %>
-                        <div class="table-container">
-                            <table id="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>
-                                            <input type="text" class="search-input" placeholder="Search...">
-                                            <label id="room-number-header">Room Number</label>
-                                        </th>
-
-                                        <th>
-                                            <input type="text" class="search-input" placeholder="Search...">
-                                            <label id="room-status-header">Room Status</label>
-                                        </th>
-
-                                        <th>
-                                            <input type="text" class="search-input" placeholder="Search...">
-                                            <label id="count-free-beds-header">Count Free Beds</label>
-                                        </th>
-                                    </tr>
-                                </thead>
-
-                                <% if (nameroomSetCount) { %>
-                                    <tbody id="tableBody">
-                                        <% nameroomSetCount.forEach(function(item) { %>
-                                            <tr class="data-room">
-
-                                                <td>
-                                                    <%= item.nameroom %>
-                                                </td>
-
-                                                <td class="<%= item.countFreeBeds != 0 ? 'undefined-data' : '' %>">
-                                                    <%= item.countFreeBeds !=0 ? 'Free' : 'Occupied' %>
-                                                </td>
-
-                                                <td>
-                                                    <%= item.countFreeBeds %>
-                                                </td>
-
-                                            </tr>
-                                            <% }); %>
-                                    </tbody>
-                            </table>
-                        </div>
-
-                        <nav aria-label="Table pagination">
-                            <ul id="pagination" class="pagination justify-content-center"></ul>
-                        </nav>
-
-                        <% } } %>
-
+                    <button type="button" id="btnReport" class="btn-report">Reports</button>
                 </div>
+            </div>
+
+            <!-- Data Visualization Table -->
+
+            <% if(headerTable) { %>
+                <div class="table-container">
+                    <table id="data-table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="text" class="search-input" placeholder="Search...">
+                                    <label id="room-number-header">Room Number</label>
+                                </th>
+
+                                <th>
+                                    <input type="text" class="search-input" placeholder="Search...">
+                                    <label id="room-status-header">Room Status</label>
+                                </th>
+
+                                <th>
+                                    <input type="text" class="search-input" placeholder="Search...">
+                                    <label id="count-free-beds-header">Count Free Beds</label>
+                                </th>
+                            </tr>
+                        </thead>
+
+                        <% if (nameroomSetCount) { %>
+                            <tbody id="tableBody">
+                                <% nameroomSetCount.forEach(function(item) { %>
+                                    <tr class="data-room">
+
+                                        <td>
+                                            <%= item.nameroom %>
+                                        </td>
+
+                                        <td class="<%= item.countFreeBeds != 0 ? 'undefined-data' : '' %>">
+                                            <%= item.countFreeBeds !=0 ? 'Free' : 'Occupied' %>
+                                        </td>
+
+                                        <td>
+                                            <%= item.countFreeBeds %>
+                                        </td>
+
+                                    </tr>
+                                    <% }); %>
+                            </tbody>
+                    </table>
+                </div>
+
+                <nav aria-label="Table pagination">
+                    <ul id="pagination" class="pagination justify-content-center"></ul>
+                </nav>
+
+                <% } } %>
+
+        </div>
     </div>
 
     <input type="hidden" id="typeBuild" value="<%= type %>">
@@ -698,5 +704,6 @@
 <script src="/java/soldier_modal.js"></script>
 <script src="/java/pageNumber.js"></script>
 <script src="/java/showPinMessage.js"></script>
+<script src="/java/phoneMenu.js"></script>
 
 </html>

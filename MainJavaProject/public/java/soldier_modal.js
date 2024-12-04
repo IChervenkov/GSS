@@ -1431,6 +1431,66 @@ document.addEventListener('DOMContentLoaded', function () {
         openUploadMultiSoldierModal();
     });
 
+    document.getElementById('form2').onsubmit = async (event) => {
+
+        event.preventDefault();
+    
+        try {
+            const table1 = document.getElementById("soldierUsageTable");
+            const rows1 = Array.from(table1.querySelectorAll("tbody tr"));
+
+            const table2 = document.getElementById("soldierMoveTable");
+            const rows2 = Array.from(table2.querySelectorAll("tbody tr"));
+    
+            const data = rows1
+            .filter(row => row.style.display !== 'none')
+            .map((row) => {
+                const cells = row.querySelectorAll("td");
+                return {
+                    soldierName: cells[0]?.innerText.trim(),
+                    country: cells[1]?.innerText.trim(),
+                    dataIn: cells[2]?.innerText.trim(),
+                    dateOut: cells[3]?.innerText.trim(),
+                    mealCard: cells[4]?.innerText.trim(),
+                    laundryBag: cells[5]?.innerText.trim(),
+                };
+            }).filter(row => row.soldierName); // Exclude empty rows
+
+            const data_1 = rows2
+            .filter(row => row.style.display !== 'none')
+            .map((row) => {
+                const cells = row.querySelectorAll("td");
+                return {
+                    oldRoom: cells[0]?.innerText.trim(),
+                    newRoom: cells[1]?.innerText.trim(),
+                    soldierName: cells[2]?.innerText.trim(),
+                    dateRelock: cells[3]?.innerText.trim(),
+                };
+            }).filter(row => row.oldRoom); // Exclude empty rows
+    
+            const response = await fetch(document.getElementById('form2').action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ result: data, result_nationality: data_1 })
+            });
+    
+            if (!response.ok) throw new Error(await response.text());
+    
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = 'report_laundry.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message || 'Failed to download the report.');
+        }
+    }
+
     // Open the move modal when the Move button is clicked
     moveButton.addEventListener("click", function () {
 

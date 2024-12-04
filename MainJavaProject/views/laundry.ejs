@@ -163,9 +163,18 @@
                     </span></p>
             </div>
 
-            <button id="reportButton" class="report-button">Report</button>
-            <button id="addButton" class="report-button">Add bag</button>
-            <button id="removeButton" class="report-button">Reemove bag</button>
+            <div class="button-row">
+                <button id="reportButton" class="report-button">Report</button>
+                <div <% if(username!='admin' && username!='helpDeskNikolay' ) { %> style="cursor: not-allowed" <% } %>>
+                    <button id="addButton" class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
+                        Add bag
+                    </button>
+                    <button id="removeButton" class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
+                        Remove bag
+                    </button>
+                </div>
+            </div>
+            
         </div>
 
     </div>
@@ -205,6 +214,10 @@
                                                         placeholder="Search...">Bag number</th>
                                                 <th><input type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Soldier name</th>
+                                                <th><input type="text" class="search-input-view-laundry"
+                                                        placeholder="Search...">Nationality</th>
+                                                <th><input type="text" class="search-input-view-laundry"
+                                                        placeholder="Search...">Bag type</th>
                                                 <th><input type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Date of issue</th>
                                                 <th><input type="text" class="search-input-view-laundry"
@@ -340,7 +353,8 @@
                                                 </div>
                                                 <ul id="deleteBagDropdown" class="list-group"></ul>
                                                 <!-- Custom dropdown for search -->
-                                                <input type="hidden" id="selectedRemoveBagId" name="removeBagId" value="">
+                                                <input type="hidden" id="selectedRemoveBagId" name="removeBagId"
+                                                    value="">
                                                 <!-- To store the selected soldier ID -->
                                             </div>
 
