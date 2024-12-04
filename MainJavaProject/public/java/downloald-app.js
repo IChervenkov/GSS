@@ -2,6 +2,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const modalMess = document.getElementById('myMessage');
     const modalContentMess = modalMess.querySelector('.modal-content-mess');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+
+    function showLoading() {
+        loadingIndicator.style.display = 'flex';
+    }
+
+    function hideLoading() {
+        loadingIndicator.style.display = 'none';
+    }
     
     function showMessError() {
 
@@ -27,6 +36,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (downloaldApp) {
 
             downloaldApp.addEventListener('click', function () {
+
+                showLoading();
+
                 fetch('/download-apk-bike', {
                     method: 'GET',
                 })
@@ -39,6 +51,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         return response.blob();
                     })
                     .then(blob => {
+                        hideLoading(); // Hide the loading animation
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.style.display = 'none';
@@ -49,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         window.URL.revokeObjectURL(url);
                     })
                     .catch(err => {
+                        hideLoading(); // Hide the loading animation
                         console.error('Error downloading file:', err);
                         showMessError();
                     });
