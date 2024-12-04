@@ -2011,18 +2011,10 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const cleanedKeyName = keyName.value.replace(/\//g, '');
-
-        // Check if the cleaned roomId is equal to the original roomId
-        if (keyId !== cleanedKeyName) {
-            showGlobalMess('Error', 'The room number must equal with room name with remove delimiter (/).');
-            return;
-        }
-
         const data = {
-            keyId: keyId,
-            keyName: keyName,
-            selectedRoomForKey: selectedRoomForKey
+            keyId: keyId.value,
+            keyName: keyName.value,
+            selectedRoomForKey: selectedRoomForKey.value
         };
 
         try {

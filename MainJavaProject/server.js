@@ -3765,7 +3765,7 @@ class Server {
                 await client.query('BEGIN');
 
                 const result = await client.query(`
-                        SELECT l.code, s.id, l.status, l.laundrycount
+                        SELECT l.code, s.namesoldier, l.status, l.laundrycount
                         FROM laundrybags l
                         JOIN soldier s ON s.laundry_bag_id = l.id
                         WHERE s.date_free IS NULL AND l.id = $1;`, [code]);
@@ -3788,7 +3788,7 @@ class Server {
                 }
 
                 await client.query('COMMIT');
-                res.status(200).json({ code: bag.code, soldierId: bag.id });
+                res.status(200).json({ code: bag.code, soldierId: bag.namesoldier });
 
             } catch (err) {
                 await client.query('ROLLBACK');
