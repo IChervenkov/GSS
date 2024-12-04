@@ -979,8 +979,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return {
                     bagNumber: cells[0]?.innerText.trim(),
                     soldierName: cells[1]?.innerText.trim(),
-                    dateIn: cells[2]?.innerText.trim(),
-                    dateOut: cells[3]?.innerText.trim(),
+                    nationality: cells[2]?.innerText.trim(),
+                    bagType: cells[3]?.innerText.trim(),
+                    dateIn: cells[4]?.innerText.trim(),
+                    dateOut: cells[5]?.innerText.trim(),
                 };
             }).filter(row => row.bagNumber); // Exclude empty rows
 

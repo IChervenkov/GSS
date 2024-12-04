@@ -2183,7 +2183,7 @@ class Server {
                         // Query the database for the user
                         await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                             [req.session.username, `Accommodated soldier with number ${soldierId} and without meal card and bag`]);
-                            
+
                     } else {
                         // Query the database for the user
                         await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -4063,7 +4063,7 @@ class Server {
                 const worksheet1 = workbook.addWorksheet('Washed Bags');
                 const worksheet2 = workbook.addWorksheet('Bags by Nationality');
 
-                const headers1 = ['Bag Number', 'Soldier Name', 'Date of Issue', 'Collection Date'];
+                const headers1 = ['Bag number', 'Soldier name', 'Nationality', 'Bag type', 'Date of issue', 'Collection date' ];
                 worksheet1.addRow(headers1).eachCell((cell) => {
                     cell.font = { bold: true };
                     cell.alignment = { horizontal: 'center' };
@@ -4078,12 +4078,16 @@ class Server {
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
 
-                result.forEach(({ bagNumber, soldierName, dateIn, dateOut }) => {
-                    worksheet1.addRow([bagNumber, soldierName, dateIn, dateOut]);
+                result.forEach(({ bagNumber, soldierName, nationality, bagType, dateIn, dateOut }) => {
+                    worksheet1.addRow([bagNumber, soldierName, nationality, bagType, dateIn, dateOut]).eachCell((cell) => {
+                        cell.alignment = { horizontal: 'center' };
+                    });
                 });
 
                 result_nationality.forEach(({ nationality, bagCount }) => {
-                    worksheet2.addRow([nationality, bagCount]);
+                    worksheet2.addRow([nationality, bagCount]).eachCell((cell) => {
+                        cell.alignment = { horizontal: 'center' };
+                    });
                 });
 
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
