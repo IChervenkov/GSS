@@ -3136,48 +3136,34 @@ class Server {
             if (error) {
                 return res.status(400).send({ message: error.details[0].message });
             }
-
+        
             const { oldKeyId, newKeyId } = req.body;
-
+        
             const client = await pool.connect();
-
+        
             try {
                 await client.query('BEGIN');
 
-                // Drop foreign key constraint
                 await client.query(`
-                    ALTER TABLE roomskey
-                    DROP CONSTRAINT IF EXISTS roomskey_keyid_fkey;
-                `);
-
-                // Drop foreign key constraint
-                await client.query(`
-                    ALTER TABLE movesoldier
-                    DROP CONSTRAINT IF EXISTS movesoldier_idnewkey_fkey,
-                    DROP CONSTRAINT IF EXISTS movesoldier_idpreviewkey_fkey;
-                `);
-
+                    INSERT INTO key VALUES (
+                        $1, 
+                        (SELECT namekey FROM key WHERE id = $2), 
+                        (SELECT soldierid FROM key WHERE id = $2));`, [newKeyId, oldKeyId]);
+        
                 // Update key IDs in relevant tables
-                await client.query(`UPDATE roomskey SET keyid = $1 WHERE keyid = $2;`, [newKeyId, oldKeyId]);
-                await client.query(`UPDATE key SET id = $1 WHERE id = $2;`, [newKeyId, oldKeyId]);
-                await client.query(`UPDATE movesoldier SET idnewkey = $1 WHERE idnewkey = $2;`, [newKeyId, oldKeyId]);
-                await client.query(`UPDATE movesoldier SET idpreviewkey = $1 WHERE idpreviewkey = $2;`, [newKeyId, oldKeyId]);
-
-                // Re-add foreign key constraint
                 await client.query(`
-                    ALTER TABLE roomskey
-                    ADD CONSTRAINT roomskey_keyid_fkey
-                    FOREIGN KEY (keyid)
-                    REFERENCES key(id);
-                `);
-
-                // Re-add foreign key constraint
+                    UPDATE roomskey
+                    SET keyid = $1
+                    WHERE keyid = $2;`, [newKeyId, oldKeyId]);
+        
                 await client.query(`
-                    ALTER TABLE movesoldier
-                    ADD CONSTRAINT movesoldier_idnewkey_fkey FOREIGN KEY (idnewkey) REFERENCES key(id),
-                    ADD CONSTRAINT movesoldier_idpreviewkey_fkey FOREIGN KEY (idpreviewkey) REFERENCES key(id);
-                `);
+                    UPDATE movesoldier
+                    SET 
+                        idnewkey = CASE WHEN idnewkey = $2 THEN $1 ELSE idnewkey END,
+                        idpreviewkey = CASE WHEN idpreviewkey = $2 THEN $1 ELSE idpreviewkey END; `, [newKeyId, oldKeyId]);
 
+                await client.query(`DELETE FROM key WHERE id = $1;`, [oldKeyId])
+        
                 // Log user action
                 await client.query(`
                     INSERT INTO usermonitoring (user_id, location) 
@@ -3186,19 +3172,19 @@ class Server {
                         $2
                     )
                 `, [req.session.username, `Replace key ${oldKeyId} with ${newKeyId}`]);
-
+        
                 await client.query('COMMIT');
                 return res.status(200).send({ message: `The key was replaced successfully.` });
-
+        
             } catch (err) {
                 await client.query('ROLLBACK');
                 console.error('Error during key replacement:', err.message);
                 return res.status(500).json({ message: 'Failed to replace key. Try again later.' });
-
+        
             } finally {
                 client.release();
             }
-        });
+        });        
     }
 
     defineRoutesFitnes() {
