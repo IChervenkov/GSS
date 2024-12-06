@@ -433,6 +433,7 @@ thead th input:focus {
 }
 
 .left-nav a:hover .name-add {
+    font-size: 0.8em;
     color: white;
 }
 
@@ -450,7 +451,8 @@ thead th input:focus {
 #bagDropdown,
 #roomDropdown,
 #keyDropdown,
-#allKeyDropdown {
+#allKeyDropdown,
+#buildDropdown {
     list-style-type: none;
     padding: 0;
     margin: 0;
@@ -469,7 +471,8 @@ thead th input:focus {
 #bagDropdown li,
 #roomDropdown li,
 #keyDropdown li,
-#allKeyDropdown li {
+#allKeyDropdown li,
+#buildDropdown li {
     padding: 10px;
     cursor: pointer;
 }
@@ -479,7 +482,8 @@ thead th input:focus {
 #bagDropdown li:hover,
 #roomDropdown li:hover,
 #keyDropdown li:hover,
-#allKeyDropdown li:hover {
+#allKeyDropdown li:hover,
+#buildDropdown li:hover {
     background-color: #218838;
     color: white;
 }
@@ -667,7 +671,8 @@ thead th input:focus {
 #bagDropdown.list-group::-webkit-scrollbar,
 #roomDropdown.list-group::-webkit-scrollbar,
 #keyDropdown.list-group::-webkit-scrollbar,
-#allKeyDropdown.list-group::-webkit-scrollbar {
+#allKeyDropdown.list-group::-webkit-scrollbar,
+#buildDropdown.list-group::-webkit-scrollbar {
     width: 10px;
 }
 
@@ -676,7 +681,8 @@ thead th input:focus {
 #bagDropdown.list-group::-webkit-scrollbar-thumb,
 #roomDropdown.list-group::-webkit-scrollbar-thumb,
 #keyDropdown.list-group::-webkit-scrollbar-thumb,
-#allKeyDropdown.list-group::-webkit-scrollbar-thumb {
+#allKeyDropdown.list-group::-webkit-scrollbar-thumb,
+#buildDropdown.list-group::-webkit-scrollbar-thumb {
     background-color: #28a745;
     border-radius: 4px;
 }
@@ -686,7 +692,8 @@ thead th input:focus {
 #bagDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #roomDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #keyDropdown.list-group::-webkit-scrollbar-thumb:hover,
-#allKeyDropdown.list-group::-webkit-scrollbar-thumb:hover {
+#allKeyDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#buildDropdown.list-group::-webkit-scrollbar-thumb:hover {
     background-color: #1e7e34;
 }
 

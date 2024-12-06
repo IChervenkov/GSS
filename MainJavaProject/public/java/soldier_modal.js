@@ -93,6 +93,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const keyName = document.getElementById('key-name');
     const selectedRoomForKey = document.getElementById('selected-room-for-key');
 
+    const deleteBuildId = document.getElementById('selectedBuildId');
+    const buildSearchInput = document.getElementById('buildSearch');
+    const buildSearchDropdown = document.getElementById('buildDropdown');
+
+    const realCode = document.getElementById('randomTextValue');
+    const enterCode = document.getElementById("deleteCode");
+
     const isAccommodation = document.getElementById('isAccommodation');
 
     let soldiers = [];
@@ -101,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let specialRooms = [];
     let specialKeys = [];
     let allKeys = [];
+    let allBuilds = [];
 
     var isWarning = false;
 
@@ -446,6 +454,62 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Function to fetch soldier from the server
+    async function fetchBuilding() {
+        try {
+            const responseBuild = await fetch(`/builds`);
+            if (!responseBuild.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            allBuilds = await responseBuild.json(); // Store the parsed JSON response once
+
+        } catch (error) {
+            console.error('There was a problem with the fetch operation:', error);
+        }
+    }
+
+    // Show filtered soldiers in the dropdown
+    function filterBuilds(query) {
+        buildSearchDropdown.innerHTML = '';
+        const filteredBuild = allBuilds.filter(build => build.name.toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredBuild.length > 0) {
+            buildSearchDropdown.style.display = 'block';
+            filteredBuild.forEach(build => {
+                const li = document.createElement('li');
+                li.textContent = build.name;
+                li.setAttribute('data-id', build.id);
+                buildSearchDropdown.appendChild(li);
+            });
+        } else {
+            buildSearchDropdown.style.display = 'none';
+        }
+    }
+
+    // Handle input change
+    buildSearchInput.addEventListener('input', function () {
+        const query = buildSearchInput.value;
+        if (query.length > 0) {
+            filterBuilds(query);
+        } else {
+            buildSearchDropdown.style.display = 'none';
+            deleteBuildId.value = '';
+        }
+    });
+
+    // Handle bike selection
+    buildSearchDropdown.addEventListener('click', function (event) {
+        const selectBuild = event.target;
+        if (selectBuild && selectBuild.dataset.id) {
+            buildSearchInput.value = selectBuild.textContent;
+            deleteBuildId.value = selectBuild.getAttribute('data-id');
+            buildSearchInput.classList.add('is-valid');
+            buildSearchInput.classList.remove('is-invalid');
+            buildSearchDropdown.style.display = 'none';
+        }
+    });
+
     // Function to fetch room from the server
     async function fetchRoom() {
         try {
@@ -541,6 +605,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Fetch all keys when the script loads
     fetchAllKey();
+
+    fetchBuilding();
 
     function openModal(keynum, soldierName, country, keycode, maleCard, laundryBag) {
 
@@ -907,8 +973,15 @@ document.addEventListener('DOMContentLoaded', function () {
         modalDeleteSoldierContent.classList.add('slide-out');
         modalDeleteSoldierContent.classList.remove('slide-in');
 
+        buildSearchInput.classList.remove('is-valid');
+        buildSearchInput.classList.remove('is-invalid');
+        buildSearchInput.value = '';
+        deleteBuildId.value = '';
+
         // Clear upload file from modal
-        document.getElementById("deleteCode").value = '';
+        enterCode.classList.remove('is-valid');
+        enterCode.classList.remove('is-invalid');
+        enterCode.value = '';
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
@@ -1439,48 +1512,48 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('form2').onsubmit = async (event) => {
 
         event.preventDefault();
-    
+
         try {
             const table1 = document.getElementById("soldierUsageTable");
             const rows1 = Array.from(table1.querySelectorAll("tbody tr"));
 
             const table2 = document.getElementById("soldierMoveTable");
             const rows2 = Array.from(table2.querySelectorAll("tbody tr"));
-    
+
             const data = rows1
-            .filter(row => row.style.display !== 'none')
-            .map((row) => {
-                const cells = row.querySelectorAll("td");
-                return {
-                    soldierName: cells[0]?.innerText.trim(),
-                    country: cells[1]?.innerText.trim(),
-                    dataIn: cells[2]?.innerText.trim(),
-                    dateOut: cells[3]?.innerText.trim(),
-                    mealCard: cells[4]?.innerText.trim(),
-                    laundryBag: cells[5]?.innerText.trim(),
-                };
-            }).filter(row => row.soldierName); // Exclude empty rows
+                .filter(row => row.style.display !== 'none')
+                .map((row) => {
+                    const cells = row.querySelectorAll("td");
+                    return {
+                        soldierName: cells[0]?.innerText.trim(),
+                        country: cells[1]?.innerText.trim(),
+                        dataIn: cells[2]?.innerText.trim(),
+                        dateOut: cells[3]?.innerText.trim(),
+                        mealCard: cells[4]?.innerText.trim(),
+                        laundryBag: cells[5]?.innerText.trim(),
+                    };
+                }).filter(row => row.soldierName); // Exclude empty rows
 
             const data_1 = rows2
-            .filter(row => row.style.display !== 'none')
-            .map((row) => {
-                const cells = row.querySelectorAll("td");
-                return {
-                    oldRoom: cells[0]?.innerText.trim(),
-                    newRoom: cells[1]?.innerText.trim(),
-                    soldierName: cells[2]?.innerText.trim(),
-                    dateRelock: cells[3]?.innerText.trim(),
-                };
-            }).filter(row => row.oldRoom); // Exclude empty rows
-    
+                .filter(row => row.style.display !== 'none')
+                .map((row) => {
+                    const cells = row.querySelectorAll("td");
+                    return {
+                        oldRoom: cells[0]?.innerText.trim(),
+                        newRoom: cells[1]?.innerText.trim(),
+                        soldierName: cells[2]?.innerText.trim(),
+                        dateRelock: cells[3]?.innerText.trim(),
+                    };
+                }).filter(row => row.oldRoom); // Exclude empty rows
+
             const response = await fetch(document.getElementById('form2').action, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ result: data, result_nationality: data_1 })
             });
-    
+
             if (!response.ok) throw new Error(await response.text());
-    
+
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1660,19 +1733,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if(soldierId.value  === "") {
+        if (soldierId.value === "") {
             soldierId.classList.remove('is-valid');
             soldierId.classList.add('is-invalid');
             return;
         }
 
-        if(soldierName.value  === "") {
+        if (soldierName.value === "") {
             soldierName.classList.remove('is-valid');
             soldierName.classList.add('is-invalid');
             return;
         }
 
-        if(soldierCountry.value  === "") {
+        if (soldierCountry.value === "") {
             soldierCountry.classList.remove('is-valid');
             soldierCountry.classList.add('is-invalid');
             return;
@@ -1736,16 +1809,28 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault(); // Prevent default form submission
 
         const data = {
-            realCode: document.getElementById('randomTextValue').value,
-            enterCode: document.getElementById('deleteCode').value
+            buildId: deleteBuildId.value
         };
 
-        if (data.realCode !== data.enterCode)
+        if (deleteBuildId.value === "") {
+            buildSearchInput.classList.remove('is-valid');
+            buildSearchInput.classList.add('is-invalid');
+            return;
+        }
+
+        if (realCode.value !== enterCode.value) {
+            enterCode.classList.remove('is-valid');
+            enterCode.classList.add('is-invalid');
             return showGlobalMess('Error', 'The two codes do not match. Try again');
+        }
 
         try {
             const response = await fetch(this.action, {
-                method: 'GET'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
             });
 
             if (!response.ok) {
@@ -1762,6 +1847,26 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', `Network error: ${error.message}`);
         }
     };
+
+    buildSearchInput.addEventListener('input', () => {
+        if (deleteBuildId.value === "") {
+            buildSearchInput.classList.remove('is-valid');
+            buildSearchInput.classList.add('is-invalid');
+        } else {
+            buildSearchInput.classList.add('is-valid');
+            buildSearchInput.classList.remove('is-invalid');
+        }
+    });
+
+    enterCode.addEventListener('input', () => {
+        if (realCode.value !== enterCode.value) {
+            enterCode.classList.remove('is-valid');
+            enterCode.classList.add('is-invalid');
+        } else {
+            enterCode.classList.add('is-valid');
+            enterCode.classList.remove('is-invalid');
+        }
+    });
 
     document.getElementById('form1').onsubmit = async function (event) {
 
@@ -1966,7 +2071,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const roomId = selectedRoomId.value;
 
-        if(roomId === "") {
+        if (roomId === "") {
             selectRoomInput.classList.remove('is-valid');
             selectRoomInput.classList.add('is-invalid');
             return;
@@ -2004,13 +2109,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if(keyId.value === "") {
+        if (keyId.value === "") {
             keyId.classList.remove('is-valid');
             keyId.classList.add('is-invalid');
             return;
         }
 
-        if(keyName.value === "") {
+        if (keyName.value === "") {
             keyName.classList.remove('is-valid');
             keyName.classList.add('is-invalid');
             return;
@@ -2062,7 +2167,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if(selectedKeyId.value === "") {
+        if (selectedKeyId.value === "") {
             selectKeyInput.classList.remove('is-valid');
             selectKeyInput.classList.add('is-invalid');
             return;
@@ -2071,7 +2176,7 @@ document.addEventListener('DOMContentLoaded', function () {
             selectKeyInput.classList.remove('is-invalid');
         }
 
-        if(newKeyName.value === "") {
+        if (newKeyName.value === "") {
             newKeyName.classList.remove('is-valid');
             newKeyName.classList.add('is-invalid');
             return;
@@ -2392,7 +2497,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('newKeyName').addEventListener('input', function () {
-        if(newKeyName.value === "") {
+        if (newKeyName.value === "") {
             newKeyName.classList.remove('is-valid');
             newKeyName.classList.add('is-invalid');
             return;

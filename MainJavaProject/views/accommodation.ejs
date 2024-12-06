@@ -79,26 +79,38 @@
         <div class="content">
 
             <div class="visualization-header">
-                <h3 class="d-flex align-items-center gap-2">
-                    <%= titlePage %>
-                        <% if(countBeds) { %>
-                            <span class="name-add">
+                <div class="row align-items-center gap-2">
+                    <!-- Title and Count Beds Column -->
+                    <div class="col-md-auto">
+                        <h3 class="mb-0">
+                            <!-- Title Row -->
+                            <div>
+                                <%= titlePage %>
+                            </div>
+                
+                            <!-- Count Beds Row -->
+                            <% if(countBeds) { %>
+                            <div class="name-add">
                                 (<%= countBeds %> free beds)
-                            </span>
+                            </div>
                             <% }; %>
-
-
-                                <!-- Soldier Selection with Custom Search -->
-                                <div class="search-container" id="search-all-key-container">
-                                    <div class="input-group">
-                                        <input type="text" id="allKeySearch" class="form-control"
-                                            placeholder="Search...">
-                                    </div>
-                                    <ul id="allKeyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
-                                    <input type="hidden" id="selectedAllKeyId" name="allKeySelectId" value="">
-                                    <!-- To store the selected soldier ID -->
-                                </div>
-                </h3>
+                        </h3>
+                    </div>
+                
+                    <!-- Search Column -->
+                    <div class="col-md">
+                        <!-- Soldier Selection with Custom Search -->
+                        <div class="search-container" id="search-all-key-container">
+                            <div class="input-group">
+                                <input type="text" id="allKeySearch" class="form-control" placeholder="Search...">
+                            </div>
+                            <ul id="allKeyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                            <input type="hidden" id="selectedAllKeyId" name="allKeySelectId" value="">
+                            <!-- To store the selected soldier ID -->
+                        </div>
+                    </div>
+                </div>
+                
 
                 <div class="virtual-warehouse-labels">
                     <label class="virtual-warehouse-label">Free Beds: <%= totalFreeBeds %></label>
@@ -503,9 +515,23 @@
                 below</p>
             <input type="hidden" id="randomTextValue" value="">
 
+            <div class="mb-3 search-container" id="search-delete-soldier-container">
+                <div class="input-group">
+                    <input type="text" id="buildSearch" class="form-control" placeholder="Building number">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+                <ul id="buildDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedBuildId" name="roomSelectId" value="">
+                <!-- To store the selected soldier ID -->
+            </div>
+
             <div class="mb-3">
                 <input type="text" id="deleteCode" class="form-control" placeholder="Enter special characters here">
-                <!-- Accept specific file types -->
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
             </div>
 
             <button type="submit" id="delete-soldier-btn" class="modal-button-release">Release</button>

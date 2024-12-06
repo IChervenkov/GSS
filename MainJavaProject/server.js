@@ -101,6 +101,10 @@ const clientDataSchema = Joi.object({
     userId: Joi.string().required(), // userId should be a string and is required
 });
 
+const schemaReleaseAllRoom = Joi.object({
+    buildId: Joi.string().alphanum().required() // buildId should be a string and is required
+});
+
 const schemaNFCRent = Joi.object({
     nfcData: Joi.string().required(), // nfcData should be a string and is required
     date: Joi.date().iso().required(), // date should be a valid ISO date and is required
@@ -1655,6 +1659,35 @@ class Server {
             }
         });
 
+        this.app.get('/builds', this.isLoggedIn.bind(this), async (req, res) => {
+
+            var builds = [];
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result_all_builds = await client.query(`SELECT id, namebuilding FROM buildings WHERE type = 'Accommodation'`);
+
+                result_all_builds.rows.forEach(element => {
+                    builds.push({ id: element.id, name: element.namebuilding });
+                });
+
+                await client.query('COMMIT');
+                res.json(builds);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.post('/move/getSoldier', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaGetSoldier.validate(req.body);
@@ -2721,50 +2754,61 @@ class Server {
             }
         });
 
-        this.app.get('/accommodation/deleteSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/accommodation/deleteSoldier', this.isLoggedIn.bind(this), async (req, res) => {
 
+            const { error } = schemaReleaseAllRoom.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
+            }
+
+            const { buildId } = req.body;
             const client = await pool.connect();
-
+        
             try {
-
                 await client.query('BEGIN');
-
+        
                 const res_query = await client.query(
                     `SELECT k.id, soldierid FROM key k
-                    LEFT JOIN soldier s ON s.id = k.soldierid
-                    WHERE soldierid IS NOT NULL AND country <> 'None';`
+                        LEFT JOIN soldier s ON s.id = k.soldierid
+                        LEFT JOIN roomskey rk ON rk.keyid = k.id
+                        LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                        WHERE soldierid IS NOT NULL AND country <> 'None' AND buildid = $1;`, [buildId]
                 );
 
-                res_query.rows.forEach(async (row) => {
-
+                if(res_query.rows.length === 0){
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: "This building is empty!" });
+                }
+        
+                for (const row of res_query.rows) {
                     await client.query(
                         "UPDATE key SET soldierid = NULL WHERE id = $1;",
                         [row.id]
                     );
-
+        
                     await client.query(
                         "UPDATE soldier SET date_free = CURRENT_DATE WHERE id = $1;",
                         [row.soldierid]
                     );
-                });
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Release all soldier`]);
-
+                }
+        
+                await client.query(
+                    "INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, 'Release all soldier']
+                );
+        
                 await client.query('COMMIT');
                 return res.status(200).json({ message: 'All rooms are vacated' });
-
+        
             } catch (error) {
                 await client.query('ROLLBACK');
-                console.error('Error processing file:', error);
+                console.error('Error processing deleteSoldier:', error.message, error.stack);
                 res.status(500).json({ error: 'An error occurred while processing the data.' });
-
+        
             } finally {
                 client.release();
             }
-
-        });
+        });        
 
         this.app.post('/accommodation/addDestination', this.isLoggedIn.bind(this), async (req, res) => {
 
