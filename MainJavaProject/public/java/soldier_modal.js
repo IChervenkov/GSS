@@ -977,6 +977,8 @@ document.addEventListener('DOMContentLoaded', function () {
         buildSearchInput.classList.remove('is-invalid');
         buildSearchInput.value = '';
         deleteBuildId.value = '';
+        
+        buildSearchDropdown.style.display = 'none';
 
         // Clear upload file from modal
         enterCode.classList.remove('is-valid');

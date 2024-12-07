@@ -79,7 +79,7 @@
         <div class="content">
 
             <div class="visualization-header">
-                <div class="row align-items-center gap-2">
+                <div class="row align-items-center gap-4">
                     <!-- Title and Count Beds Column -->
                     <div class="col-md-auto">
                         <h3 class="mb-0">
@@ -87,16 +87,16 @@
                             <div>
                                 <%= titlePage %>
                             </div>
-                
+
                             <!-- Count Beds Row -->
                             <% if(countBeds) { %>
-                            <div class="name-add">
-                                (<%= countBeds %> free beds)
-                            </div>
-                            <% }; %>
+                                <div class="name-add">
+                                    (<%= countBeds %> free beds)
+                                </div>
+                                <% }; %>
                         </h3>
                     </div>
-                
+
                     <!-- Search Column -->
                     <div class="col-md">
                         <!-- Soldier Selection with Custom Search -->
@@ -110,7 +110,6 @@
                         </div>
                     </div>
                 </div>
-                
 
                 <div class="virtual-warehouse-labels">
                     <label class="virtual-warehouse-label">Free Beds: <%= totalFreeBeds %></label>
@@ -121,9 +120,15 @@
                             <button type="button" id="btnAddSoldier"
                                 class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">Add
                                 soldier</button>
+                    </div>
+                    <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
+                        style="cursor: not-allowed" <% } %>>
                             <button type="button" id="btnAccommSoldier"
                                 class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">Accommodation
                                 soldiers</button>
+                    </div>
+                    <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
+                        style="cursor: not-allowed" <% } %>>
                             <button type="button" id="btnFreeAllRoom"
                                 class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Release
                                 all

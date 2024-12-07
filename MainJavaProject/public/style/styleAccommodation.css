@@ -887,9 +887,19 @@ thead th input:focus {
 /* Media Queries for mobile responsiveness */
 @media screen and (max-width: 768px) {
 
-    .virtual-warehouse-labels button:first-of-type {
-        display: none;
-        /* Hide the first button */
+    #search-all-key-container.search-container {
+        margin: 0px;
+        margin-bottom: 10px;
+    }
+
+    .col-md-auto {
+        height: 100%;
+    }
+
+    #moveModal .modal-content {
+        width: 100%;
+        max-width: 350px;
+        margin-left: 30px;
     }
 
     .download-btn {
@@ -918,7 +928,11 @@ thead th input:focus {
     .modal-content {
         width: 100%;
         max-width: 350px;
-        margin-left: 30px;
+        margin-left: 5%;
+    }
+
+    #roomModal .modal-content {
+        margin-top: 10%;
     }
 
     .button-container-report {
@@ -931,7 +945,6 @@ thead th input:focus {
 
     .visualization-header h3 {
         margin-bottom: 15px;
-        font-size: 18px;
         text-align: center;
     }
 
@@ -944,6 +957,7 @@ thead th input:focus {
     }
 
     .virtual-warehouse-labels label {
+        padding: 10px;
         font-size: 14px;
     }
 
@@ -958,6 +972,7 @@ thead th input:focus {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
+        display: block;
     }
 
     /* Adjust buttons */
@@ -981,11 +996,6 @@ thead th input:focus {
     .btn-add-soldier.disabled-button {
         background-color: #ddd;
         cursor: not-allowed;
-    }
-
-    /* Search container adjustments */
-    .search-container {
-        width: 100%;
     }
 
     .modal-content-total-info {
@@ -1036,18 +1046,33 @@ thead th input:focus {
         width: auto;
         background-color: #f4f4f4;
         box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-        padding-top: 45px;
+        transform: translateX(-100%);
+        height: 84%;
+        width: 100%;
+        z-index: 1000;
+        position: fixed;
+        top: 1;
+        left: 0;
+        overflow-y: auto;
+    }
+
+    body.no-scroll {
+        overflow: hidden; /* Disable scrolling on the main page */
     }
 
     /* Add an active class to show the left-nav */
     .left-nav.active {
         display: block;
-        padding-top: 0px;
-        max-height: 700px;
+        margin-top: 60px;
+        transform: translateX(0);
     }
 
     .left-nav ul.active {
         display: flex;
+    }
+
+    .button-group {
+        opacity: 1;
     }
 
     .menu-toggle-left {
@@ -1070,10 +1095,6 @@ thead th input:focus {
     td {
         font-size: 0.9em;
         padding: 6px;
-    }
-
-    h3 {
-        display: none;
     }
 
     .table-container {

@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const arrow = document.getElementById('arrow');
         
         leftNav.classList.toggle('active');
+        document.body.classList.toggle('no-scroll');
         
         // Check if the menu is active to change the arrow
         if (leftNav.classList.contains('active')) {
