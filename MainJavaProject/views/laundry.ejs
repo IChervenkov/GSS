@@ -166,15 +166,17 @@
             <div class="button-row">
                 <button id="reportButton" class="report-button">Report</button>
                 <div <% if(username!='admin' && username!='helpDeskNikolay' ) { %> style="cursor: not-allowed" <% } %>>
-                    <button id="addButton" class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
-                        Add bag
-                    </button>
-                    <button id="removeButton" class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
-                        Remove bag
-                    </button>
+                        <button id="addButton"
+                            class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
+                            Add bag
+                        </button>
+                        <button id="removeButton"
+                            class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
+                            Remove bag
+                        </button>
                 </div>
             </div>
-            
+
         </div>
 
     </div>

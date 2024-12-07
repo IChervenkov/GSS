@@ -4052,7 +4052,7 @@ class Server {
                         TO_CHAR(l.timein, 'YYYY-MM-DD HH24:MI') AS timein, 
                         s.namesoldier, 
                         CASE 
-                            WHEN l.status = 'Ready to pick up' AND l.timein < NOW() - INTERVAL '24 hours' THEN TRUE
+                            WHEN l.status = 'Ready to pick up' AND l.timein < NOW() - INTERVAL '1 week' THEN TRUE
                             ELSE FALSE
                         END AS islate
                     FROM 
