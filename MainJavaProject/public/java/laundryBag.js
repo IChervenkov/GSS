@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportViewModal = document.getElementById('reportViewModal');
     const reportViewModalContent = reportViewModal.querySelector('.modal-content-report');
 
+    const reportModal = document.getElementById('reportModal');
+    const reportModalContent = reportModal.querySelector('.modal-content-multi-calendar');
+
     const addBagModal = document.getElementById('addBagModal');
     const addBagModalContent = addBagModal.querySelector('.modal-content');
 
@@ -32,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deleteBagModal = document.getElementById('deleteBagModal');
     const deleteBagModalContent = deleteBagModal.querySelector('.modal-content');
-    
+
     const deleteBagSearchInput = document.getElementById('bagRemoveSearch');
     const deleteBagSearchDropdown = document.getElementById('deleteBagDropdown');
     const selectedDeleteBagId = document.getElementById('selectedRemoveBagId');
@@ -410,6 +413,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    function openViewReportModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        reportModal.classList.add('show');
+        reportModalContent.classList.add('show');
+        reportModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        reportModalContent.classList.remove('slide-out');
+    }
+
+    function closeViewReportModal() {
+        // Add the slide-out effect
+        reportModalContent.classList.add('slide-out');
+        reportModalContent.classList.remove('slide-in');
+
+        const listItems = document.querySelectorAll('.dates li');
+        listItems.forEach(li => li.classList.remove('selected'));
+
+        document.getElementById('selectedDate1').value = '';
+        document.getElementById('selectedDate2').value = '';
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            reportModal.classList.remove('show');
+            reportModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
     function openAddBagModal() {
 
         // Add the slide-in effect by adding the necessary classes
@@ -575,7 +607,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementsByClassName('close-btn')[8].onclick = closeRemoveBagModal;
     document.getElementsByClassName('close-btn')[9].onclick = closeInsertBagModal;
     document.getElementsByClassName('close-btn')[10].onclick = closeDeleteBagModal;
-    document.getElementsByClassName('close-btn')[11].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[11].onclick = closeViewReportModal;
+    document.getElementsByClassName('close-btn')[12].onclick = closeMessModal;
 
     window.onclick = function (event) {
 
@@ -626,6 +659,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             case deleteBagModal:
                 closeDeleteBagModal();
+                break;
+            case reportModal:
+                closeViewReportModal();
                 break;
         }
     };
@@ -716,7 +752,27 @@ document.addEventListener('DOMContentLoaded', () => {
     openModalWhenClick('Ready to pick up', 'ready-to-pick-up', 'readyToPickUpTableBody');
 
     document.getElementById('reportButton').addEventListener('click', () => {
-        fetchReport();
+        openViewReportModal();
+    });
+
+    document.getElementById('confirmReportBtn').addEventListener('click', () => {
+        
+        const selectDate1 = document.getElementById('selectedDate1').value;
+        const selectDate2 = document.getElementById('selectedDate2').value;
+
+        if (!selectDate1 || !selectDate2) {
+            openMess('Error', 'Both dates must be selected!');
+            return;
+        }
+
+        if(new Date(selectDate1) > new Date(selectDate2)) {
+            openMess('Error', 'Invalid time slot!');
+            return;
+        }
+
+        closeViewReportModal();
+
+        fetchReport(selectDate1, selectDate2);
         openReportModal();
     });
 
@@ -759,16 +815,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-    async function fetchReport() {
+    async function fetchReport(selectDate1, selectDate2) {
         try {
 
             const response = await fetch(`/laundry/viewReport`, {
-                method: 'GET',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ selectedDate1: selectDate1, selectedDate2: selectDate2 }),
             });
 
             if (!response.ok) {
                 const error = await response.json();
                 console.error('Error fetching the report:', error.details || 'Network response was not ok');
+                openMess('Error', error.message);
+                return;
             }
 
             const { data, data_nationality } = await response.json();
@@ -872,25 +934,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const type = document.getElementById('type-bag');
         const maxcount = document.getElementById('max-count-wash-bag');
 
-        if(epc.value === '') {
+        if (epc.value === '') {
             epc.classList.remove('is-valid');
             epc.classList.add('is-invalid');
             return;
         }
 
-        if(code.value === '') {
+        if (code.value === '') {
             code.classList.remove('is-valid');
             code.classList.add('is-invalid');
             return;
         }
 
-        if(type.value === '') {
+        if (type.value === '') {
             type.classList.remove('is-valid');
             type.classList.add('is-invalid');
             return;
         }
 
-        if(maxcount.value === '') {
+        if (maxcount.value === '') {
             maxcount.classList.remove('is-valid');
             maxcount.classList.add('is-invalid');
             return;
@@ -929,7 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         event.preventDefault();
 
-        if(selectedDeleteBagId.value === '') {
+        if (selectedDeleteBagId.value === '') {
             deleteBagSearchInput.classList.remove('is-valid');
             deleteBagSearchInput.classList.add('is-invalid');
             return;
@@ -964,46 +1026,46 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('form1').onsubmit = async (event) => {
 
         event.preventDefault();
-    
+
         try {
             const table1 = document.getElementById("bagsWashedTable");
             const rows1 = Array.from(table1.querySelectorAll("tbody tr"));
 
             const table2 = document.getElementById("bagsWashedNationalityTable");
             const rows2 = Array.from(table2.querySelectorAll("tbody tr"));
-    
+
             const data = rows1
-            .filter(row => row.style.display !== 'none')
-            .map((row) => {
-                const cells = row.querySelectorAll("td");
-                return {
-                    bagNumber: cells[0]?.innerText.trim(),
-                    soldierName: cells[1]?.innerText.trim(),
-                    nationality: cells[2]?.innerText.trim(),
-                    bagType: cells[3]?.innerText.trim(),
-                    dateIn: cells[4]?.innerText.trim(),
-                    dateOut: cells[5]?.innerText.trim(),
-                };
-            }).filter(row => row.bagNumber); // Exclude empty rows
+                .filter(row => row.style.display !== 'none')
+                .map((row) => {
+                    const cells = row.querySelectorAll("td");
+                    return {
+                        bagNumber: cells[0]?.innerText.trim(),
+                        soldierName: cells[1]?.innerText.trim(),
+                        nationality: cells[2]?.innerText.trim(),
+                        bagType: cells[3]?.innerText.trim(),
+                        dateIn: cells[4]?.innerText.trim(),
+                        dateOut: cells[5]?.innerText.trim(),
+                    };
+                }).filter(row => row.bagNumber); // Exclude empty rows
 
             const data_1 = rows2
-            .filter(row => row.style.display !== 'none')
-            .map((row) => {
-                const cells = row.querySelectorAll("td");
-                return {
-                    nationality: cells[0]?.innerText.trim(),
-                    bagCount: cells[1]?.innerText.trim(),
-                };
-            }).filter(row => row.nationality); // Exclude empty rows
-    
+                .filter(row => row.style.display !== 'none')
+                .map((row) => {
+                    const cells = row.querySelectorAll("td");
+                    return {
+                        nationality: cells[0]?.innerText.trim(),
+                        bagCount: cells[1]?.innerText.trim(),
+                    };
+                }).filter(row => row.nationality); // Exclude empty rows
+
             const response = await fetch(document.getElementById('form1').action, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ result: data, result_nationality: data_1 })
             });
-    
+
             if (!response.ok) throw new Error(await response.text());
-    
+
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1017,6 +1079,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error:', error);
             alert(error.message || 'Failed to download the report.');
         }
-    }    
-    
+    }
+
 });

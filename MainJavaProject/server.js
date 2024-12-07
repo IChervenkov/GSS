@@ -4078,13 +4078,23 @@ class Server {
             }
         });
 
-        this.app.get('/laundry/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/laundry/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaReport.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            let { selectedDate1, selectedDate2 } = req.body;
 
             const client = await pool.connect();
 
             try {
 
                 await client.query('BEGIN');
+
+                selectedDate1 += " 00:00";
+                selectedDate2 += " 23:59";
 
                 const result = await client.query(`
                     SELECT 
@@ -4097,7 +4107,7 @@ class Server {
                     FROM laundrybags l
 					JOIN laundryreport lr ON lr.bag_id = l.id
                     JOIN soldier s ON l.id = s.laundry_bag_id
-                    WHERE s.date_free IS NULL;`);
+                    WHERE lr.date_drop_off BETWEEN $1 AND $2 AND s.date_free IS NULL;`,[selectedDate1, selectedDate2]);
 
                 const result_nationality = await client.query(`
                     SELECT SUM(l.laundrycount) AS total_count_bags, s.country

@@ -131,8 +131,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const btnYes = document.getElementById("btnMess");
 
         if (date1 <= date2) {
-            openModal(modalViewRep, modalViewRepContent)
+            openModal(modalViewRep, modalViewRepContent);
             fetchReport();
+            closeModal(modalRep, modalRepContent);
 
         } else {
 
@@ -141,6 +142,7 @@ document.addEventListener('DOMContentLoaded', function () {
             btnYes.style.display = "none";
 
             openModal(modalMessRep, modalMessRepContent);
+            closeModal(modalRep, modalRepContent);
         }
     }
 
@@ -159,6 +161,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // Add the slide-out effect
         modalContent.classList.add('slide-out');
         modalContent.classList.remove('slide-in');
+
+        if(modal === modalRep) {
+            const listItems = document.querySelectorAll('.dates li');
+            listItems.forEach(li => li.classList.remove('selected'));
+    
+            document.getElementById('selectedDate1').value = '';
+            document.getElementById('selectedDate2').value = '';
+        }
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
