@@ -19,7 +19,8 @@
 
     <!-- Horizontal Navigation Bar -->
     <div class="horizontal-nav">
-        <ul>
+        <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
+        <ul id="nav-links">
             <% horizontalNavItems.forEach(function(item) { %>
                 <li><a href="<%= item.href %>">
                         <%= item.name %>
@@ -30,6 +31,10 @@
 
     <!-- Main Content Area -->
     <div class="main-content">
+
+        <button type="button" id="menu-toggle-left" class="menu-toggle-left" aria-label="Toggle sidebar navigation">
+            <span id="arrow">&#9651;</span> Setting parameters
+        </button>
 
         <!-- Left Navigation Bar -->
         <div class="left-nav">
@@ -159,5 +164,6 @@
 <script src="/java/pageNumber.js"></script>
 <script src="/java/showSpecialRow.js"></script>
 <script src="/java/showPinMessage.js"></script>
+<script src="/java/phoneMenu.js"></script>
 
 </html>
