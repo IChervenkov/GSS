@@ -2251,7 +2251,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 const errorData = await response.json();
                 showGlobalMess('Error', errorData.message);
-
+                
+            } else {
+                const responseData = await response.json();
+                showGlobalMess('Info', responseData.message);
             }
 
             closeModalRemoveKey();

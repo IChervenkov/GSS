@@ -717,7 +717,6 @@ class Server {
                     [`Rented Bike with name ${bikeResult.rows[0].namebike}`]);
 
                 await client.query('COMMIT');
-                // Redirect or respond with a success message
                 res.status(200).send('Data rent received successfully');
 
             } catch (error) {
@@ -921,11 +920,11 @@ class Server {
             }
         });
 
-        this.app.post("/bicycles", this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post("/bikeAction", this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaBike.validate(req.body);
             if (error) {
-                return res.status(400).send({ error: error.details[0].message });
+                return res.status(400).json({ message: error.details[0].message });
             }
 
             const { bikeId, clientId, actionId, dateId, hourSelectId, minuteSelect, ltstatus } = req.body;
@@ -935,7 +934,7 @@ class Server {
             const minute = parseInt(minuteSelect, 10);
 
             if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-                return res.status(400).send('Invalid time.');
+                return res.status(401).json({ message: 'Invalid time.' });
             }
 
             // Construct date string and parse it into a Date object
@@ -945,7 +944,7 @@ class Server {
 
             // Check if the constructed date is valid
             if (isNaN(recDate.getTime())) {
-                return res.status(400).send('Invalid date format.');
+                return res.status(402).json({ message: 'Invalid date format.' });
             }
 
             const client = await pool.connect();
@@ -966,7 +965,7 @@ class Server {
 
                     let newStatus;
 
-                    if (ltstatus) {
+                    if (ltstatus === 'true') {
                         newStatus = 'Long term';
                     } else if (clientId == repireUserId) {
                         newStatus = 'Repair';
@@ -991,6 +990,9 @@ class Server {
                     await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                         [req.session.username, `Rented Bike with name ${bikeResult.rows[0].namebike}`]);
 
+                    await client.query('COMMIT');
+                    res.status(200).json({ message: 'The bike has been rented successfully' });
+
                 } else {
                     // Update bike status and clear client assignment
 
@@ -1007,16 +1009,15 @@ class Server {
                     // Query the database for the user
                     await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                         [req.session.username, `Return Bike with name ${bikeResult.rows[0].namebike}`]);
-                }
 
-                await client.query('COMMIT');
-                // Redirect or respond with a success message
-                res.redirect('/bicycles');
+                    await client.query('COMMIT');
+                    res.status(200).json({ message: 'The bike has been return successfully' });
+                }
 
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Error executing database query', error);
-                res.status(500).send('An error occurred. Please try again later.');
+                res.status(500).json({ message: 'An error occurred. Please try again later.' });
             } finally {
                 client.release();
             }
@@ -1553,10 +1554,10 @@ class Server {
                     const datefromRes = result_bike.rows[0].datefrom ? result_bike.rows[0].datefrom : 'None';
 
                     await client.query('COMMIT');
-                    res.json({ status: statusRes, datefrom: datefromRes });
+                    res.status(200).json({ status: statusRes, datefrom: datefromRes });
                 } else {
                     await client.query('COMMIT');
-                    res.json({ status: 'Available', datefrom: 'None' });
+                    res.status(200).json({ status: 'Available', datefrom: 'None' });
                 }
 
             } catch (error) {
@@ -2417,7 +2418,7 @@ class Server {
                     [req.session.username, `Move soldier ${soldId} from room ${keyId} to room ${keyMoveId}`]);
 
                 await client.query('COMMIT');
-                res.redirect('/accommodation');
+                res.status(200).json({ message: 'The soldier has been successfully moved' });
 
             } catch (error) {
                 await client.query('ROLLBACK');
@@ -2763,10 +2764,10 @@ class Server {
 
             const { buildId } = req.body;
             const client = await pool.connect();
-        
+
             try {
                 await client.query('BEGIN');
-        
+
                 const res_query = await client.query(
                     `SELECT k.id, soldierid FROM key k
                         LEFT JOIN soldier s ON s.id = k.soldierid
@@ -2775,40 +2776,40 @@ class Server {
                         WHERE soldierid IS NOT NULL AND country <> 'None' AND buildid = $1;`, [buildId]
                 );
 
-                if(res_query.rows.length === 0){
+                if (res_query.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.status(401).json({ message: "This building is empty!" });
                 }
-        
+
                 for (const row of res_query.rows) {
                     await client.query(
                         "UPDATE key SET soldierid = NULL WHERE id = $1;",
                         [row.id]
                     );
-        
+
                     await client.query(
                         "UPDATE soldier SET date_free = CURRENT_DATE WHERE id = $1;",
                         [row.soldierid]
                     );
                 }
-        
+
                 await client.query(
                     "INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, 'Release all soldier']
                 );
-        
+
                 await client.query('COMMIT');
                 return res.status(200).json({ message: 'All rooms are vacated' });
-        
+
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Error processing deleteSoldier:', error.message, error.stack);
                 res.status(500).json({ error: 'An error occurred while processing the data.' });
-        
+
             } finally {
                 client.release();
             }
-        });        
+        });
 
         this.app.post('/accommodation/addDestination', this.isLoggedIn.bind(this), async (req, res) => {
 
@@ -3180,26 +3181,33 @@ class Server {
             if (error) {
                 return res.status(400).send({ message: error.details[0].message });
             }
-        
+
             const { oldKeyId, newKeyId } = req.body;
-        
+
             const client = await pool.connect();
-        
+
             try {
                 await client.query('BEGIN');
+
+                const check_new_key = await client.query(`SELECT * FROM key WHERE id = $1`, [newKeyId]);
+
+                if (check_new_key.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).send({ message: 'This key already exists' });
+                }
 
                 await client.query(`
                     INSERT INTO key VALUES (
                         $1, 
                         (SELECT namekey FROM key WHERE id = $2), 
                         (SELECT soldierid FROM key WHERE id = $2));`, [newKeyId, oldKeyId]);
-        
+
                 // Update key IDs in relevant tables
                 await client.query(`
                     UPDATE roomskey
                     SET keyid = $1
                     WHERE keyid = $2;`, [newKeyId, oldKeyId]);
-        
+
                 await client.query(`
                     UPDATE movesoldier
                     SET 
@@ -3207,7 +3215,7 @@ class Server {
                         idpreviewkey = CASE WHEN idpreviewkey = $2 THEN $1 ELSE idpreviewkey END; `, [newKeyId, oldKeyId]);
 
                 await client.query(`DELETE FROM key WHERE id = $1;`, [oldKeyId])
-        
+
                 // Log user action
                 await client.query(`
                     INSERT INTO usermonitoring (user_id, location) 
@@ -3216,19 +3224,19 @@ class Server {
                         $2
                     )
                 `, [req.session.username, `Replace key ${oldKeyId} with ${newKeyId}`]);
-        
+
                 await client.query('COMMIT');
                 return res.status(200).send({ message: `The key was replaced successfully.` });
-        
+
             } catch (err) {
                 await client.query('ROLLBACK');
                 console.error('Error during key replacement:', err.message);
                 return res.status(500).json({ message: 'Failed to replace key. Try again later.' });
-        
+
             } finally {
                 client.release();
             }
-        });        
+        });
     }
 
     defineRoutesFitnes() {
@@ -3778,20 +3786,18 @@ class Server {
                         destinationParams
                     );
 
-                    if (destination === 'Drop off') {
+                    if (destination === 'Ready to pick up') {
                         const codesPlaceholders = codes.map((_, i) => `$${i + 1}`).join(', ');
+
                         await client.query(
                             `UPDATE laundrybags 
                             SET laundrycount = laundrycount + 1
                             WHERE id IN (${codesPlaceholders});`,
                             codes);
-                    }
 
-                    if (destination === 'Ready to pick up') {
-                        const codesPlaceholders = codes.map((_, i) => `$${i + 1}`).join(', ');
                         await client.query(
                             `UPDATE laundryreport 
-                            SET date_ready_to_pick_up = CURRENT_DATE 
+                            SET date_ready_to_pick_up = CURRENT_DATE
                             WHERE bag_id IN (${codesPlaceholders}) AND date_ready_to_pick_up IS NULL;`,
                             codes
                         );
@@ -3941,9 +3947,13 @@ class Server {
 
                 const bag = result.rows[0];
 
-                if (destination === 'Ready to pick up')
+                if (destination === 'Ready to pick up') {
                     await client.query(`
                         UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_DATE WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
+
+                    await client.query(`
+                        UPDATE laundrybags SET laundrycount = laundrycount + 1 WHERE id = $1;`, [code]);
+                }
 
                 if (destination === 'None')
                     await client.query(`
@@ -4103,18 +4113,23 @@ class Server {
                         s.namesoldier, 
                         s.country,
                         TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD') AS date_drop_off, 
-                        TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD') AS date_ready_to_pick_up
+                        CASE 
+                            WHEN status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
+                            ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD')
+                        END AS date_ready_to_pick_up
                     FROM laundrybags l
-					JOIN laundryreport lr ON lr.bag_id = l.id
+                    JOIN laundryreport lr ON lr.bag_id = l.id
                     JOIN soldier s ON l.id = s.laundry_bag_id
-                    WHERE lr.date_drop_off BETWEEN $1 AND $2 AND s.date_free IS NULL;`,[selectedDate1, selectedDate2]);
+                    WHERE lr.date_drop_off BETWEEN $1 AND $2 
+                    AND s.date_free IS NULL;`, [selectedDate1, selectedDate2]);
 
                 const result_nationality = await client.query(`
                     SELECT SUM(l.laundrycount) AS total_count_bags, s.country
                     FROM laundrybags l
                     JOIN soldier s ON l.id = s.laundry_bag_id
-                    WHERE s.date_free IS NULL
-                    GROUP BY s.country;`);
+                    JOIN laundryreport lr ON lr.bag_id = l.id
+                    WHERE lr.date_drop_off BETWEEN $1 AND $2 AND s.date_free IS NULL
+                    GROUP BY s.country;`, [selectedDate1, selectedDate2]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ data: result.rows, data_nationality: result_nationality.rows });

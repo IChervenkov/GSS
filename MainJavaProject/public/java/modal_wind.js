@@ -864,6 +864,58 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    document.getElementById('form1').addEventListener('submit', async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        if(document.getElementById("longTermCheckbox").checked)
+            document.getElementById("longTermCheckbox").value = true;
+        
+        const data = {
+            bikeId: selectedBikeId.value,
+            clientId: selectedClientId.value,
+            actionId: document.getElementById("action").value,
+            dateId: document.getElementById('date').value,
+            hourSelectId: hourSelect.value,
+            minuteSelect: minuteSelect.value,
+            ltstatus: document.getElementById("longTermCheckbox").value
+        };
+
+        const icon = document.getElementById('mess-icon-rep');
+        const message = document.getElementById('mess-text-rep');
+        const btnYes = document.getElementById('btnMess');
+
+        try {
+            const response = await fetch(this.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json(); // Parse JSON response
+
+            // Display success or error messages
+            if (response.ok) {
+                message.textContent = result.message;
+            } else {
+                icon.src = "/icon/error.png";
+                message.textContent = result.error || 'An unexpected error occurred.';
+            }
+            btnYes.style.display = "none";
+            openModal(modalMessRep, modalMessRepContent);
+            this.reset();
+
+        } catch (error) {
+            icon.src = "/icon/error.png";
+            message.textContent = 'An error occurred while processing your request.';
+            btnYes.style.display = "none";
+            openModal(modalMessRep, modalMessRepContent);
+            this.reset();
+        }
+    });
+
     document.getElementById('form3').addEventListener('submit', async function (event) {
         event.preventDefault(); // Prevent default form submission
 

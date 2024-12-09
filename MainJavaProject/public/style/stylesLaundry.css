@@ -12,7 +12,6 @@ body {
     /* Optional: Light background for better contrast */
 }
 
-
 /* Horizontal Navigation Bar Styles */
 .horizontal-nav {
     background-color: #28a745;
@@ -21,6 +20,7 @@ body {
     padding: 10px 0;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     width: 100%;
+    position: relative;
 }
 
 .horizontal-nav ul {
@@ -711,4 +711,158 @@ thead th input:focus {
     pointer-events: none;
     opacity: 0.5;
     position: relative;
+}
+
+/* Menu button (hamburger icon) */
+.menu-toggle {
+    display: none;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    font-size: 1.5em;
+    padding: 10px;
+    cursor: pointer;
+}
+
+/* Menu button (hamburger icon) */
+.menu-toggle-left {
+    display: none;
+    width: 100%;
+    text-align: left;
+    color: black;
+    background-color: #e9f5e9c4;
+    font-size: 1.5em;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+@media screen and (max-width: 768px) {
+
+    .horizontal-nav ul {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        background-color: #28a745;
+    }
+
+    .horizontal-nav ul li {
+        margin: 10px 0;
+        text-align: center;
+    }
+
+    .menu-toggle {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 15px;
+        z-index: 10; /* Ensure it stays on top */
+        position: relative; /* Ensure it doesn’t overlap improperly */
+    }
+
+    .horizontal-nav {
+        position: relative;
+        /* Ensure it doesn't affect child elements */
+    }
+
+    .horizontal-nav ul.active {
+        display: flex;
+        z-index: 5;
+        /* Lower than the button */
+        position: absolute;
+        /* Ensures it doesn’t push other elements */
+        top: 100%;
+        /* Places the menu below the button */
+    }
+
+    .horizontal-nav ul li a {
+        font-size: 1.2em;
+        padding: 8px 10px;
+    }
+
+    /* Centered Container */
+    .container {
+        width: calc(100% - 30px);
+        /* Adjust for 15px padding on both sides */
+        padding: 15px;
+        box-sizing: border-box;
+        /* Ensures padding is included in width/height */
+        max-width: 100%;
+        /* Prevent overflow */
+        border-radius: none;
+        box-shadow: none
+    }
+
+    .h2-top-left {
+        left: 35%;
+    }
+
+    /* Status Row Adjustments */
+    .status-row {
+        margin-top: 250%;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .status-box {
+        width: 90%;
+        margin: 10px 0;
+    }
+
+    /* Summary section */
+    .summary-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .report-button {
+        width: 100%;
+        margin: 10px 0;
+    }
+
+    /* Buttons */
+    .button-row {
+        flex-direction: column;
+        gap: 15px;
+        width: 100%;
+    }
+
+    .main-btn {
+        width: 100%;
+    }
+
+    /* Table Scroll Adjustments */
+    .table-container {
+        height: auto;
+        max-height: 50vh;
+    }
+
+    /* Modal Adjustments */
+    .modal-content,
+    .modal-content-report,
+    .modal-content-multi-calendar,
+    .modal-content-mess {
+        margin: 5% auto;
+        width: 90%;
+        max-width: none;
+    }
+
+    /* Dropdown Adjustments */
+    #deleteBagDropdown,
+    #addBagDropDown,
+    #moveBagDropDown,
+    #removeBagDropDown {
+        width: 100%;
+    }
+
+    /* Calendar Adjustments */
+    .calendar-container {
+        flex-direction: column;
+    }
+
+    .calendar {
+        width: 100%;
+        margin: 10px 0;
+    }
 }
