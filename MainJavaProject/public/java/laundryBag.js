@@ -666,7 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    function openModalWhenClick(clickStatus, clickButtonId, tableContent) {
+    function openModalWhenClick(clickStatus, nextDestination, clickButtonId, tableContent) {
         document.getElementById(`${clickButtonId}`).addEventListener('click', async () => {
             try {
                 const result = await fetch('/getBagsByStatus', {
@@ -676,25 +676,56 @@ document.addEventListener('DOMContentLoaded', () => {
                     },
                     body: JSON.stringify({ status: clickStatus }),
                 });
-
+    
                 if (!result.ok) {
                     throw new Error('Failed to fetch data');
                 }
-
+    
                 const result_from_response = await result.json();
-                const data = result_from_response.map(({ id, ...rest }) => rest);
-
+    
                 const tbody = document.getElementById(`${tableContent}`);
                 tbody.innerHTML = ''; // Clear existing rows
+    
+                result_from_response.forEach((item) => {
 
-                data.forEach((item) => {
                     const row = document.createElement('tr');
+    
+                    // Add the removeBag button cell
+                    const buttonCell = document.createElement('td');
+                    const removeBagButton = document.createElement('button');
+                    removeBagButton.type = 'button';
+                    removeBagButton.className = 'btn btn-outline-danger btn-sm rounded-circle fw-bold';
+                    removeBagButton.id = 'removeBag';
+                    removeBagButton.dataset.etc = item.id;
 
+                    removeBagButton.innerHTML = '&times;'; // Use HTML entity for 'x'
+    
+                    // Add click event to the button
+                    removeBagButton.addEventListener('click', async () => {
+                        const result = await fetch('/changeStatusConsole', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ code: item.id, destination: nextDestination, prev_destination: clickStatus }),
+                        });
+            
+                        if (!result.ok) {
+                            openMess('Error', 'There is a problem with this bag');
+                            return;
+                        }
+
+                        openMess('Info', 'Bag removed successfully');
+                    });
+    
+                    buttonCell.appendChild(removeBagButton);
+                    row.appendChild(buttonCell);
+    
                     // Dynamically create table cells for each key
                     for (const key in item) {
-                        if (item.hasOwnProperty(key)) {
+                        if (item.hasOwnProperty(key)  && key !== 'id') {
                             const cell = document.createElement('td');
-
+    
                             if (key === 'islate') {
                                 // Add an image depending on the value of `islate`
                                 const img = document.createElement('img');
@@ -709,47 +740,48 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // For other fields, add plain text
                                 cell.textContent = item[key];
                             }
-
+    
                             row.appendChild(cell);
                         }
                     }
-
+    
                     tbody.appendChild(row);
                 });
-
+    
+                // Open the appropriate modal
                 switch (clickStatus) {
                     case 'Drop off':
                         openDropOffModal();
                         break;
-
+    
                     case 'Transportation to laundry facility':
                         openTransportationToLaundryFacilityModal();
                         break;
-
+    
                     case 'Laundry facility':
                         openLaundryFacilityModal();
                         break;
-
+    
                     case 'Transportation to drop off':
                         openTransportationToDropOffModal();
                         break;
-
+    
                     default:
                         openReadyToPickUpModal();
                         break;
                 }
-
+    
             } catch (error) {
                 console.error('Error fetching or processing data:', error);
             }
         });
-    }
+    }    
 
-    openModalWhenClick('Drop off', 'drop-off', 'dropOffTableBody');
-    openModalWhenClick('Transportation to laundry facility', 'transportation-to-laundry-facility', 'transportationToLaundryFacilityTableBody');
-    openModalWhenClick('Laundry facility', 'laundry-facility', 'laundryFacilityTableBody');
-    openModalWhenClick('Transportation to drop off', 'transportation-to-drop-off', 'transportationToDropOffTableBody');
-    openModalWhenClick('Ready to pick up', 'ready-to-pick-up', 'readyToPickUpTableBody');
+    openModalWhenClick('Drop off', 'None', 'drop-off', 'dropOffTableBody');
+    openModalWhenClick('Transportation to laundry facility', 'None','transportation-to-laundry-facility', 'transportationToLaundryFacilityTableBody');
+    openModalWhenClick('Laundry facility', 'None', 'laundry-facility', 'laundryFacilityTableBody');
+    openModalWhenClick('Transportation to drop off', 'None', 'transportation-to-drop-off', 'transportationToDropOffTableBody');
+    openModalWhenClick('Ready to pick up', 'None','ready-to-pick-up', 'readyToPickUpTableBody');
 
     document.getElementById('reportButton').addEventListener('click', () => {
         openViewReportModal();
