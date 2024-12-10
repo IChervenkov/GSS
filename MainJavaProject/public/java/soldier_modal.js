@@ -1411,6 +1411,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             data.forEach(row => {
                 const newRow = soldierUsageTableBody.insertRow();
+                newRow.insertCell().textContent = row.nameroom ? row.nameroom : 'No room assigned';
                 newRow.insertCell().textContent = row.namesoldier;
                 newRow.insertCell().textContent = row.country;
                 newRow.insertCell().textContent = row.date_accommodation ? row.date_accommodation : 'Not accommodated';
@@ -1529,12 +1530,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 .map((row) => {
                     const cells = row.querySelectorAll("td");
                     return {
-                        soldierName: cells[0]?.innerText.trim(),
-                        country: cells[1]?.innerText.trim(),
-                        dataIn: cells[2]?.innerText.trim(),
-                        dateOut: cells[3]?.innerText.trim(),
-                        mealCard: cells[4]?.innerText.trim(),
-                        laundryBag: cells[5]?.innerText.trim(),
+                        roomNumber: cells[0]?.innerText.trim(),
+                        soldierName: cells[1]?.innerText.trim(),
+                        country: cells[2]?.innerText.trim(),
+                        dateIn: cells[3]?.innerText.trim(),
+                        dateOut: cells[4]?.innerText.trim(),
+                        mealCard: cells[5]?.innerText.trim(),
+                        laundryBag: cells[6]?.innerText.trim(),
                     };
                 }).filter(row => row.soldierName); // Exclude empty rows
 

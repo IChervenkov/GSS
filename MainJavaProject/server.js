@@ -2293,6 +2293,7 @@ class Server {
                 // Query for bike usage details
                 const result_soldior = await client.query(`
                     SELECT 
+						r.nameroom,
                         namesoldier, 
                         country, 
                         TO_CHAR(date_accommodation, 'Mon DD, YYYY') AS date_accommodation, 
@@ -2302,6 +2303,9 @@ class Server {
                     FROM 
                         soldier s
                     LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
+					LEFT JOIN key k ON k.soldierid = s.id
+					LEFT JOIN roomskey rk ON rk.keyid = k.id
+					LEFT JOIN rooms r ON r.id = rk.roomid
                     WHERE 
                         country <> 'None';`);
 
@@ -2358,7 +2362,7 @@ class Server {
                 const worksheet1 = workbook.addWorksheet('Information about soldiers');
                 const worksheet2 = workbook.addWorksheet('Movement soldiers information');
 
-                const headers1 = ['Soldier Name', 'Country', 'Accommodation Date', 'Release Date', 'Meal card', 'Laundry bag'];
+                const headers1 = ['Room Number','Soldier Name', 'Country', 'Accommodation Date', 'Release Date', 'Meal card', 'Laundry bag'];
                 worksheet1.addRow(headers1).eachCell((cell) => {
                     cell.font = { bold: true };
                     cell.alignment = { horizontal: 'center' };
@@ -2373,8 +2377,8 @@ class Server {
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
 
-                result.forEach(({ soldierName, country, dateIn, dateOut, mealCard, laundryBag }) => {
-                    worksheet1.addRow([soldierName, country, dateIn, dateOut, mealCard, laundryBag]);
+                result.forEach(({ roomNumber ,soldierName, country, dateIn, dateOut, mealCard, laundryBag }) => {
+                    worksheet1.addRow([roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag]);
                 });
 
                 result_nationality.forEach(({ oldRoom, newRoom, soldierName, dateRelock }) => {
