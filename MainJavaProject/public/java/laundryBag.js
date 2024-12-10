@@ -225,25 +225,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openMess(type, message) {
 
-        const icon = document.getElementById('mess-global-icon');
+        const icon = document.getElementById('mess-icon');
 
         switch (type) {
 
             case 'Warning':
                 icon.src = "/icon/delete_warning.png";
-                document.getElementById('mess-global-text').textContent = message;
+                document.getElementById('mess-text').textContent = message;
                 isWarning = true;
                 break;
 
             case 'Error':
                 icon.src = "/icon/error.png";
-                document.getElementById('mess-global-text').textContent = message;
+                document.getElementById('mess-text').textContent = message;
                 isWarning = true;
                 break;
 
             default:
                 icon.src = "/icon/information.png";
-                document.getElementById('mess-global-text').textContent = message;
+                document.getElementById('mess-text').textContent = message;
                 isWarning = false;
                 break;
         }

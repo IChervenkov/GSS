@@ -166,7 +166,14 @@
 
             <div class="button-row">
                 <button id="reportButton" class="report-button">Report</button>
-                <div class="w-100" <% if(username!='admin' && username!='helpDeskNikolay' ) { %> style="cursor: not-allowed" <% } %>>
+                <div class="button-container-report">
+                    <button type="button" class="download-btn" id="downloadRFIDAppBtn">Download App</button>
+                </div>
+                <div id="loadingIndicator" class="loading-overlay" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+                <div class="w-100" <% if(username!='admin' && username!='helpDeskNikolay' ) { %> style="cursor:
+                    not-allowed" <% } %>>
                         <button id="addButton"
                             class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
                             Add bag
@@ -334,13 +341,16 @@
 
                                             <!-- Buttons for confirming the selection -->
 
-                                            <button type="submit" id="addBagButton" class="modal-button">Add</button>
-
+                                            <div class="button-container">
+                                                <button type="submit" id="addBagButton"
+                                                    class="modal-button">Add</button>
+                                            </div>
                                         </form>
                                     </div>
 
                                     <div id="deleteBagModal" class="modal">
-                                        <form class="modal-content" action="/laundry/deleteBag" method="GET" id="form6">
+                                        <form class="modal-content" action="/laundry/deleteBag" method="POST"
+                                            id="form6">
                                             <span class="close-btn">&times;</span>
                                             <h2>Remove bag</h2>
 
@@ -440,8 +450,8 @@
                                             <span class="close-btn">&times;</span>
 
                                             <img src="/icon/information.png" alt="Confirmation Image"
-                                                class="modal-image" id="mess-global-icon">
-                                            <p id="mess-global-text"></p>
+                                                class="modal-image" id="mess-icon">
+                                            <p id="mess-text"></p>
                                         </div>
                                     </div>
 
@@ -452,5 +462,6 @@
 <script src="/java/laundryBag.js"></script>
 <script src="/java/calendar.js"></script>
 <script src="/java/phoneMenu.js"></script>
+<script src="/java/downloald-app.js"></script>
 
 </html>

@@ -12,7 +12,10 @@ const XLSX = require('xlsx');
 // const RedisStore = require('connect-redis').default;
 // const redis = require('redis');
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+});
 
 // Track failed login attempts (In-memory)
 const failedLoginAttempts = {};
@@ -262,6 +265,9 @@ class Server {
         this.port = port || PORT;
         this.app = express();
 
+        this.app.use(express.json({ limit: '10mb' }));
+        this.app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
         // Middleware to parse JSON bodies
         this.app.use(bodyParser.json());
         this.app.set("view engine", "ejs");
@@ -467,11 +473,12 @@ class Server {
         apkHash.update(apkFileBuffer);
         const hashDigest = apkHash.digest('hex');
 
-        const expectedHash = process.env.HASH_APP_BIKE; // You should know the expected hash of a legal APK
+        const expectedHashBike = process.env.HASH_APP_BIKE; // You should know the expected hash of a legal APK
+        const expectedHashLaundry = process.env.HASH_APP_LAUNDRY; // You should know the expected hash of a legal APK
 
-        if (hashDigest !== expectedHash) {
+        if (hashDigest !== expectedHashBike && hashDigest !== expectedHashLaundry) {
             console.error('APK file hash does not match expected value');
-            res.status(400).send('File integrity check failed');
+            res.status(400).json({ message: 'File integrity check failed' }); // Send JSON response
             return false;
         }
 
@@ -780,19 +787,20 @@ class Server {
 
         // Serve APK file from local directory
         this.app.get('/download-apk-bike', this.isLoggedIn.bind(this), (req, res) => {
+            const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.0-release.apk');
 
-            // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'adroidApp', 'NFCReader-1.0-release.apk'); // Update path to your APK file
-
+            // Check APK file existence and legality
             if (!this.checkApkFileLegality(apkFilePath, res)) {
                 return;
             }
 
-            // Use res.download() to download the APK file
-            res.download(apkFilePath, 'NFCReader-1.0-release.apk', (err) => {
+            // Serve the APK with proper headers
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+            res.setHeader('Content-Disposition', 'attachment; filename="NFCReader-1.0-release.apk"');
+            res.download(apkFilePath, (err) => {
                 if (err) {
-                    console.error('Error downloading file:', err);
-                    res.status(500).send('Could not download the file');
+                    console.error('Error during APK download:', err);
+                    res.status(500).send('Error downloading the file');
                 }
             });
         });
@@ -3569,6 +3577,29 @@ class Server {
             return timeString;
         }
 
+        // Serve APK file from local directory
+        this.app.get('/download-apk-laundry', this.isLoggedIn.bind(this), (req, res) => {
+            // Path to your APK file
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.0-release.apk');
+
+            // Check legality and existence of the APK file
+            if (!this.checkApkFileLegality(apkFilePath, res)) {
+                return;
+            }
+
+            // Set proper headers for an APK file
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.0-release.apk"'); // Force download with custom filename
+
+            // Use res.download() to send the file to the client
+            res.download(apkFilePath, (err) => {
+                if (err) {
+                    console.error('Error downloading the file:', err);
+                    res.status(500).send('Error downloading the file');
+                }
+            });
+        });
+
         this.app.get('/laundry', this.isLoggedIn.bind(this), async (req, res) => {
             const client = await pool.connect();
             let overallTotalMountFormatted = 0;
@@ -3746,6 +3777,13 @@ class Server {
                          WHERE id IN (${codesPlaceholder});`,
                         codes
                     );
+
+                    await client.query(
+                        `UPDATE laundrybags
+                        SET laundrycount = laundrycount + 1
+                        WHERE id IN (${codesPlaceholder});`,
+                        codes
+                    );
                 }
 
                 const codesPlaceholder = codes.map((_, i) => `$${i + 1}`).join(', ');
@@ -3788,12 +3826,6 @@ class Server {
 
                     if (destination === 'Ready to pick up') {
                         const codesPlaceholders = codes.map((_, i) => `$${i + 1}`).join(', ');
-
-                        await client.query(
-                            `UPDATE laundrybags 
-                            SET laundrycount = laundrycount + 1
-                            WHERE id IN (${codesPlaceholders});`,
-                            codes);
 
                         await client.query(
                             `UPDATE laundryreport 
@@ -3950,9 +3982,6 @@ class Server {
                 if (destination === 'Ready to pick up') {
                     await client.query(`
                         UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_DATE WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
-
-                    await client.query(`
-                        UPDATE laundrybags SET laundrycount = laundrycount + 1 WHERE id = $1;`, [code]);
                 }
 
                 if (destination === 'None')
@@ -3965,6 +3994,9 @@ class Server {
 
                     await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
                         avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]);
+
+                    await client.query(`
+                        UPDATE laundrybags SET laundrycount = laundrycount + 1 WHERE id = $1;`, [code]);
 
                 } else if (destination === 'None') {
 
@@ -4124,11 +4156,13 @@ class Server {
                     AND s.date_free IS NULL;`, [selectedDate1, selectedDate2]);
 
                 const result_nationality = await client.query(`
-                    SELECT SUM(l.laundrycount) AS total_count_bags, s.country
+                    SELECT SUM(l.laundrycount) as total_count_bags, s.country
                     FROM laundrybags l
                     JOIN soldier s ON l.id = s.laundry_bag_id
-                    JOIN laundryreport lr ON lr.bag_id = l.id
-                    WHERE lr.date_drop_off BETWEEN $1 AND $2 AND s.date_free IS NULL
+                    JOIN (SELECT DISTINCT bag_id
+                    from laundryreport
+                    WHERE date_drop_off BETWEEN $1 AND $2) AS res ON res.bag_id = l.id
+                    WHERE s.date_free IS NULL
                     GROUP BY s.country;`, [selectedDate1, selectedDate2]);
 
                 await client.query('COMMIT');
