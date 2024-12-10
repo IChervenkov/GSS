@@ -455,6 +455,16 @@ public class MainActivity extends AppCompatActivity {
         return success[0];
     }
 
+    private int getRowCount() {
+        return tableLayout.getChildCount();
+    }
+
+    @SuppressLint("SetTextI18n")
+    private void updateTitleWithRowCount() {
+        int rowCount = getRowCount();
+        title.setText(destination + "\n" + rowCount + " scanned bags");
+    }
+
     // Method to add a new row to the table with only the last five characters of the EPC code
     private void addRowToTable(String code, String id) {
 
@@ -471,6 +481,8 @@ public class MainActivity extends AppCompatActivity {
         tableRow.addView(codeTextView);
         tableRow.addView(idTextView);
         tableLayout.addView(tableRow); // Add the row to the TableLayout
+
+        updateTitleWithRowCount();
     }
 
     // Method to show the PopupMenu
@@ -523,8 +535,6 @@ public class MainActivity extends AppCompatActivity {
         // Show the PopupMenu
         popupMenu.show();
     }
-
-
 
     private void updateMode(String destination, String prevDestination) {
         Toast.makeText(this, "Change mode to " + (destination.equals("None") ? "Taking from soldier" : destination), Toast.LENGTH_SHORT).show();

@@ -277,7 +277,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const filteredAllKey = allKeys.filter(key =>
             key.name.toLowerCase().includes(query.toLowerCase()) ||
             key.id.toString().includes(query) ||
-            key.soldierName.toLowerCase().includes(query.toLowerCase())
+            key.soldierName.toLowerCase().includes(query.toLowerCase()) ||
+            key.maleCard.toString().includes(query) ||
+            key.laundryBag.toString().includes(query)
         );
 
         if (filteredAllKey.length > 0) {
