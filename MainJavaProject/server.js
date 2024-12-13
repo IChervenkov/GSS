@@ -4215,6 +4215,10 @@ class Server {
                     SELECT 
                         l.code,
                         l.type,
+                        CASE 
+                            WHEN status = 'None' THEN 'In the soldier'
+                            ELSE l.status
+                        END AS status,
                         s.namesoldier, 
                         s.country,
                         TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH:MI') AS date_drop_off, 
@@ -4266,7 +4270,7 @@ class Server {
                 const worksheet1 = workbook.addWorksheet('Washed Bags');
                 const worksheet2 = workbook.addWorksheet('Bags by Nationality');
 
-                const headers1 = ['Bag number', 'Soldier name', 'Nationality', 'Bag type', 'Date of issue', 'Collection date'];
+                const headers1 = ['Bag number', 'Soldier name', 'Nationality', 'Bag type', 'Location', 'Date of issue', 'Collection date'];
                 worksheet1.addRow(headers1).eachCell((cell) => {
                     cell.font = { bold: true };
                     cell.alignment = { horizontal: 'center' };
@@ -4281,8 +4285,8 @@ class Server {
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
 
-                result.forEach(({ bagNumber, soldierName, nationality, bagType, dateIn, dateOut }) => {
-                    worksheet1.addRow([bagNumber, soldierName, nationality, bagType, dateIn, dateOut]).eachCell((cell) => {
+                result.forEach(({ bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut }) => {
+                    worksheet1.addRow([bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut]).eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
                     });
                 });

@@ -880,6 +880,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 newRow.insertCell().textContent = row.namesoldier;
                 newRow.insertCell().textContent = row.country;
                 newRow.insertCell().textContent = row.type;
+                newRow.insertCell().textContent = row.status;
                 newRow.insertCell().textContent = row.date_drop_off ? row.date_drop_off : 'Not accommodated';
                 newRow.insertCell().textContent = row.date_ready_to_pick_up ? row.date_ready_to_pick_up : 'No departure date';
             });
@@ -1075,8 +1076,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         soldierName: cells[1]?.innerText.trim(),
                         nationality: cells[2]?.innerText.trim(),
                         bagType: cells[3]?.innerText.trim(),
-                        dateIn: cells[4]?.innerText.trim(),
-                        dateOut: cells[5]?.innerText.trim(),
+                        statusBag: cells[4]?.innerText.trim(),
+                        dateIn: cells[5]?.innerText.trim(),
+                        dateOut: cells[6]?.innerText.trim(),
                     };
                 }).filter(row => row.bagNumber); // Exclude empty rows
 
