@@ -20,6 +20,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalAddMultiBike = document.getElementById('addMultiBikeModal');
     const modalAddMultiBikeContent = modalAddMultiBike.querySelector('.modal-content');
 
+    const modalEditBike = document.getElementById('bikeEditModal');
+    const modalEditBikeContent = modalEditBike.querySelector('.modal-content');
+
+    const selectedStatus = document.getElementById('statusSelect');
+    const selectedBike = document.getElementById('editBikeSearch');
+    const editDateFrom = document.getElementById('editDateFrom');
+    var editBikeSearchId;
+
     // Get the modal
     var modal = document.getElementById("myModal");
     var modalContent = modal.querySelector('.modal-content');
@@ -80,11 +88,16 @@ document.addEventListener('DOMContentLoaded', function () {
     var spanAddBike = document.getElementsByClassName("close")[11];
     var spanRemoveBike = document.getElementsByClassName("close")[12];
     var spanAddMultiBike = document.getElementsByClassName("close")[13];
-    var spanMessRep = document.getElementsByClassName("close")[14];
+    document.getElementsByClassName("close")[14].onclick = closeEditModal;
+    var spanMessRep = document.getElementsByClassName("close")[15];
 
     const bikeSearchInput = document.getElementById('bikeSearch');
     const bikeSearchDropdown = document.getElementById('bikeDropdown');
     const selectedBikeId = document.getElementById('selectedBikeId');
+
+    const editSoldierSearchInput = document.getElementById('editSoldierSearch');
+    const editSoldierSearchDropdown = document.getElementById('editSoldierDropdown');
+    const selectedEditSoldierId = document.getElementById('selectedEditSoldierId');
 
     const removeBikeSearchInput = document.getElementById('removeBikeSearch');
     const removeBikeDropdown = document.getElementById('removeBikeDropdown');
@@ -119,6 +132,35 @@ document.addEventListener('DOMContentLoaded', function () {
         if (event.key === 'Enter') {
             event.preventDefault();
         }
+    });
+
+    document.getElementById('form5').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
+    document.querySelectorAll('tr.data-bike').forEach(row => {
+        row.addEventListener('click', function () {
+            const bikeName = this.querySelector('td:nth-child(1)').textContent.trim();
+            const status = this.querySelector('td:nth-child(2)').getAttribute('data-status');
+            const hiredBy = this.querySelector('td:nth-child(3)').textContent.trim();
+            const dateFrom = this.querySelector('td:nth-child(4)').textContent.trim();
+
+            if (status === 'Available') {
+                const icon = document.getElementById("mess-icon-rep");
+                const message = document.getElementById("mess-text-rep");
+                const btnYes = document.getElementById("btnMess");
+
+                icon.src = "/icon/error.png";
+                message.textContent = 'Data can only be edited for bike that are not available';
+                btnYes.style.display = "none";
+                openModal(modalMessRep, modalMessRepContent);
+            } else {
+                // Call the modal opening function with extracted data
+                openEditModal(bikeName, status, hiredBy, dateFrom);
+            }
+        });
     });
 
     document.getElementById('confirmReportBtn').onclick = function () {
@@ -162,12 +204,9 @@ document.addEventListener('DOMContentLoaded', function () {
         modalContent.classList.add('slide-out');
         modalContent.classList.remove('slide-in');
 
-        if(modal === modalRep) {
+        if (modal === modalRep) {
             const listItems = document.querySelectorAll('.dates li');
             listItems.forEach(li => li.classList.remove('selected'));
-    
-            document.getElementById('selectedDate1').value = '';
-            document.getElementById('selectedDate2').value = '';
         }
 
         // Delay hiding the modal to allow the animation to finish
@@ -179,6 +218,46 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Refresh the page after the modal is closed
                 window.location.reload();
             }
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openEditModal(bikeName, status, hiredBy, dateFrom) {
+
+        editSoldierSearchInput.value = hiredBy === 'None' ? '' : hiredBy;
+        const foundClient = clients.find(client => client.name && client.name === hiredBy);
+        selectedEditSoldierId.value = foundClient ? foundClient.id : '';
+
+        editBikeSearchId = bikes.find(bike => bike.name === bikeName).id;
+
+        selectedStatus.value = status;
+        selectedBike.textContent = `Bike Name: ${bikeName}`;
+        editDateFrom.value = dateFrom;
+
+        if(selectedStatus.value !== 'Repair') {
+            editSoldierSearchInput.classList.remove('disabled-select');
+        } else {
+            editSoldierSearchInput.classList.add('disabled-select');
+        }
+
+        // Add the slide-in effect by adding the necessary classes
+        modalEditBike.classList.add('show');
+        modalEditBikeContent.classList.add('show');
+        modalEditBikeContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalEditBikeContent.classList.remove('slide-out');
+    }
+
+    function closeEditModal() {
+        // Add the slide-out effect
+        modalEditBikeContent.classList.add('slide-out');
+        modalEditBikeContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            modalEditBike.classList.remove('show');
+            modalEditBikeContent.classList.remove('show');
+
         }, 400); // Match the duration of the animation (0.4s)
     }
 
@@ -217,6 +296,24 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         } else {
             bikeSearchDropdown.style.display = 'none';
+        }
+    }
+
+    // Show filtered bikes in the dropdown
+    function filterEditSoldiers(query) {
+        editSoldierSearchDropdown.innerHTML = '';
+        const filteredSoldiers = clients.filter(client => client.name.toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredSoldiers.length > 0) {
+            editSoldierSearchDropdown.style.display = 'block';
+            filteredSoldiers.forEach(soldier => {
+                const li = document.createElement('li');
+                li.textContent = soldier.name;
+                li.setAttribute('data-id', soldier.id);
+                editSoldierSearchDropdown.appendChild(li);
+            });
+        } else {
+            editSoldierSearchDropdown.style.display = 'none';
         }
     }
 
@@ -277,12 +374,32 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Handle input change
+    editSoldierSearchInput.addEventListener('input', function () {
+        const query = editSoldierSearchInput.value;
+        if (query.length > 0) {
+            filterEditSoldiers(query);
+        } else {
+            editSoldierSearchDropdown.style.display = 'none';
+        }
+    });
+
+    // Handle input change
     removeBikeSearchInput.addEventListener('input', function () {
         const query = removeBikeSearchInput.value;
         if (query.length > 0) {
             filterRemoveBikes(query);
         } else {
             removeBikeDropdown.style.display = 'none';
+        }
+    });
+
+    // Handle bike selection
+    editSoldierSearchDropdown.addEventListener('click', function (event) {
+        const selectedSoldier = event.target;
+        if (selectedSoldier && selectedSoldier.dataset.id) {
+            editSoldierSearchInput.value = selectedSoldier.textContent;
+            selectedEditSoldierId.value = selectedSoldier.getAttribute('data-id');
+            editSoldierSearchDropdown.style.display = 'none';
         }
     });
 
@@ -330,6 +447,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!removeBikeDropdown.contains(event.target) && event.target !== removeBikeSearchInput) {
             removeBikeDropdown.style.display = 'none';
+        }
+
+        if (!editSoldierSearchDropdown.contains(event.target) && event.target !== editSoldierSearchInput) {
+            editSoldierSearchDropdown.style.display = 'none';
         }
     });
 
@@ -642,6 +763,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById("progress-multi-bike").style.width = 0 + "%";
                 document.getElementById('fileInputBike').value = '';
                 break;
+
+            case modalEditBike:
+                closeEditModal();
+                break;
         }
     }
 
@@ -814,7 +939,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-
     async function fetchReport() {
         try {
 
@@ -868,9 +992,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if(document.getElementById("longTermCheckbox").checked)
+        if (document.getElementById("longTermCheckbox").checked)
             document.getElementById("longTermCheckbox").value = true;
-        
+
         const data = {
             bikeId: selectedBikeId.value,
             clientId: selectedClientId.value,
@@ -957,6 +1081,78 @@ document.addEventListener('DOMContentLoaded', function () {
             openModal(modalMessRep, modalMessRepContent);
             this.reset();
         }
+    });
+
+    document.getElementById('form5').addEventListener('submit', async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        let date = new Date(editDateFrom.value);
+
+        // Format components
+        let year = date.getFullYear();
+        let month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+        let day = String(date.getDate()).padStart(2, '0');
+        let hours = String(date.getHours()).padStart(2, '0');
+        let minutes = String(date.getMinutes()).padStart(2, '0');
+
+        formattedDateFrom = `${year}-${month}-${day} ${hours}:${minutes}`;
+
+        const data = {
+            bikeId: editBikeSearchId,
+            status: selectedStatus.value,
+            soldierId: selectedEditSoldierId.value,
+            dateFrom: formattedDateFrom
+        };
+
+        const icon = document.getElementById('mess-icon-rep');
+        const message = document.getElementById('mess-text-rep');
+        const btnYes = document.getElementById('btnMess');
+
+        try {
+            const response = await fetch(this.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json(); // Parse JSON response
+
+            // Display success or error messages
+            if (response.ok) {
+                message.textContent = result.message;
+            } else {
+                icon.src = "/icon/error.png";
+                message.textContent = result.error || 'An unexpected error occurred.';
+            }
+            btnYes.style.display = "none";
+            openModal(modalMessRep, modalMessRepContent);
+            this.reset();
+
+        } catch (error) {
+            icon.src = "/icon/error.png";
+            message.textContent = 'An error occurred while processing your request.';
+            btnYes.style.display = "none";
+            openModal(modalMessRep, modalMessRepContent);
+            this.reset();
+        }
+    });
+
+    document.getElementById('statusSelect').addEventListener('change', () => {
+
+        if(selectedStatus.value !== 'Repair') {
+            editSoldierSearchInput.classList.remove('disabled-select');
+            editSoldierSearchInput.value = '';
+            selectedEditSoldierId.value = '';
+            return;
+        }
+
+        editSoldierSearchInput.value = 'Repair';
+        selectedEditSoldierId.value = 4;
+        editSoldierSearchInput.classList.add('disabled-select');
+
     });
 
     document.querySelectorAll('#bike-number, #bike-name').forEach((input) => {

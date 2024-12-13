@@ -110,3 +110,19 @@ CREATE TABLE laundryreport (
 	date_ready_to_pick_up TIMESTAMP,
 	FOREIGN KEY(bag_id) REFERENCES laundrybags(id)
 );
+
+CREATE TABLE assetstype (
+	id INT NOT NULL PRIMARY KEY,
+	type_name TEXT
+);
+
+CREATE TABLE assets (
+	id TEXT NOT NULL PRIMARY KEY,
+	name_assets TEXT,
+	type_id INT,
+	location_room TEXT,
+	location_key TEXT,
+	FOREIGN KEY(type_id) REFERENCES assetstype(id),
+	FOREIGN KEY(location_room) REFERENCES rooms(id),
+	FOREIGN KEY(location_key) REFERENCES key(id)
+);

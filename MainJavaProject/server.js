@@ -92,7 +92,7 @@ const checkCountScaningCodesSchema = Joi.object({
 const schemaAddBag = Joi.object({
     epc: Joi.string().alphanum().required(),
     code: Joi.string().alphanum().required(),
-    type: Joi.string().alphanum().required(),
+    type: Joi.string().regex(/^[a-zA-Z0-9 ]+$/).required(),
     maxcount: Joi.number().required()
 });
 
@@ -148,6 +148,13 @@ const schemaUploadBike = Joi.object({
 
 const schemaRemoveBike = Joi.object({
     bikeRemoveId: Joi.string().alphanum().required()
+});
+
+const schemaEditBike = Joi.object({
+    bikeId: Joi.string().alphanum().required(),
+    status: Joi.string().valid('Repair', 'Late', 'Long term', 'Rented').required(),
+    soldierId: Joi.string().alphanum().required(),
+    dateFrom: Joi.date().iso().required()
 });
 
 const schemaSearchBike = Joi.object({
@@ -252,6 +259,7 @@ const navItems = [];
 
 const horizontalNavItems = [
     { href: '/', name: 'Main Page' },
+    { href: 'assets', name: 'Assets' },
     { href: 'laundry', name: 'Laundry' },
     { href: 'fitness', name: 'Gym' },
     { href: 'accommodation', name: 'Accommodation and keys' },
@@ -336,6 +344,7 @@ class Server {
         this.defineRoutesAccommodation();
         this.defineRoutesFitnes();
         this.defineRoutesLaundry();
+        this.defineRoutesAssets();
     }
 
     giveSpecificPermissionMain(username, indexs, res) {
@@ -409,6 +418,18 @@ class Server {
             headerTable: headerTable,
             overallTotalMountFormatted: overallTotalMountFormatted,
             username: username
+        });
+
+    }
+
+    giveSpecificPermissionAssets(indexes, res, inventory, numBuild, numSelectBuild) {
+
+        res.render('assets', {
+            title: "Assets",
+            horizontalNavItems: indexes.map(index => horizontalNavItems[index]),
+            inventory: inventory,
+            navItems: numBuild,
+            numSelectBuild: numSelectBuild
         });
 
     }
@@ -493,13 +514,16 @@ class Server {
 
             switch (req.session.username) {
                 case 'guest':
-                    this.giveSpecificPermissionMain(req.session.username, [0, 4, 5], res);
+                    this.giveSpecificPermissionMain(req.session.username, [0, 5, 6], res);
                     break;
                 case 'helpDeskGatis':
-                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 5], res);
+                    this.giveSpecificPermissionMain(req.session.username, [0, 2, 6], res);
+                    break;
+                case 'admin':
+                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4, 5, 6], res);
                     break;
                 default:
-                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4, 5], res);
+                    this.giveSpecificPermissionMain(req.session.username, [0, 2, 3, 4, 5, 6], res);
                     break;
             }
 
@@ -909,13 +933,13 @@ class Server {
 
                 switch (req.session.username) {
                     case 'guest':
-                        this.giveSpecificPermissionBicycles(req.session.username, [0, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                        this.giveSpecificPermissionBicycles(req.session.username, [0, 5, 6], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
                         break;
-                    case 'helpDeskGatis':
-                        this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                    case 'admin':
+                        this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4, 5, 6], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
                         break;
                     default:
-                        this.giveSpecificPermissionBicycles(req.session.username, [0, 1, 2, 3, 4, 5], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
+                        this.giveSpecificPermissionBicycles(req.session.username, [0, 2, 3, 4, 5, 6], res, data, optionHour, optionMinute, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike);
                         break;
                 }
             } catch (error) {
@@ -1606,6 +1630,40 @@ class Server {
                 client.release();
             }
         });
+
+        this.app.post('/bicycles/editBike', async (req, res) => {
+
+            const { error } = schemaEditBike.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { bikeId, status, soldierId, dateFrom } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                await client.query(`
+                    UPDATE bicycles SET status = $1 WHERE id = $2;`, [status, bikeId]);
+
+                await client.query(`
+                    UPDATE bikesoldier SET soldierid = $1, datefrom = $2 WHERE bikeid = $3 AND dateto IS NULL;`, [soldierId, dateFrom, bikeId]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'Bike data edited successfully.' });
+
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error('Database error:', err);
+                res.status(500).send({ error: 'Internal server error.' });
+
+            } finally {
+                client.release();
+            }
+        });
     }
 
     // Section Accommodation
@@ -2048,12 +2106,12 @@ class Server {
                             this.giveSpecificPermissionAccommodation(req.session.username, [0, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
                             break;
 
-                        case 'helpDeskGatis':
-                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
+                        case 'admin':
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5, 6], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
                             break;
 
                         default:
-                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 2, 3, 4, 5, 6], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, countFreeBeds, headerTable, nameroomSetCount, numBuild);
                             break;
                     }
                 } else {
@@ -2065,12 +2123,12 @@ class Server {
                             this.giveSpecificPermissionAccommodation(req.session.username, [0, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
                             break;
 
-                        case 'helpDeskGatis':
-                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+                        case 'admin':
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5, 6], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
                             break;
 
                         default:
-                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 1, 2, 3, 4, 5], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
+                            this.giveSpecificPermissionAccommodation(req.session.username, [0, 2, 3, 4, 5, 6], res, navBuild, totalFreeBeds, totalOccupiedBeds, type, title, null, headerTable, nameroomSetCount, numBuild);
                             break;
                     }
                 }
@@ -2362,7 +2420,7 @@ class Server {
                 const worksheet1 = workbook.addWorksheet('Information about soldiers');
                 const worksheet2 = workbook.addWorksheet('Movement soldiers information');
 
-                const headers1 = ['Room Number','Soldier Name', 'Country', 'Accommodation Date', 'Release Date', 'Meal card', 'Laundry bag'];
+                const headers1 = ['Room Number', 'Soldier Name', 'Country', 'Accommodation Date', 'Release Date', 'Meal card', 'Laundry bag'];
                 worksheet1.addRow(headers1).eachCell((cell) => {
                     cell.font = { bold: true };
                     cell.alignment = { horizontal: 'center' };
@@ -2377,7 +2435,7 @@ class Server {
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
 
-                result.forEach(({ roomNumber ,soldierName, country, dateIn, dateOut, mealCard, laundryBag }) => {
+                result.forEach(({ roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag }) => {
                     worksheet1.addRow([roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag]);
                 });
 
@@ -3396,12 +3454,12 @@ class Server {
                         this.giveSpecificPermissionFitness(req.session.username, [0, 4, 5], res, data, dataPerEmj);
                         break;
 
-                    case 'helpDeskGatis':
-                        this.giveSpecificPermissionFitness(req.session.username, [0, 1, 5], res, data, dataPerEmj);
+                    case 'admin':
+                        this.giveSpecificPermissionFitness(req.session.username, [0, 1, 2, 3, 4, 5, 6], res, data, dataPerEmj);
                         break;
 
                     default:
-                        this.giveSpecificPermissionFitness(req.session.username, [0, 1, 2, 3, 4, 5], res, data, dataPerEmj);
+                        this.giveSpecificPermissionFitness(req.session.username, [0, 2, 3, 4, 5, 6], res, data, dataPerEmj);
                         break;
                 }
 
@@ -3690,10 +3748,13 @@ class Server {
                         this.giveSpecificPermissionLaundry(req.session.username, [0, 4, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
                         break;
                     case 'helpDeskGatis':
-                        this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
+                        this.giveSpecificPermissionLaundry(req.session.username, [0, 2, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
+                        break;
+                    case 'admin':
+                        this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 2, 3, 4, 5, 6], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
                         break;
                     default:
-                        this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 2, 3, 4, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
+                        this.giveSpecificPermissionLaundry(req.session.username, [0, 2, 3, 4, 5, 6], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
                         break;
                 }
 
@@ -3756,8 +3817,12 @@ class Server {
 
             const { codes, destination, prev_destination } = req.body;
 
-            if (!Array.isArray(codes) || codes.length === 0) {
+            if (!Array.isArray(codes)) {
                 return res.status(400).json({ message: "Invalid codes array" });
+            }
+
+            if (codes.length === 0) {
+                return res.status(401).json({ message: "An empty list of scanned bags cannot be processed" });
             }
 
             const client = await pool.connect();
@@ -3769,7 +3834,7 @@ class Server {
                     const codesPlaceholder = codes.map((_, i) => `$${i + 1}`).join(', ');
                     const insertPromises = codes.map((code, index) =>
                         client.query(
-                            `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_DATE, NULL) ON CONFLICT DO NOTHING;`,
+                            `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, NULL) ON CONFLICT DO NOTHING;`,
                             [code]
                         )
                     );
@@ -3834,7 +3899,7 @@ class Server {
 
                         await client.query(
                             `UPDATE laundryreport 
-                            SET date_ready_to_pick_up = CURRENT_DATE
+                            SET date_ready_to_pick_up = CURRENT_TIMESTAMP
                             WHERE bag_id IN (${codesPlaceholders}) AND date_ready_to_pick_up IS NULL;`,
                             codes
                         );
@@ -3895,9 +3960,12 @@ class Server {
                 //     return res.status(402).json({ message: `Bag number ${bag.code} has already been laundered. The maximum laundry limit per month for one bag is ${permCount}` });
                 // }
 
+                const status = bag.status !== 'None' ? bag.status : 'Taking from soldier';
+                const prev_stat = prev_destination !== 'None' ? prev_destination : 'Taking from soldier';
+
                 if (bag.status !== prev_destination) {
                     await client.query('ROLLBACK');
-                    return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${bag.status}, not ${prev_destination}.` });
+                    return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${status}, not ${prev_stat}.` });
                 }
 
                 await client.query('COMMIT');
@@ -3986,7 +4054,7 @@ class Server {
 
                 if (destination === 'Ready to pick up') {
                     await client.query(`
-                        UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_DATE WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
+                        UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_TIMESTAMP WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
                 }
 
                 if (destination === 'None')
@@ -3995,7 +4063,7 @@ class Server {
 
                 if (prev_destination === 'None') {
 
-                    await client.query(`INSERT INTO laundryreport VALUES ($1, CURRENT_DATE, NULL);`, [code]);
+                    await client.query(`INSERT INTO laundryreport VALUES ($1, CURRENT_TIMESTAMP, NULL);`, [code]);
 
                     await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
                         avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]);
@@ -4149,10 +4217,10 @@ class Server {
                         l.type,
                         s.namesoldier, 
                         s.country,
-                        TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD') AS date_drop_off, 
+                        TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH:MI') AS date_drop_off, 
                         CASE 
                             WHEN status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
-                            ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD')
+                            ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH:MI')
                         END AS date_ready_to_pick_up
                     FROM laundrybags l
                     JOIN laundryreport lr ON lr.bag_id = l.id
@@ -4161,14 +4229,15 @@ class Server {
                     AND s.date_free IS NULL;`, [selectedDate1, selectedDate2]);
 
                 const result_nationality = await client.query(`
-                    SELECT SUM(l.laundrycount) as total_count_bags, s.country
+                    SELECT 
+                        COUNT(*) AS total_count_bags,
+                        s.country
                     FROM laundrybags l
+                    JOIN laundryreport lr ON lr.bag_id = l.id
                     JOIN soldier s ON l.id = s.laundry_bag_id
-                    JOIN (SELECT DISTINCT bag_id
-                    from laundryreport
-                    WHERE date_drop_off BETWEEN $1 AND $2) AS res ON res.bag_id = l.id
-                    WHERE s.date_free IS NULL
-                    GROUP BY s.country;`, [selectedDate1, selectedDate2]);
+                    WHERE lr.date_drop_off BETWEEN $1 AND $2
+                        AND s.date_free IS NULL
+                    GROUP BY country;`, [selectedDate1, selectedDate2]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ data: result.rows, data_nationality: result_nationality.rows });
@@ -4311,6 +4380,138 @@ class Server {
                 console.error('Error generating Excel report:', error);
                 res.status(500).json({ message: 'Failed to generate report.' });
 
+            } finally {
+                client.release();
+            }
+        });
+    }
+
+    defineRoutesAssets() {
+        this.app.get('/assets', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAccommodation.validate(req.query);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { numBuild } = req.query;
+
+            const client = await pool.connect();
+
+            let navBuild = [];
+            let inventory = [];
+
+            try {
+
+                await client.query('BEGIN');
+
+                if (numBuild) {
+
+                    const result_get_room = await client.query(`
+                        SELECT nameroom, COUNT(a.id) AS count_assets
+                        FROM rooms r
+                        LEFT JOIN assets a ON r.id = a.location_room
+                        LEFT JOIN buildroom br ON br.roomid = r.id
+                        WHERE br.buildid = $1
+                        GROUP BY nameroom
+                        ORDER BY nameroom;`, [numBuild]);
+
+                    for (const row of result_get_room.rows) {
+                        inventory.push({ name: row.nameroom, quantity: row.count_assets });
+                    }
+
+                } else {
+
+                    const result_get_room = await client.query(`
+                        SELECT nameroom, COUNT(a.id) AS count_assets
+                        FROM rooms r
+                        LEFT JOIN assets a ON r.id = a.location_room
+                        GROUP BY nameroom
+                        ORDER BY nameroom;`);
+
+                    for (const row of result_get_room.rows) {
+                        inventory.push({ name: row.nameroom, quantity: row.count_assets });
+                    }
+                }
+
+                const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings`);
+
+                for (const row of resultBuild.rows) {
+                    navBuild.push({ name: row.namebuilding, href: `/assets?numBuild=${row.id}` });
+                }
+
+                await client.query('COMMIT');
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+            } finally {
+                client.release();
+            }
+
+            switch (req.session.username) {
+                case 'guest':
+                    this.giveSpecificPermissionAssets([0, 4, 5], res, inventory, navBuild, numBuild);
+                    break;
+
+                default:
+                    this.giveSpecificPermissionAssets([0, 1, 2, 3, 4, 5, 6], res, inventory, navBuild, numBuild);
+                    break;
+            }
+        });
+
+        this.app.get('/assets/getSortedRoom', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAccommodation.validate(req.query);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { numBuild } = req.query;
+
+            const client = await pool.connect();
+
+            let nameroomSetCount = [];
+
+            try {
+
+                await client.query('BEGIN');
+
+                if (numBuild) {
+
+                    const result_get_room = await client.query(`
+                        SELECT nameroom, COUNT(a.id) AS count_assets
+                        FROM rooms r
+                        LEFT JOIN assets a ON r.id = a.location_room
+                        LEFT JOIN buildroom br ON br.roomid = r.id
+                        WHERE br.buildid = $1
+                        GROUP BY nameroom
+                        ORDER BY nameroom;`, [numBuild]);
+
+                    for (const row of result_get_room.rows) {
+                        nameroomSetCount.push({ nameroom: row.nameroom, count_assets: row.count_assets });
+                    }
+
+                } else {
+
+                    const result_get_room = await client.query(`
+                        SELECT nameroom, COUNT(a.id) AS count_assets
+                        FROM rooms r
+                        LEFT JOIN assets a ON r.id = a.location_room
+                        GROUP BY nameroom
+                        ORDER BY nameroom;`);
+
+                    for (const row of result_get_room.rows) {
+                        nameroomSetCount.push({ nameroom: row.nameroom, count_assets: row.count_assets });
+                    }
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json(nameroomSetCount);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
             } finally {
                 client.release();
             }

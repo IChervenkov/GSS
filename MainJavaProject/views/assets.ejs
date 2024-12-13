@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/icon/logoPage.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+    <link rel="stylesheet" href="/style/styleAssets.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+</head>
+
+<body>
+
+    <input type="hidden" id="numBuild" value="<%= numSelectBuild %>">
+
+    <!-- Horizontal Navigation Bar -->
+    <div class="horizontal-nav">
+        <ul id="nav-links">
+            <% horizontalNavItems.forEach(function(item) { %>
+                <li><a href="<%= item.href %>">
+                        <%= item.name %>
+                    </a></li>
+                <% }); %>
+        </ul>
+    </div>
+
+    <div class="main-content">
+
+        <div class="left-nav">
+            <ul>
+                <% navItems.forEach(function(item) { %>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <a href="<%= item.href %>" class="flex-grow-1 text-decoration-none full-back">
+                            <%= item.name %>
+                        </a>
+                    </li>
+                    <% }); %>
+            </ul>
+        </div>
+
+        <div class="content">
+
+            <div class="visualization-header">
+                <div class="row align-items-center gap-4">
+                    <!-- Title and Count Beds Column -->
+                    <div class="col-md-auto">
+                        <h3 class="mb-0">
+                            <!-- Title Row -->
+                            <div>
+                                <%= title %>
+                            </div>
+                        </h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory Table -->
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="text" class="search-input" placeholder="Search...">
+                                <label id="room-number-header">Room Number</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input" placeholder="Search...">
+                                <label id="room-number-assets">Number of assets</label>
+                            </th>
+                        </tr>
+                    </thead>
+
+                    <% if (inventory) { %>
+                        <tbody id="tableBody">
+                            <% inventory.forEach(function(item) { %>
+                                <tr class="data-room">
+
+                                    <td>
+                                        <%= item.name %>
+                                    </td>
+
+                                    <td>
+                                        <%= item.quantity %>
+                                    </td>
+                                    
+                                    <% }); %>
+                                </tr>
+                        </tbody>
+                        <% }; %>
+                </table>
+            </div>
+
+            <nav aria-label="Table pagination">
+                <ul id="pagination" class="pagination justify-content-center"></ul>
+            </nav>
+        </div>
+    </div>
+
+</body>
+
+<script src="/java/autoSearch.js"></script>
+<script src="/java/pageNumber.js"></script>
+<script src="/java/assetsInventory.js"></script>
+
+</html>

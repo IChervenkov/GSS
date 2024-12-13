@@ -297,7 +297,6 @@ h3 {
 table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
     background-color: #fff;
     /* White background for clarity */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);

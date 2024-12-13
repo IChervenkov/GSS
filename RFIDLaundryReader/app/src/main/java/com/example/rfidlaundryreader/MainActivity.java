@@ -23,7 +23,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.InterruptedIOException;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Set;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -128,6 +130,7 @@ public class MainActivity extends AppCompatActivity {
 
     // Method to start inventory (scanning)
     private void startInventoryThread() {
+        title.setText(destination.equals("None") ? "Taking from soldier" : destination);
         resetData(); // Clear data before starting a new scan
 
         // Start inventory tag reading
@@ -157,14 +160,14 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if(isSuccesful) {
-                if(checkCountScanningCodes(uniqueEpcSet.size())) {
+//                if(checkCountScanningCodes(uniqueEpcSet.size())) {
                     // Send all EPCs to the server
                     boolean success = sendAllEpcsToServer(uniqueEpcSet);
                     if (success) {
                         // Show summary only if sending to the server was successful
                         showPopupWindow("Scan Summary", "Total bags codes found: " + uniqueEpcSet.size());
                     }
-                }
+//                }
                 isSuccesful = false;
             }
         }
@@ -229,9 +232,9 @@ public class MainActivity extends AppCompatActivity {
 
     // Method to show popup window with total found EPC codes
     private void showPopupWindow(String title, String message) {
-        if (title.equalsIgnoreCase("Error")) {
-            stopInventoryThread();
-        }
+//        if (title.equalsIgnoreCase("Error")) {
+//            stopInventoryThread();
+//        }
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(title);
         builder.setMessage(message);
@@ -253,6 +256,8 @@ public class MainActivity extends AppCompatActivity {
 
     // Background thread for scanning RFID tags
     private class ThreadInventory extends Thread {
+        private final Set<String> invalidEpcSet = Collections.synchronizedSet(new HashSet<>()); // To store invalid EPCs
+
         @Override
         public void run() {
             while (isInventory) {
@@ -271,31 +276,32 @@ public class MainActivity extends AppCompatActivity {
 
                 String epc = uhftagInfo.getEPC();
 
-                if (epc != null && !epc.isEmpty() && checkBagCode(epc)) {
-                    boolean isNewEpc = false;
-                    synchronized (uniqueEpcSet) {
-                        // Add to set and check if it's a new EPC
-                        isNewEpc = uniqueEpcSet.add(epc); // Returns true only if the EPC is newly added
+                if (epc != null && !epc.isEmpty()) {
+                    // Skip invalid EPCs that have already been marked
+                    synchronized (invalidEpcSet) {
+                        if (invalidEpcSet.contains(epc)) {
+                            continue; // Skip rescanning invalid EPC
+                        }
                     }
 
-                    if (isNewEpc) {
+                    // Proceed only if EPC passes local validation
+                    if (checkBagCode(epc)) {
                         try {
                             MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                             JSONObject jsonPayload = new JSONObject();
                             try {
                                 jsonPayload.put("code", epc);
                                 jsonPayload.put("prev_destination", prev_destination);
-                                jsonPayload.put("permCount", perm_count );
+                                jsonPayload.put("permCount", perm_count);
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }
 
                             String jsonData = jsonPayload.toString();
-
                             RequestBody body = RequestBody.create(JSON, jsonData);
 
                             Request request = new Request.Builder()
-                                    .url("https://bunker.bg/checkScaningCode") // Use the new endpoint
+                                    .url("https://bunker.bg/checkScaningCode")
                                     .post(body)
                                     .build();
 
@@ -307,8 +313,16 @@ public class MainActivity extends AppCompatActivity {
                                 String code = jsonResponse.getString("code");
                                 String soldierId = jsonResponse.getString("soldierId");
 
-                                // Add row only for new EPCs
-                                runOnUiThread(() -> addRowToTable(code, soldierId));
+                                boolean isNewEpc;
+                                synchronized (uniqueEpcSet) {
+                                    // Only add to the set if validation is successful
+                                    isNewEpc = uniqueEpcSet.add(epc); // Returns true only if the EPC is newly added
+                                }
+
+                                if (isNewEpc) {
+                                    // Add row only for new EPCs
+                                    runOnUiThread(() -> addRowToTable(code, soldierId));
+                                }
                             } else {
                                 // Extract the error message from the server response
                                 String errorMessage = "Unknown error";
@@ -322,6 +336,11 @@ public class MainActivity extends AppCompatActivity {
                                     e.printStackTrace();
                                 }
 
+                                // Mark the EPC as invalid and skip it in future scans
+                                synchronized (invalidEpcSet) {
+                                    invalidEpcSet.add(epc);
+                                }
+
                                 String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
                                 runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
                             }
@@ -329,10 +348,19 @@ public class MainActivity extends AppCompatActivity {
                         } catch (InterruptedIOException e) {
                             // Log the error or handle it as needed
                             e.printStackTrace();
-
                         } catch (Exception e) {
                             e.printStackTrace();
                             runOnUiThread(() -> showPopupWindow("Error", "Error checking bag code: " + e.getMessage()));
+
+                            // Mark the EPC as invalid and skip it in future scans
+                            synchronized (invalidEpcSet) {
+                                invalidEpcSet.add(epc);
+                            }
+                        }
+                    } else {
+                        // Mark the EPC as invalid if it fails local validation
+                        synchronized (invalidEpcSet) {
+                            invalidEpcSet.add(epc);
                         }
                     }
                 }
@@ -462,7 +490,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     private void updateTitleWithRowCount() {
         int rowCount = getRowCount();
-        title.setText(destination + "\n" + rowCount + " scanned bags");
+        title.setText((destination.equals("None") ? "Taking from soldier" : destination) + "\n" + rowCount + " scanned bags");
     }
 
     // Method to add a new row to the table with only the last five characters of the EPC code
@@ -497,6 +525,9 @@ public class MainActivity extends AppCompatActivity {
         // Set a click listener for menu items
         popupMenu.setOnMenuItemClickListener(item -> {
             int itemId = item.getItemId();
+
+            if (isInventory)
+                stopInventoryThread();
 
             if (itemId == R.id.menu_drop_off) {
                 updateMode("Drop off", "None");

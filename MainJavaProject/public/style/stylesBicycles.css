@@ -292,7 +292,6 @@ h3 {
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
   background-color: #fff;
   /* White background for clarity */
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -307,6 +306,12 @@ td {
   text-align: left;
   font-size: 1em;
   /* Standard text size */
+}
+
+/* Hover effect for table rows */
+.main-content table tbody tr:hover {
+  background-color: #f1f1f1;
+  cursor: pointer;
 }
 
 thead th {
@@ -789,6 +794,7 @@ input[type="checkbox"]:checked:hover {
 }
 
 #bikeDropdown,
+#editSoldierDropdown,
 #clientDropdown,
 #removeBikeDropdown {
   list-style-type: none;
@@ -805,6 +811,7 @@ input[type="checkbox"]:checked:hover {
 }
 
 #bikeDropdown li,
+#editSoldierDropdown li,
 #clientDropdown li,
 #removeBikeDropdown li {
   padding: 10px;
@@ -812,6 +819,7 @@ input[type="checkbox"]:checked:hover {
 }
 
 #bikeDropdown li:hover,
+#editSoldierDropdown li:hover,
 #clientDropdown li:hover,
 #removeBikeDropdown li:hover {
   background-color: #218838;
@@ -868,13 +876,19 @@ input[type="checkbox"]:checked:hover {
   /* Optional: Change text color */
 }
 
+.disabled-select:hover {
+  cursor: not-allowed;
+}
+
 #bikeDropdown.list-group::-webkit-scrollbar,
+#editSoldierDropdown.list-group::-webkit-scrollbar,
 #clientDropdown.list-group::-webkit-scrollbar,
 #removeBikeDropdown.list-group::-webkit-scrollbar {
   width: 10px;
 }
 
 #bikeDropdown.list-group::-webkit-scrollbar-thumb,
+#editSoldierDropdown.list-group::-webkit-scrollbar-thumb,
 #clientDropdown.list-group::-webkit-scrollbar-thumb,
 #removeBikeDropdown.list-group::-webkit-scrollbar-thumb {
   background-color: #28a745;
@@ -882,6 +896,7 @@ input[type="checkbox"]:checked:hover {
 }
 
 #bikeDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#editSoldierDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #clientDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #removeBikeDropdown.list-group::-webkit-scrollbar-thumb:hover {
   background-color: #1e7e34;
@@ -898,6 +913,10 @@ input[type="checkbox"]:checked:hover {
 #removeBikeModal h2,
 #addMultiBikeModal h2 {
   margin-bottom: 30px;
+}
+
+#form5.modal-content {
+  margin-top: 10%;
 }
 
 .custom-progress {
