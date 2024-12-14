@@ -869,6 +869,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('#moveBag').forEach((button) => {
         button.addEventListener('click', async () => {
             
+            if(allCheckedRow.length === 0) {
+                openMess('Error', 'You have not selected laundry bags');
+                return;
+            }
+
             for(const data of allCheckedRow) {
 
                 const response = await fetch('/changeStatusConsole', {
@@ -894,6 +899,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('#removeBag').forEach((button) => {
         button.addEventListener('click', async () => {
+
+            if(allCheckedRow.length === 0) {
+                openMess('Error', 'You have not selected laundry bags');
+                return;
+            }
             
             for(const data of allCheckedRow) {
 
