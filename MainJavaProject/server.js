@@ -100,6 +100,12 @@ const schemaRemoveBag = Joi.object({
     bagId: Joi.string().alphanum().required()
 });
 
+const schemaEditBag = Joi.object({
+    bagId: Joi.string().alphanum().required(),
+    bagType: Joi.string().regex(/^[a-zA-Z0-9 ]+$/).required(),
+    maxWash: Joi.number().required()
+});
+
 const clientDataSchema = Joi.object({
     userId: Joi.string().required(), // userId should be a string and is required
 });
@@ -4374,6 +4380,43 @@ class Server {
                 // Query the database for the user
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Remove bag with code ${bagCode}`]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The bag was successfully removed' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error generating Excel report:', error);
+                res.status(500).json({ message: 'Failed to generate report.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/laundry/editBag', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaEditBag.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { bagId, bagType, maxWash } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(`SELECT code FROM laundrybags WHERE id = $1;`, [bagId]);
+                const bagCode = result.rows[0].code;
+
+                await client.query(`UPDATE laundrybags SET type = $1, maxcountlandry = $2 WHERE id = $3;`, [bagType, maxWash, bagId]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Edit bag with code ${bagCode} set type ${bagType} and max washed ${maxWash}`]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The bag was successfully removed' });

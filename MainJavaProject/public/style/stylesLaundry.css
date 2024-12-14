@@ -652,6 +652,7 @@ thead th input:focus {
 }
 
 #deleteBagDropdown,
+#editBagDropdown,
 #addBagDropDown,
 #moveBagDropDown,
 #removeBagDropDown {
@@ -669,6 +670,7 @@ thead th input:focus {
 }
 
 #deleteBagDropdown li,
+#editBagDropdown li,
 #addBagDropDown li,
 #moveBagDropDown li,
 #removeBagDropDown li {
@@ -677,6 +679,7 @@ thead th input:focus {
 }
 
 #deleteBagDropdown li:hover,
+#editBagDropdown li:hover,
 #addBagDropDown li:hover,
 #moveBagDropDown li:hover,
 #removeBagDropDown li:hover {
@@ -685,6 +688,7 @@ thead th input:focus {
 }
 
 #deleteBagDropdown.list-group::-webkit-scrollbar,
+#editBagDropdown.list-group::-webkit-scrollbar,
 #addBagDropDown.list-group::-webkit-scrollbar,
 #moveBagDropDown.list-group::-webkit-scrollbar,
 #removeBagDropDown.list-group::-webkit-scrollbar {
@@ -692,6 +696,7 @@ thead th input:focus {
 }
 
 #deleteBagDropdown.list-group::-webkit-scrollbar-thumb,
+#editBagDropdown.list-group::-webkit-scrollbar-thumb,
 #addBagDropDown.list-group::-webkit-scrollbar-thumb,
 #moveBagDropDown.list-group::-webkit-scrollbar-thumb,
 #removeBagDropDown.list-group::-webkit-scrollbar-thumb {
@@ -700,6 +705,7 @@ thead th input:focus {
 }
 
 #deleteBagDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#editBagDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #addBagDropDown.list-group::-webkit-scrollbar-thumb:hover,
 #moveBagDropDown.list-group::-webkit-scrollbar-thumb:hover,
 #removeBagDropDown.list-group::-webkit-scrollbar-thumb:hover {
@@ -851,6 +857,7 @@ thead th input:focus {
 
     /* Dropdown Adjustments */
     #deleteBagDropdown,
+    #editBagDropdown,
     #addBagDropDown,
     #moveBagDropDown,
     #removeBagDropDown {

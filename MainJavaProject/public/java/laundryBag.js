@@ -33,12 +33,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const insertBagModal = document.getElementById('insertBagModal');
     const insertBagModalContent = insertBagModal.querySelector('.modal-content');
 
+    const editBagModal = document.getElementById('editBagModal');
+    const editBagModalContent = editBagModal.querySelector('.modal-content');
+
     const deleteBagModal = document.getElementById('deleteBagModal');
     const deleteBagModalContent = deleteBagModal.querySelector('.modal-content');
 
     const deleteBagSearchInput = document.getElementById('bagRemoveSearch');
     const deleteBagSearchDropdown = document.getElementById('deleteBagDropdown');
     const selectedDeleteBagId = document.getElementById('selectedRemoveBagId');
+
+    const editBagSearchInput = document.getElementById('bagEditSearch');
+    const editBagSearchDropdown = document.getElementById('editBagDropdown');
+    const selectedEditBagId = document.getElementById('selectedEditBagId');
+
+    const editTypeSearchInput = document.getElementById('typeEditSearch');
+    const editWashSearchInput = document.getElementById('washEditSearch');
 
     const addBagSearchInput = document.getElementById('search-add-input-bags');
     const addBagSearchDropdown = document.getElementById('addBagDropDown');
@@ -62,15 +72,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let allBags = [];
     let allCheckedRow = [];
 
+    // Helper function to toggle input validity
+    const toggleInputValidity = (input, isValid) => {
+        input.classList.toggle('is-valid', isValid);
+        input.classList.toggle('is-invalid', !isValid);
+    };
+
     document.querySelectorAll('#epc-bag, #code-bag, #type-bag, #max-count-wash-bag').forEach((input) => {
         input.addEventListener('input', function () {
-            if (input.value !== "" && input.checkValidity()) {
-                input.classList.add('is-valid');
-                input.classList.remove('is-invalid');
-            } else {
-                input.classList.add('is-invalid');
-                input.classList.remove('is-valid');
-            }
+            toggleInputValidity(input, input.value !== "" && input.checkValidity())
         });
     });
 
@@ -126,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 dropdownElement.style.display = 'none';
                 hiddenInputElement.value = '';
+                toggleInputValidity(inputElement,hiddenInputElement === '')
             }
         });
 
@@ -136,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initializeAllBagSearch(deleteBagSearchInput, deleteBagSearchDropdown, selectedDeleteBagId);
+    initializeAllBagSearch(editBagSearchInput, editBagSearchDropdown, selectedEditBagId);
 
     // Function to fetch bags from the server
     async function fetchBags(status = 'None') {
@@ -187,8 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleDropdownClick(event, inputElement, hiddenInputElement, dropdownElement) {
         const selectedBag = event.target;
         if (selectedBag && selectedBag.dataset.id) {
-            inputElement.classList.remove("is-invalid");
-            inputElement.classList.add("is-valid");
+            toggleInputValidity(inputElement, true);
             inputElement.value = selectedBag.textContent;
             hiddenInputElement.value = selectedBag.getAttribute('data-id');
             dropdownElement.style.display = 'none';
@@ -525,6 +536,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    function openEditBagModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        editBagModal.classList.add('show');
+        editBagModalContent.classList.add('show');
+        editBagModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        editBagModalContent.classList.remove('slide-out');
+    }
+
+    function closeEditBagModal() {
+        // Add the slide-out effect
+        editBagModalContent.classList.add('slide-out');
+        editBagModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('#bagEditSearch, #selectedEditBagId, #typeEditSearch, #washEditSearch').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+
+            });
+
+            editBagSearchDropdown.style.display = 'none';
+
+            editBagModal.classList.remove('show');
+            editBagModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
     function openDeleteBagModal() {
 
         // Add the slide-in effect by adding the necessary classes
@@ -627,9 +673,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementsByClassName('close-btn')[7].onclick = closeMoveBagModal;
     document.getElementsByClassName('close-btn')[8].onclick = closeRemoveBagModal;
     document.getElementsByClassName('close-btn')[9].onclick = closeInsertBagModal;
-    document.getElementsByClassName('close-btn')[10].onclick = closeDeleteBagModal;
-    document.getElementsByClassName('close-btn')[11].onclick = closeViewReportModal;
-    document.getElementsByClassName('close-btn')[12].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[10].onclick = closeEditBagModal;
+    document.getElementsByClassName('close-btn')[11].onclick = closeDeleteBagModal;
+    document.getElementsByClassName('close-btn')[12].onclick = closeViewReportModal;
+    document.getElementsByClassName('close-btn')[13].onclick = closeMessModal;
 
     window.onclick = function (event) {
 
@@ -676,6 +723,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             case insertBagModal:
                 closeInsertBagModal();
+                break;
+
+            case editBagModal:
+                closeEditBagModal();
                 break;
 
             case deleteBagModal:
@@ -861,6 +912,10 @@ document.addEventListener('DOMContentLoaded', () => {
         openInsertBagModal();
     });
 
+    document.getElementById('editButton').addEventListener('click', () => {
+        openEditBagModal();
+    });
+
     document.getElementById('removeButton').addEventListener('click', () => {
         openDeleteBagModal();
     });
@@ -868,13 +923,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('#moveBag').forEach((button) => {
         button.addEventListener('click', async () => {
-            
-            if(allCheckedRow.length === 0) {
+
+            if (allCheckedRow.length === 0) {
                 openMess('Error', 'You have not selected laundry bags');
                 return;
             }
 
-            for(const data of allCheckedRow) {
+            for (const data of allCheckedRow) {
 
                 const response = await fetch('/changeStatusConsole', {
                     method: 'POST',
@@ -900,15 +955,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('#removeBag').forEach((button) => {
         button.addEventListener('click', async () => {
 
-            if(allCheckedRow.length === 0) {
+            if (allCheckedRow.length === 0) {
                 openMess('Error', 'You have not selected laundry bags');
                 return;
             }
-            
-            for(const data of allCheckedRow) {
+
+            for (const data of allCheckedRow) {
 
                 data.destination = 'None';
-                
+
                 const response = await fetch('/changeStatusConsole', {
                     method: 'POST',
                     headers: {
@@ -1023,14 +1078,14 @@ document.addEventListener('DOMContentLoaded', () => {
     stopEnter('form4');
     stopEnter('form5');
     stopEnter('form6');
+    stopEnter('form7');
 
     async function handleFormSubmit(event, formId, modalCloseFn, bagId, destination = null, prevDestination = null, input) {
 
         event.preventDefault();
 
         if (bagId.value === "") {
-            input.classList.add("is-invalid");
-            input.classList.remove("is-valid");
+            toggleInputValidity(input, false);
             return;
         }
 
@@ -1081,26 +1136,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const maxcount = document.getElementById('max-count-wash-bag');
 
         if (epc.value === '') {
-            epc.classList.remove('is-valid');
-            epc.classList.add('is-invalid');
+            toggleInputValidity(epc, false);
             return;
         }
 
         if (code.value === '') {
-            code.classList.remove('is-valid');
-            code.classList.add('is-invalid');
+            toggleInputValidity(code, false);
             return;
         }
 
         if (type.value === '') {
-            type.classList.remove('is-valid');
-            type.classList.add('is-invalid');
+            toggleInputValidity(type, false);
             return;
         }
 
         if (maxcount.value === '') {
-            maxcount.classList.remove('is-valid');
-            maxcount.classList.add('is-invalid');
+            toggleInputValidity(maxcount, false);
             return;
         }
 
@@ -1138,8 +1189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         event.preventDefault();
 
         if (selectedDeleteBagId.value === '') {
-            deleteBagSearchInput.classList.remove('is-valid');
-            deleteBagSearchInput.classList.add('is-invalid');
+            toggleInputValidity(deleteBagSearchInput, false);
             return;
         }
 
@@ -1168,6 +1218,69 @@ document.addEventListener('DOMContentLoaded', () => {
             openMess('Error', `Network error: ${error.message}`);
         }
     }
+
+    document.getElementById('form7').onsubmit = async (event) => {
+
+        event.preventDefault();
+
+        if (selectedEditBagId.value === '') {
+            toggleInputValidity(editBagSearchInput, false);
+            return;
+        }
+
+        if (editTypeSearchInput.value === '') {
+            toggleInputValidity(editTypeSearchInput, false);
+            return;
+        }
+
+        if (editWashSearchInput.value === '') {
+            toggleInputValidity(editWashSearchInput, false);
+            return;
+        }
+
+        const data = {
+            bagId: selectedEditBagId.value,
+            bagType: editTypeSearchInput.value,
+            maxWash: editWashSearchInput.value
+        };
+
+        try {
+            const response = await fetch(document.getElementById('form7').action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                openMess('Error', responseData.message);
+            } else {
+                openMess('Info', responseData.message);
+            }
+
+            closeEditBagModal();
+
+        } catch (error) {
+            openMess('Error', `Network error: ${error.message}`);
+        }
+    }
+
+    editTypeSearchInput.addEventListener('input', () => {
+        if (editTypeSearchInput.value === '')
+            toggleInputValidity(editTypeSearchInput, false);
+        else
+            toggleInputValidity(editTypeSearchInput, true);
+    });
+
+    editWashSearchInput.addEventListener('input', () => {
+        const isNumber = /^\d+$/.test(editWashSearchInput.value);
+        if (editWashSearchInput.value === '' || !isNumber) {
+            toggleInputValidity(editWashSearchInput, false);
+        } else {
+            toggleInputValidity(editWashSearchInput, true);
+        }
+    });    
 
     document.getElementById('form1').onsubmit = async (event) => {
 

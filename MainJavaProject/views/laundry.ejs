@@ -178,6 +178,10 @@
                             class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
                             Add bag
                         </button>
+                        <button id="editButton"
+                            class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
+                            Edit bag
+                        </button>
                         <button id="removeButton"
                             class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
                             Remove bag
@@ -350,6 +354,59 @@
                                         </form>
                                     </div>
 
+                                    <div id="editBagModal" class="modal">
+                                        <form class="modal-content" action="/laundry/editBag" method="POST"
+                                            id="form7">
+                                            <span class="close-btn">&times;</span>
+
+                                            <h2>Edit bag</h2>
+
+                                            <!-- Bag Selection with Custom Search -->
+                                            <div class="mb-3 search-container" id="search-edit-bag">
+                                                <label for="bagEditSearch" class="form-label">Bag code:</label>
+                                                <div class="input-group">
+                                                    <input type="text" id="bagEditSearch" class="form-control"
+                                                        placeholder="Bag code">
+                                                    <div class="invalid-feedback"></div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+                                                <ul id="editBagDropdown" class="list-group"></ul>
+                                                <!-- Custom dropdown for search -->
+                                                <input type="hidden" id="selectedEditBagId" name="editBagId" value="">
+                                                <!-- To store the selected soldier ID -->
+                                            </div>
+
+                                            <!-- Bag Selection with Custom Search -->
+                                            <div class="mb-3" id="search-edit-type">
+                                                <label for="typeEditSearch" class="form-label">Bag type:</label>
+                                                <div class="input-group">
+                                                    <input type="text" id="typeEditSearch" class="form-control"
+                                                        placeholder="Bag type">
+                                                    <div class="invalid-feedback"></div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Bag Selection with Custom Search -->
+                                            <div class="mb-3" id="search-edit-wash">
+                                                <label for="washEditSearch" class="form-label">Maximum number of washes:</label>
+                                                <div class="input-group">
+                                                    <input type="text" id="washEditSearch" class="form-control"
+                                                        placeholder="Maximum number of washes" pattern="^[a-zA-Z0-9 ]+$">
+                                                    <div class="invalid-feedback"></div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Buttons for confirming the selection -->
+                                            <div class="button-container">
+                                                <button type="submit" id="editBagButton"
+                                                    class="modal-button">Edit</button>
+                                            </div>
+
+                                        </form>
+                                    </div>
+
                                     <div id="deleteBagModal" class="modal">
                                         <form class="modal-content" action="/laundry/deleteBag" method="POST"
                                             id="form6">
@@ -358,6 +415,7 @@
 
                                             <!-- Bag Selection with Custom Search -->
                                             <div class="mb-3 search-container" id="search-remove-bag">
+                                                <label for="bagRemoveSearch" class="form-label">Bag code:</label>
                                                 <div class="input-group">
                                                     <input type="text" id="bagRemoveSearch" class="form-control"
                                                         placeholder="Bag code">
