@@ -110,6 +110,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedClientId = document.getElementById('selectedClientId');
     let clients = [];
 
+    // Helper function to toggle input validity
+    const toggleInputValidity = (input, isValid) => {
+        input.classList.toggle('is-valid', isValid);
+        input.classList.toggle('is-invalid', !isValid);
+    };
+
     document.getElementById('form1').addEventListener('keypress', function (event) {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -226,32 +232,49 @@ document.addEventListener('DOMContentLoaded', function () {
         editSoldierSearchInput.value = hiredBy === 'None' ? '' : hiredBy;
         const foundClient = clients.find(client => client.name && client.name === hiredBy);
         selectedEditSoldierId.value = foundClient ? foundClient.id : '';
-
+    
         editBikeSearchId = bikes.find(bike => bike.name === bikeName).id;
-
+    
         selectedStatus.value = status;
         selectedBike.textContent = `Bike Name: ${bikeName}`;
-        editDateFrom.value = dateFrom;
-
-        if(selectedStatus.value !== 'Repair') {
+        
+        // Format the date manually
+        const dateObj = new Date(dateFrom);
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const hours = String(dateObj.getHours()).padStart(2, '0');
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        const formattedDateFrom = `${year}-${month}-${day}T${hours}:${minutes}`;
+        
+        editDateFrom.value = formattedDateFrom;
+    
+        if (selectedStatus.value !== 'Repair') {
             editSoldierSearchInput.classList.remove('disabled-select');
         } else {
             editSoldierSearchInput.classList.add('disabled-select');
         }
-
+    
         // Add the slide-in effect by adding the necessary classes
         modalEditBike.classList.add('show');
         modalEditBikeContent.classList.add('show');
         modalEditBikeContent.classList.add('slide-in');
-
+    
         // Ensure that any 'slide-out' class is removed if it was previously added
         modalEditBikeContent.classList.remove('slide-out');
-    }
+    }    
 
     function closeEditModal() {
         // Add the slide-out effect
         modalEditBikeContent.classList.add('slide-out');
         modalEditBikeContent.classList.remove('slide-in');
+
+        document.querySelectorAll('#statusSelect, #editSoldierSearch, #editDateFrom').forEach((input) => {
+
+            input.classList.remove('is-valid');
+            input.classList.remove('is-invalid');
+
+        });
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
@@ -380,7 +403,10 @@ document.addEventListener('DOMContentLoaded', function () {
             filterEditSoldiers(query);
         } else {
             editSoldierSearchDropdown.style.display = 'none';
+            selectedEditSoldierId.value = ''
         }
+
+        toggleInputValidity(editSoldierSearchInput, selectedEditSoldierId.value !== '');
     });
 
     // Handle input change
@@ -390,7 +416,10 @@ document.addEventListener('DOMContentLoaded', function () {
             filterRemoveBikes(query);
         } else {
             removeBikeDropdown.style.display = 'none';
+            selectedRemoveBikeId.value = '';
         }
+
+        toggleInputValidity(removeBikeSearchInput, selectedRemoveBikeId.value !== '');
     });
 
     // Handle bike selection
@@ -400,6 +429,8 @@ document.addEventListener('DOMContentLoaded', function () {
             editSoldierSearchInput.value = selectedSoldier.textContent;
             selectedEditSoldierId.value = selectedSoldier.getAttribute('data-id');
             editSoldierSearchDropdown.style.display = 'none';
+
+            toggleInputValidity(editSoldierSearchInput, selectedEditSoldierId.value !== '');
         }
     });
 
@@ -422,6 +453,8 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedRemoveBikeId.value = selectedBike.getAttribute('data-id');
             removeBikeDropdown.style.display = 'none';
         }
+
+        toggleInputValidity(removeBikeSearchInput, selectedRemoveBikeId.value !== '');
     });
 
     // Handle bike selection
@@ -655,8 +688,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     break;
 
                 case modalRemoveBike:
-                    document.getElementById('removeBikeSearch').value = '';
-                    document.getElementById('selectedRemoveBikeId').value = '';
+                    document.querySelectorAll('#removeBikeSearch, #selectedRemoveBikeId').forEach((input) => {
+
+                        input.classList.remove('is-valid');
+                        input.classList.remove('is-invalid');
+
+                        input.value = '';
+                    });
                     break;
 
                 case modalAddMultiBike:
@@ -754,8 +792,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case modalRemoveBike:
                 closeModal(modalRemoveBike, modalRemoveBikeContent);
-                document.getElementById('removeBikeSearch').value = '';
-                document.getElementById('selectedRemoveBikeId').value = '';
+                document.querySelectorAll('#removeBikeSearch, #selectedRemoveBikeId').forEach((input) => {
+
+                    input.classList.remove('is-valid');
+                    input.classList.remove('is-invalid');
+
+                    input.value = '';
+                });
                 break;
 
             case modalAddMultiBike:
@@ -1041,11 +1084,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('form3').addEventListener('submit', async function (event) {
+
         event.preventDefault(); // Prevent default form submission
 
+        const bikeAddId = document.getElementById('bike-number');
+        const bikeName = document.getElementById('bike-name');
+
+        if (bikeAddId.value === '') {
+            toggleInputValidity(bikeAddId, false);
+            return;
+        }
+
+        if (bikeName.value === '') {
+            toggleInputValidity(bikeName, false);
+            return;
+        }
+
         const data = {
-            bikeAddId: document.getElementById('bike-number').value,
-            bikeName: document.getElementById('bike-name').value
+            bikeAddId: bikeAddId.value,
+            bikeName: bikeName.value
         };
 
         const icon = document.getElementById('mess-icon-rep');
@@ -1086,6 +1143,26 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('form5').addEventListener('submit', async function (event) {
 
         event.preventDefault(); // Prevent default form submission
+
+        const value = editDateFrom.value.trim();
+
+        // Check if the value is a valid date
+        const isValidDate = !isNaN(new Date(value).getTime());
+
+        if (selectedStatus.value === 'Select Status') {
+            toggleInputValidity(selectedStatus, false);
+            return;
+        }
+
+        if (selectedEditSoldierId.value === '') {
+            toggleInputValidity(editSoldierSearchInput, false);
+            return;
+        }
+
+        if (!isValidDate) {
+            toggleInputValidity(editDateFrom, false);
+            return;
+        }
 
         let date = new Date(editDateFrom.value);
 
@@ -1140,24 +1217,39 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    document.getElementById('statusSelect').addEventListener('change', () => {
+    selectedStatus.addEventListener('change', () => {
+        const isDefaultStatus = selectedStatus.value === 'Select Status';
+        const isRepairStatus = selectedStatus.value === 'Repair';
 
-        if(selectedStatus.value !== 'Repair') {
-            editSoldierSearchInput.classList.remove('disabled-select');
-            editSoldierSearchInput.value = '';
-            selectedEditSoldierId.value = '';
+        // Handle 'Select Status'
+        if (isDefaultStatus) {
+            toggleInputValidity(selectedStatus, false);
+            toggleInputValidity(editSoldierSearchInput, selectedEditSoldierId.value !== '');
             return;
         }
 
-        editSoldierSearchInput.value = 'Repair';
-        selectedEditSoldierId.value = 4;
-        editSoldierSearchInput.classList.add('disabled-select');
+        // General case: mark status as valid
+        toggleInputValidity(selectedStatus, true);
 
+        // Handle 'Repair' status
+        if (isRepairStatus) {
+            editSoldierSearchInput.value = 'Repair';
+            selectedEditSoldierId.value = 4;
+            editSoldierSearchInput.classList.add('disabled-select');
+            toggleInputValidity(selectedStatus, true);
+            toggleInputValidity(editSoldierSearchInput, true);
+            return;
+        }
+
+        // Handle other statuses
+        editSoldierSearchInput.classList.remove('disabled-select');
+        toggleInputValidity(editSoldierSearchInput, selectedEditSoldierId.value !== '');
     });
+
 
     document.querySelectorAll('#bike-number, #bike-name').forEach((input) => {
         input.addEventListener('input', function () {
-            if (input.checkValidity()) {
+            if (input.checkValidity() && input.value !== '') {
                 input.classList.add('is-valid');
                 input.classList.remove('is-invalid');
             } else {
@@ -1167,12 +1259,27 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    editDateFrom.addEventListener('input', () => {
+        const value = editDateFrom.value.trim();
+
+        // Check if the value is a valid date
+        const isValidDate = !isNaN(new Date(value).getTime());
+        toggleInputValidity(editDateFrom, isValidDate);
+    });
+
     document.getElementById('form4').addEventListener('submit', async function (event) {
 
         event.preventDefault(); // Prevent default form submission
+        const bikeRemoveId = document.getElementById('selectedRemoveBikeId');
+
+        if (bikeRemoveId.value === '') {
+            removeBikeSearchInput.classList.remove('is-valid');
+            removeBikeSearchInput.classList.add('is-invalid');
+            return;
+        }
 
         const data = {
-            bikeRemoveId: document.getElementById('selectedRemoveBikeId').value
+            bikeRemoveId: bikeRemoveId.value
         };
 
         const icon = document.getElementById('mess-icon-rep');
