@@ -3685,7 +3685,6 @@ class Server {
                 const avgTimeData = {};
 
                 const headerTable = [
-                    { name: "" },
                     { name: "Bag code" },
                     { name: "Date of entry" },
                     { name: "Soldier" },

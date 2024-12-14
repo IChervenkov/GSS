@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let bags = [];
     let allBags = [];
+    let allCheckedRow = [];
 
     document.querySelectorAll('#epc-bag, #code-bag, #type-bag, #max-count-wash-bag').forEach((input) => {
         input.addEventListener('input', function () {
@@ -293,6 +294,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
+
+            const tbody = document.getElementById(`dropOffTableBody`);
+            tbody.innerHTML = ''; // Clear existing rows
+
             dropOffModal.classList.remove('show');
             dropOffModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
@@ -316,6 +321,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
+
+            const tbody = document.getElementById(`transportationToLaundryFacilityTableBody`);
+            tbody.innerHTML = ''; // Clear existing rows
+
             transportationToLaundryFacilityModal.classList.remove('show');
             transportationToLaundryFacilityModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
@@ -339,6 +348,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
+
+            const tbody = document.getElementById(`laundryFacilityTableBody`);
+            tbody.innerHTML = ''; // Clear existing rows
+
             laundryFacilityModal.classList.remove('show');
             laundryFacilityModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
@@ -362,6 +375,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
+
+            const tbody = document.getElementById(`transportationToDropOffTableBody`);
+            tbody.innerHTML = ''; // Clear existing rows
+
             transportationToDropOffModal.classList.remove('show');
             transportationToDropOffModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
@@ -385,6 +402,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
+
+            const tbody = document.getElementById(`readyToPickUpTableBody`);
+            tbody.innerHTML = ''; // Clear existing rows
+
             readyToPickUpModal.classList.remove('show');
             readyToPickUpModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
@@ -676,56 +697,84 @@ document.addEventListener('DOMContentLoaded', () => {
                     },
                     body: JSON.stringify({ status: clickStatus }),
                 });
-    
+
                 if (!result.ok) {
                     throw new Error('Failed to fetch data');
                 }
-    
+
                 const result_from_response = await result.json();
-    
+
                 const tbody = document.getElementById(`${tableContent}`);
                 tbody.innerHTML = ''; // Clear existing rows
-    
-                result_from_response.forEach((item) => {
 
-                    const row = document.createElement('tr');
-    
-                    // Add the removeBag button cell
-                    const buttonCell = document.createElement('td');
-                    const removeBagButton = document.createElement('button');
-                    removeBagButton.type = 'button';
-                    removeBagButton.className = 'btn btn-outline-danger btn-sm rounded-circle fw-bold';
-                    removeBagButton.id = 'removeBag';
-                    removeBagButton.dataset.etc = item.id;
+                allCheckedRow = []; // Reset the global array
 
-                    removeBagButton.innerHTML = '&times;'; // Use HTML entity for 'x'
-    
-                    // Add click event to the button
-                    removeBagButton.addEventListener('click', async () => {
-                        const result = await fetch('/changeStatusConsole', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ code: item.id, destination: nextDestination, prev_destination: clickStatus }),
-                        });
-            
-                        if (!result.ok) {
-                            openMess('Error', 'There is a problem with this bag');
-                            return;
+                // Dynamically create the header checkbox
+                const headerCheckbox = document.createElement('input');
+                headerCheckbox.type = 'checkbox';
+                headerCheckbox.className = 'form-check-input header-checkbox';
+                headerCheckbox.style.border = '1px solid black'; // Make the border more bold
+                headerCheckbox.style.backgroundColor = ''; // Clear any previous color
+
+                headerCheckbox.addEventListener('change', (event) => {
+                    headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+                    const isChecked = event.target.checked;
+                    document.querySelectorAll('.form-check-input:not(.header-checkbox)').forEach(checkbox => {
+                        checkbox.checked = isChecked;
+                        if (isChecked) {
+                            checkbox.style.backgroundColor = 'green';
+                            allCheckedRow.push({ code: checkbox.dataset.etc, destination: nextDestination, prev_destination: clickStatus });
+                        } else {
+                            checkbox.style.backgroundColor = '';
+                            allCheckedRow = [];
                         }
-
-                        openMess('Info', 'Bag removed successfully');
                     });
-    
-                    buttonCell.appendChild(removeBagButton);
-                    row.appendChild(buttonCell);
-    
+                });
+
+                // Append the header checkbox to the table header
+                const thead = tbody.parentElement.querySelector('thead');
+                const headerRow = thead.querySelector('tr');
+
+                headerRow.querySelectorAll('th').forEach(th => {
+                    if (!th.textContent.trim()) {
+                        th.remove();
+                    }
+                });
+
+                const headerCell = document.createElement('th');
+                headerCell.appendChild(headerCheckbox);
+                headerRow.insertBefore(headerCell, headerRow.firstChild);
+
+                result_from_response.forEach((item) => {
+                    const row = document.createElement('tr');
+
+                    // Add the checkbox cell
+                    const checkboxCell = document.createElement('td');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'form-check-input';
+                    checkbox.dataset.etc = item.id;
+                    checkbox.style.border = '1px solid black'; // Make the border more bold
+
+                    // Add change event to the checkbox
+                    checkbox.addEventListener('change', () => {
+                        if (checkbox.checked) {
+                            checkbox.style.backgroundColor = 'green';
+                            allCheckedRow.push({ code: item.id, destination: nextDestination, prev_destination: clickStatus });
+                        } else {
+                            checkbox.style.backgroundColor = '';
+                            allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
+                        }
+                    });
+
+                    checkboxCell.appendChild(checkbox);
+                    row.appendChild(checkboxCell);
+
                     // Dynamically create table cells for each key
                     for (const key in item) {
-                        if (item.hasOwnProperty(key)  && key !== 'id') {
+                        if (item.hasOwnProperty(key) && key !== 'id') {
                             const cell = document.createElement('td');
-    
+
                             if (key === 'islate') {
                                 // Add an image depending on the value of `islate`
                                 const img = document.createElement('img');
@@ -740,55 +789,55 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // For other fields, add plain text
                                 cell.textContent = item[key];
                             }
-    
+
                             row.appendChild(cell);
                         }
                     }
-    
+
                     tbody.appendChild(row);
                 });
-    
+
                 // Open the appropriate modal
                 switch (clickStatus) {
                     case 'Drop off':
                         openDropOffModal();
                         break;
-    
+
                     case 'Transportation to laundry facility':
                         openTransportationToLaundryFacilityModal();
                         break;
-    
+
                     case 'Laundry facility':
                         openLaundryFacilityModal();
                         break;
-    
+
                     case 'Transportation to drop off':
                         openTransportationToDropOffModal();
                         break;
-    
+
                     default:
                         openReadyToPickUpModal();
                         break;
                 }
-    
+
             } catch (error) {
                 console.error('Error fetching or processing data:', error);
             }
         });
-    }    
+    }
 
-    openModalWhenClick('Drop off', 'None', 'drop-off', 'dropOffTableBody');
-    openModalWhenClick('Transportation to laundry facility', 'None','transportation-to-laundry-facility', 'transportationToLaundryFacilityTableBody');
-    openModalWhenClick('Laundry facility', 'None', 'laundry-facility', 'laundryFacilityTableBody');
-    openModalWhenClick('Transportation to drop off', 'None', 'transportation-to-drop-off', 'transportationToDropOffTableBody');
-    openModalWhenClick('Ready to pick up', 'None','ready-to-pick-up', 'readyToPickUpTableBody');
+    openModalWhenClick('Drop off', 'Transportation to laundry facility', 'drop-off', 'dropOffTableBody');
+    openModalWhenClick('Transportation to laundry facility', 'Laundry facility', 'transportation-to-laundry-facility', 'transportationToLaundryFacilityTableBody');
+    openModalWhenClick('Laundry facility', 'Transportation to drop off', 'laundry-facility', 'laundryFacilityTableBody');
+    openModalWhenClick('Transportation to drop off', 'Ready to pick up', 'transportation-to-drop-off', 'transportationToDropOffTableBody');
+    openModalWhenClick('Ready to pick up', 'None', 'ready-to-pick-up', 'readyToPickUpTableBody');
 
     document.getElementById('reportButton').addEventListener('click', () => {
         openViewReportModal();
     });
 
     document.getElementById('confirmReportBtn').addEventListener('click', () => {
-        
+
         const selectDate1 = document.getElementById('selectedDate1').value;
         const selectDate2 = document.getElementById('selectedDate2').value;
 
@@ -797,7 +846,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if(new Date(selectDate1) > new Date(selectDate2)) {
+        if (new Date(selectDate1) > new Date(selectDate2)) {
             openMess('Error', 'Invalid time slot!');
             return;
         }
@@ -816,7 +865,62 @@ document.addEventListener('DOMContentLoaded', () => {
         openDeleteBagModal();
     });
 
-    document.querySelectorAll('#addBag, #moveBag, #removeBag').forEach((button) => {
+
+    document.querySelectorAll('#moveBag').forEach((button) => {
+        button.addEventListener('click', async () => {
+            
+            for(const data of allCheckedRow) {
+
+                const response = await fetch('/changeStatusConsole', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    console.error('Error fetching the report:', result.details || 'Network response was not ok');
+                    openMess('Error', result.message);
+                    return;
+                }
+
+                openMess('Info', result.message);
+            }
+        })
+    });
+
+    document.querySelectorAll('#removeBag').forEach((button) => {
+        button.addEventListener('click', async () => {
+            
+            for(const data of allCheckedRow) {
+
+                data.destination = 'None';
+                
+                const response = await fetch('/changeStatusConsole', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    console.error('Error fetching the report:', result.details || 'Network response was not ok');
+                    openMess('Error', result.message);
+                    return;
+                }
+
+                openMess('Info', result.message);
+            }
+        })
+    });
+
+    document.querySelectorAll('#addBag').forEach((button) => {
         button.addEventListener('click', (event) => {
             const button = event.target;
 
@@ -833,19 +937,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     openAddBagModal();
                     break;
 
-                case 'moveBag':
-                    fetchBags(prev_destination);
-                    openMoveBagModal();
-                    break;
+                // case 'moveBag':
+                //     fetchBags(prev_destination);
+                //     openMoveBagModal();
+                //     break;
 
-                case 'removeBag':
-                    fetchBags(prev_destination);
-                    openRemoveBagModal();
-                    break;
+                // case 'removeBag':
+                //     fetchBags(prev_destination);
+                //     openRemoveBagModal();
+                //     break;
             }
         });
     });
-
 
     async function fetchReport(selectDate1, selectDate2) {
         try {
