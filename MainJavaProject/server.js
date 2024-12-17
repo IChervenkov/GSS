@@ -147,6 +147,12 @@ const schemaAddBike = Joi.object({
     bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required()
 });
 
+const schemaEditParameturBike = Joi.object({
+    oldBikeId: Joi.string().alphanum().required(),
+    newBikeId: Joi.string().alphanum().required(),
+    bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required()
+});
+
 const schemaUploadBike = Joi.object({
     id: Joi.string().alphanum().required(),
     namebike: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required()
@@ -211,6 +217,10 @@ const schemaSpecialRoom = Joi.object({
 
 const schemaSpecialKey = Joi.object({
     numBuild: Joi.string().alphanum().allow('').required(),
+    numRoom: Joi.string().alphanum().allow('').required()
+});
+
+const schemaSpecialAssets = Joi.object({
     numRoom: Joi.string().alphanum().allow('').required()
 });
 
@@ -811,6 +821,64 @@ class Server {
                 client.release();
             }
         });
+
+        this.app.post('/editParameturBike', async (req, res) => {
+
+            const { error } = schemaEditParameturBike.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { oldBikeId, newBikeId, bikeName } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+                
+                if(oldBikeId === newBikeId) {
+                    await client.query(
+                    "UPDATE bicycles SET namebike = $1 WHERE id = $2",
+                    [bikeName, oldBikeId]);
+                    
+                    // Query the database for the user
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
+                        [`Edit Bike name with code ${oldBikeId}`]);
+                        
+                } else {
+
+                    await client.query(
+                        "INSERT INTO bicycles VALUES ($1, $2, 'Available');",
+                        [newBikeId, bikeName]
+                    );
+    
+                    await client.query(
+                        "UPDATE bikesoldier SET bikeid = $1 WHERE bikeid = $2",
+                        [newBikeId, oldBikeId]
+                    );
+    
+                    await client.query(
+                        "DELETE FROM bicycles WHERE id = $1",
+                        [oldBikeId]
+                    );
+                    
+                    // Query the database for the user
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
+                        [`Edit Bike with name ${bikeName}, replace old NFC ${oldBikeId} with new NFC ${newBikeId}`]);
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'Bike edit successfully.'});
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error executing database query', error);
+                res.status(500).send('An error occurred. Please try again later.');
+            } finally {
+                client.release();
+            }
+        });
     }
 
     defineRoutesBicycles() {
@@ -1264,7 +1332,7 @@ class Server {
 
         });
 
-        this.app.get('/bikes', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/bikes', async (req, res) => {
 
             var optionBike = [];
 
@@ -3201,7 +3269,7 @@ class Server {
 
             } catch (error) {
                 await client.query('ROLLBACK');
-                res.status(500).json({ message: 'Failed to delete room. Please remove all keys and try again.' });
+                res.status(500).json({ message: 'Failed to delete room. Please remove all keys and assets in this room and try again.' });
 
             } finally {
                 client.release();
@@ -4454,29 +4522,29 @@ class Server {
                 if (numBuild) {
 
                     const result_get_room = await client.query(`
-                        SELECT nameroom, COUNT(a.id) AS count_assets
+                        SELECT r.id, nameroom, COUNT(a.id) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
                         LEFT JOIN buildroom br ON br.roomid = r.id
                         WHERE br.buildid = $1
-                        GROUP BY nameroom
+                        GROUP BY nameroom, r.id
                         ORDER BY nameroom;`, [numBuild]);
 
                     for (const row of result_get_room.rows) {
-                        inventory.push({ name: row.nameroom, quantity: row.count_assets });
+                        inventory.push({ id: row.id, name: row.nameroom, quantity: row.count_assets });
                     }
 
                 } else {
 
                     const result_get_room = await client.query(`
-                        SELECT nameroom, COUNT(a.id) AS count_assets
+                        SELECT r.id, nameroom, COUNT(a.id) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
-                        GROUP BY nameroom
+                        GROUP BY nameroom, r.id
                         ORDER BY nameroom;`);
 
                     for (const row of result_get_room.rows) {
-                        inventory.push({ name: row.nameroom, quantity: row.count_assets });
+                        inventory.push({ id: row.id, name: row.nameroom, quantity: row.count_assets });
                     }
                 }
 
@@ -4506,7 +4574,7 @@ class Server {
             }
         });
 
-        this.app.get('/assets/getSortedRoom', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/assets/getSortedRoom', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaAccommodation.validate(req.query);
             if (error) {
@@ -4526,34 +4594,73 @@ class Server {
                 if (numBuild) {
 
                     const result_get_room = await client.query(`
-                        SELECT nameroom, COUNT(a.id) AS count_assets
+                        SELECT r.id nameroom, COUNT(a.id) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
                         LEFT JOIN buildroom br ON br.roomid = r.id
                         WHERE br.buildid = $1
-                        GROUP BY nameroom
+                        GROUP BY nameroom, r.id
                         ORDER BY nameroom;`, [numBuild]);
 
                     for (const row of result_get_room.rows) {
-                        nameroomSetCount.push({ nameroom: row.nameroom, count_assets: row.count_assets });
+                        nameroomSetCount.push({ id: row.id, nameroom: row.nameroom, count_assets: row.count_assets });
                     }
 
                 } else {
 
                     const result_get_room = await client.query(`
-                        SELECT nameroom, COUNT(a.id) AS count_assets
+                        SELECT r.id, nameroom, COUNT(a.id) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
-                        GROUP BY nameroom
+                        GROUP BY nameroom, r.id
                         ORDER BY nameroom;`);
 
                     for (const row of result_get_room.rows) {
-                        nameroomSetCount.push({ nameroom: row.nameroom, count_assets: row.count_assets });
+                        nameroomSetCount.push({ id: row.id, nameroom: row.nameroom, count_assets: row.count_assets });
                     }
                 }
 
                 await client.query('COMMIT');
                 res.status(200).json(nameroomSetCount);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/assets/getSortedAssets', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaSpecialAssets.validate(req.query);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            const { numRoom } = req.query;
+
+            const client = await pool.connect();
+
+            let nameAssetSetCount = [];
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result_get_room = await client.query(`
+                    SELECT a.id, code, name_assets, t.type_name, r.nameroom
+                    FROM assets a
+                    LEFT JOIN assetstype t ON t.id = a.type_id
+                    LEFT JOIN rooms r ON r.id = a.location_room
+                    WHERE location_room = $1;`, [numRoom]);
+
+                for (const row of result_get_room.rows) {
+                    nameAssetSetCount.push({ id: row.id, code: row.code, name: row.name_assets, type: row.type_name, location: row.nameroom });
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json(nameAssetSetCount);
 
             } catch (error) {
                 await client.query('ROLLBACK');

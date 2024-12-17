@@ -58,10 +58,10 @@
                             style="cursor: not-allowed" <% } %>>
                                 <button type="button"
                                     class="btn btn-success btn-sm me-1 btn-add <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
-                                    name="<%= item.numBuild %>">+</button>
+                                    name="<%= item.numBuild %>"><i class="bi bi-plus"></i></button>
                                 <button type="button"
                                     class="btn btn-danger btn-sm btn-remove <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
-                                    name="<%= item.numBuild %>">−</button>
+                                    name="<%= item.numBuild %>"><i class="bi bi-dash"></i></button>
                                 <% if(item.numBuild) { %>
                                     <button type="button"
                                         class="btn btn-outline-secondary btn-sm <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
@@ -131,8 +131,7 @@
                         style="cursor: not-allowed" <% } %>>
                             <button type="button" id="btnFreeAllRoom"
                                 class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Release
-                                all
-                                rooms</button>
+                                building</button>
                     </div>
                     <button type="button" id="btnReport" class="btn-report">Reports</button>
                 </div>
@@ -205,9 +204,9 @@
 
             <h2>List of Keys
                 <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold"
-                    id="addKey">+</button>
-                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
-                    id="removeKey">−</button>
+                    id="addKey"><i class="bi bi-plus"></i></button>
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold"
+                    id="removeKey"><i class="bi bi-arrow-repeat"></i></button>
             </h2>
 
             <div class="table-container">
@@ -516,9 +515,9 @@
         <form class="modal-content" action="/accommodation/deleteSoldier" method="get" id="form5">
             <span class="close-btn">&times;</span>
 
-            <h2>⚠ Release all rooms ⚠</h2>
+            <h2>⚠ Release building ⚠</h2>
 
-            <p>To release all rooms you need to enter <span id="randomText" class="code-style"></span> in the field
+            <p>To release all rooms in selected building you need to enter <span id="randomText" class="code-style"></span> in the field
                 below</p>
             <input type="hidden" id="randomTextValue" value="">
 

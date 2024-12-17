@@ -21,6 +21,9 @@
         android:theme="@style/Theme.NFCReader"
         tools:targetApi="31">
         <activity
+            android:name=".EditBike"
+            android:exported="false" />
+        <activity
             android:name=".RemoveBike"
             android:exported="false" />
         <activity

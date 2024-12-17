@@ -118,6 +118,7 @@ CREATE TABLE assetstype (
 
 CREATE TABLE assets (
 	id TEXT NOT NULL PRIMARY KEY,
+	code TEXT,
 	name_assets TEXT,
 	type_id INT,
 	location_room TEXT,

@@ -100,4 +100,17 @@
         app:layout_constraintStart_toEndOf="@+id/buttonAddBike"
         app:layout_constraintTop_toBottomOf="@+id/buttonSearchClient" />
 
+    <Button
+        android:id="@+id/buttonEditBike"
+        android:layout_width="134dp"
+        android:layout_height="46dp"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="@android:color/holo_green_dark"
+        android:text="Edit Bike"
+        android:textColor="@android:color/white"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/buttonAddBike" />
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>

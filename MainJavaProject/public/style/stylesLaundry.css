@@ -718,6 +718,10 @@ thead th input:focus {
     position: relative;
 }
 
+input[type="checkbox"] {
+    cursor: pointer;
+}
+
 /* Menu button (hamburger icon) */
 .menu-toggle {
     display: none;

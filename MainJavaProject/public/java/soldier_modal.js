@@ -1806,7 +1806,7 @@ document.addEventListener('DOMContentLoaded', function () {
         openDeleteModal();
 
         setTimeout(() => {
-            showGlobalMess('Warning', 'WARNING: In the next window you are given the right to release all rooms. Be extremely careful as this process is irreversible.');
+            showGlobalMess('Warning', 'WARNING: In the next window, you are given the right to release all the rooms in the building of your choice. Be extremely careful as this process is irreversible.');
         }, 500); // Adjust the time as needed
     });
 

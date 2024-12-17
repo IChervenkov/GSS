@@ -19,11 +19,12 @@
         <EditText
             android:id="@+id/bikeNameEditText"
             android:layout_width="650px"
-            android:layout_centerHorizontal="true"
             android:layout_height="wrap_content"
-            android:hint="Enter bike name"
             android:layout_below="@id/nfcTextView"
+            android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
+            android:hint="Enter bike name"
+            android:minHeight="48dp"
             android:padding="10dp"
             android:textSize="18sp" />
 
