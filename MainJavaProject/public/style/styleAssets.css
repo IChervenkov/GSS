@@ -140,6 +140,7 @@ td {
 }
 
 #assetsModal .table-container {
+    text-align: center;
     height: auto;
 }
 
@@ -296,6 +297,71 @@ td {
     /* Slide out animation */
 }
 
+.modal-image {
+    display: block;
+    margin: 0 auto;
+    margin-bottom: 15px;
+    max-width: 20%;
+    /* Adjust as needed */
+    height: auto;
+    /* Keeps aspect ratio */
+}
+
+.modal-content-mess {
+    margin-top: 10%;
+    margin-left: 35%;
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    max-width: 30%;
+    border-radius: 10px;
+    text-align: center;
+    position: relative;
+    transform: translateY(-200px);
+    /* Initial position for sliding */
+    opacity: 0;
+    /* Hidden initially */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    /* Slide and fade effect */
+}
+
+.modal-content-mess.show {
+    transform: translateY(0);
+    /* Slide into view */
+    opacity: 1;
+}
+
+.modal-content-mess .button-container-mess {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    /* Space between buttons */
+    margin-top: 20px;
+}
+
+.modal-content-mess .button-container-mess .login-btn-mess {
+    background-color: #28a745;
+    /* Green background for confirm */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: block;
+}
+
+.modal-content-mess .button-container-mess .confirm-btn:hover {
+    background-color: #218838;
+    /* Darker green on hover */
+}
+
+.disabled-item {
+    pointer-events: none;
+    opacity: 0.5;
+    position: relative;
+}
+
 /* Keyframes for sliding in and out */
 @keyframes slideIn {
     from {
@@ -389,4 +455,81 @@ input[type="checkbox"] {
 #assetsModal table tbody tr:hover {
     background-color: #f1f1f1;
     cursor: pointer;
+}
+
+.search-container {
+    position: relative;
+}
+
+#assetDropdown,
+#typeDropdown,
+#locationDropdown,
+#subLocationDropdown,
+#addTypeDropdown,
+#addLocationDropdown,
+#addSubLocationDropdown {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    max-height: 200px;
+    border: 1px solid #ddd;
+    overflow-y: auto;
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    background-color: white;
+}
+
+#assetDropdown li,
+#typeDropdown li,
+#locationDropdown li,
+#subLocationDropdown li,
+#addTypeDropdown li,
+#addLocationDropdown li,
+#addSubLocationDropdown li {
+    padding: 10px;
+    cursor: pointer;
+}
+
+#assetDropdown li:hover,
+#typeDropdown li:hover,
+#locationDropdown li:hover,
+#subLocationDropdown li:hover,
+#addTypeDropdown li:hover,
+#addLocationDropdown li:hover,
+#addSubLocationDropdown li:hover {
+    background-color: #218838;
+    color: white;
+}
+
+#assetDropdown.list-group::-webkit-scrollbar,
+#typeDropdown.list-group::-webkit-scrollbar,
+#locationDropdown.list-group::-webkit-scrollbar,
+#subLocationDropdown.list-group::-webkit-scrollbar,
+#addTypeDropdown.list-group::-webkit-scrollbar,
+#addLocationDropdown.list-group::-webkit-scrollbar,
+#addSubLocationDropdown.list-group::-webkit-scrollbar {
+    width: 10px;
+}
+
+#assetDropdown.list-group::-webkit-scrollbar-thumb,
+#typeDropdown.list-group::-webkit-scrollbar-thumb,
+#locationDropdown.list-group::-webkit-scrollbar-thumb,
+#subLocationDropdown.list-group::-webkit-scrollbar-thumb,
+#addTypeDropdown.list-group::-webkit-scrollbar-thumb,
+#addLocationDropdown.list-group::-webkit-scrollbar-thumb,
+#addSubLocationDropdown.list-group::-webkit-scrollbar-thumb {
+    background-color: #28a745;
+    border-radius: 4px;
+}
+
+#assetDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#typeDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#locationDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#subLocationDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#addTypeDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#addLocationDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#addSubLocationDropdown.list-group::-webkit-scrollbar-thumb:hover {
+    background-color: #1e7e34;
 }

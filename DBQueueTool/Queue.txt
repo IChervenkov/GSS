@@ -12,6 +12,7 @@ CREATE TABLE Soldier (
 	date_free TIMESTAMP,
 	meal_card TEXT,
 	laundry_bag_id TEXT,
+	used_room TEXT,
 	FOREIGN KEY(laundry_bag_id) REFERENCES laundryBags(id)
 );
 
@@ -127,3 +128,12 @@ CREATE TABLE assets (
 	FOREIGN KEY(location_room) REFERENCES rooms(id),
 	FOREIGN KEY(location_key) REFERENCES key(id)
 );
+
+UPDATE soldier
+SET used_room = res.id
+FROM (
+    SELECT k.id AS id, k.soldierid
+    FROM key k
+    WHERE k.soldierid IN (SELECT s.id FROM soldier s WHERE s.date_accommodation IS NOT NULL)
+) AS res
+WHERE soldier.id = res.soldierid;

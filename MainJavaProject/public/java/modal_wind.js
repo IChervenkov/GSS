@@ -220,7 +220,9 @@ document.addEventListener('DOMContentLoaded', function () {
             modal.classList.remove('show');
             modalContent.classList.remove('show');
 
-            if (modal === modalMessRep) {
+            const icon = document.getElementById("mess-icon-rep");
+
+            if (modal === modalMessRep && icon.src.includes('information')) {
                 // Refresh the page after the modal is closed
                 window.location.reload();
             }
@@ -232,12 +234,12 @@ document.addEventListener('DOMContentLoaded', function () {
         editSoldierSearchInput.value = hiredBy === 'None' ? '' : hiredBy;
         const foundClient = clients.find(client => client.name && client.name === hiredBy);
         selectedEditSoldierId.value = foundClient ? foundClient.id : '';
-    
+
         editBikeSearchId = bikes.find(bike => bike.name === bikeName).id;
-    
+
         selectedStatus.value = status;
         selectedBike.textContent = `Bike Name: ${bikeName}`;
-        
+
         // Format the date manually
         const dateObj = new Date(dateFrom);
         const year = dateObj.getFullYear();
@@ -246,23 +248,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const hours = String(dateObj.getHours()).padStart(2, '0');
         const minutes = String(dateObj.getMinutes()).padStart(2, '0');
         const formattedDateFrom = `${year}-${month}-${day}T${hours}:${minutes}`;
-        
+
         editDateFrom.value = formattedDateFrom;
-    
+
         if (selectedStatus.value !== 'Repair') {
             editSoldierSearchInput.classList.remove('disabled-select');
         } else {
             editSoldierSearchInput.classList.add('disabled-select');
         }
-    
+
         // Add the slide-in effect by adding the necessary classes
         modalEditBike.classList.add('show');
         modalEditBikeContent.classList.add('show');
         modalEditBikeContent.classList.add('slide-in');
-    
+
         // Ensure that any 'slide-out' class is removed if it was previously added
         modalEditBikeContent.classList.remove('slide-out');
-    }    
+    }
 
     function closeEditModal() {
         // Add the slide-out effect
@@ -1109,35 +1111,81 @@ document.addEventListener('DOMContentLoaded', function () {
         const message = document.getElementById('mess-text-rep');
         const btnYes = document.getElementById('btnMess');
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            const result = await response.json(); // Parse JSON response
+        btnYes.style.display = "none";
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
 
-            // Display success or error messages
-            if (response.ok) {
-                message.textContent = result.message;
-            } else {
-                icon.src = "/icon/error.png";
-                message.textContent = result.error || 'An unexpected error occurred.';
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json(); // Parse JSON response
+
+                // Display success or error messages
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeModal(modalMessRep, modalMessRepContent);
+
+            } catch (error) {
+                hasError = true;
             }
-            btnYes.style.display = "none";
-            openModal(modalMessRep, modalMessRepContent);
-            this.reset();
+        });
 
-        } catch (error) {
-            icon.src = "/icon/error.png";
-            message.textContent = 'An error occurred while processing your request.';
-            btnYes.style.display = "none";
-            openModal(modalMessRep, modalMessRepContent);
-            this.reset();
-        }
+        modalMessRepContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessRepContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessRepContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    icon.src = "/icon/information.png";
+                    message.textContent = responseData.message;
+                    openModal(modalMessRep, modalMessRepContent);
+                } else if (isSubmit) {
+                    icon.src = "/icon/error.png";
+                    message.textContent = responseData.message || 'An error occurred while adding the bike';
+                    openModal(modalMessRep, modalMessRepContent);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        icon.src = "/icon/timeout.png";
+        message.textContent = 'Are you sure you want to add this bike?';
+        openModal(modalMessRep, modalMessRepContent);
     });
 
     document.getElementById('form5').addEventListener('submit', async function (event) {
@@ -1186,35 +1234,81 @@ document.addEventListener('DOMContentLoaded', function () {
         const message = document.getElementById('mess-text-rep');
         const btnYes = document.getElementById('btnMess');
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            const result = await response.json(); // Parse JSON response
+        btnYes.style.display = "none";
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
 
-            // Display success or error messages
-            if (response.ok) {
-                message.textContent = result.message;
-            } else {
-                icon.src = "/icon/error.png";
-                message.textContent = result.error || 'An unexpected error occurred.';
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json(); // Parse JSON response
+
+                // Display success or error messages
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeModal(modalMessRep, modalMessRepContent);
+
+            } catch (error) {
+                hasError = true;
             }
-            btnYes.style.display = "none";
-            openModal(modalMessRep, modalMessRepContent);
-            this.reset();
+        });
 
-        } catch (error) {
-            icon.src = "/icon/error.png";
-            message.textContent = 'An error occurred while processing your request.';
-            btnYes.style.display = "none";
-            openModal(modalMessRep, modalMessRepContent);
-            this.reset();
-        }
+        modalMessRepContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessRepContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessRepContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    icon.src = "/icon/information.png";
+                    message.textContent = responseData.message;
+                    openModal(modalMessRep, modalMessRepContent);
+                } else if (isSubmit) {
+                    icon.src = "/icon/error.png";
+                    message.textContent = responseData.message || 'An error occurred while editing the bike';
+                    openModal(modalMessRep, modalMessRepContent);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        icon.src = "/icon/timeout.png";
+        message.textContent = 'Are you sure you want to edit this bike?';
+        openModal(modalMessRep, modalMessRepContent);
     });
 
     selectedStatus.addEventListener('change', () => {
@@ -1286,35 +1380,81 @@ document.addEventListener('DOMContentLoaded', function () {
         const message = document.getElementById('mess-text-rep');
         const btnYes = document.getElementById('btnMess');
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            const result = await response.json(); // Parse JSON response
+        btnYes.style.display = "none";
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
 
-            // Display success or error messages
-            if (response.ok) {
-                message.textContent = result.message;
-            } else {
-                icon.src = "/icon/error.png";
-                message.textContent = result.error || 'An unexpected error occurred.';
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json(); // Parse JSON response
+
+                // Display success or error messages
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeModal(modalMessRep, modalMessRepContent);
+
+            } catch (error) {
+                hasError = true;
             }
-            btnYes.style.display = "none";
-            openModal(modalMessRep, modalMessRepContent);
-            this.reset();
+        });
 
-        } catch (error) {
-            icon.src = "/icon/error.png";
-            message.textContent = 'An error occurred while processing your request.';
-            btnYes.style.display = "none";
-            openModal(modalMessRep, modalMessRepContent);
-            this.reset();
-        }
+        modalMessRepContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessRepContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessRepContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    icon.src = "/icon/information.png";
+                    message.textContent = responseData.message;
+                    openModal(modalMessRep, modalMessRepContent);
+                } else if (isSubmit) {
+                    icon.src = "/icon/error.png";
+                    message.textContent = responseData.message || 'An error occurred while removing the bike';
+                    openModal(modalMessRep, modalMessRepContent);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        icon.src = "/icon/timeout.png";
+        message.textContent = 'Are you sure you want to remove this bike?';
+        openModal(modalMessRep, modalMessRepContent);
     });
 
     document.getElementById('upload-multi-bike-btn').addEventListener("click", function () {

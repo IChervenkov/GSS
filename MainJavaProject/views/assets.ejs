@@ -141,6 +141,11 @@
                                 <input type="text" class="asset-search-input" placeholder="Search...">
                                 <label id="asset-location-header">Asset location</label>
                             </th>
+
+                            <th>
+                                <input type="text" class="asset-search-input" placeholder="Search...">
+                                <label id="asset-sub-location-header">Associated key</label>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="tableBodyModal">
@@ -148,6 +153,146 @@
                 </table>
             </div>
         </div>
+    </div>
+
+    <div id="editAssetsModal" class="modal">
+        <form class="modal-content" method="POST", action="/assets/editAsset" id="form1">
+            <span class="close-btn">&times;</span>
+
+            <h2 class="mb-4">Asset information</h2>
+
+            <div class="mb-3 search-container" id="search-assert-container">
+                <label for="assetSearch" class="form-label">Assert code:</label>
+                <div class="input-group">
+                    <input type="text" id="assetSearch" class="form-control" placeholder="Asset code">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+                <ul id="assetDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedAssetId" name="assetId" value="">
+                <!-- To store the selected soldier ID -->
+            </div>
+
+            <div class="mb-3">
+                <label for="assetName" class="form-label">Assert name:</label>
+                <div class="input-group">
+                    <input type="text" id="assetName" class="form-control" placeholder="Asset name" pattern="^[a-zA-Z0-9\s]+$">
+                </div>
+            </div>
+
+            <div class="mb-3 search-container" id="search-type-container">
+                <label for="typeSearch" class="form-label">Assert type:</label>
+                <div class="input-group">
+                    <input type="text" id="typeSearch" class="form-control" placeholder="Asset type">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+                <ul id="typeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedTypeId" name="typeId" value="">
+                <!-- To store the selected soldier ID -->
+            </div>
+
+            <div class="mb-3 search-container" id="search-location-container">
+                <label for="locationSearch" class="form-label">Assert location:</label>
+                <div class="input-group">
+                    <input type="text" id="locationSearch" class="form-control" placeholder="Asset location">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+                <ul id="locationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedLocationId" name="locationId" value="">
+                <!-- To store the selected soldier ID -->
+            </div>
+
+            <div class="mb-3 search-container" id="search-sub-location-container">
+                <label for="subLocationSearch" class="form-label">Associated key:</label>
+                <div class="input-group">
+                    <input type="text" id="subLocationSearch" class="form-control" placeholder="Associated key">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+                <ul id="subLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedSubLocationId" name="subLocationId" value="">
+                <!-- To store the selected soldier ID -->
+            </div>
+
+            <button type="submit" class="modal-button" id="edit-button">Edit</button>
+
+        </form>
+    </div>
+
+    <div id="addAssetsModal" class="modal">
+        <form class="modal-content" method="POST", action="/assets/addAsset" id="form2">
+            <span class="close-btn">&times;</span>
+
+            <h2 class="mb-4">Add asset</h2>
+
+            <div class="mb-3" id="assert-epc-container">
+                <label for="assetEpc" class="form-label">Asset EPC code:</label>
+                <div class="input-group">
+                    <input type="text" id="assetEpc" class="form-control" placeholder="Asset EPC code", pattern="^[a-zA-Z0-9]+$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+            </div>
+
+            <div class="mb-3" id="assert-code-container">
+                <label for="assetCodeSearch" class="form-label">Assert code:</label>
+                <div class="input-group">
+                    <input type="text" id="assetCodeSearch" class="form-control" placeholder="Asset code", pattern="^[a-zA-Z0-9]+$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="assetAddName" class="form-label">Assert name:</label>
+                <div class="input-group">
+                    <input type="text" id="assetAddName" class="form-control" placeholder="Asset name" pattern="^[a-zA-Z0-9\s]+$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+            </div>
+
+            <div class="mb-3 search-container" id="search-add-type-container">
+                <label for="addTypeSearch" class="form-label">Assert type:</label>
+                <div class="input-group">
+                    <input type="text" id="addTypeSearch" class="form-control" placeholder="Asset type">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+                <ul id="addTypeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedAddTypeId" name="typeId" value="">
+                <!-- To store the selected soldier ID -->
+            </div>
+
+            <div class="mb-3 search-container" id="search-add-location-container">
+                <label for="addLocationSearch" class="form-label">Assert location:</label>
+                <div class="input-group">
+                    <input type="text" id="addLocationSearch" class="form-control" placeholder="Asset location">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+                <ul id="addLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedAddLocationId" name="locationId" value="">
+                <!-- To store the selected soldier ID -->
+            </div>
+
+            <div class="mb-3 search-container" id="search-add-sub-location-container">
+                <label for="addSubLocationSearch" class="form-label">Associated key:</label>
+                <div class="input-group">
+                    <input type="text" id="addSubLocationSearch" class="form-control" placeholder="Associated key">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+                <ul id="addSubLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedAddSubLocationId" name="subLocationId" value="">
+                <!-- To store the selected soldier ID -->
+            </div>
+
+            <button type="submit" class="modal-button" id="edit-button">Edit</button>
+
+        </form>
     </div>
 
     <!-- The Modal Message -->

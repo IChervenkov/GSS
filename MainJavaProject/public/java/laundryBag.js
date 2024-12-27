@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 dropdownElement.style.display = 'none';
                 hiddenInputElement.value = '';
-                toggleInputValidity(inputElement,hiddenInputElement === '')
+                toggleInputValidity(inputElement, hiddenInputElement === '')
             }
         });
 
@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (type) {
 
             case 'Warning':
-                icon.src = "/icon/delete_warning.png";
+                icon.src = "/icon/timeout.png";
                 document.getElementById('mess-text').textContent = message;
                 isWarning = true;
                 break;
@@ -278,6 +278,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(function () {
             modalMess.classList.remove('show');
             modalMessContent.classList.remove('show');
+
+            const button = modalMessContent.getElementsByTagName('button')
+            if (button.length > 0)
+                modalMessContent.removeChild(button[0]);
 
             if (!isWarning) {
                 // Refresh the page after the modal is closed
@@ -738,6 +742,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Hide dropdown if clicked outside
+    window.addEventListener('click', function (event) {
+        if (!deleteBagSearchDropdown.contains(event.target) && event.target !== deleteBagSearchDropdown) {
+            deleteBagSearchDropdown.style.display = 'none';
+        }
+
+        if (!editBagSearchDropdown.contains(event.target) && event.target !== editBagSearchDropdown) {
+            editBagSearchDropdown.style.display = 'none';
+        }
+
+        if (!addBagSearchDropdown.contains(event.target) && event.target !== addBagSearchDropdown) {
+            addBagSearchDropdown.style.display = 'none';
+        }
+
+        if (!moveBagSearchDropdown.contains(event.target) && event.target !== moveBagSearchDropdown) {
+            moveBagSearchDropdown.style.display = 'none';
+        }
+
+        if (!removeBagSearchDropdown.contains(event.target) && event.target !== removeBagSearchDropdown) {
+            removeBagSearchDropdown.style.display = 'none';
+        }
+    });
+
     function openModalWhenClick(clickStatus, nextDestination, clickButtonId, tableContent) {
         document.getElementById(`${clickButtonId}`).addEventListener('click', async () => {
             try {
@@ -924,64 +951,137 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('#moveBag').forEach((button) => {
         button.addEventListener('click', async () => {
 
+            const submitButton = document.createElement('button');
+            var isMoved = false;
+            let hasError = false;
+            var result = {};
+
             if (allCheckedRow.length === 0) {
                 openMess('Error', 'You have not selected laundry bags');
                 return;
             }
 
-            for (const data of allCheckedRow) {
+            submitButton.textContent = 'Yes';
+            submitButton.classList.add('btn', 'btn-success');
+            submitButton.addEventListener('click', async () => {
 
-                const response = await fetch('/changeStatusConsole', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                });
+                isMoved = true;
 
-                const result = await response.json();
+                for (const data of allCheckedRow) {
 
-                if (!response.ok) {
-                    console.error('Error fetching the report:', result.details || 'Network response was not ok');
-                    openMess('Error', result.message);
-                    return;
+                    const response = await fetch('/changeStatusConsole', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+
+                    result = await response.json();
+
+                    if (!response.ok) {
+                        hasError = true;
+                    }
                 }
 
-                openMess('Info', result.message);
-            }
+                closeMessModal();
+            });
+
+            modalMessContent.appendChild(submitButton);
+
+            // Wait for the modal to close, then check if the submit button was clicked
+            const observer = new MutationObserver(() => {
+                if (!modalMess.classList.contains('show') && isMoved) {
+                    modalMessContent.removeChild(submitButton);
+                }
+            });
+
+            observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+            // Close the warning modal and show the info modal
+            const closeWarningObserver = new MutationObserver(() => {
+                if (!modalMess.classList.contains('show') && isMoved) {
+                    closeWarningObserver.disconnect();
+                    if (isMoved && !hasError) {
+                        openMess('Info', 'Laundry bags have been moved successfully');
+                    } else if (hasError) {
+                        showMess('Error', result.message);
+                    }
+                }
+            });
+
+            closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+            openMess('Warning', 'Are you sure you want to move the selected laundry bags?');
         })
     });
 
     document.querySelectorAll('#removeBag').forEach((button) => {
         button.addEventListener('click', async () => {
 
+            const submitButton = document.createElement('button');
+            var isRemove = false;
+            var isError = false;
+            var result = {};
+
             if (allCheckedRow.length === 0) {
-                openMess('Error', 'You have not selected laundry bags');
+                openMess('Error', 'You have not selected any laundry bags');
                 return;
             }
 
-            for (const data of allCheckedRow) {
+            submitButton.textContent = 'Yes';
+            submitButton.classList.add('btn', 'btn-success');
+            submitButton.addEventListener('click', async () => {
 
-                data.destination = 'None';
+                for (const data of allCheckedRow) {
 
-                const response = await fetch('/changeStatusConsole', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                });
+                    isRemove = true;
+                    data.destination = 'None';
 
-                const result = await response.json();
+                    const response = await fetch('/changeStatusConsole', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
 
-                if (!response.ok) {
-                    console.error('Error fetching the report:', result.details || 'Network response was not ok');
-                    openMess('Error', result.message);
-                    return;
+                    result = await response.json();
+
+                    if (!response.ok) {
+                        isError = true;
+                    }
                 }
 
-                openMess('Info', result.message);
-            }
+                closeMessModal();
+            });
+
+            modalMessContent.appendChild(submitButton);
+
+            // Wait for the modal to close, then check if the submit button was clicked
+            const observer = new MutationObserver(() => {
+                if (!modalMess.classList.contains('show') && isRemove) {
+                    modalMessContent.removeChild(submitButton);
+                }
+            });
+
+            observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+            // Close the warning modal and show the info modal
+            const closeWarningObserver = new MutationObserver(() => {
+                if (!modalMess.classList.contains('show') && isRemove) {
+                    closeWarningObserver.disconnect();
+                    if (isRemove && !isError) {
+                        openMess('Info', 'Laundry bags have been removed successfully');
+                    } else if (isError) {
+                        openMess('Error', result.message);
+                    }
+                }
+            });
+
+            closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+            openMess('Warning', 'Are you sure you want to remove the selected laundry bags?');
         })
     });
 
@@ -1095,25 +1195,72 @@ document.addEventListener('DOMContentLoaded', () => {
             prev_destination: prevDestination ? prevDestination.value : 'None'
         };
 
-        try {
-            const response = await fetch(document.getElementById(formId).action, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            const responseData = await response.json();
-            if (!response.ok) {
-                openMess('Error', responseData.message);
-            } else {
-                openMess('Info', responseData.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false; // Track if an error occurs
+            isSubmit = true;
+
+            try {
+                const response = await fetch(document.getElementById(formId).action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+            } catch (error) {
+                hasError = true;
             }
 
-            modalCloseFn();
+            closeMessModal();
+        });
 
-        } catch (error) {
-            openMess('Error', `Network error: ${error.message}`);
-        }
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    openMess('Info', 'Laundry bag has been updated successfully');
+                    modalCloseFn();
+                } else if (isSubmit) {
+                    openMess('Error', responseData.message || 'Failed to update the laundry bag');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        openMess('Warning', 'Are you sure you want to update this laundry bag?');
     }
 
     // Attach the handler to each form
@@ -1162,26 +1309,71 @@ document.addEventListener('DOMContentLoaded', () => {
             maxcount: maxcount.value
         };
 
-        try {
-            const response = await fetch(document.getElementById('form5').action, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            const responseData = await response.json();
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
 
-            if (!response.ok) {
-                openMess('Error', responseData.message);
-            } else {
-                openMess('Info', responseData.message);
+        submitButton.addEventListener('click', async () => {
+            hasError = false; // Track if an error occurs
+            isSubmit = true;
+
+            try {
+                const response = await fetch(document.getElementById('form5').action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+            } catch (error) {
+                hasError = true;
             }
 
-            closeInsertBagModal();
+            closeMessModal();
+        });
 
-        } catch (error) {
-            openMess('Error', `Network error: ${error.message}`);
-        }
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    openMess('Info', 'Laundry bag has been added successfully');
+                    closeInsertBagModal();
+                } else if (isSubmit) {
+                    openMess('Error', responseData.message || 'Failed to add the laundry bag');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        openMess('Warning', 'Are you sure you want to add this laundry bag?');
     }
 
     document.getElementById('form6').onsubmit = async (event) => {
@@ -1197,26 +1389,71 @@ document.addEventListener('DOMContentLoaded', () => {
             bagId: selectedDeleteBagId.value,
         };
 
-        try {
-            const response = await fetch(document.getElementById('form6').action, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            const responseData = await response.json();
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+        submitButton.addEventListener('click', async () => {
 
-            if (!response.ok) {
-                openMess('Error', responseData.message);
-            } else {
-                openMess('Info', responseData.message);
+            isSubmit = true;
+
+            try {
+                const response = await fetch(document.getElementById('form6').action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+            } catch (error) {
+                hasError = true;
             }
 
-            closeDeleteBagModal();
+            closeMessModal();
+        });
 
-        } catch (error) {
-            openMess('Error', `Network error: ${error.message}`);
-        }
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    openMess('Info', 'Laundry bag has been removed successfully');
+                    closeDeleteBagModal();
+                } else if (isSubmit) {
+                    openMess('Error', responseData.message || 'Failed to remove the laundry bag');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        openMess('Warning', 'Are you sure you want to remove this laundry bag?');
     }
 
     document.getElementById('form7').onsubmit = async (event) => {
@@ -1244,26 +1481,71 @@ document.addEventListener('DOMContentLoaded', () => {
             maxWash: editWashSearchInput.value
         };
 
-        try {
-            const response = await fetch(document.getElementById('form7').action, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            const responseData = await response.json();
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+        submitButton.addEventListener('click', async () => {
 
-            if (!response.ok) {
-                openMess('Error', responseData.message);
-            } else {
-                openMess('Info', responseData.message);
+            isSubmit = true;
+
+            try {
+                const response = await fetch(document.getElementById('form7').action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+            } catch (error) {
+                hasError = true;
             }
 
-            closeEditBagModal();
+            closeMessModal();
+        });
 
-        } catch (error) {
-            openMess('Error', `Network error: ${error.message}`);
-        }
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    openMess('Info', 'Laundry bag has been updated successfully');
+                    closeEditBagModal();
+                } else if (isSubmit) {
+                    openMess('Error', responseData.message || 'Failed to update the laundry bag');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        openMess('Warning', 'Are you sure you want to update this laundry bag?');
     }
 
     editTypeSearchInput.addEventListener('input', () => {
@@ -1280,7 +1562,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             toggleInputValidity(editWashSearchInput, true);
         }
-    });    
+    });
 
     document.getElementById('form1').onsubmit = async (event) => {
 

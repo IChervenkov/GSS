@@ -224,6 +224,27 @@ const schemaSpecialAssets = Joi.object({
     numRoom: Joi.string().alphanum().allow('').required()
 });
 
+const schemadeleteAsets = Joi.object({
+    code: Joi.string().alphanum().required()
+});
+
+const schemaAddAsset = Joi.object({
+    assetEps: Joi.string().alphanum().required(),
+    assetCodeSearch: Joi.string().alphanum().required(),
+    assetAddName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    selectedAddTypeId: Joi.string().alphanum().required(),
+    selectedAddLocationId: Joi.string().alphanum().required(),
+    selectedAddSubLocationId: Joi.string().alphanum().allow('').optional()
+});
+
+const schemaEditAsset = Joi.object({
+    assetId: Joi.string().alphanum().required(),
+    assetName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    assetType: Joi.string().alphanum().required(),
+    assetLocation: Joi.string().alphanum().required(),
+    assetSubLocation: Joi.string().alphanum().allow('').optional()
+});
+
 const schemaRemoveRoom = Joi.object({
     roomId: Joi.string().alphanum().required()
 });
@@ -836,40 +857,40 @@ class Server {
             try {
 
                 await client.query('BEGIN');
-                
-                if(oldBikeId === newBikeId) {
+
+                if (oldBikeId === newBikeId) {
                     await client.query(
-                    "UPDATE bicycles SET namebike = $1 WHERE id = $2",
-                    [bikeName, oldBikeId]);
-                    
+                        "UPDATE bicycles SET namebike = $1 WHERE id = $2",
+                        [bikeName, oldBikeId]);
+
                     // Query the database for the user
                     await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
                         [`Edit Bike name with code ${oldBikeId}`]);
-                        
+
                 } else {
 
                     await client.query(
                         "INSERT INTO bicycles VALUES ($1, $2, 'Available');",
                         [newBikeId, bikeName]
                     );
-    
+
                     await client.query(
                         "UPDATE bikesoldier SET bikeid = $1 WHERE bikeid = $2",
                         [newBikeId, oldBikeId]
                     );
-    
+
                     await client.query(
                         "DELETE FROM bicycles WHERE id = $1",
                         [oldBikeId]
                     );
-                    
+
                     // Query the database for the user
                     await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
                         [`Edit Bike with name ${bikeName}, replace old NFC ${oldBikeId} with new NFC ${newBikeId}`]);
                 }
 
                 await client.query('COMMIT');
-                res.status(200).json({ message: 'Bike edit successfully.'});
+                res.status(200).json({ message: 'Bike edit successfully.' });
 
             } catch (error) {
                 await client.query('ROLLBACK');
@@ -1435,7 +1456,7 @@ class Server {
 
             const { error } = schemaAddBike.validate(req.body);
             if (error) {
-                return res.status(400).send({ error: error.details[0].message });
+                return res.status(400).send({ message: error.details[0].message });
             }
 
             let { bikeAddId, bikeName } = req.body;
@@ -1451,7 +1472,7 @@ class Server {
 
                 if (result.rows.length > 0) {
                     await client.query('ROLLBACK');
-                    return res.status(400).send({ error: 'This bike already exists.' });
+                    return res.status(400).send({ message: 'This bike already exists.' });
                 }
 
                 // Insert new bike if bikeAddId doesn't exist
@@ -1472,7 +1493,7 @@ class Server {
             } catch (err) {
                 await client.query('ROLLBACK');
                 console.error('Database error:', err);
-                res.status(500).send({ error: 'Internal server error.' });
+                res.status(500).send({ message: 'Internal server error.' });
             } finally {
                 client.release();
             }
@@ -1686,10 +1707,20 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result_client = await client.query(`SELECT id, namesoldier, country FROM soldier;`);
+                const result_client = await client.query(`
+                    SELECT s.id, namesoldier, country, l.id as etc, l.code, s.meal_card
+                    FROM soldier s
+                    LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id;`);
 
                 result_client.rows.forEach(element => {
-                    optionClient.push({ id: element.id, name: element.namesoldier, country: element.country });
+                    optionClient.push({
+                        id: element.id,
+                        name: element.namesoldier,
+                        country: element.country,
+                        etc: element.etc ? element.etc : '',
+                        code: element.code ? element.code : '',
+                        meal_card: element.meal_card ? element.meal_card : ''
+                    });
                 });
 
                 await client.query('COMMIT');
@@ -1789,6 +1820,40 @@ class Server {
 
                 await client.query('COMMIT');
                 res.json({ allBags: optionAllBag });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/freeBags', this.isLoggedIn.bind(this), async (req, res) => {
+
+            var optionAllBag = [];
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result_all_bags = await client.query(`
+                    SELECT * 
+                    FROM laundrybags l 
+                    WHERE l.id NOT IN (SELECT l.id FROM laundrybags l
+                                        LEFT JOIN soldier s ON s.laundry_bag_id = l.id
+                                        WHERE s.date_accommodation IS NOT NULL AND date_free IS NULL); `);
+
+                result_all_bags.rows.forEach(element => {
+                    optionAllBag.push({ id: element.id, name: element.code, status: element.status });
+                });
+
+                await client.query('COMMIT');
+                res.json({ bags: optionAllBag });
 
             } catch (error) {
                 await client.query('ROLLBACK');
@@ -2326,12 +2391,10 @@ class Server {
 
                 } else if (soldierId !== '' && countryId !== 'None') {
 
-                    const result_alrady_bag_get = await client.query(`SELECT * FROM soldier WHERE date_free IS NULL AND laundry_bag_id = $1;`,
-                        [bagId]
+                    await client.query(
+                        "UPDATE key SET soldierid = NULL where soldierid = $1;",
+                        [soldierId]
                     );
-
-                    if (result_alrady_bag_get.rows.length > 0)
-                        return res.status(401).send({ message: "This bag has already been used" });
 
                     await client.query(
                         "UPDATE key SET soldierid = $1 where id = $2;",
@@ -2346,8 +2409,8 @@ class Server {
 
                     if (result_accommodation_soldier.rows.length === 0) {
                         await client.query(
-                            "UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3 where id = $1;",
-                            [soldierId, mealCardId, bagId === '' ? null : bagId]
+                            "UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3, used_room = $4 where id = $1;",
+                            [soldierId, mealCardId, bagId === '' ? null : bagId, keyCodeId]
                         );
                     } else {
                         await client.query(
@@ -2435,8 +2498,7 @@ class Server {
                     FROM 
                         soldier s
                     LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
-					LEFT JOIN key k ON k.soldierid = s.id
-					LEFT JOIN roomskey rk ON rk.keyid = k.id
+					LEFT JOIN roomskey rk ON rk.keyid = s.used_room
 					LEFT JOIN rooms r ON r.id = rk.roomid
                     WHERE 
                         country <> 'None';`);
@@ -3211,9 +3273,11 @@ class Server {
                 await client.query('BEGIN');
 
                 const result = await client.query(`
-                    SELECT k.id, k.namekey, s.namesoldier, s.country, s.meal_card, l.code FROM key k
+                    SELECT k.id, k.namekey, s.namesoldier, s.country, s.meal_card, l.code, r.nameroom, r.id AS roomid FROM key k
                     LEFT JOIN soldier s ON s.id = k.soldierid
-                    LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id;`);
+                    LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id
+					LEFT JOIN roomskey rk ON rk.keyid = k.id
+					LEFT JOIN rooms r ON rk.roomid = r.id;`);
 
                 const result_key_data = result.rows;
                 let total_res = [];
@@ -3225,7 +3289,9 @@ class Server {
                         soldierName: row.namesoldier ? row.namesoldier : 'Free',
                         country: row.country ? row.country : 'Undefined',
                         maleCard: row.meal_card ? row.meal_card : 'Undefined',
-                        laundryBag: row.code ? row.code : 'Undefined'
+                        laundryBag: row.code ? row.code : 'Undefined',
+                        roomid: row.roomid,
+                        nameroom: row.nameroom
                     });
                 });
 
@@ -3357,6 +3423,11 @@ class Server {
                     SET 
                         idnewkey = CASE WHEN idnewkey = $2 THEN $1 ELSE idnewkey END,
                         idpreviewkey = CASE WHEN idpreviewkey = $2 THEN $1 ELSE idpreviewkey END; `, [newKeyId, oldKeyId]);
+
+                await client.query(`
+                    UPDATE assets
+                    SET 
+                        location_key = CASE WHEN location_key = $2 THEN $1 ELSE location_key END;`, [newKeyId, oldKeyId]);
 
                 await client.query(`DELETE FROM key WHERE id = $1;`, [oldKeyId])
 
@@ -4505,7 +4576,7 @@ class Server {
 
             const { error } = schemaAccommodation.validate(req.query);
             if (error) {
-                return res.status(400).send({ error: error.details[0].message });
+                return res.status(400).send({ message: error.details[0].message });
             }
 
             const { numBuild } = req.query;
@@ -4559,6 +4630,7 @@ class Server {
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to open asset.' });
             } finally {
                 client.release();
             }
@@ -4578,7 +4650,7 @@ class Server {
 
             const { error } = schemaAccommodation.validate(req.query);
             if (error) {
-                return res.status(400).send({ error: error.details[0].message });
+                return res.status(400).send({ message: error.details[0].message });
             }
 
             const { numBuild } = req.query;
@@ -4626,6 +4698,7 @@ class Server {
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to sorted room.' });
             } finally {
                 client.release();
             }
@@ -4635,7 +4708,7 @@ class Server {
 
             const { error } = schemaSpecialAssets.validate(req.query);
             if (error) {
-                return res.status(400).send({ error: error.details[0].message });
+                return res.status(400).send({ message: error.details[0].message });
             }
 
             const { numRoom } = req.query;
@@ -4649,14 +4722,22 @@ class Server {
                 await client.query('BEGIN');
 
                 const result_get_room = await client.query(`
-                    SELECT a.id, code, name_assets, t.type_name, r.nameroom
+                    SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.namekey
                     FROM assets a
                     LEFT JOIN assetstype t ON t.id = a.type_id
                     LEFT JOIN rooms r ON r.id = a.location_room
+                    LEFT JOIN key k ON k.id = a.location_key
                     WHERE location_room = $1;`, [numRoom]);
 
                 for (const row of result_get_room.rows) {
-                    nameAssetSetCount.push({ id: row.id, code: row.code, name: row.name_assets, type: row.type_name, location: row.nameroom });
+                    nameAssetSetCount.push({
+                        id: row.id,
+                        code: row.code,
+                        name: row.name_assets,
+                        type: row.type_name,
+                        location: row.nameroom,
+                        namekey: row.namekey ? row.namekey : 'There is no associated key'
+                    });
                 }
 
                 await client.query('COMMIT');
@@ -4665,6 +4746,143 @@ class Server {
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to sorted asset.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/assets/getAllType', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const result = await client.query('SELECT id, type_name AS name FROM assetstype;');
+
+                const assetType = result.rows;
+
+                await client.query('COMMIT');
+                res.status(200).json(assetType);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to get all type.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/assets/editAsset', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaEditAsset.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { assetId, assetName, assetType, assetLocation, assetSubLocation } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                if (assetSubLocation !== '') {
+                    await client.query(`UPDATE assets SET name_assets = $2, type_id = $3, location_room = $4, location_key = $5 WHERE id = $1`,
+                        [assetId, assetName, assetType, assetLocation, assetSubLocation]
+                    );
+                } else {
+                    await client.query(`UPDATE assets SET name_assets = $2, type_id = $3, location_room = $4, location_key = NULL WHERE id = $1`,
+                        [assetId, assetName, assetType, assetLocation]
+                    );
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The asset was successfully update' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ error: 'Failed to edit asset.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/assets/addAsset', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAddAsset.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const check_exist = await client.query(`SELECT * FROM assets WHERE id = $1;`, [assetEps]);
+
+                if (check_exist.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: 'This asset already exists!' });
+                }
+
+                if (selectedAddSubLocationId !== '') {
+                    await client.query(`INSERT INTO assets(id, code, name_assets, type_id, location_room, location_key) VALUES ($1, $2, $3, $4, $5, $6);`,
+                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId]
+                    );
+
+                } else {
+                    await client.query(`INSERT INTO assets(id, code, name_assets, type_id, location_room, location_key) VALUES ($1, $2, $3, $4, $5, NULL);`,
+                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId]
+                    );
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The asset was successfully added' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to add asset.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/assets/deleteAsset', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemadeleteAsets.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { code } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                await client.query(`DELETE FROM assets WHERE id = $1`, [code]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The asset was successfully added' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to add asset.' });
+
             } finally {
                 client.release();
             }

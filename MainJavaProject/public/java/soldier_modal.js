@@ -3,9 +3,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const modal = document.getElementById('roomModal');
     const modalContent = modal.querySelector('.modal-content');
 
-    const modalMess = document.getElementById('myMessage');
-    const modalContentMess = modalMess.querySelector('.modal-content-mess');
-
     const modalGlobalMess = document.getElementById('myGlobalMessage');
     const modalGlobalMessContent = modalGlobalMess.querySelector('.modal-content-mess');
 
@@ -104,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let soldiers = [];
     let rooms = [];
+    let bags = [];
     let allBags = [];
     let specialRooms = [];
     let specialKeys = [];
@@ -111,6 +109,11 @@ document.addEventListener('DOMContentLoaded', function () {
     let allBuilds = [];
 
     var isWarning = false;
+
+    const toggleInputValidity = (input, isValid) => {
+        input.classList.toggle('is-valid', isValid);
+        input.classList.toggle('is-invalid', !isValid);
+    };
 
     // Function to fetch soldier from the server
     async function fetchSpecialRoom(numBuild) {
@@ -162,8 +165,7 @@ document.addEventListener('DOMContentLoaded', function () {
             selectRoomDropdown.style.display = 'none';
             selectedRoomId.value = '';
 
-            selectRoomInput.classList.remove('is-valid');
-            selectRoomInput.classList.add('is-invalid');
+            toggleInputValidity(selectRoomInput, false);
         }
     });
 
@@ -172,8 +174,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedRoom = event.target;
         if (selectedRoom && selectedRoom.dataset.id) {
 
-            selectRoomInput.classList.add('is-valid');
-            selectRoomInput.classList.remove('is-invalid');
+            toggleInputValidity(selectRoomInput, true);
 
             selectRoomInput.value = selectedRoom.textContent;
             selectedRoomId.value = selectedRoom.getAttribute('data-id');
@@ -232,8 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
             selectKeyDropdown.style.display = 'none';
             selectedKeyId.value = '';
 
-            selectKeyInput.classList.remove('is-valid');
-            selectKeyInput.classList.add('is-invalid');
+            toggleInputValidity(selectKeyInput, false);
         }
     });
 
@@ -242,8 +242,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedKey = event.target;
         if (selectedKey && selectedKey.dataset.id) {
 
-            selectKeyInput.classList.add('is-valid');
-            selectKeyInput.classList.remove('is-invalid');
+            toggleInputValidity(selectKeyInput, true);
 
             selectKeyInput.value = selectedKey.textContent;
             selectedKeyId.value = selectedKey.getAttribute('data-id');
@@ -370,6 +369,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 li.textContent = soldier.name;
                 li.setAttribute('data-id', soldier.id);
                 li.setAttribute('data-country', soldier.country);
+                li.setAttribute('data-etc', soldier.etc);
+                li.setAttribute('data-code', soldier.code);
+                li.setAttribute('data-meal-card', soldier.meal_card);
                 soldierSearchDropdown.appendChild(li);
             });
         } else {
@@ -397,9 +399,28 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedSoldierId.value = selectedSoldier.getAttribute('data-id');
             document.getElementById('modal-country').textContent = "Nationality: " + selectedSoldier.getAttribute('data-country');
             document.getElementById('country-value').value = selectedSoldier.getAttribute('data-country');
+            bagSearchInput.value = selectedSoldier.getAttribute('data-code');
+            selectedBagId.value = selectedSoldier.getAttribute('data-etc');
+            mealCard.value = selectedSoldier.getAttribute('data-meal-card');
             soldierSearchDropdown.style.display = 'none';
         }
     });
+
+    // Function to fetch soldier from the server
+    async function fetchFreeBag() {
+        try {
+            const responseBag = await fetch(`/freeBags`);
+            if (!responseBag.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            const data = await responseBag.json(); // Store the parsed JSON response once
+            bags = data.bags; // Access Bags from the parsed data
+
+        } catch (error) {
+            console.error('There was a problem with the fetch operation:', error);
+        }
+    }
 
     // Function to fetch soldier from the server
     async function fetchBag() {
@@ -420,7 +441,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered soldiers in the dropdown
     function filterBags(query) {
         bagSearchDropdown.innerHTML = '';
-        const filteredBag = allBags.filter(bag => bag.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredBag = bags.filter(bag => bag.name.toLowerCase().includes(query.toLowerCase()));
 
         if (filteredBag.length > 0) {
             bagSearchDropdown.style.display = 'block';
@@ -506,8 +527,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (selectBuild && selectBuild.dataset.id) {
             buildSearchInput.value = selectBuild.textContent;
             deleteBuildId.value = selectBuild.getAttribute('data-id');
-            buildSearchInput.classList.add('is-valid');
-            buildSearchInput.classList.remove('is-invalid');
+
+            toggleInputValidity(buildSearchInput, true);
+
             buildSearchDropdown.style.display = 'none';
         }
     });
@@ -560,8 +582,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedSoldier = event.target;
         if (selectedSoldier && selectedSoldier.dataset.id) {
 
-            soldierSearchMoveInput.classList.remove("is-invalid");
-            soldierSearchMoveInput.classList.add("is-valid");
+            toggleInputValidity(soldierSearchMoveInput, true);
 
             soldierSearchMoveInput.value = selectedSoldier.textContent;
             selectedSoldierMoveId.value = selectedSoldier.getAttribute('data-id');
@@ -605,6 +626,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Fetch the bags when the script loads
     fetchBag();
 
+    // Fetch the free bags when the script loads
+    fetchFreeBag();
+
     // Fetch all keys when the script loads
     fetchAllKey();
 
@@ -637,9 +661,6 @@ document.addEventListener('DOMContentLoaded', function () {
             case "Accommodation":
             case "":
                 handleSoldierInputs(soldierName);
-                saveButton.onclick = function () {
-                    showMess("Info", 'Are you sure you want to proceed?');
-                };
 
                 document.getElementById('search-laundry-bag-container').style.display = 'block';
                 document.getElementById('input-meal-card').style.display = 'block';
@@ -652,9 +673,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             default:
                 handleOtherInputs();
-                saveButton.onclick = function () {
-                    showMess("Info", 'Are you sure you want to proceed?');
-                };
 
                 document.getElementById('search-laundry-bag-container').style.display = 'none';
                 document.getElementById('input-meal-card').style.display = 'none';
@@ -979,7 +997,7 @@ document.addEventListener('DOMContentLoaded', function () {
         buildSearchInput.classList.remove('is-invalid');
         buildSearchInput.value = '';
         deleteBuildId.value = '';
-        
+
         buildSearchDropdown.style.display = 'none';
 
         // Clear upload file from modal
@@ -1193,18 +1211,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    function closeMessModal() {
-        // Add the slide-out effect
-        modalContentMess.classList.add('slide-out');
-        modalContentMess.classList.remove('slide-in');
-
-        // Delay hiding the modal to allow the animation to finish
-        setTimeout(function () {
-            modalMess.classList.remove('show');
-            modalContentMess.classList.remove('show');
-        }, 400); // Match the duration of the animation (0.4s)
-    }
-
     function closeGlobalMessModal() {
         // Add the slide-out effect
         modalGlobalMessContent.classList.add('slide-out');
@@ -1214,6 +1220,10 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () {
             modalGlobalMess.classList.remove('show');
             modalGlobalMessContent.classList.remove('show');
+
+            const button = modalGlobalMessContent.getElementsByTagName('button')
+            if (button.length > 0)
+                modalGlobalMessContent.removeChild(button[0]);
 
             // Check if the Delete button exists and remove it
             const deleteBtn = document.getElementById('delete-btn');
@@ -1231,19 +1241,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementsByClassName('close-btn')[0].onclick = closeModalKey;
     document.getElementsByClassName('close-btn')[1].onclick = closeModal;
-    document.getElementsByClassName('close-btn')[2].onclick = closeMessModal;
-    document.getElementsByClassName('close-btn')[3].onclick = closeViewModal;
-    document.getElementsByClassName('close-btn')[4].onclick = closeMoveModal;
-    document.getElementsByClassName('close-btn')[5].onclick = closeAddSoldierModal;
-    document.getElementsByClassName('close-btn')[6].onclick = closeAddMultiSoldierModal;
-    document.getElementsByClassName('close-btn')[7].onclick = closeUploadMultiSoldierModal;
-    document.getElementsByClassName('close-btn')[8].onclick = closeDeleteModal;
-    document.getElementsByClassName('close-btn')[9].onclick = closeModalDest;
-    document.getElementsByClassName('close-btn')[10].onclick = closeModalAddRoom;
-    document.getElementsByClassName('close-btn')[11].onclick = closeModalRemoveRoom;
-    document.getElementsByClassName('close-btn')[12].onclick = closeModalAddKey;
-    document.getElementsByClassName('close-btn')[13].onclick = closeModalRemoveKey;
-    document.getElementsByClassName('close-btn')[14].onclick = closeGlobalMessModal;
+    document.getElementsByClassName('close-btn')[2].onclick = closeViewModal;
+    document.getElementsByClassName('close-btn')[3].onclick = closeMoveModal;
+    document.getElementsByClassName('close-btn')[4].onclick = closeAddSoldierModal;
+    document.getElementsByClassName('close-btn')[5].onclick = closeAddMultiSoldierModal;
+    document.getElementsByClassName('close-btn')[6].onclick = closeUploadMultiSoldierModal;
+    document.getElementsByClassName('close-btn')[7].onclick = closeDeleteModal;
+    document.getElementsByClassName('close-btn')[8].onclick = closeModalDest;
+    document.getElementsByClassName('close-btn')[9].onclick = closeModalAddRoom;
+    document.getElementsByClassName('close-btn')[10].onclick = closeModalRemoveRoom;
+    document.getElementsByClassName('close-btn')[11].onclick = closeModalAddKey;
+    document.getElementsByClassName('close-btn')[12].onclick = closeModalRemoveKey;
+    document.getElementsByClassName('close-btn')[13].onclick = closeGlobalMessModal;
+
+    // Hide dropdown if clicked outside
+    window.addEventListener('click', function (event) {
+        if (!soldierSearchDropdown.contains(event.target) && event.target !== soldierSearchDropdown) {
+            soldierSearchDropdown.style.display = 'none';
+        }
+
+        if (!selectKeyDropdown.contains(event.target) && event.target !== selectKeyDropdown) {
+            selectKeyDropdown.style.display = 'none';
+        }
+
+        if (!selectAllKeyDropdown.contains(event.target) && event.target !== selectAllKeyDropdown) {
+            selectAllKeyDropdown.style.display = 'none';
+        }
+
+        if (!selectRoomDropdown.contains(event.target) && event.target !== selectRoomDropdown) {
+            selectRoomDropdown.style.display = 'none';
+        }
+
+        if (!bagSearchDropdown.contains(event.target) && event.target !== bagSearchDropdown) {
+            bagSearchDropdown.style.display = 'none';
+        }
+
+        if (!soldierSearchMoveDropdown.contains(event.target) && event.target !== soldierSearchMoveDropdown) {
+            soldierSearchMoveDropdown.style.display = 'none';
+        }
+
+        if (!buildSearchDropdown.contains(event.target) && event.target !== buildSearchDropdown) {
+            buildSearchDropdown.style.display = 'none';
+        }
+    });
 
     document.querySelectorAll('tr.data-room').forEach(cell => {
         cell.addEventListener('click', function () {
@@ -1268,37 +1308,20 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    function showMess(type, message) {
-
-        const icon = document.getElementById('mess-icon');
-
-        if (type === "Error") {
-            icon.src = "/icon/error.png";
-            document.getElementById('btnYes').style.display = 'none';
-            document.getElementById('mess-text').textContent = message;
-        } else {
-            icon.src = "/icon/information.png";
-            document.getElementById('btnYes').style.display = 'block';
-            document.getElementById('mess-text').textContent = message;
-        }
-
-        // Add the slide-in effect by adding the necessary classes
-        modalMess.classList.add('show');
-        modalContentMess.classList.add('show');
-        modalContentMess.classList.add('slide-in');
-
-        // Ensure that any 'slide-out' class is removed if it was previously added
-        modalContentMess.classList.remove('slide-out');
-    }
-
     function showGlobalMess(type, message) {
 
         const icon = document.getElementById('mess-global-icon');
 
         switch (type) {
 
-            case 'Warning':
+            case 'Super Warning':
                 icon.src = "/icon/delete_warning.png";
+                document.getElementById('mess-global-text').textContent = message;
+                isWarning = true;
+                break;
+
+            case 'Warning':
+                icon.src = "/icon/timeout.png";
                 document.getElementById('mess-global-text').textContent = message;
                 isWarning = true;
                 break;
@@ -1331,10 +1354,6 @@ document.addEventListener('DOMContentLoaded', function () {
         switch (event.target) {
             case modal:
                 closeModal();
-                break;
-
-            case modalMess:
-                closeMessModal();
                 break;
 
             case modalRep:
@@ -1582,11 +1601,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const solNum1 = soldierInput.value;
 
         if (!soldierInput.value) {
-            return showMess('Error', 'You must select soldier');
+            return showGlobalMess('Error', 'You must select soldier');
         }
 
         if (!isAccommodation.value) {
-            return showMess('Error', 'This room is empty. To move a soldier, select a room that is occupied!');
+            return showGlobalMess('Error', 'This room is empty. To move a soldier, select a room that is occupied!');
         }
 
         openMoveModal(roomNum1, solNum1);
@@ -1740,20 +1759,17 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault(); // Prevent default form submission
 
         if (soldierId.value === "") {
-            soldierId.classList.remove('is-valid');
-            soldierId.classList.add('is-invalid');
+            toggleInputValidity(soldierId, false);
             return;
         }
 
         if (soldierName.value === "") {
-            soldierName.classList.remove('is-valid');
-            soldierName.classList.add('is-invalid');
+            toggleInputValidity(soldierName, false);
             return;
         }
 
         if (soldierCountry.value === "") {
-            soldierCountry.classList.remove('is-valid');
-            soldierCountry.classList.add('is-invalid');
+            toggleInputValidity(soldierCountry, false);
             return;
         }
 
@@ -1763,37 +1779,78 @@ document.addEventListener('DOMContentLoaded', function () {
             soldierCountry: soldierCountry.value
         };
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showGlobalMess('Error', errorData.message);
-            } else {
-                const data = await response.json();
-                showGlobalMess('Info', data.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+            } catch (error) {
+                hasError = true;
             }
 
-        } catch (error) {
-            showGlobalMess('Error', `Network error: ${error.message}`);
-        }
+            closeGlobalMessModal();
+        });
+
+        modalGlobalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    showGlobalMess('Info', 'Soldier successfully added');
+                } else if (isSubmit) {
+                    showGlobalMess('Error', responseData.message || 'An error occurred while adding the soldier');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showGlobalMess('Warning', 'Are you sure you want to add this soldier?');
     };
 
     document.querySelectorAll('#soldier-number, #soldier-name, #soldier-country').forEach((input) => {
         input.addEventListener('input', function () {
-            if (input.value !== "" && input.checkValidity()) {
-                input.classList.add('is-valid');
-                input.classList.remove('is-invalid');
-            } else {
-                input.classList.add('is-invalid');
-                input.classList.remove('is-valid');
-            }
+            toggleInputValidity(input, input.value !== "" && input.checkValidity());
         });
     });
 
@@ -1806,7 +1863,7 @@ document.addEventListener('DOMContentLoaded', function () {
         openDeleteModal();
 
         setTimeout(() => {
-            showGlobalMess('Warning', 'WARNING: In the next window, you are given the right to release all the rooms in the building of your choice. Be extremely careful as this process is irreversible.');
+            showGlobalMess('Super Warning', 'WARNING: In the next window, you are given the right to release all the rooms in the building of your choice. Be extremely careful as this process is irreversible.');
         }, 500); // Adjust the time as needed
     });
 
@@ -1819,59 +1876,91 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         if (deleteBuildId.value === "") {
-            buildSearchInput.classList.remove('is-valid');
-            buildSearchInput.classList.add('is-invalid');
+            toggleInputValidity(buildSearchInput, false);
             return;
         }
 
         if (realCode.value !== enterCode.value) {
-            enterCode.classList.remove('is-valid');
-            enterCode.classList.add('is-invalid');
+            toggleInputValidity(enterCode, false);
             return showGlobalMess('Error', 'The two codes do not match. Try again');
         }
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showGlobalMess('Error', errorData.message);
-            } else {
-                const data = await response.json();
-                showGlobalMess('Info', data.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeGlobalMessModal();
+
+            } catch (error) {
+                hasError = true;
             }
+        });
 
-            closeDeleteModal();
+        modalGlobalMessContent.appendChild(submitButton);
 
-        } catch (error) {
-            showGlobalMess('Error', `Network error: ${error.message}`);
-        }
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeDeleteModal();
+                    showGlobalMess('Info', 'All rooms in the building have been released');
+                } else if (isSubmit) {
+                    showGlobalMess('Error', responseData.message || 'An error occurred while releasing the rooms');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showGlobalMess('Warning', 'Are you sure you want to release all rooms in this building?');
     };
 
     buildSearchInput.addEventListener('input', () => {
-        if (deleteBuildId.value === "") {
-            buildSearchInput.classList.remove('is-valid');
-            buildSearchInput.classList.add('is-invalid');
-        } else {
-            buildSearchInput.classList.add('is-valid');
-            buildSearchInput.classList.remove('is-invalid');
-        }
+        toggleInputValidity(buildSearchInput, deleteBuildId.value !== "")
     });
 
     enterCode.addEventListener('input', () => {
-        if (realCode.value !== enterCode.value) {
-            enterCode.classList.remove('is-valid');
-            enterCode.classList.add('is-invalid');
-        } else {
-            enterCode.classList.add('is-valid');
-            enterCode.classList.remove('is-invalid');
-        }
+        toggleInputValidity(enterCode, realCode.value === enterCode.value)
     });
 
     document.getElementById('form1').onsubmit = async function (event) {
@@ -1886,58 +1975,86 @@ document.addEventListener('DOMContentLoaded', function () {
             mealCardId: document.getElementById('meal-card-value').value
         };
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showGlobalMess('Error', errorData.message);
-            } else {
-                const data = await response.json();
-                showGlobalMess('Info', data.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+            } catch (error) {
+                hasError = true;
             }
 
-            closeMessModal();
+            closeGlobalMessModal();
+        });
 
-        } catch (error) {
-            showGlobalMess('Error', `Network error: ${error.message}`);
-        }
+        modalGlobalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    showGlobalMess('Info', 'Soldier accommodation successfully');
+                } else if (isSubmit) {
+                    showGlobalMess('Error', responseData.message || 'An error occurred while accommodation the soldier');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showGlobalMess('Warning', 'Are you sure you want to accommodation this soldier?');
     };
 
     buildId.addEventListener('input', () => {
-        if (buildId.value === "") {
-            buildId.classList.remove('is-valid');
-            buildId.classList.add('is-invalid');
-        } else {
-            buildId.classList.add('is-valid');
-            buildId.classList.remove('is-invalid');
-        }
+        toggleInputValidity(buildId, buildId.value !== "");
     });
 
     buildName.addEventListener('input', () => {
-        if (buildName.value === "") {
-            buildName.classList.remove('is-valid');
-            buildName.classList.add('is-invalid');
-        } else {
-            buildName.classList.add('is-valid');
-            buildName.classList.remove('is-invalid');
-        }
+        toggleInputValidity(buildName, buildName.value !== "");
     });
 
     buildType.addEventListener('input', () => {
-        if (buildType.value === "") {
-            buildType.classList.remove('is-valid');
-            buildType.classList.add('is-invalid');
-        } else {
-            buildType.classList.add('is-valid');
-            buildType.classList.remove('is-invalid');
-        }
+        toggleInputValidity(buildType, buildType.value !== "");
     });
 
     document.getElementById('form6').onsubmit = async function (event) {
@@ -1945,20 +2062,17 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault(); // Prevent default form submission
 
         if (buildId.value === "") {
-            buildId.classList.remove('is-valid');
-            buildId.classList.add('is-invalid');
+            toggleInputValidity(buildId, false);
             return;
         }
 
         if (buildName.value === "") {
-            buildName.classList.remove('is-valid');
-            buildName.classList.add('is-invalid');
+            toggleInputValidity(buildName, false);
             return;
         }
 
         if (buildType.value === "") {
-            buildType.classList.remove('is-valid');
-            buildType.classList.add('is-invalid');
+            toggleInputValidity(buildType, false);
             return;
         }
 
@@ -1968,40 +2082,79 @@ document.addEventListener('DOMContentLoaded', function () {
             buildType: buildType.value
         };
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            });
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showGlobalMess('Error', errorData.message);
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
 
-            } else {
-                const data = await response.json();
-                showGlobalMess('Info', data.message);
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeGlobalMessModal();
+
+            } catch (error) {
+                hasError = true;
             }
+        });
 
-            closeModalDest();
+        modalGlobalMessContent.appendChild(submitButton);
 
-        } catch (error) {
-            showGlobalMess('Error', `Network error: ${error.message}`);
-        }
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeModalDest();
+                    showGlobalMess('Info', 'Building successfully added');
+                } else if (isSubmit) {
+                    showGlobalMess('Error', responseData.message || 'An error occurred while adding the building');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showGlobalMess('Warning', 'Are you sure you want to add this building?');
     };
 
     roomId.addEventListener('input', () => {
-        if (roomId.value === "") {
-            roomId.classList.remove('is-valid');
-            roomId.classList.add('is-invalid');
-        } else {
-            roomId.classList.add('is-valid');
-            roomId.classList.remove('is-invalid');
-        }
+        toggleInputValidity(roomId, roomId.value !== "");
     });
 
     document.getElementById('form7').onsubmit = async function (event) {
@@ -2009,14 +2162,12 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault(); // Prevent default form submission
 
         if (roomId.value === "") {
-            roomId.classList.remove('is-valid');
-            roomId.classList.add('is-invalid');
+            toggleInputValidity(roomId, false);
             return;
         }
 
         if (roomName.value === "") {
-            roomName.classList.remove('is-valid');
-            roomName.classList.add('is-invalid');
+            toggleInputValidity(roomName, false);
             return;
         }
 
@@ -2035,39 +2186,79 @@ document.addEventListener('DOMContentLoaded', function () {
             clickBuild: clickBuild.value
         };
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showGlobalMess('Error', errorData.message);
-            } else {
-                const responseData = await response.json();
-                showGlobalMess('Info', responseData.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeGlobalMessModal();
+
+            } catch (error) {
+                hasError = true;
             }
+        });
 
-            closeModalAddRoom();
+        modalGlobalMessContent.appendChild(submitButton);
 
-        } catch (error) {
-            showGlobalMess('Error', `Network error: ${error.message}`);
-        }
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeModalAddRoom();
+                    showGlobalMess('Info', 'Room successfully added');
+                } else if (isSubmit) {
+                    showGlobalMess('Error', responseData.message || 'An error occurred while adding the room');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showGlobalMess('Warning', 'Are you sure you want to add this room?');
     };
 
     document.querySelectorAll('#room-name').forEach((input) => {
         input.addEventListener('input', function () {
-            if (input.value !== "" && input.checkValidity()) {
-                input.classList.add('is-valid');
-                input.classList.remove('is-invalid');
-            } else {
-                input.classList.add('is-invalid');
-                input.classList.remove('is-valid');
-            }
+            toggleInputValidity(input, input.value !== "" && input.checkValidity());
         });
     });
 
@@ -2078,8 +2269,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const roomId = selectedRoomId.value;
 
         if (roomId === "") {
-            selectRoomInput.classList.remove('is-valid');
-            selectRoomInput.classList.add('is-invalid');
+            toggleInputValidity(selectRoomInput, false);
             return;
         }
 
@@ -2087,28 +2277,74 @@ document.addEventListener('DOMContentLoaded', function () {
             roomId: roomId
         };
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showGlobalMess('Error', errorData.message);
-            } else {
-                const responseData = await response.json();
-                showGlobalMess('Info', responseData.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeGlobalMessModal();
+
+            } catch (error) {
+                hasError = true;
             }
+        });
 
-            closeModalRemoveRoom();
+        modalGlobalMessContent.appendChild(submitButton);
 
-        } catch (error) {
-            showGlobalMess('Error', `Network error: ${error.message}`);
-        }
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeModalRemoveRoom();
+                    showGlobalMess('Info', 'Room successfully removed');
+                } else if (isSubmit) {
+                    showGlobalMess('Error', responseData.message || 'An error occurred while removing the room');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showGlobalMess('Warning', 'Are you sure you want to remove this room?');
     };
 
     document.getElementById('form9').onsubmit = async function (event) {
@@ -2116,14 +2352,12 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault(); // Prevent default form submission
 
         if (keyId.value === "") {
-            keyId.classList.remove('is-valid');
-            keyId.classList.add('is-invalid');
+            toggleInputValidity(keyId, false);
             return;
         }
 
         if (keyName.value === "") {
-            keyName.classList.remove('is-valid');
-            keyName.classList.add('is-invalid');
+            toggleInputValidity(keyName, false);
             return;
         }
 
@@ -2133,39 +2367,79 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedRoomForKey: selectedRoomForKey.value
         };
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showGlobalMess('Error', errorData.message);
-            } else {
-                const responseData = await response.json();
-                showGlobalMess('Info', responseData.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeGlobalMessModal();
+
+            } catch (error) {
+                hasError = true;
             }
+        });
 
-            closeModalAddKey();
+        modalGlobalMessContent.appendChild(submitButton);
 
-        } catch (error) {
-            showGlobalMess('Error', `Network error: ${error.message}`);
-        }
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeModalAddKey();
+                    showGlobalMess('Info', 'Key successfully added');
+                } else if (isSubmit) {
+                    showGlobalMess('Error', responseData.message || 'An error occurred while adding the key');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showGlobalMess('Warning', 'Are you sure you want to add this key?');
     };
 
     document.querySelectorAll('#key-name, #key-id').forEach((input) => {
         input.addEventListener('input', function () {
-            if (input.value !== "" && input.checkValidity()) {
-                input.classList.add('is-valid');
-                input.classList.remove('is-invalid');
-            } else {
-                input.classList.add('is-invalid');
-                input.classList.remove('is-valid');
-            }
+            toggleInputValidity(input, input.value !== "" && input.checkValidity());
         });
     });
 
@@ -2174,21 +2448,17 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault(); // Prevent default form submission
 
         if (selectedKeyId.value === "") {
-            selectKeyInput.classList.remove('is-valid');
-            selectKeyInput.classList.add('is-invalid');
+            toggleInputValidity(selectKeyInput, false);
             return;
         } else {
-            selectKeyInput.classList.add('is-valid');
-            selectKeyInput.classList.remove('is-invalid');
+            toggleInputValidity(selectKeyInput, true);
         }
 
         if (newKeyName.value === "") {
-            newKeyName.classList.remove('is-valid');
-            newKeyName.classList.add('is-invalid');
+            toggleInputValidity(newKeyName, false);
             return;
         } else {
-            newKeyName.classList.add('is-valid');
-            newKeyName.classList.remove('is-invalid');
+            toggleInputValidity(newKeyName, true);
         }
 
         const data = {
@@ -2196,29 +2466,75 @@ document.addEventListener('DOMContentLoaded', function () {
             newKeyId: newKeyName.value
         };
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showGlobalMess('Error', errorData.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
 
-            } else {
-                const responseData = await response.json();
-                showGlobalMess('Info', responseData.message);
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeGlobalMessModal();
+
+            } catch (error) {
+                hasError = true;
             }
+        });
 
-            closeModalRemoveKey();
+        modalGlobalMessContent.appendChild(submitButton);
 
-        } catch (error) {
-            showGlobalMess('Error', `Network error: ${error.message}`);
-        }
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeModalRemoveKey();
+                    showGlobalMess('Info', 'Key successfully renamed');
+                } else if (isSubmit) {
+                    showGlobalMess('Error', responseData.message || 'An error occurred while renaming the key');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showGlobalMess('Warning', 'Are you sure you want to rename this key?');
     };
 
     document.getElementById('form3').onsubmit = async function (event) {
@@ -2226,8 +2542,7 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault(); // Prevent default form submission
 
         if (selectedSoldierMoveId.value === "") {
-            soldierSearchMoveInput.classList.add("is-invalid");
-            soldierSearchMoveInput.classList.remove("is-valid");
+            toggleInputValidity(soldierSearchMoveInput, false);
             return;
         }
 
@@ -2243,29 +2558,74 @@ document.addEventListener('DOMContentLoaded', function () {
             soldMoveId: soldMoveId
         };
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showGlobalMess('Error', errorData.message);
-                
-            } else {
-                const responseData = await response.json();
-                showGlobalMess('Info', responseData.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeGlobalMessModal();
+
+            } catch (error) {
+                hasError = true;
             }
+        });
 
-            closeModalRemoveKey();
+        modalGlobalMessContent.appendChild(submitButton);
 
-        } catch (error) {
-            showGlobalMess('Error', `Network error: ${error.message}`);
-        }
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeModalRemoveKey();
+                    showGlobalMess('Info', 'Soldier moved successfully');
+                } else if (isSubmit) {
+                    showGlobalMess('Error', responseData.message || 'An error occurred while moving the soldier');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showGlobalMess('Warning', 'Are you sure you want to move this soldier?');
     };
 
     // Track sort order and priority for each column
@@ -2507,12 +2867,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('newKeyName').addEventListener('input', function () {
         if (newKeyName.value === "") {
-            newKeyName.classList.remove('is-valid');
-            newKeyName.classList.add('is-invalid');
+            toggleInputValidity(newKeyName, false);
             return;
         } else {
-            newKeyName.classList.add('is-valid');
-            newKeyName.classList.remove('is-invalid');
+            toggleInputValidity(newKeyName, true);
         }
     });
 });
