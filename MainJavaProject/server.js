@@ -9,6 +9,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const XLSX = require('xlsx');
+const hpp = require('hpp');
+
 // const RedisStore = require('connect-redis').default;
 // const redis = require('redis');
 
@@ -92,18 +94,33 @@ const checkCountScaningCodesSchema = Joi.object({
 const schemaAddBag = Joi.object({
     epc: Joi.string().alphanum().required(),
     code: Joi.string().alphanum().required(),
-    type: Joi.string().regex(/^[a-zA-Z0-9 ]+$/).required(),
-    maxcount: Joi.number().required()
+    type: Joi.string().regex(/^[a-zA-Z0-9\s]+$/).required(),
+    maxcount: Joi.number().required(),
+    isValidCode: Joi.bool().optional()
+});
+
+const shemaGetBags = Joi.object({
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaRemoveBag = Joi.object({
-    bagId: Joi.string().alphanum().required()
+    code: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaEditBag = Joi.object({
     bagId: Joi.string().alphanum().required(),
     bagType: Joi.string().regex(/^[a-zA-Z0-9 ]+$/).required(),
     maxWash: Joi.number().required()
+});
+
+const schemaEditPhoneBag = Joi.object({
+    oldCode: Joi.string().alphanum().required(),
+    newCode: Joi.string().alphanum().required(),
+    code: Joi.string().alphanum().required(),
+    type: Joi.string().regex(/^[a-zA-Z0-9 ]+$/).required(),
+    maxcount: Joi.number().required(),
+    isValidCode: Joi.bool().required()
 });
 
 const clientDataSchema = Joi.object({
@@ -224,7 +241,19 @@ const schemaSpecialAssets = Joi.object({
     numRoom: Joi.string().alphanum().allow('').required()
 });
 
-const schemadeleteAsets = Joi.object({
+const schemaDeleteAsets = Joi.object({
+    code: Joi.string().alphanum().required()
+});
+
+const schemaAddAsetsType = Joi.object({
+    assetType: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
+});
+
+const schemaRemoveAsetsType = Joi.object({
+    assetTypeId: Joi.string().alphanum().required(),
+});
+
+const schemaCheckAppCode = Joi.object({
     code: Joi.string().alphanum().required()
 });
 
@@ -264,6 +293,17 @@ const schemaAddSoldier = Joi.object({
     soldierCountry: Joi.string().alphanum().required()
 });
 
+const schemaEditSoldier = Joi.object({
+    soldierId: Joi.string().alphanum().required(),
+    soldierNewId: Joi.string().alphanum().required(),
+    soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$/).required(),
+    soldierCountry: Joi.string().alphanum().required()
+});
+
+const schemaRemoveSoldier = Joi.object({
+    code: Joi.string().alphanum().required()
+});
+
 const schemaUploadSoldier = Joi.object({
     namekey: Joi.string().pattern(/^[A-Za-z0-9]+\/[A-Za-z0-9]+\/[A-Za-z0-9]+$/).required(),
     keynumber: Joi.string().alphanum().required(),
@@ -292,6 +332,10 @@ const schemaGetBagsByStatus = Joi.object({
     status: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
 })
 
+const schemaServerStart = Joi.object({
+    isValid: Joi.bool().required()
+})
+
 const navItems = [];
 
 const horizontalNavItems = [
@@ -310,25 +354,36 @@ class Server {
         this.port = port || PORT;
         this.app = express();
 
+        // Trust the first proxy (typically used with reverse proxies)
+        this.app.set('trust proxy', 1);
+
+        // Set up body parsing with size limits
         this.app.use(express.json({ limit: '10mb' }));
         this.app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-        // Middleware to parse JSON bodies
+        // Middleware to parse JSON bodies (bodyParser is already included in Express)
         this.app.use(bodyParser.json());
         this.app.set("view engine", "ejs");
         this.app.use(express.static(path.join(__dirname, 'public')));
         this.app.use(express.urlencoded({ extended: false }))
+
+        // Set security headers
         this.app.use((req, res, next) => {
-            res.setHeader('Content-Security-Policy', "default-src 'self'");
+            res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline';");
+            res.setHeader('X-Content-Type-Options', 'nosniff');
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+            res.setHeader('X-Frame-Options', 'DENY');
+            res.setHeader('Referrer-Policy', 'no-referrer');
+            res.setHeader('Permissions-Policy', "geolocation=(), microphone=(), camera=()");
             next();
         });
+
+        // Use Helmet for additional security headers
         this.app.use(helmet());
 
-        this.app.use((req, res, next) => {
-            res.setHeader('X-Frame-Options', 'DENY');
-            next();
-        });
+        // Prevent HTTP parameter pollution
+        this.app.use(hpp());
 
         // Replace with your SuperHosting Redis server details
         // const redisClient = redis.createClient({
@@ -362,12 +417,16 @@ class Server {
             cookie: {
                 secure: false,
                 httpOnly: true,
-                sameSite: 'lax'
+                sameSite: 'strict'
             }
         }));
 
+        // Global error handler
         this.app.use((err, req, res, next) => {
             console.error(err.stack); // Log the error stack trace
+            if (err.code === 'EBADCSRFTOKEN') {
+                return res.status(403).send('Form tampered with!');
+            }
             res.status(500).send('Something broke!'); // Send a response
         });
 
@@ -651,6 +710,29 @@ class Server {
     }
 
     defineRoutesRFID() {
+
+        this.app.post('/checkCodeProduct', (req, res) => {
+            try {
+                const { error } = schemaCheckAppCode.validate(req.body);
+                if (error) {
+                    return res.status(400).json({ success: false, message: error.details[0].message });
+                }
+
+                const { code } = req.body;
+                const codeMatches = bcrypt.compare(code, process.env.DEVISE_CODE); // Use async bcrypt
+
+                if (codeMatches) {
+                    return res.status(200).json({ success: true, message: 'Code is valid.' });
+                }
+
+                return res.status(401).json({ success: false, message: 'Invalid code.' });
+
+            } catch (err) {
+                console.error(err);
+                return res.status(500).json({ success: false, message: 'Server error occurred.' });
+            }
+        });
+
 
         // POST route to handle RFID codes (only accessible after login)
         this.app.post('/rfid', (req, res) => {
@@ -1783,7 +1865,13 @@ class Server {
             try {
 
                 await client.query('BEGIN');
-                const result_client = await client.query(`SELECT id, namekey, soldierid FROM key;`);
+                const result_client = await client.query(`
+                    SELECT k.id, namekey, soldierid 
+                    FROM key k
+                    JOIN assets a ON a.location_key = k.id
+                    LEFT JOIN roomskey rk ON rk.keyid = k.id
+                    LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                    LEFT JOIN buildings b ON b.id = br.buildid AND b.type = 'Accommodation';`);
 
                 result_client.rows.forEach(element => {
                     optionRoom.push({ id: element.id, name: `${element.namekey}${element.soldierid ? ' 🚫' : ' ✅'}` });
@@ -1802,7 +1890,15 @@ class Server {
             }
         });
 
-        this.app.get('/bags', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/bags', async (req, res) => {
+
+            const { error } = shemaGetBags.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
 
             var optionAllBag = [];
 
@@ -1815,11 +1911,11 @@ class Server {
                 const result_all_bags = await client.query(`SELECT * FROM laundrybags`);
 
                 result_all_bags.rows.forEach(element => {
-                    optionAllBag.push({ id: element.id, name: element.code, status: element.status });
+                    optionAllBag.push({ id: element.id, name: element.code, status: element.status, maxcountlandry: element.maxcountlandry, type: element.type });
                 });
 
                 await client.query('COMMIT');
-                res.json({ allBags: optionAllBag });
+                res.status(200).json({ allBags: optionAllBag });
 
             } catch (error) {
                 await client.query('ROLLBACK');
@@ -2081,7 +2177,18 @@ class Server {
                     const resultData = await client.query(`
                     SELECT 
                         nameroom,
-                        COUNT(CASE WHEN s.id IS NULL THEN k.id END) AS unassigned_count
+                        COUNT(
+                            CASE 
+                                WHEN a.location_key IS NOT NULL AND k.soldierid IS NULL
+                                THEN k.id 
+                            END
+                        ) AS count_with_location,
+                        COUNT(
+                            CASE 
+                                WHEN s.id IS NULL
+                                THEN k.id
+                            END
+                        ) AS count_without_location
                     FROM 
                         rooms r
                     LEFT JOIN 
@@ -2092,6 +2199,10 @@ class Server {
                         soldier s ON s.id = k.soldierid
                     LEFT JOIN 
                         buildroom br ON br.roomid = r.id
+                    LEFT JOIN
+                        assets a ON a.location_key = k.id
+                    LEFT JOIN 
+                        buildings b ON br.buildid = b.id
                     WHERE 
                         br.buildid = $1
                         AND nameroom NOT SIMILAR TO '%/(E|D)[0-9]%'
@@ -2100,15 +2211,15 @@ class Server {
                     ORDER BY 
                         nameroom;`, [numBuild]);
 
+                    const res_type = await client.query('SELECT type FROM buildings WHERE id = $1', [numBuild]);
+                    type = res_type.rows[0].type;
+
                     // Initialize room counts using the query result
                     resultData.rows.forEach(row => {
                         nameroomSet.add(row.nameroom);
-                        roomCounts[row.nameroom] = row.unassigned_count || 0;
+                        roomCounts[row.nameroom] = type === 'Accommodation' ? row.count_with_location || 0 : row.count_without_location || 0;
                     });
 
-                    const res_type = await client.query('SELECT type FROM buildings WHERE id = $1', [numBuild]);
-
-                    type = res_type.rows[0].type;
                     title = `Building ${numBuild}`;
 
                     const countFreeBedsResult = await client.query(`
@@ -2118,6 +2229,7 @@ class Server {
                     LEFT JOIN key k ON k.id = rk.keyid
                     LEFT JOIN soldier s ON s.id = k.soldierid
                     LEFT JOIN buildroom br ON br.roomid = r.id
+                    JOIN assets a ON a.location_key = k.id
                     WHERE s.namesoldier IS NULL 
                     AND br.buildid = $1
                     AND r.nameroom LIKE '__/___';`, [numBuild]);
@@ -2132,7 +2244,7 @@ class Server {
                     const resultData = await client.query(`
                     SELECT 
                         nameroom,
-                        COUNT(CASE WHEN s.id IS NULL THEN k.id END) AS unassigned_count
+                        COUNT(CASE WHEN a.location_key IS NOT NULL AND k.soldierid IS NULL THEN k.id END) AS unassigned_count
                     FROM 
                         rooms r
                     LEFT JOIN 
@@ -2145,6 +2257,8 @@ class Server {
                         buildroom br ON br.roomid = r.id
                     LEFT JOIN 
                         buildings b ON br.buildid = b.id
+                    LEFT JOIN
+                        assets a ON a.location_key = k.id
                     WHERE 
                         nameroom NOT SIMILAR TO '%/(E|D)[0-9]%'
                         AND b.type = 'Accommodation'
@@ -2176,8 +2290,8 @@ class Server {
                 const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings`);
 
                 var navBuild = [
-                    { href: "accommodation?numBuild=E", name: "Entrance" },
-                    { href: "accommodation?numBuild=D", name: "Dryer room" }
+                    { id: "E", name: "Entrance" },
+                    { id: "D", name: "Dryer room" }
                 ];
 
                 var totalFreeBeds = 0;
@@ -2189,6 +2303,7 @@ class Server {
                 LEFT JOIN key k ON k.id = rk.keyid
                 LEFT JOIN soldier s ON s.id = k.soldierid
                 LEFT JOIN buildroom br ON br.roomid = r.id
+                JOIN assets a ON a.location_key = k.id
                 WHERE nameroom NOT LIKE '__/D_' AND nameroom NOT LIKE '__/_/E_';`);
 
                 for (const row of resultBuild.rows) {
@@ -2200,6 +2315,7 @@ class Server {
                         LEFT JOIN key k ON k.id = rk.keyid
                         LEFT JOIN soldier s ON s.id = k.soldierid
                         LEFT JOIN buildroom br ON br.roomid = r.id
+                        JOIN assets a ON a.location_key = k.id
                         WHERE s.namesoldier IS NULL 
                         AND br.buildid = $1
                         AND r.nameroom LIKE '__/___';`, [row.id]);
@@ -2209,13 +2325,11 @@ class Server {
                         const countFreeBeds = countFreeBedsResult.rows[0].freebeds;
                         totalFreeBeds += Number(countFreeBeds);
 
-                        const url = `accommodation?numBuild=${row.id}`;
-
                         if (selectBuildType.rows[0].type === 'Accommodation') {
-                            navBuild.push({ href: url, name: `${row.namebuilding}`, nameAdd: `(${countFreeBeds} free beds)`, numBuild: row.id });
+                            navBuild.push({ id: row.id, name: `${row.namebuilding}`, nameAdd: `(${countFreeBeds} free beds)`, numBuild: row.id });
 
                         } else {
-                            navBuild.push({ href: url, name: `${row.namebuilding}`, numBuild: row.id });
+                            navBuild.push({ id: row.id, name: `${row.namebuilding}`, numBuild: row.id });
                         }
 
                     } catch (error) {
@@ -2233,8 +2347,14 @@ class Server {
                 });
 
                 if (isFirstTime) {
-                    await client.query('COMMIT');
-                    res.status(200).json(nameroomSetCount);
+
+                    if (selectBuildType === 'Accommodation') {
+                        await client.query('COMMIT');
+                        res.status(200).json({ nameroomSetCount: nameroomSetCount, titlePage: title, countFreeBeds: countFreeBeds, type: type, headerTable: headerTable });
+                    } else {
+                        await client.query('COMMIT');
+                        res.status(200).json({ nameroomSetCount: nameroomSetCount, titlePage: title, type: type, headerTable: headerTable });
+                    }
 
                 } else if (selectBuildType === 'Accommodation') {
 
@@ -2340,12 +2460,13 @@ class Server {
 
                 await client.query('BEGIN');
                 const result = await client.query(`
-                    SELECT namekey, k.id as code, namesoldier, country, meal_card as mealcard, lb.code as lbcode
+                    SELECT namekey, k.id as code, namesoldier, country, meal_card as mealcard, lb.code as lbcode, a.location_key
                     FROM rooms r
                     LEFT JOIN roomskey rk ON r.id = rk.roomid
                     LEFT JOIN key k ON k.id = rk.keyid
                     LEFT JOIN soldier s ON s.id = k.soldierid
                     LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
+                    LEFT JOIN assets a ON a.location_key = k.id
                     WHERE r.id = $1 AND k.id IS NOT NULL
                     ORDER BY namekey;`, [roomNumber]);
 
@@ -2678,6 +2799,90 @@ class Server {
             }
         });
 
+        this.app.post('/accommodation/removeSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaRemoveSoldier.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
+            }
+
+            const { code } = req.body;
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                await client.query("DELETE FROM movesoldier WHERE idsoldier = $1;", [code]);
+                await client.query("DELETE FROM key WHERE soldierid = $1;", [code]);
+                await client.query("DELETE FROM fitness WHERE soldierid = $1", [code]);
+                await client.query("DELETE FROM bikesoldier WHERE soldierid = $1", [code]);
+                await client.query("DELETE FROM soldier WHERE id = $1;", [code]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Remove soldier ${code}`]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'Soldier removed successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.log('Error:', error);
+                res.status(500).json({ message: 'An error occurred' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/accommodation/editSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaEditSoldier.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
+            }
+
+            const { soldierId, soldierNewId, soldierName, soldierCountry } = req.body;
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [soldierNewId]);
+
+                if (result.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: `Soldier with id: '${soldierNewId}' already exists.` });
+                }
+
+                if (soldierId === soldierNewId)
+                    await client.query("UPDATE soldier SET namesoldier = $1, country = $2 WHERE id = $3;", [soldierName, soldierCountry, soldierId]);
+                else {
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [soldierNewId, soldierName, soldierCountry]);
+                    await client.query("UPDATE movesoldier SET idsoldier = $1 WHERE idsoldier = $2;", [soldierNewId, soldierId]);
+                    await client.query("UPDATE key SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
+                    await client.query("UPDATE fitness SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
+                    await client.query("UPDATE bikesoldier SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
+                    await client.query("DELETE FROM soldier WHERE id = $1;", [soldierId]);
+                }
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Edit soldier ${soldierId}`]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'Data saved successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.log('Error:', error);
+                res.status(500).json({ message: 'An error occurred' });
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.post('/accommodation/uploadSoldier', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
 
             const client = await pool.connect();
@@ -2802,6 +3007,7 @@ class Server {
                 LEFT JOIN soldier s ON s.id = k.soldierid
                 LEFT JOIN buildroom br ON br.roomid = r.id
                 LEFT JOIN buildings b ON br.buildid = b.id
+                JOIN assets a ON a.location_key = k.id
                 WHERE nameroom NOT LIKE '%/E_' AND SUBSTRING(nameroom, POSITION('/E' IN nameroom) + 2, 1) BETWEEN '0' AND '9'
                 AND nameroom NOT LIKE '%/D_' AND SUBSTRING(nameroom, POSITION('/D' IN nameroom) + 2, 1) BETWEEN '0' AND '9'
 				AND namesoldier IS NULL AND k.id IS NOT NULL AND b.type = 'Accommodation'
@@ -2893,7 +3099,7 @@ class Server {
                     uniqueSoldierIds.add(row.soldierid);
 
                     // Inside the backend function, when checking for duplicates
-                    const result = await client.query("SELECT * FROM soldier WHERE id = $1 and (date_accommodation is not null or date_free is not null);",
+                    const result = await client.query("SELECT * FROM soldier WHERE id = $1 AND date_accommodation IS NOT NULL AND date_free IS NULL;",
                         [row.soldierid]);
 
                     const result_exist = await client.query("SELECT * FROM soldier WHERE id = $1;", [row.soldierid]);
@@ -2902,7 +3108,7 @@ class Server {
 
                     if (result.rows.length > 0) {
                         // Duplicate soldierId found
-                        errors.push({ type: 'CheckId', message: `Soldier with number '${row.soldierid}' is already accommodation or left.` });
+                        errors.push({ type: 'CheckId', message: `Soldier with number '${row.soldierid}' is already accommodation.` });
                         return;
                     }
 
@@ -3264,7 +3470,7 @@ class Server {
             }
         });
 
-        this.app.get('/allKeys', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/keys', this.isLoggedIn.bind(this), async (req, res) => {
 
             const client = await pool.connect();
 
@@ -3277,7 +3483,8 @@ class Server {
                     LEFT JOIN soldier s ON s.id = k.soldierid
                     LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id
 					LEFT JOIN roomskey rk ON rk.keyid = k.id
-					LEFT JOIN rooms r ON rk.roomid = r.id;`);
+					LEFT JOIN rooms r ON rk.roomid = r.id
+					JOIN assets a ON a.location_key = k.id;`);
 
                 const result_key_data = result.rows;
                 let total_res = [];
@@ -4453,12 +4660,15 @@ class Server {
             }
         });
 
-        this.app.post('/laundry/addBag', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/laundry/addBag', async (req, res) => {
 
             const { error } = schemaAddBag.validate(req.body);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
 
             const { epc, code, type, maxcount } = req.body;
 
@@ -4479,31 +4689,36 @@ class Server {
                     [epc, code, type, maxcount]
                 );
 
+                const username = req.session.username ? req.session.username : "PhoneUser";
+
                 // Query the database for the user
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Add bag with code ${code}`]);
+                    [username, `Add bag with code ${code}`]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'Bag added successfully' });
 
             } catch (error) {
                 await client.query('ROLLBACK');
-                console.error('Error generating Excel report:', error);
-                res.status(500).json({ message: 'Failed to generate report.' });
+                console.error('Error add bag', error);
+                res.status(500).json({ message: 'Failed to add bag.' });
 
             } finally {
                 client.release();
             }
         });
 
-        this.app.post('/laundry/deleteBag', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/laundry/deleteBag', async (req, res) => {
 
             const { error } = schemaRemoveBag.validate(req.body);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { bagId } = req.body;
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { code } = req.body;
 
             const client = await pool.connect();
 
@@ -4511,10 +4726,18 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result = await client.query(`SELECT code FROM laundrybags WHERE id = $1;`, [bagId]);
+                const result = await client.query(`SELECT code FROM laundrybags WHERE id = $1;`, [code]);
                 const bagCode = result.rows[0].code;
 
-                await client.query(`DELETE FROM laundrybags WHERE id = $1`, [bagId]);
+                const check_exist = await client.query(`SELECT * FROM soldier WHERE id = $1`, [code]);
+
+                if (check_exist.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: 'This bag is set to the soldier!' });
+                }
+
+                await client.query(`DELETE FROM laundryreport WHERE bag_id = $1`, [code]);
+                await client.query(`DELETE FROM laundrybags WHERE id = $1`, [code]);
 
                 // Query the database for the user
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -4525,8 +4748,8 @@ class Server {
 
             } catch (error) {
                 await client.query('ROLLBACK');
-                console.error('Error generating Excel report:', error);
-                res.status(500).json({ message: 'Failed to generate report.' });
+                console.error('Error delete bag', error);
+                res.status(500).json({ message: 'Failed to delete bag' });
 
             } finally {
                 client.release();
@@ -4569,9 +4792,207 @@ class Server {
                 client.release();
             }
         });
+
+        this.app.post('/laundry/editPhoneBag', async (req, res) => {
+
+            const { error } = schemaEditPhoneBag.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { oldCode, newCode, code, type, maxcount } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const check_exist = await client.query(`SELECT * FROM laundrybags WHERE id = $1;`, [newCode]);
+
+                if (check_exist.rows.length > 0 && oldCode !== newCode) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: 'This bag already exists and you cannot edit old bag with him!' });
+                }
+
+                if (oldCode === newCode) {
+                    await client.query(`UPDATE laundrybags SET code = $1, type = $2, maxcountlandry = $3 WHERE id = $4;`, [code, type, maxcount, oldCode]);
+
+                    // Query the database for the user
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
+                        [`Edit bag with code ${oldCode} set code ${code}, type ${type} and max washed ${maxcount}`]);
+                } else {
+                    await client.query(`INSERT INTO laundrybags(id, code, type, status, timein, timeout, maxcountlandry) VALUES ($1, $2, $3, 'None', null, null, $4);`, [newCode, code, type, maxcount]);
+                    await client.query(`UPDATE soldier SET laundry_bag_id = $1 WHERE laundry_bag_id = $2`, [newCode, oldCode]);
+                    await client.query(`UPDATE laundryreport SET bag_id = $1 WHERE bag_id = $2`, [newCode, oldCode]);
+                    await client.query(`DELETE FROM laundrybags WHERE id = $1`, [oldCode]);
+
+                    // Query the database for the user
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
+                        [`Replace bag with code ${oldCode} to new code ${newCode}, type=${type}, max washed=${maxcount}`]);
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The bag was successfully removed' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error edit bag', error);
+                res.status(500).json({ message: 'Failed to edit bag.' });
+
+            } finally {
+                client.release();
+            }
+        });
     }
 
     defineRoutesAssets() {
+
+        this.app.get('/allAssets', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(`
+                    SELECT id AS id, code AS name FROM assets
+                    UNION ALL
+                    SELECT id AS id, namekey AS name FROM key
+                    UNION ALL
+                    SELECT id AS id, code AS name FROM laundrybags`);
+
+                const result_asset_location = await client.query(`
+                    SELECT id, namebuilding AS name FROM buildings
+                    UNION ALL
+                    SELECT id, namesoldier AS name FROM soldier`);
+
+                const result_key_data = result.rows;
+                const result_asset_location_data = result_asset_location.rows;
+
+                let total_res = [];
+                let total_res_location = [];
+
+                result_key_data.forEach(row => {
+                    total_res.push({
+                        id: row.id,
+                        code: row.name,
+                    });
+                });
+
+                result_asset_location_data.forEach(row => {
+                    total_res_location.push({
+                        id: row.id,
+                        name: row.name,
+                    });
+                });
+
+                await client.query('COMMIT');
+                return res.status(200).send({ assets: total_res, locations: total_res_location });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error get asset:', error);
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/asset/keys', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(`
+                    SELECT k.id, k.namekey, r.nameroom, r.id AS roomid 
+                    FROM key k
+					LEFT JOIN roomskey rk ON rk.keyid = k.id
+					LEFT JOIN rooms r ON rk.roomid = r.id
+                    LEFT JOIN assets a ON a.location_key = k.id;`);
+
+                const result_key_data = result.rows;
+                let total_res = [];
+
+                result_key_data.forEach(row => {
+                    total_res.push({
+                        id: row.id,
+                        name: row.namekey,
+                        soldierName: row.namesoldier ? row.namesoldier : 'Free',
+                        country: row.country ? row.country : 'Undefined',
+                        maleCard: row.meal_card ? row.meal_card : 'Undefined',
+                        laundryBag: row.code ? row.code : 'Undefined',
+                        roomid: row.roomid,
+                        nameroom: row.nameroom
+                    });
+                });
+
+                await client.query('COMMIT');
+                return res.status(200).send(total_res);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error add destination:', error);
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/allKeys', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(`
+                    SELECT k.id, k.namekey, r.nameroom, r.id AS roomid 
+                    FROM key k
+					LEFT JOIN roomskey rk ON rk.keyid = k.id
+					LEFT JOIN rooms r ON rk.roomid = r.id
+                    LEFT JOIN assets a ON a.location_key = k.id
+					WHERE a.location_key IS NULL `);
+
+                const result_key_data = result.rows;
+                let total_res = [];
+
+                result_key_data.forEach(row => {
+                    total_res.push({
+                        id: row.id,
+                        name: row.namekey,
+                        soldierName: row.namesoldier ? row.namesoldier : 'Free',
+                        country: row.country ? row.country : 'Undefined',
+                        maleCard: row.meal_card ? row.meal_card : 'Undefined',
+                        laundryBag: row.code ? row.code : 'Undefined',
+                        roomid: row.roomid,
+                        nameroom: row.nameroom
+                    });
+                });
+
+                await client.query('COMMIT');
+                return res.status(200).send(total_res);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error add destination:', error);
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.get('/assets', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaAccommodation.validate(req.query);
@@ -4605,6 +5026,9 @@ class Server {
                         inventory.push({ id: row.id, name: row.nameroom, quantity: row.count_assets });
                     }
 
+                    await client.query('COMMIT');
+                    return res.status(200).json(inventory);
+
                 } else {
 
                     const result_get_room = await client.query(`
@@ -4622,7 +5046,7 @@ class Server {
                 const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings`);
 
                 for (const row of resultBuild.rows) {
-                    navBuild.push({ name: row.namebuilding, href: `/assets?numBuild=${row.id}` });
+                    navBuild.push({ name: row.namebuilding, id: row.id });
                 }
 
                 await client.query('COMMIT');
@@ -4666,7 +5090,7 @@ class Server {
                 if (numBuild) {
 
                     const result_get_room = await client.query(`
-                        SELECT r.id nameroom, COUNT(a.id) AS count_assets
+                        SELECT r.id, nameroom, COUNT(a.id) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
                         LEFT JOIN buildroom br ON br.roomid = r.id
@@ -4753,7 +5177,15 @@ class Server {
             }
         });
 
-        this.app.get('/assets/getAllType', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/assets/getAllType', async (req, res) => {
+
+            const { error } = shemaGetBags.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
 
             const client = await pool.connect();
 
@@ -4861,7 +5293,7 @@ class Server {
 
         this.app.post('/assets/deleteAsset', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemadeleteAsets.validate(req.body);
+            const { error } = schemaDeleteAsets.validate(req.body);
             if (error) {
                 return res.status(400).send({ message: error.details[0].message });
             }
@@ -4876,12 +5308,115 @@ class Server {
                 await client.query(`DELETE FROM assets WHERE id = $1`, [code]);
 
                 await client.query('COMMIT');
-                res.status(200).json({ message: 'The asset was successfully added' });
+                res.status(200).json({ message: 'The asset was successfully removed' });
 
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Server error:', error);
-                res.status(500).json({ message: 'Failed to add asset.' });
+                res.status(500).json({ message: 'Failed to remove asset.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/assets/checkDeleteAsset', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaDeleteAsets.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { code } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const result = await client.query(`
+                    SELECT * 
+                    FROM assets a
+                    JOIN key k ON k.id = a.location_key AND k.soldierid IS NOT NULL
+                    WHERE a.id = $1`, [code]);
+
+                if (result.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(404).json({ message: `The asset ${result.rows[0].code} is associated with a key that is in use and cannot be deleted.` });
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json();
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to check asset.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/assets/addTypeAsset', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAddAsetsType.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { assetType } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const check_exist = await client.query(`SELECT * FROM assetstype WHERE type_name = $1;`, [assetType]);
+
+                if (check_exist.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: 'This type already exists!' });
+                }
+
+                await client.query(`INSERT INTO assetstype VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM assetstype), $1);`, [assetType]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The asset type was successfully added' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to add asset type.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/assets/removeTypeAsset', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaRemoveAsetsType.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { assetTypeId } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                await client.query(`DELETE FROM assetstype WHERE id = $1`, [assetTypeId]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The asset type was successfully removed' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to remove asset type.' });
 
             } finally {
                 client.release();

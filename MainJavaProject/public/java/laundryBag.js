@@ -36,12 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const editBagModal = document.getElementById('editBagModal');
     const editBagModalContent = editBagModal.querySelector('.modal-content');
 
-    const deleteBagModal = document.getElementById('deleteBagModal');
-    const deleteBagModalContent = deleteBagModal.querySelector('.modal-content');
-
-    const deleteBagSearchInput = document.getElementById('bagRemoveSearch');
-    const deleteBagSearchDropdown = document.getElementById('deleteBagDropdown');
-    const selectedDeleteBagId = document.getElementById('selectedRemoveBagId');
+    const listBagModal = document.getElementById('bagsModal');
+    const listBagModalContent = listBagModal.querySelector('.modal-content');
 
     const editBagSearchInput = document.getElementById('bagEditSearch');
     const editBagSearchDropdown = document.getElementById('editBagDropdown');
@@ -89,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
 
             const response = await fetch(`/bags`, {
-                method: 'GET'
+                method: 'POST'
             });
 
             if (!response.ok) {
@@ -146,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    initializeAllBagSearch(deleteBagSearchInput, deleteBagSearchDropdown, selectedDeleteBagId);
     initializeAllBagSearch(editBagSearchInput, editBagSearchDropdown, selectedEditBagId);
 
     // Function to fetch bags from the server
@@ -575,36 +570,116 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    function openDeleteBagModal() {
+    function openListBagModal() {
+        listBagModal.classList.add('show');
+        listBagModalContent.classList.add('show');
+        listBagModalContent.classList.add('slide-in');
+        listBagModalContent.classList.remove('slide-out');
 
-        // Add the slide-in effect by adding the necessary classes
-        deleteBagModal.classList.add('show');
-        deleteBagModalContent.classList.add('show');
-        deleteBagModalContent.classList.add('slide-in');
+        const tbody = document.getElementById('bagsTable').getElementsByTagName('tbody')[0];
+        tbody.innerHTML = ''; // Clear existing rows
 
-        // Ensure that any 'slide-out' class is removed if it was previously added
-        deleteBagModalContent.classList.remove('slide-out');
+        allCheckedRow = []; // Reset the global array
+
+        const headerCheckbox = document.createElement('input');
+        headerCheckbox.type = 'checkbox';
+        headerCheckbox.className = 'form-check-input header-checkbox';
+        headerCheckbox.style.border = '1px solid black';
+
+        // Attach the event listener to the header checkbox
+        headerCheckbox.addEventListener('change', (event) => {
+            headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+            const isChecked = event.target.checked;
+            const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+
+            visibleRows.forEach(row => {
+                const checkbox = row.querySelector('.form-check-input:not(.header-checkbox)');
+                if (checkbox) {
+                    checkbox.checked = isChecked;
+                    checkbox.style.backgroundColor = isChecked ? 'green' : '';
+
+                    const rowId = checkbox.dataset.etc;
+                    if (isChecked && !allCheckedRow.find(row => row.code === rowId)) {
+                        allCheckedRow.push({ code: rowId });
+                    } else if (!isChecked) {
+                        allCheckedRow = allCheckedRow.filter(row => row.code !== rowId);
+                    }
+                }
+            });
+        });
+
+        // Append the header checkbox to the table header
+        const thead = tbody.parentElement.querySelector('thead');
+        const headerRow = thead.querySelector('tr');
+
+        headerRow.querySelectorAll('th').forEach(th => {
+            if (!th.textContent.trim()) {
+                th.remove();
+            }
+        });
+
+        const headerCell = document.createElement('th');
+        headerCell.appendChild(headerCheckbox);
+        headerRow.insertBefore(headerCell, headerRow.firstChild);
+
+        // Dynamically populate rows
+        allBags.forEach((item) => {
+            const row = document.createElement('tr');
+
+            const checkboxCell = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'form-check-input';
+            checkbox.dataset.etc = item.id;
+            checkbox.style.border = '1px solid black';
+
+            checkbox.addEventListener('change', () => {
+                if (checkbox.checked) {
+                    checkbox.style.backgroundColor = 'green';
+                    if (!allCheckedRow.find(row => row.code === item.id)) {
+                        allCheckedRow.push({ code: item.id });
+                    }
+                } else {
+                    checkbox.style.backgroundColor = '';
+                    allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
+                }
+            });
+
+            checkboxCell.appendChild(checkbox);
+            row.appendChild(checkboxCell);
+
+            row.insertCell().textContent = item.name;
+            row.insertCell().textContent = item.type;
+            row.insertCell().textContent = item.maxcountlandry;
+
+            row.addEventListener('click', (event) => {
+                if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
+                    selectedEditBagId.value = item.id;
+                    editBagSearchInput.value = item.name;
+                    editTypeSearchInput.value = item.type;
+                    editWashSearchInput.value = item.maxcountlandry;
+                    openEditBagModal();
+                }
+            });
+
+            tbody.appendChild(row);
+        });
     }
 
-    function closeDeleteBagModal() {
+    function closeListBagModal() {
         // Add the slide-out effect
-        deleteBagModalContent.classList.add('slide-out');
-        deleteBagModalContent.classList.remove('slide-in');
+        listBagModalContent.classList.add('slide-out');
+        listBagModalContent.classList.remove('slide-in');
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
 
-            document.querySelectorAll('#bagRemoveSearch, #selectedRemoveBagId').forEach((input) => {
-
-                input.classList.remove('is-valid');
-                input.classList.remove('is-invalid');
-
+            document.querySelectorAll('.laundry-search-input').forEach((input) => {
                 input.value = '';
-
             });
 
-            deleteBagModal.classList.remove('show');
-            deleteBagModalContent.classList.remove('show');
+            listBagModal.classList.remove('show');
+            listBagModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
     }
 
@@ -676,9 +751,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementsByClassName('close-btn')[6].onclick = closeAddBagModal;
     document.getElementsByClassName('close-btn')[7].onclick = closeMoveBagModal;
     document.getElementsByClassName('close-btn')[8].onclick = closeRemoveBagModal;
-    document.getElementsByClassName('close-btn')[9].onclick = closeInsertBagModal;
-    document.getElementsByClassName('close-btn')[10].onclick = closeEditBagModal;
-    document.getElementsByClassName('close-btn')[11].onclick = closeDeleteBagModal;
+    document.getElementsByClassName('close-btn')[9].onclick = closeListBagModal;
+    document.getElementsByClassName('close-btn')[10].onclick = closeInsertBagModal;
+    document.getElementsByClassName('close-btn')[11].onclick = closeEditBagModal;
     document.getElementsByClassName('close-btn')[12].onclick = closeViewReportModal;
     document.getElementsByClassName('close-btn')[13].onclick = closeMessModal;
 
@@ -733,8 +808,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeEditBagModal();
                 break;
 
-            case deleteBagModal:
-                closeDeleteBagModal();
+            case listBagModal:
+                closeListBagModal();
                 break;
             case reportModal:
                 closeViewReportModal();
@@ -744,9 +819,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Hide dropdown if clicked outside
     window.addEventListener('click', function (event) {
-        if (!deleteBagSearchDropdown.contains(event.target) && event.target !== deleteBagSearchDropdown) {
-            deleteBagSearchDropdown.style.display = 'none';
-        }
 
         if (!editBagSearchDropdown.contains(event.target) && event.target !== editBagSearchDropdown) {
             editBagSearchDropdown.style.display = 'none';
@@ -939,12 +1011,73 @@ document.addEventListener('DOMContentLoaded', () => {
         openInsertBagModal();
     });
 
-    document.getElementById('editButton').addEventListener('click', () => {
-        openEditBagModal();
+    document.getElementById('removeButton').addEventListener('click', () => {
+        const submitButton = document.createElement('button');
+        var isRemove = false;
+        var isError = false;
+        var result = {};
+
+        if (allCheckedRow.length === 0) {
+            openMess('Error', 'You have not selected any bags');
+            return;
+        }
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+        submitButton.addEventListener('click', async () => {
+
+            for (const data of allCheckedRow) {
+
+                isRemove = true;
+
+                const response = await fetch('/laundry/deleteBag', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                if (!response.ok) {
+                    isError = true;
+                }
+
+                result = await response.json();
+            }
+
+            closeMessModal();
+        });
+
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isRemove) {
+                modalMessContent.removeChild(submitButton);
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show the info modal
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isRemove) {
+                closeWarningObserver.disconnect();
+                if (isRemove && !isError) {
+                    openMess('Info', 'Bags have been removed successfully');
+                } else if (isError) {
+                    openMess('Error', result.message);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        openMess('Warning', 'When you remove bag you remove all data for this bag. Are you sure you want to remove the selected bags?');
     });
 
-    document.getElementById('removeButton').addEventListener('click', () => {
-        openDeleteBagModal();
+    document.getElementById('listOfBagsButton').addEventListener('click', () => {
+        openListBagModal();
     });
 
 
@@ -1177,7 +1310,6 @@ document.addEventListener('DOMContentLoaded', () => {
     stopEnter('form3');
     stopEnter('form4');
     stopEnter('form5');
-    stopEnter('form6');
     stopEnter('form7');
 
     async function handleFormSubmit(event, formId, modalCloseFn, bagId, destination = null, prevDestination = null, input) {
@@ -1374,86 +1506,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Show the warning modal
         openMess('Warning', 'Are you sure you want to add this laundry bag?');
-    }
-
-    document.getElementById('form6').onsubmit = async (event) => {
-
-        event.preventDefault();
-
-        if (selectedDeleteBagId.value === '') {
-            toggleInputValidity(deleteBagSearchInput, false);
-            return;
-        }
-
-        const data = {
-            bagId: selectedDeleteBagId.value,
-        };
-
-        const submitButton = document.createElement('button');
-        var isSubmit = false;
-        let hasError = false;
-        var responseData = {};
-
-        submitButton.textContent = 'Yes';
-        submitButton.classList.add('btn', 'btn-success');
-        submitButton.addEventListener('click', async () => {
-
-            isSubmit = true;
-
-            try {
-                const response = await fetch(document.getElementById('form6').action, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                responseData = await response.json();
-
-                if (!response.ok) {
-                    hasError = true;
-                }
-
-            } catch (error) {
-                hasError = true;
-            }
-
-            closeMessModal();
-        });
-
-        modalMessContent.appendChild(submitButton);
-
-        // Wait for the modal to close, then check if the submit button was clicked
-        const observer = new MutationObserver(() => {
-            if (!modalMess.classList.contains('show') && isSubmit) {
-                observer.disconnect();
-
-                if (modalMessContent.contains(submitButton)) {
-                    // Check if the button is still a child before removing
-                    modalMessContent.removeChild(submitButton);
-                }
-            }
-        });
-
-        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
-
-        // Close the warning modal and show appropriate messages based on the result
-        const closeWarningObserver = new MutationObserver(() => {
-            if (!modalMess.classList.contains('show')) {
-                closeWarningObserver.disconnect();
-
-                if (isSubmit && !hasError) {
-                    openMess('Info', 'Laundry bag has been removed successfully');
-                    closeDeleteBagModal();
-                } else if (isSubmit) {
-                    openMess('Error', responseData.message || 'Failed to remove the laundry bag');
-                }
-            }
-        });
-
-        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
-
-        // Show the warning modal
-        openMess('Warning', 'Are you sure you want to remove this laundry bag?');
     }
 
     document.getElementById('form7').onsubmit = async (event) => {

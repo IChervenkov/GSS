@@ -12,6 +12,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+
 </head>
 
 <body>
@@ -20,11 +22,28 @@
     <div class="horizontal-nav">
         <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
         <ul id="nav-links">
-            <% horizontalNavItems.forEach(function(item) { %>
-                <li><a href="<%= item.href %>">
-                        <%= item.name %>
-                    </a></li>
-                <% }); %>
+            <% horizontalNavItems.forEach(item => { %>
+                <li>
+                    <a href="<%= item.href %>">
+                        <% if (item.name.toLowerCase() === 'bicycles') { %>
+                            <i class="bi bi-bicycle"></i>
+                        <% } else if (item.name.toLowerCase() === 'main page') { %>
+                            <i class="bi bi-house-door"></i>
+                        <% } else if (item.name.toLowerCase() === 'assets') { %>
+                            <i class="bi bi-box"></i>
+                        <% } else if (item.name.toLowerCase() === 'laundry') { %>
+                            <i class="bi bi-water"></i>
+                        <% } else if (item.name.toLowerCase() === 'gym') { %>
+                            <i class="bi bi-activity"></i>
+                        <% } else if (item.name.toLowerCase() === 'accommodation and keys') { %>
+                            <i class="bi bi-key"></i>
+                        <% } else if (item.name.toLowerCase() === 'logout') { %>
+                            <i class="bi bi-box-arrow-right"></i>
+                        <% } %>
+                        <span><%= item.name %></span>
+                    </a>
+                </li>
+            <% }); %>
         </ul>
     </div>
 
@@ -51,7 +70,9 @@
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button id="drop-off" class="main-btn">Drop off</button>
+                    <button id="drop-off" class="main-btn">
+                        <i class="bi bi-box-arrow-in-down"></i> Drop off
+                    </button>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-drop-off">
                         <%= avgTimeData['drop off'] || '0 mins' %>
@@ -74,8 +95,9 @@
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button id="transportation-to-laundry-facility" class="main-btn">Transportation to laundry
-                        facility</button>
+                    <button id="transportation-to-laundry-facility" class="main-btn">
+                        <i class="bi bi-truck"></i> Transportation to Laundry Facility
+                    </button>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-transportation-to-laundry-facility">
                         <%= avgTimeData['transportation to laundry facility'] || '0 mins' %>
@@ -98,7 +120,9 @@
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button id="laundry-facility" class="main-btn">Laundry facility</button>
+                    <button id="laundry-facility" class="main-btn">
+                        <i class="bi bi-building"></i> Laundry facility
+                    </button>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-laundry-facility">
                         <%= avgTimeData['laundry facility'] || '0 mins' %>
@@ -121,7 +145,9 @@
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button id="transportation-to-drop-off" class="main-btn">Transportation to drop off</button>
+                    <button id="transportation-to-drop-off" class="main-btn">
+                        <i class="bi bi-truck"></i> Transportation to drop off
+                    </button>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-transportation-to-drop-off">
                         <%= avgTimeData['transportation to drop off'] || '0 mins' %>
@@ -144,7 +170,9 @@
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button id="ready-to-pick-up" class="main-btn">Ready to pick up</button>
+                    <button id="ready-to-pick-up" class="main-btn">
+                        <i class="bi bi-bag-check"></i> Ready to pick up
+                    </button>
                 </div>
 
                 <p class="avg-in">Average Time IN: <span id="avg-in-ready-to-pick-up">
@@ -165,26 +193,22 @@
             </div>
 
             <div class="button-row">
-                <button id="reportButton" class="report-button">Report</button>
+                <button id="reportButton" class="report-button d-flex align-items-center">
+                    <i class="bi bi-file-earmark-text me-2"></i> <span>Report</span>
+                </button>
                 <div class="button-container-report">
-                    <button type="button" class="download-btn" id="downloadRFIDAppBtn">Download App</button>
+                    <button type="button" class="download-btn" id="downloadRFIDAppBtn">
+                        <i class="bi bi-download"></i> Download App
+                    </button>
                 </div>
                 <div id="loadingIndicator" class="loading-overlay" style="display: none;">
                     <div class="spinner"></div>
                 </div>
                 <div class="w-100" <% if(username!='admin' && username!='helpDeskNikolay' ) { %> style="cursor:
                     not-allowed" <% } %>>
-                        <button id="addButton"
+                        <button id="listOfBagsButton"
                             class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
-                            Add bag
-                        </button>
-                        <button id="editButton"
-                            class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
-                            Edit bag
-                        </button>
-                        <button id="removeButton"
-                            class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
-                            Remove bag
+                            <i class="bi bi-list"></i> List of bags
                         </button>
                 </div>
             </div>
@@ -288,13 +312,51 @@
                                     selectSearchId: 'removeBagSelectId' , buttonId: 'remove-btn' ,
                                     buttonText: 'Remove bag' }) %>
 
+                                    <div id="bagsModal" class="modal">
+                                        <div class="modal-content">
+                                            <span class="close-btn">&times;</span>
+                                
+                                            <h2 class="d-flex align-items-center gap-2">List of Bags
+                                                <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addButton"><i
+                                                        class="bi bi-plus"></i></button>
+                                                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold" id="removeButton"><i
+                                                        class="bi bi-dash"></i></button>
+                                            </h2>
+                                
+                                            <div class="table-container">
+                                                <table id="bagsTable">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>
+                                                                <input type="text" class="laundry-search-input" placeholder="Search...">
+                                                                <label id="bag-code-header">Bag code</label>
+                                                            </th>
+                                
+                                                            <th>
+                                                                <input type="text" class="laundry-search-input" placeholder="Search...">
+                                                                <label id="bag-type-header">Bag type</label>
+                                                            </th>
+                                
+                                                            <th>
+                                                                <input type="text" class="laundry-search-input" placeholder="Search...">
+                                                                <label id="bag-type-header">Maximum number of washes</label>
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="tableBodyModal">
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div id="insertBagModal" class="modal">
                                         <form class="modal-content" action="/laundry/addBag" method="POST" id="form5">
                                             <span class="close-btn">&times;</span>
                                             <h2>Add bag</h2>
 
                                             <div class="mb-3">
-                                                <label for="epc-bag" class="form-label">EPC code:</label>
+                                                <label for="epc-bag" class="form-label">EPC code <span class="text-danger">*</span></label>
                                                 <div class="input-group">
                                                     <input type="text" id="epc-bag" name="epcBag" class="form-control"
                                                         placeholder="EPC code" pattern="^[a-zA-Z0-9]+$">
@@ -306,7 +368,7 @@
                                             </div>
 
                                             <div class="mb-3">
-                                                <label for="code-bag" class="form-label">Bag code:</label>
+                                                <label for="code-bag" class="form-label">Bag code <span class="text-danger">*</span></label>
                                                 <div class="input-group">
                                                     <input type="text" id="code-bag" name="codeBag" class="form-control"
                                                         placeholder="Code bag" pattern="^[a-zA-Z0-9]+$">
@@ -318,7 +380,7 @@
                                             </div>
 
                                             <div class="mb-3">
-                                                <label for="type-bag" class="form-label">Bag type:</label>
+                                                <label for="type-bag" class="form-label">Bag type <span class="text-danger">*</span></label>
                                                 <div class="input-group">
                                                     <input type="text" id="type-bag" name="typeBag" class="form-control"
                                                         placeholder="Type bag" pattern="^[a-zA-Z0-9\s]+$">
@@ -332,7 +394,7 @@
 
                                             <div class="mb-3">
                                                 <label for="max-count-wash-bag" class="form-label">Maximum number of
-                                                    washes:</label>
+                                                    washes <span class="text-danger">*</span></label>
                                                 <div class="input-group">
                                                     <input type="text" id="max-count-wash-bag" name="maxCountWashBag"
                                                         class="form-control" placeholder="Maximum number of washes"
@@ -348,8 +410,9 @@
                                             <!-- Buttons for confirming the selection -->
 
                                             <div class="button-container">
-                                                <button type="submit" id="addBagButton"
-                                                    class="modal-button">Add</button>
+                                                <button type="submit" id="addBagButton" class="modal-button">
+                                                    <i class="bi bi-plus-circle"></i> Add
+                                                </button>
                                             </div>
                                         </form>
                                     </div>
@@ -363,7 +426,7 @@
 
                                             <!-- Bag Selection with Custom Search -->
                                             <div class="mb-3 search-container" id="search-edit-bag">
-                                                <label for="bagEditSearch" class="form-label">Bag code:</label>
+                                                <label for="bagEditSearch" class="form-label">Bag code <span class="text-danger">*</span></label>
                                                 <div class="input-group">
                                                     <input type="text" id="bagEditSearch" class="form-control"
                                                         placeholder="Bag code">
@@ -378,7 +441,7 @@
 
                                             <!-- Bag Selection with Custom Search -->
                                             <div class="mb-3" id="search-edit-type">
-                                                <label for="typeEditSearch" class="form-label">Bag type:</label>
+                                                <label for="typeEditSearch" class="form-label">Bag type <span class="text-danger">*</span></label>
                                                 <div class="input-group">
                                                     <input type="text" id="typeEditSearch" class="form-control"
                                                         placeholder="Bag type">
@@ -389,7 +452,7 @@
 
                                             <!-- Bag Selection with Custom Search -->
                                             <div class="mb-3" id="search-edit-wash">
-                                                <label for="washEditSearch" class="form-label">Maximum number of washes:</label>
+                                                <label for="washEditSearch" class="form-label">Maximum number of washes <span class="text-danger">*</span></label>
                                                 <div class="input-group">
                                                     <input type="text" id="washEditSearch" class="form-control"
                                                         placeholder="Maximum number of washes" pattern="^[a-zA-Z0-9 ]+$">
@@ -400,41 +463,9 @@
 
                                             <!-- Buttons for confirming the selection -->
                                             <div class="button-container">
-                                                <button type="submit" id="editBagButton"
-                                                    class="modal-button">Edit</button>
-                                            </div>
-
-                                        </form>
-                                    </div>
-
-                                    <div id="deleteBagModal" class="modal">
-                                        <form class="modal-content" action="/laundry/deleteBag" method="POST"
-                                            id="form6">
-                                            <span class="close-btn">&times;</span>
-                                            <h2>Remove bag</h2>
-
-                                            <!-- Bag Selection with Custom Search -->
-                                            <div class="mb-3 search-container" id="search-remove-bag">
-                                                <label for="bagRemoveSearch" class="form-label">Bag code:</label>
-                                                <div class="input-group">
-                                                    <input type="text" id="bagRemoveSearch" class="form-control"
-                                                        placeholder="Bag code">
-                                                    <div class="invalid-feedback">
-                                                        Please choose a bag code
-                                                    </div>
-                                                    <div class="valid-feedback"></div>
-                                                </div>
-                                                <ul id="deleteBagDropdown" class="list-group"></ul>
-                                                <!-- Custom dropdown for search -->
-                                                <input type="hidden" id="selectedRemoveBagId" name="removeBagId"
-                                                    value="">
-                                                <!-- To store the selected soldier ID -->
-                                            </div>
-
-                                            <!-- Buttons for confirming the selection -->
-                                            <div class="button-container">
-                                                <button type="submit" id="removeBagButton"
-                                                    class="modal-button">Remove</button>
+                                                <button type="submit" id="editBagButton" class="modal-button">
+                                                    <i class="bi bi-pencil-square"></i> Edit
+                                                </button>
                                             </div>
 
                                         </form>

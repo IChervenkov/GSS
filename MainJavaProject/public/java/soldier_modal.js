@@ -24,6 +24,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalAddSoldier = document.getElementById('addSoldierModal');
     const modalAddSoldierContent = modalAddSoldier.querySelector('.modal-content');
 
+    const modalListSoldier = document.getElementById('soldierListModal');
+    const modalListSoldierContent = modalListSoldier.querySelector('.modal-content');
+
+    const modalEditSoldier = document.getElementById('editSoldierModal');
+    const modalEditSoldierContent = modalEditSoldier.querySelector('.modal-content');
+
     const modalAddMultiSoldier = document.getElementById('uploadModal');
     const modalAddMultiSoldierContent = modalAddMultiSoldier.querySelector('.modal-content');
 
@@ -86,6 +92,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const soldierName = document.getElementById('soldier-name');
     const soldierCountry = document.getElementById('soldier-country');
 
+    const editSoldierId = document.getElementById('edit-soldier-number');
+    const editOldSoldierId = document.getElementById('edit-old-soldier-id');
+    const editSoldierName = document.getElementById('edit-soldier-name');
+    const editSoldierCountry = document.getElementById('edit-soldier-country');
+
     const keyId = document.getElementById('key-id');
     const keyName = document.getElementById('key-name');
     const selectedRoomForKey = document.getElementById('selected-room-for-key');
@@ -107,6 +118,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let specialKeys = [];
     let allKeys = [];
     let allBuilds = [];
+    let allCheckedRow = [];
 
     var isWarning = false;
 
@@ -254,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch all keys from the server
     async function fetchAllKey() {
         try {
-            const responseBike = await fetch(`/allKeys`, {
+            const responseBike = await fetch(`/keys`, {
                 method: 'GET'
             });
 
@@ -425,7 +437,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch soldier from the server
     async function fetchBag() {
         try {
-            const responseBag = await fetch(`/bags`);
+            const responseBag = await fetch(`/bags`, { method: "POST" });
             if (!responseBag.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -757,6 +769,28 @@ document.addEventListener('DOMContentLoaded', function () {
             switch (typeBuild.value) {
                 case 'Accommodation':
                 case '':
+
+                    if (item.location_key === null) {
+                        row.classList.add("disabled-row");
+                        row.setAttribute("aria-disabled", "true");
+
+                        row.addEventListener("click", function (event) {
+                            event.stopPropagation();
+                            event.preventDefault();
+                        });
+                    } else {
+                        row.addEventListener("click", function () {
+                            openModal(
+                                item.namekey,
+                                item.namesoldier || "Free",
+                                item.country || "Undefined",
+                                item.code,
+                                item.mealcard || "Undefined",
+                                item.lbcode || "Undefined"
+                            );
+                        });
+                    }
+
                     row.innerHTML = `
                         <td>${item.namekey}</td>
                         <td>${item.code}</td>
@@ -765,17 +799,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td class="${!item.mealcard ? "undefined-data" : ""}">${item.mealcard || "Undefined"}</td>
                         <td class="${!item.lbcode ? "undefined-data" : ""}">${item.lbcode || "Undefined"}</td>`;
 
-                    // Attach click event for each row
-                    row.addEventListener('click', function () {
-                        openModal(
-                            item.namekey,
-                            item.namesoldier || "Free",
-                            item.country || "Undefined",
-                            item.code,
-                            item.mealcard || "Undefined",
-                            item.lbcode || "Undefined"
-                        );
-                    });
                     break;
 
                 default:
@@ -869,6 +892,184 @@ document.addEventListener('DOMContentLoaded', function () {
             modalAddSoldierContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
 
+    }
+
+    function openSoldierListModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        modalListSoldier.classList.add('show');
+        modalListSoldierContent.classList.add('show');
+        modalListSoldierContent.classList.add('slide-in');
+
+        fetch(`/clients`, {
+            method: 'GET'
+        })
+            .then(response => response.json())
+            .then(data => {
+                // Parse the JSON string into an array of objects
+                var soldierListData = data;
+                soldierListData = soldierListData.filter(item => item.id !== '4');
+
+                const tbody = document.getElementById('tableBodyModal');
+                tbody.innerHTML = '';
+
+                allCheckedRow = []; // Reset the global array
+
+                // Dynamically create the header checkbox
+                const headerCheckbox = document.createElement('input');
+                headerCheckbox.type = 'checkbox';
+                headerCheckbox.className = 'form-check-input header-checkbox';
+                headerCheckbox.style.border = '1px solid black'; // Make the border more bold
+                headerCheckbox.style.backgroundColor = ''; // Clear any previous color
+
+                headerCheckbox.addEventListener('change', (event) => {
+                    headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+                    const isChecked = event.target.checked;
+                
+                    // Get all visible rows
+                    const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+                
+                    visibleRows.forEach(row => {
+                        const checkbox = row.querySelector('.form-check-input');
+                        if (checkbox) {
+                            checkbox.checked = isChecked;
+                            checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                            if (isChecked) {
+                                allCheckedRow.push({ code: checkbox.dataset.id });
+                            } else {
+                                allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
+                            }
+                        }
+                    });
+                
+                    // Ensure no duplicates in allCheckedRow
+                    if (isChecked) {
+                        allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
+                            .map(code => ({ code }));
+                    }
+                });                
+
+                // Append the header checkbox to the table header
+                const thead = tbody.parentElement.querySelector('thead');
+                const headerRow = thead.querySelector('tr');
+
+                headerRow.querySelectorAll('th').forEach(th => {
+                    if (!th.textContent.trim()) {
+                        th.remove();
+                    }
+                });
+
+                const headerCell = document.createElement('th');
+                headerCell.appendChild(headerCheckbox);
+                headerRow.insertBefore(headerCell, headerRow.firstChild);
+
+                soldierListData.forEach(item => {
+                    const row = document.createElement("tr");
+                    row.classList.add('data-soldier');
+
+                    // Add the checkbox cell
+                    const checkboxCell = document.createElement('td');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'form-check-input';
+                    checkbox.dataset.id = item.id;
+                    checkbox.style.border = '1px solid black'; // Make the border more bold
+
+                    // Add change event to the checkbox
+                    checkbox.addEventListener('change', () => {
+                        if (checkbox.checked) {
+                            checkbox.style.backgroundColor = 'green';
+                            allCheckedRow.push({ code: item.id });
+                        } else {
+                            checkbox.style.backgroundColor = '';
+                            allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
+                        }
+                    });
+
+                    checkboxCell.appendChild(checkbox);
+                    row.appendChild(checkboxCell);
+
+                    // Room number cell
+                    const codeCell = document.createElement("td");
+                    codeCell.textContent = item.id;
+                    row.appendChild(codeCell);
+
+                    // Room status cell
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = item.name;
+                    row.appendChild(nameCell);
+
+                    // Room status cell
+                    const countryCell = document.createElement("td");
+                    countryCell.textContent = item.country;
+                    row.appendChild(countryCell);
+
+                    // Attach click event for each row
+                    row.addEventListener('click', (event) => {
+                        // Check if the clicked element is not the first td in the row
+                        if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
+                            openEditSoldierModal(item.id, item.name, item.country);
+                        }
+                    });
+
+                    // Append row to the table body
+                    tbody.appendChild(row);
+                });
+            })
+            .catch(error => console.error("Error fetching keys:", error));
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalListSoldierContent.classList.remove('slide-out');
+    }
+
+    function closeSoldierListModal() {
+        // Add the slide-out effect
+        modalListSoldierContent.classList.add('slide-out');
+        modalListSoldierContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            modalListSoldier.classList.remove('show');
+            modalListSoldierContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+
+    }
+
+    function openEditSoldierModal(id, name, country) {
+
+        // Add the slide-in effect by adding the necessary classes
+        modalEditSoldier.classList.add('show');
+        modalEditSoldierContent.classList.add('show');
+        modalEditSoldierContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalEditSoldierContent.classList.remove('slide-out');
+
+        document.getElementById('edit-soldier-number').value = id;
+        document.getElementById('edit-old-soldier-id').value = id;
+        document.getElementById('edit-soldier-name').value = name;
+        document.getElementById('edit-soldier-country').value = country === 'None' ? '' : country;
+    }
+
+    function closeEditSoldierModal() {
+        // Add the slide-out effect
+        modalEditSoldierContent.classList.add('slide-out');
+        modalEditSoldierContent.classList.remove('slide-in');
+
+        document.querySelectorAll('#edit-soldier-number, #edit-soldier-name, #edit-soldier-country').forEach((input) => {
+
+            input.classList.remove('is-valid');
+            input.classList.remove('is-invalid');
+
+            input.value = '';
+
+        });
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            modalEditSoldier.classList.remove('show');
+            modalEditSoldierContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
     }
 
     function openAddMultiSoldierModal() {
@@ -1221,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', function () {
             modalGlobalMess.classList.remove('show');
             modalGlobalMessContent.classList.remove('show');
 
-            const button = modalGlobalMessContent.getElementsByTagName('button')
+            const button = modalGlobalMessContent.getElementsByTagName('button');
             if (button.length > 0)
                 modalGlobalMessContent.removeChild(button[0]);
 
@@ -1243,16 +1444,18 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[1].onclick = closeModal;
     document.getElementsByClassName('close-btn')[2].onclick = closeViewModal;
     document.getElementsByClassName('close-btn')[3].onclick = closeMoveModal;
-    document.getElementsByClassName('close-btn')[4].onclick = closeAddSoldierModal;
-    document.getElementsByClassName('close-btn')[5].onclick = closeAddMultiSoldierModal;
-    document.getElementsByClassName('close-btn')[6].onclick = closeUploadMultiSoldierModal;
-    document.getElementsByClassName('close-btn')[7].onclick = closeDeleteModal;
-    document.getElementsByClassName('close-btn')[8].onclick = closeModalDest;
-    document.getElementsByClassName('close-btn')[9].onclick = closeModalAddRoom;
-    document.getElementsByClassName('close-btn')[10].onclick = closeModalRemoveRoom;
-    document.getElementsByClassName('close-btn')[11].onclick = closeModalAddKey;
-    document.getElementsByClassName('close-btn')[12].onclick = closeModalRemoveKey;
-    document.getElementsByClassName('close-btn')[13].onclick = closeGlobalMessModal;
+    document.getElementsByClassName('close-btn')[4].onclick = closeSoldierListModal;
+    document.getElementsByClassName('close-btn')[5].onclick = closeEditSoldierModal;
+    document.getElementsByClassName('close-btn')[6].onclick = closeAddSoldierModal;
+    document.getElementsByClassName('close-btn')[7].onclick = closeAddMultiSoldierModal;
+    document.getElementsByClassName('close-btn')[8].onclick = closeUploadMultiSoldierModal;
+    document.getElementsByClassName('close-btn')[9].onclick = closeDeleteModal;
+    document.getElementsByClassName('close-btn')[10].onclick = closeModalDest;
+    document.getElementsByClassName('close-btn')[11].onclick = closeModalAddRoom;
+    document.getElementsByClassName('close-btn')[12].onclick = closeModalRemoveRoom;
+    document.getElementsByClassName('close-btn')[13].onclick = closeModalAddKey;
+    document.getElementsByClassName('close-btn')[14].onclick = closeModalRemoveKey;
+    document.getElementsByClassName('close-btn')[15].onclick = closeGlobalMessModal;
 
     // Hide dropdown if clicked outside
     window.addEventListener('click', function (event) {
@@ -1306,6 +1509,88 @@ document.addEventListener('DOMContentLoaded', function () {
             // Open the modal with the soldier's cleaned data
             openModal(keynum, soldierName, country, keycode, maleCard, laundryBag);
         });
+    });
+
+    document.querySelector('.left-nav').addEventListener('click', function (event) {
+        if (event.target.tagName === 'BUTTON' && event.target.classList.contains('main-button')) {
+            const id = event.target.id;
+
+            document.getElementById('room-number-header').classList.remove('ascending', 'descending');
+            document.getElementById('room-status-header').classList.remove('ascending', 'descending');
+            document.getElementById('count-free-beds-header').classList.remove('ascending', 'descending');
+
+            fetch(`/accommodation?isFirstTime=true&numBuild=${id}`, {
+                method: 'GET'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // Parse the JSON string into an array of objects
+                    nameroomSetCount = data.nameroomSetCount;
+                    document.getElementById('previewTypeBuild').value = data.type;
+                    document.getElementById('typeBuild').value = data.type;
+
+                    const headerTable = data.headerTable;
+                    const tableHeader = document.querySelector('#keyModal .modal-content .table-container table thead tr');
+                    tableHeader.innerHTML = '';
+
+                    headerTable.forEach(function (item) {
+                        const th = document.createElement('th');
+                        th.textContent = item.name;
+                        tableHeader.appendChild(th);
+                    });
+
+                    // Set the titlePage and countBeds variables
+                    const titlePage = data.titlePage;
+                    const countBeds = data.countFreeBeds;
+
+                    // Update the title and count beds in the DOM
+                    document.querySelector('.col-md-auto h3 div').textContent = titlePage;
+                    if (countBeds) {
+                        document.querySelector('.col-md-auto h3 .name-add').textContent = `(${countBeds} free beds)`;
+                    } else {
+                        document.querySelector('.col-md-auto h3 .name-add').textContent = '';
+                    }
+
+                    // Update the table with the fetched data
+                    const tbody = document.getElementById('tableBody');
+                    tbody.innerHTML = '';
+
+                    nameroomSetCount.forEach(item => {
+                        const row = document.createElement("tr");
+                        row.classList.add('data-room');
+
+                        // Room number cell
+                        const nameroomCell = document.createElement("td");
+                        nameroomCell.textContent = item.nameroom;
+                        row.appendChild(nameroomCell);
+
+                        // Free beds cell
+                        const statusCell = document.createElement("td");
+                        if (item.countFreeBeds != 0) {
+                            statusCell.classList.add('undefined-data');
+                        }
+                        statusCell.textContent = item.countFreeBeds != 0 ? 'Free' : 'Occupied';
+                        row.appendChild(statusCell);
+
+                        // Room status cell
+                        const quantityCell = document.createElement("td");
+                        quantityCell.textContent = item.countFreeBeds;
+                        row.appendChild(quantityCell);
+
+                        // Attach click event for each row
+                        row.addEventListener('click', function (event) {
+                            const roomnumber = event.currentTarget.querySelector('td:nth-child(1)').textContent;
+                            document.getElementById('numBuild').value = id;
+
+                            openModalKey(roomnumber);
+                        });
+
+                        // Append row to the table body
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => console.error("Error fetching keys:", error));
+        }
     });
 
     function showGlobalMess(type, message) {
@@ -1366,6 +1651,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case modalAddSoldier:
                 closeAddSoldierModal();
+                break;
+
+            case modalListSoldier:
+                closeSoldierListModal();
+                break;
+
+            case modalEditSoldier:
+                closeEditSoldierModal();
                 break;
 
             case modalAddMultiSoldier:
@@ -1512,15 +1805,93 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    document.getElementById('form11').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
     // Open the report modal when the Reports button is clicked
     document.getElementById("btnReport").addEventListener("click", function () {
         openViewModal();
         fetchReport();
     });
 
+    // Open the list soldier modal when the Add soldier button is clicked
+    document.getElementById("btnListSoldier").addEventListener("click", function () {
+        openSoldierListModal();
+    });
+
     // Open the add soldier modal when the Add soldier button is clicked
-    document.getElementById("btnAddSoldier").addEventListener("click", function () {
+    document.getElementById("addSoldier").addEventListener("click", function () {
         openAddSoldierModal();
+    });
+
+    // Open the delete soldier modal when the Delete soldier button is clicked
+    document.getElementById("removeSoldier").addEventListener("click", function () {
+
+        const submitButton = document.createElement('button');
+        var isRemove = false;
+        var isError = false;
+        var result = {};
+
+        if (allCheckedRow.length === 0) {
+            showGlobalMess('Error', 'You have not selected any soldiers to remove');
+            return;
+        }
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+        submitButton.addEventListener('click', async () => {
+
+            for (const data of allCheckedRow) {
+
+                isRemove = true;
+
+                const response = await fetch('/accommodation/removeSoldier', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                if (!response.ok) {
+                    isError = true;
+                }
+
+                result = await response.json();
+            }
+
+            closeGlobalMessModal();
+        });
+
+        modalGlobalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isRemove) {
+                modalGlobalMessContent.removeChild(submitButton);
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show the info modal
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isRemove) {
+                closeWarningObserver.disconnect();
+                if (isRemove && !isError) {
+                    showGlobalMess('Info', 'Soldiers removed successfully');
+                } else if (isError) {
+                    showGlobalMess('Error', result.message);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        showGlobalMess('Warning', 'Are you sure you want to remove the selected soldiers, this action will remove all data for the selected soldiers?');
     });
 
     // Open the add multi soldier modal when the Add soldier button is clicked
@@ -1849,6 +2220,12 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     document.querySelectorAll('#soldier-number, #soldier-name, #soldier-country').forEach((input) => {
+        input.addEventListener('input', function () {
+            toggleInputValidity(input, input.value !== "" && input.checkValidity());
+        });
+    });
+
+    document.querySelectorAll('#edit-soldier-number, #edit-soldier-name, #edit-soldier-country').forEach((input) => {
         input.addEventListener('input', function () {
             toggleInputValidity(input, input.value !== "" && input.checkValidity());
         });
@@ -2537,6 +2914,102 @@ document.addEventListener('DOMContentLoaded', function () {
         showGlobalMess('Warning', 'Are you sure you want to rename this key?');
     };
 
+    document.getElementById('form11').onsubmit = async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        if (editSoldierId.value === "") {
+            toggleInputValidity(editSoldierId, false);
+            return;
+        }
+
+        if (editSoldierName.value === "") {
+            toggleInputValidity(editSoldierName, false);
+            return;
+        }
+
+        if (editSoldierCountry.value === "") {
+            toggleInputValidity(editSoldierCountry, false);
+            return;
+        }
+
+        const data = {
+            soldierId: editOldSoldierId.value,
+            soldierNewId: editSoldierId.value,
+            soldierName: editSoldierName.value,
+            soldierCountry: editSoldierCountry.value
+        };
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+            } catch (error) {
+                hasError = true;
+            }
+
+            closeGlobalMessModal();
+        });
+
+        modalGlobalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeEditSoldierModal();
+                    showGlobalMess('Info', 'Soldier successfully edited');
+                } else if (isSubmit) {
+                    showGlobalMess('Error', responseData.message || 'An error occurred while editing the soldier');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showGlobalMess('Warning', 'Are you sure you want to edit this soldier?');
+    };
+
     document.getElementById('form3').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
@@ -2660,7 +3133,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.json())
         .then(data => {
             // Parse the JSON string into an array of objects
-            nameroomSetCount = data;
+            nameroomSetCount = data.nameroomSetCount;
         })
         .catch(error => console.error("Error fetching keys:", error));
 

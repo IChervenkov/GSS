@@ -12,6 +12,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+
 </head>
 
 <body>
@@ -22,11 +24,28 @@
     <div class="horizontal-nav">
         <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
         <ul id="nav-links">
-            <% horizontalNavItems.forEach(function(item) { %>
-                <li><a href="<%= item.href %>">
-                        <%= item.name %>
-                    </a></li>
-                <% }); %>
+            <% horizontalNavItems.forEach(item => { %>
+                <li>
+                    <a href="<%= item.href %>">
+                        <% if (item.name.toLowerCase() === 'bicycles') { %>
+                            <i class="bi bi-bicycle"></i>
+                        <% } else if (item.name.toLowerCase() === 'main page') { %>
+                            <i class="bi bi-house-door"></i>
+                        <% } else if (item.name.toLowerCase() === 'assets') { %>
+                            <i class="bi bi-box"></i>
+                        <% } else if (item.name.toLowerCase() === 'laundry') { %>
+                            <i class="bi bi-water"></i>
+                        <% } else if (item.name.toLowerCase() === 'gym') { %>
+                            <i class="bi bi-activity"></i>
+                        <% } else if (item.name.toLowerCase() === 'accommodation and keys') { %>
+                            <i class="bi bi-key"></i>
+                        <% } else if (item.name.toLowerCase() === 'logout') { %>
+                            <i class="bi bi-box-arrow-right"></i>
+                        <% } %>
+                        <span><%= item.name %></span>
+                    </a>
+                </li>
+            <% }); %>
         </ul>
     </div>
 
@@ -42,18 +61,19 @@
             <div class="title-container mb-2 sticky-top p-3 w-100 transparent-bg" <% if(username !='helpDeskNikolay' &&
                 username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
                     <button type="button" id="btnAddDestination"
-                        class="btn-add-destination w-100 <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Add
-                        Destination</button>
+                        class="btn-add-destination w-100 <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">
+                        <i class="bi bi-plus-circle"></i> Add Destination
+                    </button>
             </div>
             <ul>
                 <% navItems.forEach(function(item) { %>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <a href="<%= item.href %>" class="flex-grow-1 text-decoration-none full-back">
+                        <button id="<%= item.id %>" class="flex-grow-1 text-decoration-none full-back main-button">
                             <%= item.name %>
                                 <span class="name-add d-block">
                                     <%= item.nameAdd %>
                                 </span>
-                        </a>
+                        </button>
                         <div class="button-group" <% if(username !='helpDeskNikolay' && username !='admin' ) { %>
                             style="cursor: not-allowed" <% } %>>
                                 <button type="button"
@@ -88,15 +108,18 @@
                                 <%= titlePage %>
                             </div>
 
-                            <!-- Count Beds Row -->
-                            <% if(countBeds) { %>
-                                <div class="name-add">
+                            <div class="name-add">
+                                <!-- Count Beds Row -->
+                                <% if(countBeds) { %>
                                     (<%= countBeds %> free beds)
-                                </div>
-                                <% }; %>
+                                        <% }; %>
+                            </div>
                         </h3>
                     </div>
 
+                </div>
+
+                <div class="virtual-warehouse-labels">
                     <!-- Search Column -->
                     <div class="col-md">
                         <!-- Soldier Selection with Custom Search -->
@@ -109,31 +132,33 @@
                             <!-- To store the selected soldier ID -->
                         </div>
                     </div>
-                </div>
-
-                <div class="virtual-warehouse-labels">
+                    
                     <label class="virtual-warehouse-label">Free Beds: <%= totalFreeBeds %></label>
                     <label class="virtual-warehouse-label">Occupied Beds: <%= totalOccupiedBeds %></label>
 
                     <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
-                            <button type="button" id="btnAddSoldier"
-                                class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">Add
-                                soldier</button>
+                            <button type="button" id="btnListSoldier" class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
+                                <i class="bi bi-person"></i> List of soldier
+                            </button>
                     </div>
                     <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
                             <button type="button" id="btnAccommSoldier"
-                                class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">Accommodation
-                                soldiers</button>
+                                class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
+                                <i class="bi bi-person-fill"></i> Accommodation soldiers
+                            </button>
                     </div>
                     <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
                             <button type="button" id="btnFreeAllRoom"
-                                class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">Release
-                                building</button>
+                                class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">
+                                <i class="bi bi-building"></i> Release building
+                            </button>
                     </div>
-                    <button type="button" id="btnReport" class="btn-report">Reports</button>
+                    <button type="button" id="btnReport" class="btn-report">
+                        <i class="bi bi-file-earmark-text"></i> Reports
+                    </button>
                 </div>
             </div>
 
@@ -203,10 +228,10 @@
             <span class="close-btn">&times;</span>
 
             <h2>List of Keys
-                <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold"
-                    id="addKey"><i class="bi bi-plus"></i></button>
-                <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold"
-                    id="removeKey"><i class="bi bi-arrow-repeat"></i></button>
+                <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addKey"><i
+                        class="bi bi-plus"></i></button>
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold" id="removeKey"><i
+                        class="bi bi-arrow-repeat"></i></button>
             </h2>
 
             <div class="table-container">
@@ -280,8 +305,12 @@
 
                 <input type="hidden" id="isAccommodation" value="false">
 
-                <button type="submit" class="modal-button" id="save-button">Save</button>
-                <button type="button" class="modal-button" id="move-button">Move Soldier</button>
+                <button type="submit" class="modal-button" id="save-button">
+                    <i class="bi bi-save"></i> Save
+                </button>
+                <button type="button" class="modal-button" id="move-button">
+                    <i class="bi bi-arrows-move"></i> Move Soldier
+                </button>
             </div>
         </div>
     </form>
@@ -395,6 +424,97 @@
         </form>
     </div>
 
+    <div id="soldierListModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2>List of Soldiers
+                <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addSoldier"><i
+                        class="bi bi-plus"></i></button>
+                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold" id="removeSoldier"><i
+                        class="bi bi-dash"></i></button>
+            </h2>
+
+            <div class="table-container">
+                <table id="soldierTable">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="text" class="search-input-soldier" placeholder="Search...">
+                                <label id="soldier-number-header">Soldier number</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-soldier" placeholder="Search...">
+                                <label id="soldier-name-header">Soldier name</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-soldier" placeholder="Search...">
+                                <label id="soldier-country-header">Soldier country</label>
+                            </th>
+
+                        </tr>
+                    </thead>
+                    <tbody id="tableBodyModal">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- The Modal for Add Soldier -->
+    <div id="editSoldierModal" class="modal">
+        <form class="modal-content" action="/accommodation/editSoldier" method="POST" id="form11">
+            <span class="close-btn">&times;</span>
+
+            <h2>Edit soldier</h2>
+
+            <input type="hidden" id="edit-old-soldier-id" name="oldSoldierId" value="">
+
+            <div class="mb-3">
+                <label for="edit-soldier-number" class="form-label">Soldier Number <span class="text-danger">*</span></label>
+                <div class="input-group">
+                    <input type="text" id="edit-soldier-number" name="editSoldierId" class="form-control"
+                        placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="edit-soldier-name" class="form-label">Soldier Name <span class="text-danger">*</span></label>
+                <div class="input-group">
+                    <input type="text" id="edit-soldier-name" name="editSoldierName" class="form-control"
+                        placeholder="Soldier Name" pattern="^[0-9]+ [A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="edit-soldier-country" class="form-label">Soldier Country <span class="text-danger">*</span></label>
+                <div class="input-group">
+                    <input type="text" id="edit-soldier-country" name="editSoldierCountry" class="form-control"
+                        placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+            </div>
+
+            <!-- Buttons for confirming the selection -->
+            <div class="button-container">
+                <button type="submit" id="editSoldierButton" class="modal-button">
+                    <i class="bi bi-pencil-square"></i> Edit
+                </button>
+            </div>
+
+        </form>
+    </div>
+
     <!-- The Modal for Add Soldier -->
     <div id="addSoldierModal" class="modal">
         <form class="modal-content" action="/accommodation/addSoldier" method="POST" id="form4">
@@ -403,49 +523,46 @@
             <h2>Add soldier</h2>
 
             <div class="mb-3">
-                <label for="soldier-number" class="form-label">Soldier Number:</label>
+                <label for="soldier-number" class="form-label">Soldier Number <span class="text-danger">*</span></label>
                 <div class="input-group">
                     <input type="text" id="soldier-number" name="soldierId" class="form-control"
                         placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
 
-                    <div class="invalid-feedback">
-                        Please enter a valid soldier number (only letters and numbers)
-                    </div>
+                    <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
             </div>
 
             <div class="mb-3">
-                <label for="soldier-name" class="form-label">Soldier Name:</label>
+                <label for="soldier-name" class="form-label">Soldier Name <span class="text-danger">*</span></label>
                 <div class="input-group">
                     <input type="text" id="soldier-name" name="soldierName" class="form-control"
                         placeholder="Soldier Name" pattern="^[0-9]+ [A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$">
 
-                    <div class="invalid-feedback">
-                        Please enter a valid soldier name (only letters, numbers, space and dash)
-                    </div>
+                    <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
             </div>
 
             <div class="mb-3">
-                <label for="soldier-country" class="form-label">Soldier Country:</label>
+                <label for="soldier-country" class="form-label">Soldier Country <span class="text-danger">*</span></label>
                 <div class="input-group">
                     <input type="text" id="soldier-country" name="soldierCountry" class="form-control"
                         placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
 
-                    <div class="invalid-feedback">
-                        Please enter a valid soldier country (only letters and space)
-                    </div>
+                    <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
             </div>
 
             <!-- Buttons for confirming the selection -->
             <div class="button-container">
-                <button type="submit" id="confirmReportBtnAddSoldier" class="modal-button">Add soldier</button>
-                <button type="button" id="confirmReportBtnAddMultiSoldier" class="modal-button">Add multiple
-                    soldiers</button>
+                <button type="submit" id="confirmReportBtnAddSoldier" class="modal-button">
+                    <i class="bi bi-person-plus"></i> Add soldier
+                </button>
+                <button type="button" id="confirmReportBtnAddMultiSoldier" class="modal-button">
+                    <i class="bi bi-people"></i> Add multiple soldiers
+                </button>
             </div>
 
         </form>
@@ -460,7 +577,7 @@
             </h2>
 
             <div class="mb-3">
-                <label for="fileInput" class="form-label">Upload File:</label>
+                <label for="fileInput" class="form-label">Upload File <span class="text-danger">*</span></label>
                 <input type="file" id="fileInput" class="form-control" accept=".xlsx">
                 <!-- Accept specific file types -->
             </div>
@@ -470,7 +587,9 @@
                 </div>
             </div>
 
-            <button type="button" id="upload-btn" class="modal-button">Upload</button>
+            <button type="button" id="upload-btn" class="modal-button">
+                <i class="bi bi-upload"></i> Upload
+            </button>
         </div>
     </div>
 
@@ -483,7 +602,7 @@
                         class="bi bi-download"></i></a></h2>
 
             <div class="mb-3">
-                <label for="fileInputSoldier" class="form-label">Upload File:</label>
+                <label for="fileInputSoldier" class="form-label">Upload File <span class="text-danger">*</span></label>
                 <input type="file" id="fileInputSoldier" class="form-control" accept=".xlsx">
                 <!-- Accept specific file types -->
             </div>
@@ -493,7 +612,9 @@
                 </div>
             </div>
 
-            <button type="button" id="upload-multi-soldier-btn" class="modal-button">Upload</button>
+            <button type="button" id="upload-multi-soldier-btn" class="modal-button">
+                <i class="bi bi-upload"></i> Upload
+            </button>
         </div>
     </div>
 
@@ -504,7 +625,8 @@
 
             <h2>⚠ Release building ⚠</h2>
 
-            <p>To release all rooms in selected building you need to enter <span id="randomText" class="code-style"></span> in the field
+            <p>To release all rooms in selected building you need to enter <span id="randomText"
+                    class="code-style"></span> in the field
                 below</p>
             <input type="hidden" id="randomTextValue" value="">
 
@@ -527,7 +649,9 @@
                 <div class="valid-feedback"></div>
             </div>
 
-            <button type="submit" id="delete-soldier-btn" class="modal-button-release">Release</button>
+            <button type="submit" id="delete-soldier-btn" class="modal-button-release">
+                <i class="bi bi-trash"></i> Release
+            </button>
         </form>
     </div>
 
@@ -539,7 +663,7 @@
             <h2>Add destination</h2>
 
             <div class="mb-3">
-                <label for="build-id" class="form-label">Building Number:</label>
+                <label for="build-id" class="form-label">Building Number <span class="text-danger">*</span></label>
                 <input type="text" id="build-id" name="buildId" class="form-control" placeholder="Building Number">
 
                 <div class="invalid-feedback">
@@ -549,7 +673,7 @@
             </div>
 
             <div class="mb-3">
-                <label for="build-name" class="form-label">Building Name:</label>
+                <label for="build-name" class="form-label">Building Name <span class="text-danger">*</span></label>
                 <input type="text" id="build-name" name="buildName" class="form-control" placeholder="Building Name">
 
                 <div class="invalid-feedback">
@@ -559,7 +683,7 @@
             </div>
 
             <div class="mb-3">
-                <label for="build-type" class="form-label">Building Type:</label>
+                <label for="build-type" class="form-label">Building Type <span class="text-danger">*</span></label>
                 <input type="text" id="build-type" name="buildType" class="form-control" placeholder="Building Type">
 
                 <div class="invalid-feedback">
@@ -568,7 +692,9 @@
                 <div class="valid-feedback"></div>
             </div>
 
-            <button type="submit" id="add-destination-btn" class="modal-button">Add destination</button>
+            <button type="submit" id="add-destination-btn" class="modal-button">
+                <i class="bi bi-plus-circle"></i> Add destination
+            </button>
 
         </form>
     </div>
@@ -581,7 +707,7 @@
             <h2>Add Room</h2>
 
             <div class="mb-3">
-                <label for="room-id" class="form-label">Room Number:</label>
+                <label for="room-id" class="form-label">Room Number <span class="text-danger">*</span></label>
                 <input type="text" id="room-id" name="roomId" class="form-control" placeholder="Room Number">
 
                 <div class="invalid-feedback">
@@ -591,7 +717,7 @@
             </div>
 
             <div class="mb-3">
-                <label for="room-name" class="form-label">Room Name:</label>
+                <label for="room-name" class="form-label">Room Name <span class="text-danger">*</span></label>
                 <input type="text" id="room-name" name="roomName" class="form-control" pattern="^[^\/]+\/.+$"
                     placeholder="Room Name">
 
@@ -605,7 +731,9 @@
 
             <input type="hidden" id="click-build" name="clickBuild">
 
-            <button type="submit" id="add-room-btn" class="modal-button">Add room</button>
+            <button type="submit" id="add-room-btn" class="modal-button">
+                <i class="bi bi-plus-circle"></i> Add room
+            </button>
 
         </form>
     </div>
@@ -619,7 +747,7 @@
 
             <!-- Room Selection with Custom Search -->
             <div class="mb-3 search-container" id="search-room-container">
-                <label for="roomSearch" class="form-label">Room Name:</label>
+                <label for="roomSearch" class="form-label">Room Name <span class="text-danger">*</span></label>
                 <div class="input-group">
                     <input type="text" id="roomSearch" class="form-control" placeholder="Room Name">
 
@@ -633,7 +761,9 @@
 
             <input type="hidden" id="click-build" name="clickBuild">
 
-            <button type="submit" id="add-room-btn" class="modal-button">Remove room</button>
+            <button type="submit" id="add-room-btn" class="modal-button">
+                <i class="bi bi-trash"></i> Remove room
+            </button>
 
         </form>
     </div>
@@ -646,7 +776,7 @@
             <h2>Add Key</h2>
 
             <div class="mb-3">
-                <label for="key-id" class="form-label">Key Number:</label>
+                <label for="key-id" class="form-label">Key Number <span class="text-danger">*</span></label>
                 <input type="text" id="key-id" name="keyId" class="form-control" placeholder="Key Number">
 
                 <div class="invalid-feedback">
@@ -656,7 +786,7 @@
             </div>
 
             <div class="mb-3">
-                <label for="key-name" class="form-label">Key Name:</label>
+                <label for="key-name" class="form-label">Key Name <span class="text-danger">*</span></label>
                 <input type="text" id="key-name" name="keyName" class="form-control" pattern="^[^\/]+\/[^\/]+\/.+$"
                     placeholder="Key Name">
 
@@ -670,7 +800,9 @@
 
             <input type="hidden" id="selected-room-for-key" name="selectedRoomForKey">
 
-            <button type="submit" id="add-room-btn" class="modal-button">Add key</button>
+            <button type="submit" id="add-room-btn" class="modal-button">
+                <i class="bi bi-plus-circle"></i> Add key
+            </button>
 
         </form>
     </div>
@@ -683,7 +815,7 @@
             <h2>Replace Key</h2>
 
             <div class="mb-3 search-container" id="search-key-container">
-                <label for="keySearch" class="form-label">Old key name:</label>
+                <label for="keySearch" class="form-label">Old key name <span class="text-danger">*</span></label>
                 <div class="input-group">
                     <input type="text" id="keySearch" class="form-control" placeholder="Key name">
 
@@ -695,7 +827,7 @@
                 <!-- To store the selected soldier ID -->
             </div>
 
-            <label for="newKeyName" class="form-label">New key code:</label>
+            <label for="newKeyName" class="form-label">New key code <span class="text-danger">*</span></label>
             <div class="input-group">
                 <input type="text" id="newKeyName" class="form-control" placeholder="Key code">
 
@@ -703,7 +835,9 @@
                 <div class="valid-feedback"></div>
             </div>
 
-            <button type="submit" id="remove-room-btn" class="modal-button">Replace key</button>
+            <button type="submit" id="remove-room-btn" class="modal-button">
+                <i class="bi bi-arrow-repeat"></i> Replace key
+            </button>
 
         </form>
     </div>

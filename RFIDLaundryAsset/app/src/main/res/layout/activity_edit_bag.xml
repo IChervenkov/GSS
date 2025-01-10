@@ -1,10 +1,85 @@
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".EditBag">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <AutoCompleteTextView
+            android:id="@+id/bagAutoCompleteTextView"
+            android:layout_width="650px"
+            android:layout_height="wrap_content"
+            android:hint="Select Code"
+            android:layout_marginTop="250dp"
+            tools:ignore="MissingConstraints"
+            tools:text="Select Bag Code"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_centerHorizontal="true"/>
+
+        <TextView
+            android:id="@+id/epcTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/bagAutoCompleteTextView"
+            android:text="EPC code: None"
+            android:textSize="24sp"
+            android:layout_marginTop="20dp"
+            android:layout_centerHorizontal="true"
+            android:gravity="center" />
+
+        <EditText
+            android:id="@+id/bagCodeEditText"
+            android:layout_width="650px"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/epcTextView"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:hint="Enter bag code"
+            android:minHeight="48dp"
+            android:padding="10dp"
+            android:textSize="18sp" />
+
+        <EditText
+            android:id="@+id/bagTypeEditText"
+            android:layout_width="650px"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/bagCodeEditText"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:hint="Enter bag type"
+            android:minHeight="48dp"
+            android:padding="10dp"
+            android:textSize="18sp" />
+
+        <EditText
+            android:id="@+id/bagMaxWashEditText"
+            android:layout_width="650px"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/bagTypeEditText"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:hint="Enter maximum number of washes"
+            android:minHeight="48dp"
+            android:padding="10dp"
+            android:textSize="18sp"
+            android:inputType="number" />
+
+        <Button
+            android:id="@+id/editButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Edit bag"
+            android:layout_below="@id/bagMaxWashEditText"
+            android:layout_marginTop="20dp"
+            android:layout_centerHorizontal="true"
+            android:textColor="@android:color/white"
+            android:backgroundTint="@android:color/holo_green_dark"/>
+
+    </RelativeLayout>
+</ScrollView>

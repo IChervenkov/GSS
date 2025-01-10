@@ -80,7 +80,7 @@ body {
     margin: 15px 0;
 }
 
-.left-nav ul li a {
+.left-nav ul li button.main-button {
     text-decoration: none;
     color: #333;
     font-size: 1.2em;
@@ -88,14 +88,23 @@ body {
     padding: 10px;
     display: block;
     transition: background-color 0.3s, color 0.3s;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
 }
 
-/* Hover effect for navigation links */
-.left-nav ul li a:hover {
+/* Hover effect for the main button */
+.left-nav ul li button.main-button:hover {
     background-color: #28a745;
     /* Same green as top-nav */
     color: white;
     border-radius: 5px;
+}
+
+.left-nav button.main-button:hover .name-add {
+    font-size: 0.8em;
+    color: white;
 }
 
 /* Content Area */
@@ -136,9 +145,15 @@ thead th {
 
 /* Hover effect for table rows */
 .main-content table tbody tr:hover,
-#keyModal table tbody tr:hover {
+#keyModal table tbody tr:hover,
+#soldierListModal table tbody tr:hover {
     background-color: #f1f1f1;
     cursor: pointer;
+}
+
+#soldierListModal .modal-content {
+    height: 80vh;
+    margin-top: 0;
 }
 
 tbody tr:nth-child(even) {
@@ -431,11 +446,6 @@ thead th input:focus {
     color: #888;
 }
 
-.left-nav a:hover .name-add {
-    font-size: 0.8em;
-    color: white;
-}
-
 /* Styling for the custom dropdown */
 .search-container {
     position: relative;
@@ -496,8 +506,6 @@ thead th input:focus {
 }
 
 .btn-report {
-    flex: 1;
-    /* Ensures buttons are the same width */
     padding: 5px 10px 5px 10px;
     border: none;
     border-radius: 5px;
@@ -850,6 +858,15 @@ thead th input:focus {
     position: relative;
 }
 
+.disabled-row {
+    opacity: 0.5;
+    position: relative;
+}
+
+#keyModal table tbody tr.disabled-row:hover {
+    cursor: not-allowed;
+}
+
 .button-container-report {
     display: none;
 }
@@ -949,7 +966,7 @@ thead th input:focus {
 
     .virtual-warehouse-labels {
         display: grid;
-        grid-template-columns: repeat(2, auto);
+        grid-template-columns: repeat(1, auto);
         gap: 10px;
         text-align: center;
         width: 100%;
@@ -959,6 +976,10 @@ thead th input:focus {
         padding: 10px;
         font-size: 14px;
     }
+
+    .visualization-header .row .col-md-auto h3 div {
+        margin-bottom: 20px;
+    }    
 
     .modal-content-view {
         width: 350px;
@@ -1056,7 +1077,8 @@ thead th input:focus {
     }
 
     body.no-scroll {
-        overflow: hidden; /* Disable scrolling on the main page */
+        overflow: hidden;
+        /* Disable scrolling on the main page */
     }
 
     /* Add an active class to show the left-nav */

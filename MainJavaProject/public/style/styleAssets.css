@@ -57,6 +57,46 @@ thead th input:focus {
     outline: none;
 }
 
+.modal-body {
+    display: flex;
+    justify-content: space-between;
+    gap: 30px;
+}
+
+.form-section {
+    flex: 1;
+}
+
+.table-section {
+    flex: 3;
+    overflow-x: auto;
+    text-align: center;
+}
+
+#lostAssetsModal .modal-content {
+    margin-left: 20%;
+    max-width: 60%;
+}
+
+#assetDescription {
+    max-height: 250px;
+    height: 250px;
+}
+
+#assetDescription::-webkit-scrollbar {
+    /* display: none; */
+    width: 10px;
+}
+
+#assetDescription::-webkit-scrollbar-thumb {
+    background-color: #28a745;
+    border-radius: 4px;
+}
+
+#assetDescription::-webkit-scrollbar-thumb:hover {
+    background-color: #28a745;
+}
+
 /* Horizontal Navigation Bar Styles */
 .horizontal-nav {
     background-color: #28a745;
@@ -144,11 +184,10 @@ td {
     height: auto;
 }
 
-/* Left Sidebar */
+/* Left Sidebar Styles */
 .left-nav {
     width: 290px;
     background-color: #f4f4f4;
-    /* Light green background */
     padding: 20px;
     padding-top: 0px;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
@@ -180,7 +219,8 @@ td {
     margin: 15px 0;
 }
 
-.left-nav ul li a {
+/* Button Styles for Navigation Items */
+.left-nav ul li button {
     text-decoration: none;
     color: #333;
     font-size: 1.2em;
@@ -188,19 +228,33 @@ td {
     padding: 10px;
     display: block;
     transition: background-color 0.3s, color 0.3s;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
 }
 
 /* Hover effect for navigation links */
-.left-nav ul li a:hover {
+.left-nav ul li button:hover {
     background-color: #28a745;
     /* Same green as top-nav */
     color: white;
     border-radius: 5px;
 }
 
-.left-nav a:hover .name-add {
+.left-nav button:hover .name-add {
     font-size: 0.8em;
     color: white;
+}
+
+/* Apply focus styles when the button or its parent retains focus */
+.left-nav ul li button.focus-persistent {
+    background-color: #28a745;
+    /* Green color */
+    color: white;
+    /* White text */
+    border-radius: 5px;
+    /* Rounded corners */
 }
 
 .visualization-header {
@@ -467,7 +521,10 @@ input[type="checkbox"] {
 #subLocationDropdown,
 #addTypeDropdown,
 #addLocationDropdown,
-#addSubLocationDropdown {
+#addSubLocationDropdown,
+#removeAssetTypeDropdown,
+#lostAssetNameDropdown,
+#assetLocationDropdown {
     list-style-type: none;
     padding: 0;
     margin: 0;
@@ -487,7 +544,10 @@ input[type="checkbox"] {
 #subLocationDropdown li,
 #addTypeDropdown li,
 #addLocationDropdown li,
-#addSubLocationDropdown li {
+#addSubLocationDropdown li,
+#removeAssetTypeDropdown li,
+#lostAssetNameDropdown li,
+#assetLocationDropdown li {
     padding: 10px;
     cursor: pointer;
 }
@@ -498,7 +558,10 @@ input[type="checkbox"] {
 #subLocationDropdown li:hover,
 #addTypeDropdown li:hover,
 #addLocationDropdown li:hover,
-#addSubLocationDropdown li:hover {
+#addSubLocationDropdown li:hover,
+#removeAssetTypeDropdown li:hover,
+#lostAssetNameDropdown li:hover,
+#assetLocationDropdown li:hover {
     background-color: #218838;
     color: white;
 }
@@ -509,7 +572,10 @@ input[type="checkbox"] {
 #subLocationDropdown.list-group::-webkit-scrollbar,
 #addTypeDropdown.list-group::-webkit-scrollbar,
 #addLocationDropdown.list-group::-webkit-scrollbar,
-#addSubLocationDropdown.list-group::-webkit-scrollbar {
+#addSubLocationDropdown.list-group::-webkit-scrollbar,
+#removeAssetTypeDropdown.list-group::-webkit-scrollbar,
+#lostAssetNameDropdown.list-group::-webkit-scrollbar,
+#assetLocationDropdown.list-group::-webkit-scrollbar {
     width: 10px;
 }
 
@@ -519,7 +585,10 @@ input[type="checkbox"] {
 #subLocationDropdown.list-group::-webkit-scrollbar-thumb,
 #addTypeDropdown.list-group::-webkit-scrollbar-thumb,
 #addLocationDropdown.list-group::-webkit-scrollbar-thumb,
-#addSubLocationDropdown.list-group::-webkit-scrollbar-thumb {
+#addSubLocationDropdown.list-group::-webkit-scrollbar-thumb,
+#removeAssetTypeDropdown.list-group::-webkit-scrollbar-thumb,
+#lostAssetNameDropdown.list-group::-webkit-scrollbar-thumb,
+#assetLocationDropdown.list-group::-webkit-scrollbar-thumb {
     background-color: #28a745;
     border-radius: 4px;
 }
@@ -530,6 +599,9 @@ input[type="checkbox"] {
 #subLocationDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #addTypeDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #addLocationDropdown.list-group::-webkit-scrollbar-thumb:hover,
-#addSubLocationDropdown.list-group::-webkit-scrollbar-thumb:hover {
+#addSubLocationDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#removeAssetTypeDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#lostAssetNameDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#assetLocationDropdown.list-group::-webkit-scrollbar-thumb:hover {
     background-color: #1e7e34;
 }

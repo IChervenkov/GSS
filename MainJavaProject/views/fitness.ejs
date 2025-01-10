@@ -13,6 +13,8 @@
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+
 </head>
 
 <body>
@@ -21,11 +23,28 @@
     <div class="horizontal-nav">
         <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
         <ul id="nav-links">
-            <% horizontalNavItems.forEach(function(item) { %>
-                <li><a href="<%= item.href %>">
-                        <%= item.name %>
-                    </a></li>
-                <% }); %>
+            <% horizontalNavItems.forEach(item => { %>
+                <li>
+                    <a href="<%= item.href %>">
+                        <% if (item.name.toLowerCase() === 'bicycles') { %>
+                            <i class="bi bi-bicycle"></i>
+                        <% } else if (item.name.toLowerCase() === 'main page') { %>
+                            <i class="bi bi-house-door"></i>
+                        <% } else if (item.name.toLowerCase() === 'assets') { %>
+                            <i class="bi bi-box"></i>
+                        <% } else if (item.name.toLowerCase() === 'laundry') { %>
+                            <i class="bi bi-water"></i>
+                        <% } else if (item.name.toLowerCase() === 'gym') { %>
+                            <i class="bi bi-activity"></i>
+                        <% } else if (item.name.toLowerCase() === 'accommodation and keys') { %>
+                            <i class="bi bi-key"></i>
+                        <% } else if (item.name.toLowerCase() === 'logout') { %>
+                            <i class="bi bi-box-arrow-right"></i>
+                        <% } %>
+                        <span><%= item.name %></span>
+                    </a>
+                </li>
+            <% }); %>
         </ul>
     </div>
 
@@ -38,7 +57,9 @@
 
         <!-- Left Navigation Bar -->
         <div class="left-nav">
-            <button type="button" id="btnFiltering" class="modal-btn w-100">Filtering</button>
+            <button type="button" id="btnFiltering" class="modal-btn w-100">
+                <i class="bi bi-funnel"></i> Filtering
+            </button>
 
             <!-- Container for two side-by-side calendars -->
             <div class="calendar-container">
@@ -108,7 +129,9 @@
                     <label id="percentVeryHappy" class="virtual-warehouse-label">Total Very Happy (😁): <%=
                             dataPerEmj.percent_very_happy %></label>
 
-                    <button type="button" id="btnReport" class="btn-report">Report</button>
+                    <button type="button" id="btnReport" class="btn-report">
+                        <i class="bi bi-file-earmark-text"></i> Report
+                    </button>
                 </div>
             </div>
 

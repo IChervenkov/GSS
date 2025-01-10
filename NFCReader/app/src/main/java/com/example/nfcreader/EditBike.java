@@ -53,7 +53,7 @@ public class EditBike extends AppCompatActivity {
         submitButton = findViewById(R.id.editButton);
         bikeNameText = findViewById(R.id.bikeNameEditText);
 
-        // Fetch client from the server
+        // Fetch bike from the server
         fetchAvailableBikes();
 
         bikeAutoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> {

@@ -1,0 +1,62 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+android {
+    namespace 'com.example.rfidlaundryasset'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.rfidlaundryasset"
+        minSdk 30
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    // add the code from below line.
+    applicationVariants.all{
+            // this method is use to rename your all apk weather
+            // it may be signed or unsigned(debug apk)
+        variant ->
+            variant.outputs.each{
+                    // on below line we are setting a
+                    // name to our apk as GFG.apk
+                output->
+                    def name = "RFIDLaundryAsset-${versionName}-release.apk"
+                    // on below line we are setting the
+                    // outputFile Name to our apk file.
+                    output.outputFileName = name
+            }
+    }
+}
+
+dependencies {
+
+    implementation libs.appcompat
+    implementation libs.material
+    implementation libs.activity
+    implementation libs.constraintlayout
+    testImplementation libs.junit
+    androidTestImplementation libs.ext.junit
+    androidTestImplementation libs.espresso.core
+
+    implementation libs.retrofit
+    implementation libs.converter.gson
+
+    //noinspection GradlePath
+    implementation files("C:/Users/ivajl/Desktop/GSS/API_Ver20231208/DeviceAPI_20231208/DeviceAPI_ver20231208_release.aar")
+}

@@ -9,8 +9,25 @@ document.addEventListener('DOMContentLoaded', function () {
     const assetsAddModal = document.getElementById('addAssetsModal');
     const assetsAddModalContent = assetsAddModal.querySelector('.modal-content');
 
+    const addAssetsTypeModal = document.getElementById("addAssetsTypeModal");
+    const addAssetsTypeModalContent = addAssetsTypeModal.querySelector('.modal-content');
+
+    const removeAssetsTypeModal = document.getElementById("removeAssetsTypeModal");
+    const removeAssetsTypeModalContent = removeAssetsTypeModal.querySelector('.modal-content');
+
+    const lostAssetsModal = document.getElementById('lostAssetsModal');
+    const lostAssetsModalContent = lostAssetsModal.querySelector('.modal-content');
+
     const modalMess = document.getElementById("myMessage");
     const modalMessContent = modalMess.querySelector('.modal-content-mess');
+
+    const lostAssetSearchInput = document.getElementById('lostAssetName');
+    const lostAssetSearchDropdown = document.getElementById('lostAssetNameDropdown');
+    const selectedLostAssetId = document.getElementById('selectedLostAssetNameId');
+
+    const lostAssetLocationSearchInput = document.getElementById('assetLocation');
+    const lostAssetLocationSearchDropdown = document.getElementById('assetLocationDropdown');
+    const selectedLostAssetLocationId = document.getElementById('selectedAssetLocationId');
 
     const assetSearchInput = document.getElementById('assetSearch');
     const assetSearchDropdown = document.getElementById('assetDropdown');
@@ -27,6 +44,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const typeAddSearchInput = document.getElementById('addTypeSearch');
     const typeAddSearchDropdown = document.getElementById('addTypeDropdown');
     const selectedAddTypeId = document.getElementById('selectedAddTypeId');
+
+    const removeAssetTypeSearchInput = document.getElementById('removeAssetTypeSearch');
+    const removeAssetTypeDropdown = document.getElementById('removeAssetTypeDropdown');
+    const selectedRemoveAssetId = document.getElementById('selectedRemoveAssetId');
 
     const locationSearchInput = document.getElementById('locationSearch');
     const locationSearchDropdown = document.getElementById('locationDropdown');
@@ -45,6 +66,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedAddSubLocationId = document.getElementById('selectedAddSubLocationId');
 
     const assetName = document.getElementById('assetName');
+    const assetAddType = document.getElementById('assetType');
 
     // Track sort order and priority for each column
     let sortOrder = {
@@ -68,20 +90,21 @@ document.addEventListener('DOMContentLoaded', function () {
     var nameAssetSetCount;
     var assetType;
     var assetLocation;
+    var assetSubLocation;
     var uniqueRooms;
+    var lostAssetsCode;
+    var lostAssetsLocation;
 
     var allCheckedRow = [];
     var oldAssetNameKey;
     var isInfo = true;
-
-    var numBuild = document.getElementById('numBuild').value;
 
     const toggleInputValidity = (input, isValid) => {
         input.classList.toggle('is-valid', isValid);
         input.classList.toggle('is-invalid', !isValid);
     };
 
-    fetch(`/assets/getSortedRoom?numBuild=${numBuild}`, {
+    fetch(`/assets/getSortedRoom`, {
         method: 'POST'
     })
         .then(response => response.json())
@@ -89,15 +112,27 @@ document.addEventListener('DOMContentLoaded', function () {
             // Parse the JSON string into an array of objects
             nameroomSetCount = data;
         })
-        .catch(error => console.error("Error fetching keys:", error));
+        .catch(error => console.error("Error fetching room:", error));
 
     fetch(`/assets/getAllType`, {
-        method: 'GET'
+        method: 'POST'
     })
         .then(response => response.json())
         .then(data => {
             // Parse the JSON string into an array of objects
             assetType = data;
+        })
+        .catch(error => console.error("Error fetching keys:", error));
+
+    fetch(`/allAssets`, {
+        method: 'GET'
+    })
+        .then(response => response.json())
+        .then(data => {
+            // Parse the JSON string into an array of objects
+            lostAssetsCode = data.assets;
+            lostAssetsLocation = data.locations;
+
         })
         .catch(error => console.error("Error fetching keys:", error));
 
@@ -107,11 +142,21 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.json())
         .then(data => {
             // Parse the JSON string into an array of objects
+            assetSubLocation = data;
+        })
+        .catch(error => console.error("Error fetching keys:", error));
+
+    fetch(`/asset/keys`, {
+        method: 'GET'
+    })
+        .then(response => response.json())
+        .then(data => {
+            // Parse the JSON string into an array of objects
             assetLocation = data;
             uniqueRooms = Array.from(
                 new Map(
                     data
-                        .filter(row => row.roomid != null) // Exclude rows with null roomid
+                        // .filter(row => row.roomid != null) // Exclude rows with null roomid
                         .map(row => [row.roomid, { roomid: row.roomid, nameroom: row.nameroom }])
                 ).values()
             );
@@ -240,18 +285,30 @@ document.addEventListener('DOMContentLoaded', function () {
         headerCheckbox.style.backgroundColor = ''; // Clear any previous color
 
         headerCheckbox.addEventListener('change', (event) => {
-            headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
             const isChecked = event.target.checked;
-            document.querySelectorAll('.form-check-input:not(.header-checkbox)').forEach(checkbox => {
-                checkbox.checked = isChecked;
-                if (isChecked) {
-                    checkbox.style.backgroundColor = 'green';
-                    allCheckedRow.push({ code: checkbox.dataset.id });
-                } else {
-                    checkbox.style.backgroundColor = '';
-                    allCheckedRow = [];
+            headerCheckbox.style.backgroundColor = isChecked ? 'green' : '';
+
+            // Get all visible rows
+            const visibleRows = Array.from(document.querySelectorAll('.data-asset')).filter(row => row.style.display !== 'none');
+
+            visibleRows.forEach(row => {
+                const checkbox = row.querySelector('.form-check-input:not(.header-checkbox)');
+                if (checkbox) {
+                    checkbox.checked = isChecked;
+                    checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                    if (isChecked) {
+                        allCheckedRow.push({ code: checkbox.dataset.id });
+                    } else {
+                        allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
+                    }
                 }
             });
+
+            // Remove duplicates from allCheckedRow if needed
+            if (isChecked) {
+                allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
+                    .map(code => ({ code }));
+            }
         });
 
         // Append the header checkbox to the table header
@@ -420,6 +477,90 @@ document.addEventListener('DOMContentLoaded', function () {
             assetSearchDropdown.style.display = 'none';
 
             toggleInputValidity(assetSearchInput, true);
+        }
+    });
+
+    function filterLostAsset(query) {
+        lostAssetSearchDropdown.innerHTML = '';
+        const filteredAsset = lostAssetsCode.filter(asset => asset.code.toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredAsset.length > 0) {
+            lostAssetSearchDropdown.style.display = 'block';
+            filteredAsset.forEach(asset => {
+                const li = document.createElement('li');
+                li.textContent = asset.code;
+                li.setAttribute('data-id', asset.id);
+                lostAssetSearchDropdown.appendChild(li);
+            });
+        } else {
+            lostAssetSearchDropdown.style.display = 'none';
+        }
+    }
+
+    // Handle input change
+    lostAssetSearchInput.addEventListener('input', function () {
+        const query = lostAssetSearchInput.value;
+        if (query.length > 0) {
+            filterLostAsset(query);
+        } else {
+            lostAssetSearchDropdown.style.display = 'none';
+            selectedLostAssetId.value = '';
+
+            toggleInputValidity(lostAssetSearchInput, false);
+        }
+    });
+
+    // Handle bike selection
+    lostAssetSearchDropdown.addEventListener('click', function (event) {
+        const selectedAsset = event.target;
+        if (selectedAsset && selectedAsset.dataset.id) {
+            lostAssetSearchInput.value = selectedAsset.textContent;
+            selectedLostAssetId.value = selectedAsset.getAttribute('data-id');
+            lostAssetSearchDropdown.style.display = 'none';
+
+            toggleInputValidity(lostAssetSearchInput, true);
+        }
+    });
+
+    function filterLostAssetLocation(query) {
+        lostAssetLocationSearchDropdown.innerHTML = '';
+        const filteredAssetLocation = lostAssetsLocation.filter(asset => asset.name.toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredAssetLocation.length > 0) {
+            lostAssetLocationSearchDropdown.style.display = 'block';
+            filteredAssetLocation.forEach(asset => {
+                const li = document.createElement('li');
+                li.textContent = asset.name;
+                li.setAttribute('data-id', asset.id);
+                lostAssetLocationSearchDropdown.appendChild(li);
+            });
+        } else {
+            lostAssetLocationSearchDropdown.style.display = 'none';
+        }
+    }
+
+    // Handle input change
+    lostAssetLocationSearchInput.addEventListener('input', function () {
+        const query = lostAssetLocationSearchInput.value;
+        if (query.length > 0) {
+            filterLostAssetLocation(query);
+        } else {
+            lostAssetLocationSearchDropdown.style.display = 'none';
+            selectedLostAssetLocationId.value = '';
+
+            toggleInputValidity(lostAssetLocationSearchInput, false);
+        }
+    });
+
+    // Handle bike selection
+    lostAssetLocationSearchDropdown.addEventListener('click', function (event) {
+        const selectedAssetLocation = event.target;
+        if (selectedAssetLocation && selectedAssetLocation.dataset.id) {
+            lostAssetLocationSearchInput.value = selectedAssetLocation.textContent;
+            selectedLostAssetLocationId.value = selectedAssetLocation.getAttribute('data-id');
+            lostAssetLocationSearchDropdown.style.display = 'none';
+
+            toggleInputValidity(lostAssetLocationSearchInput, true);
         }
     });
 
@@ -666,7 +807,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered soldiers in the dropdown
     function filterAddSubLocation(query) {
         addSubLocationSearchDropdown.innerHTML = '';
-        const filteredSubLocation = assetLocation.filter(location => selectedAddLocationId.value === location.roomid && location.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredSubLocation = assetSubLocation.filter(location => selectedAddLocationId.value === location.roomid && location.name.toLowerCase().includes(query.toLowerCase()));
 
         if (filteredSubLocation.length > 0) {
             addSubLocationSearchDropdown.style.display = 'block';
@@ -706,8 +847,67 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Show filtered soldiers in the dropdown
+    function filterRemoveType(query) {
+        removeAssetTypeDropdown.innerHTML = '';
+        const filteredType = assetType.filter(type => type.name !== 'Bed' && type.name.toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredType.length > 0) {
+            removeAssetTypeDropdown.style.display = 'block';
+            filteredType.forEach(type => {
+                const li = document.createElement('li');
+                li.textContent = type.name;
+                li.setAttribute('data-id', type.id);
+                removeAssetTypeDropdown.appendChild(li);
+            });
+        } else {
+            removeAssetTypeDropdown.style.display = 'none';
+        }
+    }
+
+    // Handle input change
+    removeAssetTypeSearchInput.addEventListener('input', function () {
+        const query = removeAssetTypeSearchInput.value;
+        if (query.length > 0) {
+            filterRemoveType(query);
+        } else {
+            removeAssetTypeDropdown.style.display = 'none';
+            selectedRemoveAssetId.value = '';
+
+            toggleInputValidity(removeAssetTypeSearchInput, false);
+        }
+    });
+
+    // Handle bike selection
+    removeAssetTypeDropdown.addEventListener('click', function (event) {
+        const selectedType = event.target;
+        if (selectedType && selectedType.dataset.id) {
+            removeAssetTypeSearchInput.value = selectedType.textContent;
+            selectedRemoveAssetId.value = selectedType.getAttribute('data-id');
+            removeAssetTypeDropdown.style.display = 'none';
+
+            toggleInputValidity(removeAssetTypeSearchInput, true);
+        }
+    });
+
     assetName.addEventListener('input', () => {
         toggleInputValidity(assetName, assetName.value !== '' && assetName.checkValidity());
+    });
+
+    assetAddType.addEventListener('input', () => {
+        toggleInputValidity(assetAddType, assetAddType.value !== '' && assetAddType.checkValidity());
+    });
+
+    assetEps.addEventListener('input', () => {
+        toggleInputValidity(assetEps, assetEps.value !== '' && assetEps.checkValidity());
+    });
+
+    assetCodeSearch.addEventListener('input', () => {
+        toggleInputValidity(assetCodeSearch, assetCodeSearch.value !== '' && assetCodeSearch.checkValidity());
+    });
+
+    assetAddName.addEventListener('input', () => {
+        toggleInputValidity(assetAddName, assetAddName.value !== '' && assetAddName.checkValidity());
     });
 
     function showMess(type, message) {
@@ -801,6 +1001,106 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    function openAddAssetsTypeModal() {
+        // Add the slide-in effect by adding the necessary classes
+        addAssetsTypeModal.classList.add('show');
+        addAssetsTypeModalContent.classList.add('show');
+        addAssetsTypeModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        addAssetsTypeModalContent.classList.remove('slide-out');
+    }
+
+    function closeAddAssetsTypeModal() {
+
+        // Add the slide-out effect
+        addAssetsTypeModalContent.classList.add('slide-out');
+        addAssetsTypeModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('#assetType').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+
+            });
+
+            addAssetsTypeModal.classList.remove('show');
+            addAssetsTypeModalContent.classList.remove('show');
+
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openLostAssetsModal() {
+        lostAssetsModal.classList.add('show');
+        lostAssetsModalContent.classList.add('show');
+        lostAssetsModalContent.classList.add('slide-in');
+        lostAssetsModalContent.classList.remove('slide-out');
+    }
+
+    function closeLostAssetsModal() {
+        // Add the slide-out effect
+        lostAssetsModalContent.classList.add('slide-out');
+        lostAssetsModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('#lostAssetName, #selectedLostAssetNameId, #assetLocation, #selectedAssetLocationId, #assetDescription').forEach((input) => {
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+            });
+
+            lostAssetSearchDropdown.style.display = 'none';
+            lostAssetLocationSearchDropdown.style.display = 'none';
+
+            lostAssetsModal.classList.remove('show');
+            lostAssetsModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openRemoveAssetsTypeModal() {
+        // Add the slide-in effect by adding the necessary classes
+        removeAssetsTypeModal.classList.add('show');
+        removeAssetsTypeModalContent.classList.add('show');
+        removeAssetsTypeModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        removeAssetsTypeModalContent.classList.remove('slide-out');
+    }
+
+    function closeRemoveAssetsTypeModal() {
+
+        // Add the slide-out effect
+        removeAssetsTypeModalContent.classList.add('slide-out');
+        removeAssetsTypeModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('#removeAssetTypeSearch, #selectedRemoveAssetId').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+
+            });
+
+            removeAssetTypeDropdown.style.display = 'none';
+
+            removeAssetsTypeModal.classList.remove('show');
+            removeAssetsTypeModalContent.classList.remove('show');
+
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
     function openEditAssetsModal(assetCode, name, type, location, assetNameKey) {
 
         assetSearchInput.value = assetCode;
@@ -812,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedTypeId.value = assetType.find(item => item.name === type).id;
 
         locationSearchInput.value = location;
-        selectedLocationId.value = assetLocation.find(item => item.nameroom === location).roomid;
+        selectedLocationId.value = assetLocation.find(item => item.nameroom === location) ? assetLocation.find(item => item.nameroom === location).roomid : '';
 
         if (selectedTypeId.value !== '1') {
             subLocationSearchInput.disabled = true;
@@ -821,10 +1121,10 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedSubLocationId.value = '';
         } else {
             subLocationSearchInput.disabled = false;
-            subLocationSearchInput.value = assetNameKey;
-            selectedSubLocationId.value = assetLocation.find(item => item.name === assetNameKey).id;
+            subLocationSearchInput.value = assetNameKey !== 'There is no associated key' ? assetNameKey : '';
+            selectedSubLocationId.value = assetLocation.find(item => item.name === assetNameKey) ? assetLocation.find(item => item.name === assetNameKey).id : '';
+            console.log(assetNameKey);
         }
-
 
         // Add the slide-in effect by adding the necessary classes
         assetsEditModal.classList.add('show');
@@ -892,18 +1192,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 headerCheckbox.style.backgroundColor = ''; // Clear any previous color
 
                 headerCheckbox.addEventListener('change', (event) => {
-                    headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
                     const isChecked = event.target.checked;
-                    document.querySelectorAll('.form-check-input:not(.header-checkbox)').forEach(checkbox => {
-                        checkbox.checked = isChecked;
-                        if (isChecked) {
-                            checkbox.style.backgroundColor = 'green';
-                            allCheckedRow.push({ code: checkbox.dataset.id });
-                        } else {
-                            checkbox.style.backgroundColor = '';
-                            allCheckedRow = [];
+                    headerCheckbox.style.backgroundColor = isChecked ? 'green' : '';
+
+                    // Get all visible rows
+                    const visibleRows = Array.from(document.querySelectorAll('.data-asset')).filter(row => row.style.display !== 'none');
+
+                    visibleRows.forEach(row => {
+                        const checkbox = row.querySelector('.form-check-input:not(.header-checkbox)');
+                        if (checkbox) {
+                            checkbox.checked = isChecked;
+                            checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                            if (isChecked) {
+                                allCheckedRow.push({ code: checkbox.dataset.id });
+                            } else {
+                                allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
+                            }
                         }
                     });
+
+                    // Remove duplicates from allCheckedRow if needed
+                    if (isChecked) {
+                        allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
+                            .map(code => ({ code }));
+                    }
                 });
 
                 // Append the header checkbox to the table header
@@ -1023,7 +1335,10 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[0].onclick = closeAssetsModal;
     document.getElementsByClassName('close-btn')[1].onclick = closeEditAssetsModal;
     document.getElementsByClassName('close-btn')[2].onclick = closeAddAssetsModal;
-    document.getElementsByClassName('close-btn')[3].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[3].onclick = closeAddAssetsTypeModal;
+    document.getElementsByClassName('close-btn')[4].onclick = closeRemoveAssetsTypeModal;
+    document.getElementsByClassName('close-btn')[5].onclick = closeLostAssetsModal;
+    document.getElementsByClassName('close-btn')[6].onclick = closeMessModal;
 
     // Close the modal if the user clicks outside of it
     window.onclick = function (event) {
@@ -1044,6 +1359,18 @@ document.addEventListener('DOMContentLoaded', function () {
             case assetsAddModal:
                 closeAddAssetsModal();
                 break;
+
+            case addAssetsTypeModal:
+                closeAddAssetsTypeModal();
+                break;
+
+            case removeAssetsTypeModal:
+                closeRemoveAssetsTypeModal();
+                break;
+
+            case lostAssetsModal:
+                closeLostAssetsModal();
+                break;
         }
     };
 
@@ -1063,6 +1390,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!subLocationSearchDropdown.contains(event.target) && event.target !== subLocationSearchDropdown) {
             subLocationSearchDropdown.style.display = 'none';
+        }
+
+        if (!addLocationSearchDropdown.contains(event.target) && event.target !== addLocationSearchDropdown) {
+            addLocationSearchDropdown.style.display = 'none';
+        }
+
+        if (!addSubLocationSearchDropdown.contains(event.target) && event.target !== addSubLocationSearchDropdown) {
+            addSubLocationSearchDropdown.style.display = 'none';
+        }
+
+        if (!typeAddSearchDropdown.contains(event.target) && event.target !== typeAddSearchDropdown) {
+            typeAddSearchDropdown.style.display = 'none';
+        }
+
+        if (!removeAssetTypeDropdown.contains(event.target) && event.target !== removeAssetTypeDropdown) {
+            removeAssetTypeDropdown.style.display = 'none';
         }
     });
 
@@ -1095,6 +1438,82 @@ document.addEventListener('DOMContentLoaded', function () {
         sortTableAssetsData('namekey');
     });
 
+    // Add event listeners to the buttons
+    document.getElementById('btnAddTypeAsset').addEventListener('click', () => {
+        openAddAssetsTypeModal();
+    });
+
+    document.getElementById('btnRemoveTypeAsset').addEventListener('click', () => {
+        openRemoveAssetsTypeModal();
+    });
+
+    document.getElementById('btnLostAsset').addEventListener('click', () => {
+        openLostAssetsModal();
+    });
+
+    document.querySelector('.left-nav').addEventListener('click', function (event) {
+        if (event.target.tagName === 'BUTTON') {
+            const id = event.target.id;
+            var updateData = [];
+
+            document.querySelectorAll('.left-nav ul li button').forEach(btn => {
+                btn.classList.remove('focus-persistent');
+            });
+
+            // Add focus class to the clicked button
+            event.target.classList.add('focus-persistent');
+
+            fetch(`/assets/getSortedRoom?numBuild=${id}`, {
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // Parse the JSON string into an array of objects
+                    nameroomSetCount = data;
+                })
+                .catch(error => console.error("Error fetching room:", error));
+
+            fetch(`/assets?numBuild=${id}`, {
+                method: 'GET'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // Parse the JSON string into an array of objects
+                    updateData = data;
+
+                    // Update the table with the fetched data
+                    const tbody = document.getElementById('tableBody');
+                    tbody.innerHTML = '';
+
+                    updateData.forEach(item => {
+                        const row = document.createElement("tr");
+                        row.classList.add('data-room');
+                        row.setAttribute("id", item.id);
+
+                        // Room number cell
+                        const nameroomCell = document.createElement("td");
+                        nameroomCell.textContent = item.name;
+                        row.appendChild(nameroomCell);
+
+                        // Room status cell
+                        const quantityCell = document.createElement("td");
+                        quantityCell.textContent = item.quantity;
+                        row.appendChild(quantityCell);
+
+                        // Attach click event for each row
+                        row.addEventListener('click', function (event) {
+                            const rowId = event.currentTarget.id;
+                            openAssetsModal(rowId);
+                        });
+
+                        // Append row to the table body
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => console.error("Error fetching room:", error));
+        }
+    });
+
     document.querySelectorAll('.data-room').forEach((element) => {
         element.addEventListener('click', (event) => {
             const rowId = event.currentTarget.id;
@@ -1119,26 +1538,50 @@ document.addEventListener('DOMContentLoaded', function () {
         submitButton.addEventListener('click', async () => {
 
             isRemove = true;
+            hasError = false;
 
-            for (const data of allCheckedRow) {
+            try {
+                for (const data of allCheckedRow) {
+                    const checkResponse = await fetch('/assets/checkDeleteAsset', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
 
-                const response = await fetch('/assets/deleteAsset', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                });
-
-                result = await response.json();
-
-                if (!response.ok) {
-                    hasError = true;
+                    if (!checkResponse.ok) {
+                        hasError = true;
+                        result = await checkResponse.json();
+                        break;
+                    }
                 }
+
+                if (!hasError) {
+                    for (const data of allCheckedRow) {
+                        const deleteResponse = await fetch('/assets/deleteAsset', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(data),
+                        });
+
+                        if (!deleteResponse.ok) {
+                            hasError = true;
+                            result = await deleteResponse.json();
+                            break;
+                        }
+                    }
+                }
+            } catch (error) {
+                hasError = true;
+                result = { message: 'An error occurred while processing the request.' };
             }
 
             closeMessModal();
         });
+
         modalMessContent.appendChild(submitButton);
 
         // Wait for the modal to close, then check if the submit button was clicked
@@ -1154,7 +1597,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const closeWarningObserver = new MutationObserver(() => {
             if (!modalMess.classList.contains('show') && isRemove) {
                 closeWarningObserver.disconnect();
-                if (isSubmit && !hasError) {
+                if (isRemove && !hasError) {
                     showMess('Info', 'The selected assets have been removed');
                 } else if (hasError) {
                     showMess('Error', result.message);
@@ -1178,6 +1621,18 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('form2').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
+    document.getElementById('form3').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
+    document.getElementById('form4').addEventListener('keypress', function (event) {
         if (event.key === 'Enter') {
             event.preventDefault();
         }
@@ -1220,28 +1675,74 @@ document.addEventListener('DOMContentLoaded', function () {
             assetSubLocation: selectedSubLocationId.value
         };
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showMess('Error', errorData.message);
-            } else {
-                const data = await response.json();
-                showMess('Info', data.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
             }
+        });
 
-            closeEditAssetsModal();
+        modalMessContent.appendChild(submitButton);
 
-        } catch (error) {
-            showMess('Error', `Network error: ${error.message}`);
-        }
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeEditAssetsModal();
+                    showMess('Info', 'The asset has been updated');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while updating the asset');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'Are you sure you want to update this asset?');
     };
 
     document.getElementById('form2').onsubmit = async function (event) {
@@ -1287,27 +1788,241 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedAddSubLocationId: selectedAddSubLocationId.value
         };
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showMess('Error', errorData.message);
-            } else {
-                const data = await response.json();
-                showMess('Info', data.message);
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
             }
+        });
 
-            closeAddAssetsModal();
+        modalMessContent.appendChild(submitButton);
 
-        } catch (error) {
-            showMess('Error', `Network error: ${error.message}`);
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeAddAssetsModal();
+                    showMess('Info', 'The asset has been added');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while adding the asset');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'Are you sure you want to add this asset?');
+    };
+
+    document.getElementById('form3').onsubmit = async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        if (assetAddType.value === '' || !assetAddType.checkValidity()) {
+            toggleInputValidity(assetAddType, false);
+            return;
         }
+
+        const data = {
+            assetType: assetAddType.value
+        };
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
+            }
+        });
+
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeAddAssetsTypeModal();
+                    showMess('Info', 'The asset type has been added');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while adding the asset type');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'Are you sure you want to add this asset type?');
+    };
+
+    document.getElementById('form4').onsubmit = async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        if (selectedRemoveAssetId.value === '') {
+            toggleInputValidity(removeAssetTypeSearchInput, false);
+            return;
+        }
+
+        const data = {
+            assetTypeId: selectedRemoveAssetId.value
+        };
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            try {
+
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
+            }
+        });
+
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeRemoveAssetsTypeModal();
+                    showMess('Info', 'The asset type has been removed');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while removing the asset type');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'Are you sure you want to remove this asset type?');
     };
 });

@@ -5,6 +5,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
         const filters = document.querySelectorAll(`.${filterClass}`);
 
+
+        // Reset the header checkbox (if present)
+        const headerCheckbox = table.querySelector('.header-checkbox');
+        if (headerCheckbox) {
+            headerCheckbox.checked = false;
+            headerCheckbox.style.backgroundColor = '';
+        }
+
         // Show all rows initially
         for (let i = 0; i < rows.length; i++) {
             rows[i].style.display = '';
@@ -18,7 +26,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     const cells = rows[i].getElementsByTagName('td');
 
                     // Skip the first column if tableId is 'assetTable'
-                    const effectiveColumnIndex = tableId === 'assetTable' ? columnIndex + 1 : columnIndex;
+                    let effectiveColumnIndex;
+                    switch (tableId) {
+                        case 'assetTable':
+                        case 'soldierTable':
+                        case 'bagsTable':
+                            effectiveColumnIndex = columnIndex + 1;
+                            break;
+                        default:
+                            effectiveColumnIndex = columnIndex;
+                            break;
+                    }
 
                     const cellToCheck = cells[effectiveColumnIndex];
                     if (cellToCheck) {
@@ -50,4 +68,6 @@ document.addEventListener('DOMContentLoaded', function () {
     attachFilterEvents('bikeUsageTable', 'search-input-view-bike');
     attachFilterEvents('bikeTotalsTable', 'search-input-view-total-bike');
     attachFilterEvents('assetTable', 'asset-search-input');
+    attachFilterEvents('soldierTable', 'search-input-soldier');
+    attachFilterEvents('bagsTable', 'laundry-search-input');
 });
