@@ -2025,7 +2025,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
-                        if (error.type === 'Duplicate') {
+                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB') {
                             closeAddMultiSoldierModal();
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {

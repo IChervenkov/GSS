@@ -288,15 +288,19 @@ const schemaRenameKey = Joi.object({
 });
 
 const schemaAddSoldier = Joi.object({
-    soldierId: Joi.string().alphanum().required(),
-    soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$/).required(),
+    soldierId: Joi.alternatives().try(
+        Joi.string().pattern(/^\d+$/), // Numeric string
+        Joi.string().pattern(/^unknown\d+$/), // Numeric string
+        Joi.number().integer()        // Number
+    ).required(),
+    soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
     soldierCountry: Joi.string().alphanum().required()
 });
 
 const schemaEditSoldier = Joi.object({
     soldierId: Joi.string().alphanum().required(),
     soldierNewId: Joi.string().alphanum().required(),
-    soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$/).required(),
+    soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
     soldierCountry: Joi.string().alphanum().required()
 });
 
@@ -2884,69 +2888,70 @@ class Server {
         });
 
         this.app.post('/accommodation/uploadSoldier', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
-
             const client = await pool.connect();
             const errors = [];
-
+        
             try {
-
                 await client.query('BEGIN');
-
+        
                 if (!req.file) {
                     await client.query('ROLLBACK');
                     return res.status(400).json({ error: 'No file uploaded.' });
                 }
-
+        
                 const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 const data = XLSX.utils.sheet_to_json(worksheet);
-
-                await Promise.all(data.map(async (row) => {
-
+        
+                // Set to track unique soldierIds in the file
+                const seenIds = new Set();
+        
+                await Promise.all(data.map(async (row, index) => {
                     const { error } = schemaAddSoldier.validate(row);
-
+        
                     if (error) {
-                        errors.push({ type: 'Validation', details: error.details, row });
+                        errors.push({ type: 'Validation', details: error.details, row, index });
                         return;
                     }
-
-                    // Inside the backend function, when checking for duplicates
+        
+                    // Check for duplicates within the file
+                    if (seenIds.has(row.soldierId)) {
+                        errors.push({ type: 'DuplicateInFile', row, index, message: `Duplicate soldierId '${row.soldierId}' in the file.` });
+                        return;
+                    }
+                    seenIds.add(row.soldierId);
+        
+                    // Check for duplicates in the database
                     const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [row.soldierId]);
-
                     if (result.rows.length > 0) {
-                        // Duplicate soldierId found
-                        errors.push({ type: 'Duplicate', soldierId: row.soldierId, message: `Soldier '${row.soldierName}' already exists.` });
-                        return;
+                        errors.push({ type: 'DuplicateInDB', soldierId: row.soldierId, message: `Soldier '${row.soldierName}' already exists.` });
                     }
-
                 }));
-
+        
                 if (errors.length > 0) {
                     await client.query('ROLLBACK');
                     return res.status(400).json({ message: 'Some rows could not be processed', errors });
                 }
-
+        
                 await Promise.all(data.map(async (row) => {
                     await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [row.soldierId, row.soldierName, row.soldierCountry]);
                 }));
-
-                // Query the database for the user
+        
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [req.session.username, `Add multi soldier`]);
-
+        
                 await client.query('COMMIT');
                 return res.status(200).json({ message: 'File processed successfully' });
-
+        
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Error processing file:', error);
                 res.status(500).json({ error: 'An error occurred while processing the file.' });
-
             } finally {
                 client.release();
             }
-        });
+        });        
 
         this.app.get('/accommodation/uploadSoldier/download', async (req, res) => {
 
