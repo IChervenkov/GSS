@@ -24,28 +24,30 @@
     <div class="horizontal-nav">
         <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
         <ul id="nav-links">
-            <% horizontalNavItems.forEach(item => { %>
+            <% horizontalNavItems.forEach(item=> { %>
                 <li>
                     <a href="<%= item.href %>">
-                        <% if (item.name.toLowerCase() === 'bicycles') { %>
+                        <% if (item.name.toLowerCase()==='bicycles' ) { %>
                             <i class="bi bi-bicycle"></i>
-                        <% } else if (item.name.toLowerCase() === 'main page') { %>
-                            <i class="bi bi-house-door"></i>
-                        <% } else if (item.name.toLowerCase() === 'assets') { %>
-                            <i class="bi bi-box"></i>
-                        <% } else if (item.name.toLowerCase() === 'laundry') { %>
-                            <i class="bi bi-water"></i>
-                        <% } else if (item.name.toLowerCase() === 'gym') { %>
-                            <i class="bi bi-activity"></i>
-                        <% } else if (item.name.toLowerCase() === 'accommodation and keys') { %>
-                            <i class="bi bi-key"></i>
-                        <% } else if (item.name.toLowerCase() === 'logout') { %>
-                            <i class="bi bi-box-arrow-right"></i>
-                        <% } %>
-                        <span><%= item.name %></span>
+                            <% } else if (item.name.toLowerCase()==='main page' ) { %>
+                                <i class="bi bi-house-door"></i>
+                                <% } else if (item.name.toLowerCase()==='assets' ) { %>
+                                    <i class="bi bi-box"></i>
+                                    <% } else if (item.name.toLowerCase()==='laundry' ) { %>
+                                        <i class="bi bi-water"></i>
+                                        <% } else if (item.name.toLowerCase()==='gym' ) { %>
+                                            <i class="bi bi-activity"></i>
+                                            <% } else if (item.name.toLowerCase()==='accommodation and keys' ) { %>
+                                                <i class="bi bi-key"></i>
+                                                <% } else if (item.name.toLowerCase()==='logout' ) { %>
+                                                    <i class="bi bi-box-arrow-right"></i>
+                                                    <% } %>
+                                                        <span>
+                                                            <%= item.name %>
+                                                        </span>
                     </a>
                 </li>
-            <% }); %>
+                <% }); %>
         </ul>
     </div>
 
@@ -132,13 +134,14 @@
                             <!-- To store the selected soldier ID -->
                         </div>
                     </div>
-                    
+
                     <label class="virtual-warehouse-label">Free Beds: <%= totalFreeBeds %></label>
                     <label class="virtual-warehouse-label">Occupied Beds: <%= totalOccupiedBeds %></label>
 
                     <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
-                            <button type="button" id="btnListSoldier" class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
+                            <button type="button" id="btnListSoldier"
+                                class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
                                 <i class="bi bi-person"></i> List of soldier
                             </button>
                     </div>
@@ -473,7 +476,8 @@
             <input type="hidden" id="edit-old-soldier-id" name="oldSoldierId" value="">
 
             <div class="mb-3">
-                <label for="edit-soldier-number" class="form-label">Soldier Number <span class="text-danger">*</span></label>
+                <label for="edit-soldier-number" class="form-label">Soldier Number <span
+                        class="text-danger">*</span></label>
                 <div class="input-group">
                     <input type="text" id="edit-soldier-number" name="editSoldierId" class="form-control"
                         placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
@@ -484,7 +488,8 @@
             </div>
 
             <div class="mb-3">
-                <label for="edit-soldier-name" class="form-label">Soldier Name <span class="text-danger">*</span></label>
+                <label for="edit-soldier-name" class="form-label">Soldier Name <span
+                        class="text-danger">*</span></label>
                 <div class="input-group">
                     <input type="text" id="edit-soldier-name" name="editSoldierName" class="form-control"
                         placeholder="Soldier Name" pattern="^[0-9]+ [A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$">
@@ -495,7 +500,8 @@
             </div>
 
             <div class="mb-3">
-                <label for="edit-soldier-country" class="form-label">Soldier Country <span class="text-danger">*</span></label>
+                <label for="edit-soldier-country" class="form-label">Soldier Country <span
+                        class="text-danger">*</span></label>
                 <div class="input-group">
                     <input type="text" id="edit-soldier-country" name="editSoldierCountry" class="form-control"
                         placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
@@ -545,7 +551,8 @@
             </div>
 
             <div class="mb-3">
-                <label for="soldier-country" class="form-label">Soldier Country <span class="text-danger">*</span></label>
+                <label for="soldier-country" class="form-label">Soldier Country <span
+                        class="text-danger">*</span></label>
                 <div class="input-group">
                     <input type="text" id="soldier-country" name="soldierCountry" class="form-control"
                         placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
@@ -653,6 +660,10 @@
                 <i class="bi bi-trash"></i> Release
             </button>
         </form>
+    </div>
+
+    <div id="loadingIndicator" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
     </div>
 
     <!-- Modal Structure -->

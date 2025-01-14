@@ -109,6 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const enterCode = document.getElementById("deleteCode");
 
     const isAccommodation = document.getElementById('isAccommodation');
+    const loadingIndicator = document.getElementById('loadingIndicator');
 
     let soldiers = [];
     let rooms = [];
@@ -1844,6 +1845,8 @@ document.addEventListener('DOMContentLoaded', function () {
         submitButton.classList.add('btn', 'btn-success');
         submitButton.addEventListener('click', async () => {
 
+            loadingIndicator.style.display = 'flex';
+
             for (const data of allCheckedRow) {
 
                 isRemove = true;
@@ -1863,6 +1866,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 result = await response.json();
             }
 
+            loadingIndicator.style.display = 'none';
             closeGlobalMessModal();
         });
 
@@ -2274,6 +2278,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -2293,6 +2299,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
