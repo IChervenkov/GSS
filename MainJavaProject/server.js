@@ -311,9 +311,9 @@ const schemaRemoveSoldier = Joi.object({
 const schemaUploadSoldier = Joi.object({
     namekey: Joi.string().pattern(/^[A-Za-z0-9]+\/[A-Za-z0-9]+\/[A-Za-z0-9]+$/).required(),
     keynumber: Joi.string().alphanum().required(),
-    soldierid: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).optional(),
-    mealcard: Joi.string().alphanum().optional(),
-    laundrybag: Joi.string().alphanum().optional()
+    soldierid: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).required(),
+    mealcard: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).optional(),
+    laundrybag: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).optional()
 });
 
 const schemaSaveSoldier = Joi.object({
@@ -3111,8 +3111,6 @@ class Server {
 
                     const result_exist = await client.query("SELECT * FROM soldier WHERE id = $1;", [row.soldierid]);
 
-                    const result_check_bag = await client.query("SELECT * FROM laundrybags where code = $1;", [row.laundrybag]);
-
                     if (result.rows.length > 0) {
                         // Duplicate soldierId found
                         errors.push({ type: 'CheckId', message: `Soldier with number '${row.soldierid}' is already accommodation.` });
@@ -3123,6 +3121,12 @@ class Server {
                         errors.push({ type: 'CheckExist', message: `Soldier with number '${row.soldierid}' is not exists.` });
                         return;
                     }
+
+                    if(!row.laundrybag) {
+                        return;
+                    }
+
+                    const result_check_bag = await client.query("SELECT * FROM laundrybags where code = $1;", [row.laundrybag]);
 
                     if (result_check_bag.rows.length === 0) {
                         errors.push({ type: 'CheckBag', message: `The bag with number '${row.laundrybag}' is not exists.` });
@@ -3145,6 +3149,11 @@ class Server {
                         return;
                     }
 
+                    const mealCardValue = row.mealcard ? row.mealcard : null;
+                    const laundryBagValue = row.laundrybag
+                        ? bagSet.find(code => code.code === row.laundrybag)?.id
+                        : null;
+
                     await client.query(
                         "UPDATE key SET soldierid = $1 WHERE id = $2;",
                         [row.soldierid, row.keynumber]
@@ -3152,7 +3161,7 @@ class Server {
 
                     await client.query(
                         "UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3, used_room = $4 WHERE id = $1;",
-                        [row.soldierid, row.mealcard, bagSet.find(code => code.code === row.laundrybag).id, row.keynumber]
+                        [row.soldierid, mealCardValue, laundryBagValue, row.keynumber]
                     );
 
                 }));
