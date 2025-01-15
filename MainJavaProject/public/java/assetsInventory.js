@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(error => console.error("Error fetching keys:", error));
 
     fetch(`/asset/keys`, {
-        method: 'GET'
+        method: 'POST'
     })
         .then(response => response.json())
         .then(data => {

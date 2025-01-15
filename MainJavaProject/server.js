@@ -263,7 +263,8 @@ const schemaAddAsset = Joi.object({
     assetAddName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
     selectedAddTypeId: Joi.string().alphanum().required(),
     selectedAddLocationId: Joi.string().alphanum().required(),
-    selectedAddSubLocationId: Joi.string().alphanum().allow('').optional()
+    selectedAddSubLocationId: Joi.string().alphanum().allow('').optional(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaEditAsset = Joi.object({
@@ -4925,8 +4926,16 @@ class Server {
             }
         });
 
-        this.app.get('/asset/keys', this.isLoggedIn.bind(this), async (req, res) => {
-
+        this.app.post('/asset/keys', async (req, res) => {
+            
+            const { error } = shemaGetBags.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+        
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
+        
             const client = await pool.connect();
 
             try {
@@ -5267,12 +5276,15 @@ class Server {
             }
         });
 
-        this.app.post('/assets/addAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/assets/addAsset', async (req, res) => {
 
             const { error } = schemaAddAsset.validate(req.body);
             if (error) {
                 return res.status(400).send({ message: error.details[0].message });
             }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
 
             const { assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId } = req.body;
 
