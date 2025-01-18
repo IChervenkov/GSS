@@ -2867,7 +2867,7 @@ class Server {
 
                 const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [soldierNewId]);
 
-                if (result.rows.length > 0) {
+                if (soldierId !== soldierNewId && result.rows.length > 0) {
                     await client.query('ROLLBACK');
                     return res.status(400).json({ message: `Soldier with id: '${soldierNewId}' already exists.` });
                 }
@@ -4911,7 +4911,7 @@ class Server {
                     client.query(`
                         SELECT id, namebuilding AS name FROM buildings
                         UNION ALL
-                        SELECT id, namesoldier AS name FROM soldier
+                        SELECT id, namesoldier AS name FROM soldier WHERE date_accommodation IS NOT NULL AND date_free IS NULL
                     `),
                 ]);
         
