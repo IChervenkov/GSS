@@ -186,7 +186,7 @@ public class AddAsset extends AppCompatActivity {
                     String message = jsonResponse.optString("message", "Asset has been added successfully.");
                     runOnUiThread(() -> {
                         Toast.makeText(AddAsset.this, message, Toast.LENGTH_SHORT).show();
-                        navigateToLaundry();
+                        navigateToAssets();
                     });
                 } else {
                     handleError(response);
@@ -198,7 +198,7 @@ public class AddAsset extends AppCompatActivity {
         }).start();
     }
 
-    private void navigateToLaundry() {
+    private void navigateToAssets() {
         Intent intent = new Intent(AddAsset.this, Assets.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);

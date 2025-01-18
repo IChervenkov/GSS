@@ -17,6 +17,12 @@
         android:theme="@style/Theme.RFIDLaundryAsset"
         tools:targetApi="31">
         <activity
+            android:name=".DeleteAsset"
+            android:exported="false" />
+        <activity
+            android:name=".EditAsset"
+            android:exported="false" />
+        <activity
             android:name=".AddAsset"
             android:exported="false" />
         <activity

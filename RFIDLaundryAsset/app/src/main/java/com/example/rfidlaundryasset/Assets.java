@@ -28,7 +28,7 @@ public class Assets extends AppCompatActivity {
         findViewById(R.id.buttonEditAsset).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(Assets.this, EditBag.class);
+                Intent intent = new Intent(Assets.this, EditAsset.class);
                 startActivity(intent);
             }
         });
@@ -36,7 +36,7 @@ public class Assets extends AppCompatActivity {
         findViewById(R.id.buttonDeleteAsset).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(Assets.this, DeleteBag.class);
+                Intent intent = new Intent(Assets.this, DeleteAsset.class);
                 startActivity(intent);
             }
         });

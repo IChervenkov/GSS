@@ -125,14 +125,13 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(error => console.error("Error fetching keys:", error));
 
     fetch(`/allAssets`, {
-        method: 'GET'
+        method: 'POST'
     })
         .then(response => response.json())
         .then(data => {
             // Parse the JSON string into an array of objects
             lostAssetsCode = data.assets;
             lostAssetsLocation = data.locations;
-
         })
         .catch(error => console.error("Error fetching keys:", error));
 

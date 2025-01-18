@@ -242,7 +242,8 @@ const schemaSpecialAssets = Joi.object({
 });
 
 const schemaDeleteAsets = Joi.object({
-    code: Joi.string().alphanum().required()
+    code: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaAddAsetsType = Joi.object({
@@ -273,6 +274,17 @@ const schemaEditAsset = Joi.object({
     assetType: Joi.string().alphanum().required(),
     assetLocation: Joi.string().alphanum().required(),
     assetSubLocation: Joi.string().alphanum().allow('').optional()
+});
+
+const schemaEditAssetDevice = Joi.object({
+    oldCode: Joi.string().alphanum().required(),
+    newCode: Joi.string().alphanum().required(),
+    code: Joi.string().alphanum().required(),
+    name: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    type: Joi.string().alphanum().required(),
+    location: Joi.string().alphanum().required(),
+    subLocation: Joi.string().alphanum().allow('').optional(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaRemoveRoom = Joi.object({
@@ -335,11 +347,7 @@ const schemaNFCBikeRead = Joi.object({
 
 const schemaGetBagsByStatus = Joi.object({
     status: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
-})
-
-const schemaServerStart = Joi.object({
-    isValid: Joi.bool().required()
-})
+});
 
 const navItems = [];
 
@@ -422,7 +430,8 @@ class Server {
             cookie: {
                 secure: false,
                 httpOnly: true,
-                sameSite: 'strict'
+                sameSite: 'strict',
+                maxAge: 8 * 60 * 60 * 1000
             }
         }));
 
@@ -1423,7 +1432,7 @@ class Server {
                 });
 
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-                res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx');
+                res.setHeader('Content-Disposition', 'attachment; filename=report_bicycles.xlsx');
 
                 await workbook.xlsx.write(res);
 
@@ -2708,7 +2717,7 @@ class Server {
                 });
 
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-                res.setHeader('Content-Disposition', 'attachment; filename="report_laundry.xlsx"');
+                res.setHeader('Content-Disposition', 'attachment; filename="report_accommodation.xlsx"');
 
                 await workbook.xlsx.write(res);
                 res.end();
@@ -4873,55 +4882,76 @@ class Server {
 
     defineRoutesAssets() {
 
-        this.app.get('/allAssets', this.isLoggedIn.bind(this), async (req, res) => {
-
+        this.app.post('/allAssets', async (req, res) => {
+            const { error } = shemaGetBags.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+        
+            if (!req.body.isValidCode && !req.session?.username) {
+                return res.status(401).json({ message: "Unauthorized access: Invalid product code or session." });
+            }
+        
             const client = await pool.connect();
-
+        
             try {
-
+                // Optional transaction for consistent reads
                 await client.query('BEGIN');
-
-                const result = await client.query(`
-                    SELECT id AS id, code AS name FROM assets
-                    UNION ALL
-                    SELECT id AS id, namekey AS name FROM key
-                    UNION ALL
-                    SELECT id AS id, code AS name FROM laundrybags`);
-
-                const result_asset_location = await client.query(`
-                    SELECT id, namebuilding AS name FROM buildings
-                    UNION ALL
-                    SELECT id, namesoldier AS name FROM soldier`);
-
-                const result_key_data = result.rows;
-                const result_asset_location_data = result_asset_location.rows;
-
-                let total_res = [];
-                let total_res_location = [];
-
-                result_key_data.forEach(row => {
-                    total_res.push({
-                        id: row.id,
-                        code: row.name,
-                    });
-                });
-
-                result_asset_location_data.forEach(row => {
-                    total_res_location.push({
-                        id: row.id,
-                        name: row.name,
-                    });
-                });
-
+        
+                // Fetch all required data
+                const [resultAllAssets, resultKeys, resultLocations] = await Promise.all([
+                    client.query('SELECT * FROM assets'),
+                    client.query(`
+                        SELECT id AS id, code AS name FROM assets
+                        UNION ALL
+                        SELECT id AS id, namekey AS name FROM key
+                        UNION ALL
+                        SELECT id AS id, code AS name FROM laundrybags
+                    `),
+                    client.query(`
+                        SELECT id, namebuilding AS name FROM buildings
+                        UNION ALL
+                        SELECT id, namesoldier AS name FROM soldier
+                    `),
+                ]);
+        
+                // Process data
+                const assets = resultKeys.rows.map(row => ({
+                    id: row.id,
+                    code: row.name
+                }));
+        
+                const locations = resultLocations.rows.map(row => ({
+                    id: row.id,
+                    name: row.name
+                }));
+        
+                const allAssets = resultAllAssets.rows.map(row => ({
+                    id: row.id,
+                    code: row.code,
+                    name_assets: row.name_assets,
+                    type_id: row.type_id,
+                    location_id: row.location_room,
+                    sub_location_id: row.location_key
+                }));
+        
+                // Commit transaction (optional here)
                 await client.query('COMMIT');
-                return res.status(200).send({ assets: total_res, locations: total_res_location });
-
+        
+                // Send response
+                res.status(200).json({
+                    assets,
+                    locations,
+                    allAssets
+                });
+        
             } catch (error) {
+                // Rollback transaction if an error occurs
                 await client.query('ROLLBACK');
-                console.error('Error get asset:', error);
+                console.error('Error fetching assets:', error);
                 res.status(500).json({ message: 'An error occurred while processing the data.' });
-
             } finally {
+                // Release the client back to the pool
                 client.release();
             }
         });
@@ -5276,6 +5306,69 @@ class Server {
             }
         });
 
+        this.app.post('/assets/editAssetDevice', async (req, res) => {
+
+            const { error } = schemaEditAssetDevice.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { oldCode, newCode, code, name, type, location, subLocation } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                if(oldCode === newCode) {
+                    if (subLocation !== '') {
+                        await client.query(`UPDATE assets SET code = $2 name_assets = $3, type_id = $4, location_room = $5, location_key = $6 WHERE id = $1`,
+                            [newCode, code, name, type, location, subLocation]
+                        );
+                    } else {
+                        await client.query(`UPDATE assets SET code = $2, name_assets = $3, type_id = $4, location_room = $5, location_key = NULL WHERE id = $1`,
+                            [newCode, code, name, type, location]
+                        );
+                    }
+                } else {
+
+                    if (subLocation !== '') {
+
+                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6);`,
+                            [newCode, code, name, type, location, subLocation]
+                        );
+
+                        await client.query(`DELETE FROM assets WHERE id = $1`,
+                            [oldCode]
+                        );
+
+                    } else {
+                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5);`,
+                            [newCode, code, name, type, location]
+                        );
+
+                        await client.query(`DELETE FROM assets WHERE id = $1`,
+                            [oldCode]
+                        );
+                    }
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The asset was successfully update' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ error: 'Failed to edit asset.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.post('/assets/addAsset', async (req, res) => {
 
             const { error } = schemaAddAsset.validate(req.body);
@@ -5324,12 +5417,15 @@ class Server {
             }
         });
 
-        this.app.post('/assets/deleteAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/assets/deleteAsset', async (req, res) => {
 
             const { error } = schemaDeleteAsets.validate(req.body);
             if (error) {
                 return res.status(400).send({ message: error.details[0].message });
             }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
 
             const { code } = req.body;
 

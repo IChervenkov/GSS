@@ -557,7 +557,7 @@ document.addEventListener('DOMContentLoaded', function () {
             modalText.value = selectedDateMain.value;
             modalCheckBoxLabel.textContent = "Rent Now";
             toggleTimeSelection(modalCheckBox.checked); // Disable time selection if checkbox is checked
-            document.getElementById("action").value = rentBtn.textContent;
+            document.getElementById("action").value = "Rent";
 
             document.getElementById('longTermCheckbox').style.display = 'inline-block';
             document.getElementById('longTermCheckboxLabel').style.display = 'inline-block';
@@ -577,7 +577,7 @@ document.addEventListener('DOMContentLoaded', function () {
             modalText.value = selectedDateMain.value;
             modalCheckBoxLabel.textContent = "Return Now";
             toggleTimeSelection(modalCheckBox.checked); // Disable time selection if checkbox is checked
-            document.getElementById("action").value = returnBtn.textContent;
+            document.getElementById("action").value = "Return";
 
             document.getElementById('longTermCheckbox').style.display = 'none';
             document.getElementById('longTermCheckboxLabel').style.display = 'none';
