@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch bikes from the server
     async function fetchItem() {
 
-        loadingIndicator.style.disable = 'flex';
+        loadingIndicator.style.display = 'flex';
 
         try {
             const responseBike = await fetch(`/bikes`);
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('There was a problem with the fetch operation:', error);
 
         } finally {
-            loadingIndicator.style.disable = 'none';
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectMinute = document.getElementById('minuteSelect').value;
             const action = document.getElementById("action").value;
 
-            loadingIndicator.style.disable = 'flex';
+            loadingIndicator.style.display = 'flex';
 
             try {
                 // Fetch bike status
@@ -682,7 +682,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 openModal(modalMess, modalMessContent);
 
             } finally {
-                loadingIndicator.style.disable = 'none';
+                loadingIndicator.style.display = 'none';
             }
         };
     }
@@ -889,7 +889,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (bikeContent.length != 0) {
 
-            loadingIndicator.style.disable = 'flex';
+            loadingIndicator.style.display = 'flex';
 
             // Fetch bike data from server
             fetch(`/searchBikes`, {
@@ -936,7 +936,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error('Error fetching bike data:', error);
                 })
                 .finally(() => {
-                    loadingIndicator.style.disable = 'none';
+                    loadingIndicator.style.display = 'none';
                 });
         }
     });
@@ -955,7 +955,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (clientContent.length != 0) {
 
-            loadingIndicator.style.disable = 'flex';
+            loadingIndicator.style.display = 'flex';
 
             // Fetch bike data from server
             fetch(`/searchClient`, {
@@ -1002,14 +1002,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error('Error fetching bike data:', error);
                 })
                 .finally(() => {
-                    loadingIndicator.style.disable = 'none';
+                    loadingIndicator.style.display = 'none';
                 });
         }
     });
 
     async function fetchReport() {
 
-        loadingIndicator.style.disable = 'flex';
+        loadingIndicator.style.display = 'flex';
 
         try {
 
@@ -1058,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Error fetching the report:', error);
             
         } finally {
-            loadingIndicator.style.disable = 'none';
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -1083,7 +1083,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const message = document.getElementById('mess-text-rep');
         const btnYes = document.getElementById('btnMess');
 
-        loadingIndicator.style.disable = 'flex';
+        loadingIndicator.style.display = 'flex';
 
         try {
             const response = await fetch(this.action, {
@@ -1115,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', function () {
             this.reset();
 
         } finally {
-            loadingIndicator.style.disable = 'none';
+            loadingIndicator.style.display = 'none';
         }
     });
 
@@ -1158,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.disable = 'flex';
+            loadingIndicator.style.display = 'flex';
 
             try {
                 const response = await fetch(this.action, {
@@ -1182,7 +1182,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.disable = 'none';
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -1286,7 +1286,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.disable = 'flex';
+            loadingIndicator.style.display = 'flex';
 
             try {
                 const response = await fetch(this.action, {
@@ -1310,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.disable = 'none';
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -1437,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.disable = 'flex';
+            loadingIndicator.style.display = 'flex';
 
             try {
                 const response = await fetch(this.action, {
@@ -1461,7 +1461,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.disable = 'none';
+                loadingIndicator.style.display = 'none';
             }
         });
 
