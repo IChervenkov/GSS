@@ -46,6 +46,10 @@
     </ul>
   </div>
 
+  <div id="loadingIndicator" class="loading-overlay" style="display: none;">
+    <div class="spinner"></div>
+  </div>
+
   <div class="main-content">
 
     <button type="button" id="menu-toggle-left" class="menu-toggle-left" aria-label="Toggle sidebar navigation">
@@ -149,10 +153,6 @@
           <button type="button" class="download-btn <% if(username == 'guest') { %> disabled-button <% } %>"
             id="downloadBtn"><i class="bi bi-download"></i> Download App</button>
         </div>
-      </div>
-
-      <div id="loadingIndicator" class="loading-overlay" style="display: none;">
-        <div class="spinner"></div>
       </div>
 
       <div class="table-container">
@@ -631,22 +631,18 @@
 
       <div class="mb-3">
         <label for="bike-number" class="form-label">Bike Number <span class="text-danger">*</span></label>
-        <div class="input-group">
-          <input type="text" id="bike-number" name="bikeAddId" class="form-control"
-            placeholder="Bike number (e.g., AB1234)" pattern="^[A-Za-z0-9]+$">
-          <div class="invalid-feedback"></div>
-          <div class="valid-feedback"></div>
-        </div>
+        <input type="text" id="bike-number" name="bikeAddId" class="form-control"
+          placeholder="Bike number (e.g., AB1234)" pattern="^[A-Za-z0-9]+$">
+        <div class="invalid-feedback"></div>
+        <div class="valid-feedback"></div>
       </div>
 
       <div class="mb-3">
         <label for="bike-name" class="form-label">Bike Name <span class="text-danger">*</span></label>
-        <div class="input-group">
-          <input type="text" id="bike-name" name="bikeName" class="form-control"
-            placeholder="Bike name (e.g., 123/Bike Model)" pattern="^[0-9]+\/[A-Za-z\s]+$">
-          <div class="invalid-feedback"></div>
-          <div class="valid-feedback"></div>
-        </div>
+        <input type="text" id="bike-name" name="bikeName" class="form-control"
+          placeholder="Bike name (e.g., 123/Bike Model)" pattern="^[0-9]+\/[A-Za-z\s]+$">
+        <div class="invalid-feedback"></div>
+        <div class="valid-feedback"></div>
       </div>
 
       <!-- Buttons for confirming the selection -->
@@ -674,11 +670,9 @@
       <!-- Bike Selection with Custom Search -->
       <div class="mb-3 search-container">
         <label for="removeBikeSearch" class="form-label">Bike Name <span class="text-danger">*</span></label>
-        <div class="input-group">
-          <input type="text" id="removeBikeSearch" class="form-control" placeholder="Bike Name">
-          <div class="invalid-feedback"></div>
-          <div class="valid-feedback"></div>
-        </div>
+        <input type="text" id="removeBikeSearch" class="form-control" placeholder="Bike Name">
+        <div class="invalid-feedback"></div>
+        <div class="valid-feedback"></div>
         <ul id="removeBikeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
         <input type="hidden" id="selectedRemoveBikeId" name="removeBikeId" value="">
         <!-- To store the selected bike ID -->
@@ -732,7 +726,8 @@
 
       <!-- Bag Selection with Custom Search -->
       <div class="mb-3">
-        <label for="statusSelect" class="form-label text-start d-block">Status <span class="text-danger">*</span></label>
+        <label for="statusSelect" class="form-label text-start d-block">Status <span
+            class="text-danger">*</span></label>
         <select name="statusSelectId" class="form-select" id="statusSelect" aria-label="Select Status">
           <option selected>Select Status</option>
           <option value="Rented">Rented</option>
@@ -747,9 +742,7 @@
       <!-- Soldier Selection with Custom Search -->
       <div class="mt-3 mb-3 search-container" id="search-Soldier-container">
         <label class="form-label text-start d-block">Soldier Name <span class="text-danger">*</span></label>
-        <div class="input-group">
-          <input type="text" id="editSoldierSearch" class="form-control" placeholder="Soldier Name">
-        </div>
+        <input type="text" id="editSoldierSearch" class="form-control" placeholder="Soldier Name">
         <ul id="editSoldierDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
         <input type="hidden" id="selectedEditSoldierId" name="editSoldierId" value="">
         <!-- To store the selected Soldier ID -->
@@ -757,7 +750,8 @@
 
       <!-- Soldier Selection with Custom Search -->
       <div class="mt-3 mb-3 search-container">
-        <label for="editDateFrom" class="form-label text-start d-block">Date From <span class="text-danger">*</span></label>
+        <label for="editDateFrom" class="form-label text-start d-block">Date From <span
+            class="text-danger">*</span></label>
         <input type="datetime-local" id="editDateFrom" class="form-control" placeholder="Date From">
       </div>
 

@@ -1,6 +1,8 @@
 package com.example.nfcreader;
 
+import android.app.Dialog;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.nfc.NdefMessage;
@@ -185,6 +187,13 @@ public class ReturnBike extends AppCompatActivity {
                 .url("https://bunker.bg/readBikeNfc")  // Replace with your server URL
                 .post(body)
                 .build();
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(ReturnBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
 
         // Make the network call asynchronously
         client.newCall(request).enqueue(new Callback() {

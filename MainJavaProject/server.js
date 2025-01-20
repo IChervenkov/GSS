@@ -247,15 +247,21 @@ const schemaDeleteAsets = Joi.object({
 });
 
 const schemaAddAsetsType = Joi.object({
-    assetType: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
+    assetType: Joi.string().pattern(/^[a-zA-Z\s]+$/).required()
 });
 
 const schemaRemoveAsetsType = Joi.object({
-    assetTypeId: Joi.string().alphanum().required(),
+    assetTypeId: Joi.string().alphanum().required()
 });
 
 const schemaCheckAppCode = Joi.object({
     code: Joi.string().alphanum().required()
+});
+
+const schemaLostItems = Joi.object({
+    itemName: Joi.string().alphanum().required(),
+    description: Joi.string().pattern(/^[a-zA-Z0-9\s]*$/).required(),
+    soldierId: Joi.string().alphanum().required()
 });
 
 const schemaAddAsset = Joi.object({
@@ -2880,6 +2886,7 @@ class Server {
                     await client.query("UPDATE key SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
                     await client.query("UPDATE fitness SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
                     await client.query("UPDATE bikesoldier SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
+                    await client.query("UPDATE lostitem SET soldier_id = $1 WHERE soldier_id = $2;", [soldierNewId, soldierId]);
                     await client.query("DELETE FROM soldier WHERE id = $1;", [soldierId]);
                 }
 
@@ -3132,7 +3139,7 @@ class Server {
                         return;
                     }
 
-                    if(!row.laundrybag) {
+                    if (!row.laundrybag) {
                         return;
                     }
 
@@ -4887,19 +4894,19 @@ class Server {
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
-        
+
             if (!req.body.isValidCode && !req.session?.username) {
                 return res.status(401).json({ message: "Unauthorized access: Invalid product code or session." });
             }
-        
+
             const client = await pool.connect();
-        
+
             try {
                 // Optional transaction for consistent reads
                 await client.query('BEGIN');
-        
+
                 // Fetch all required data
-                const [resultAllAssets, resultKeys, resultLocations] = await Promise.all([
+                const [resultAllAssets, resultKeys, resultLocations, resultAllLostItem] = await Promise.all([
                     client.query('SELECT * FROM assets'),
                     client.query(`
                         SELECT id AS id, code AS name FROM assets
@@ -4909,23 +4916,24 @@ class Server {
                         SELECT id AS id, code AS name FROM laundrybags
                     `),
                     client.query(`
-                        SELECT id, namebuilding AS name FROM buildings
-                        UNION ALL
                         SELECT id, namesoldier AS name FROM soldier WHERE date_accommodation IS NOT NULL AND date_free IS NULL
                     `),
+                    client.query(`
+                        SELECT nameitem, description, namesoldier FROM lostitem l
+                        LEFT JOIN soldier s ON s.id = l.soldier_id;`)
                 ]);
-        
+
                 // Process data
                 const assets = resultKeys.rows.map(row => ({
                     id: row.id,
                     code: row.name
                 }));
-        
+
                 const locations = resultLocations.rows.map(row => ({
                     id: row.id,
                     name: row.name
                 }));
-        
+
                 const allAssets = resultAllAssets.rows.map(row => ({
                     id: row.id,
                     code: row.code,
@@ -4934,17 +4942,24 @@ class Server {
                     location_id: row.location_room,
                     sub_location_id: row.location_key
                 }));
-        
+
+                const allLostItem = resultAllLostItem.rows.map(row => ({
+                    nameItem: row.nameitem,
+                    description: row.description,
+                    soldierName: row.namesoldier
+                }));
+
                 // Commit transaction (optional here)
                 await client.query('COMMIT');
-        
+
                 // Send response
                 res.status(200).json({
                     assets,
                     locations,
-                    allAssets
+                    allAssets,
+                    allLostItem
                 });
-        
+
             } catch (error) {
                 // Rollback transaction if an error occurs
                 await client.query('ROLLBACK');
@@ -4957,15 +4972,15 @@ class Server {
         });
 
         this.app.post('/asset/keys', async (req, res) => {
-            
+
             const { error } = shemaGetBags.validate(req.body);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
-        
+
             if (!req.body.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
-        
+
             const client = await pool.connect();
 
             try {
@@ -5323,7 +5338,7 @@ class Server {
             try {
                 await client.query('BEGIN');
 
-                if(oldCode === newCode) {
+                if (oldCode === newCode) {
                     if (subLocation !== '') {
                         await client.query(`UPDATE assets SET code = $2 name_assets = $3, type_id = $4, location_room = $5, location_key = $6 WHERE id = $1`,
                             [newCode, code, name, type, location, subLocation]
@@ -5550,6 +5565,38 @@ class Server {
             } finally {
                 client.release();
             }
+        });
+
+        this.app.post('/assets/lostItem', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaLostItems.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { itemName, description, soldierId } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                await client.query(`INSERT INTO lostitem VALUES (
+                    (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3);`, [itemName, description, soldierId]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'Lost item added successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to add lost item' });
+
+            } finally {
+                client.release();
+            }
+
         });
     }
 

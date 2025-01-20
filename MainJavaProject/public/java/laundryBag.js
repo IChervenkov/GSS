@@ -64,6 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const destinationByBtn = document.getElementById('destination');
     const prevDestinationByBtn = document.getElementById('prev_destination');
 
+    // Show loading indicator
+    const loadingIndicator = document.getElementById('loadingIndicator');
+
     let bags = [];
     let allBags = [];
     let allCheckedRow = [];
@@ -82,6 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to fetch bags from the server
     async function fetchAllBags() {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
 
             const response = await fetch(`/bags`, {
@@ -98,6 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('There was a problem with the fetch operation:', error);
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -146,6 +154,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to fetch bags from the server
     async function fetchBags(status = 'None') {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
 
             if (bags.length > 0)
@@ -168,6 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('There was a problem with the fetch operation:', error);
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -839,6 +852,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openModalWhenClick(clickStatus, nextDestination, clickButtonId, tableContent) {
         document.getElementById(`${clickButtonId}`).addEventListener('click', async () => {
+
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const result = await fetch('/getBagsByStatus', {
                     method: 'POST',
@@ -972,6 +988,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 console.error('Error fetching or processing data:', error);
+
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
     }
@@ -1026,6 +1045,8 @@ document.addEventListener('DOMContentLoaded', () => {
         submitButton.classList.add('btn', 'btn-success');
         submitButton.addEventListener('click', async () => {
 
+            loadingIndicator.style.display = 'flex';
+
             for (const data of allCheckedRow) {
 
                 isRemove = true;
@@ -1045,6 +1066,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 result = await response.json();
             }
 
+            loadingIndicator.style.display = 'none';
             closeMessModal();
         });
 
@@ -1100,6 +1122,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 isMoved = true;
 
+                loadingIndicator.style.display = 'flex';
+
                 for (const data of allCheckedRow) {
 
                     const response = await fetch('/changeStatusConsole', {
@@ -1117,6 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                loadingIndicator.style.display = 'none';
                 closeMessModal();
             });
 
@@ -1166,6 +1191,8 @@ document.addEventListener('DOMContentLoaded', () => {
             submitButton.classList.add('btn', 'btn-success');
             submitButton.addEventListener('click', async () => {
 
+                loadingIndicator.style.display = 'flex';
+
                 for (const data of allCheckedRow) {
 
                     isRemove = true;
@@ -1186,6 +1213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                loadingIndicator.style.display = 'none';
                 closeMessModal();
             });
 
@@ -1249,6 +1277,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function fetchReport(selectDate1, selectDate2) {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
 
             const response = await fetch(`/laundry/viewReport`, {
@@ -1294,6 +1325,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Error fetching the report:', error);
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -1339,6 +1373,8 @@ document.addEventListener('DOMContentLoaded', () => {
             hasError = false; // Track if an error occurs
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(document.getElementById(formId).action, {
                     method: 'POST',
@@ -1354,6 +1390,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
 
             closeMessModal();
@@ -1453,6 +1492,8 @@ document.addEventListener('DOMContentLoaded', () => {
             hasError = false; // Track if an error occurs
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(document.getElementById('form5').action, {
                     method: 'POST',
@@ -1467,6 +1508,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
 
             closeMessModal();
@@ -1544,6 +1588,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(document.getElementById('form7').action, {
                     method: 'POST',
@@ -1559,6 +1605,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
 
             closeMessModal();
@@ -1620,6 +1669,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         event.preventDefault();
 
+        loadingIndicator.style.display = 'flex';
+
         try {
             const table1 = document.getElementById("bagsWashedTable");
             const rows1 = Array.from(table1.querySelectorAll("tbody tr"));
@@ -1669,9 +1720,13 @@ document.addEventListener('DOMContentLoaded', () => {
             a.click();
             a.remove();
             window.URL.revokeObjectURL(downloadUrl);
+            
         } catch (error) {
             console.error('Error:', error);
             alert(error.message || 'Failed to download the report.');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 

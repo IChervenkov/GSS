@@ -68,6 +68,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const assetName = document.getElementById('assetName');
     const assetAddType = document.getElementById('assetType');
 
+    const lostItemDescription = document.getElementById('assetDescription');
+
     // Track sort order and priority for each column
     let sortOrder = {
         nameroom: true, // true means ascending, false means descending
@@ -94,6 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var uniqueRooms;
     var lostAssetsCode;
     var lostAssetsLocation;
+    var allLostItems;
 
     var allCheckedRow = [];
     var oldAssetNameKey;
@@ -103,6 +106,11 @@ document.addEventListener('DOMContentLoaded', function () {
         input.classList.toggle('is-valid', isValid);
         input.classList.toggle('is-invalid', !isValid);
     };
+
+    // Show loading indicator
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    
+    loadingIndicator.style.display = 'flex';
 
     fetch(`/assets/getSortedRoom`, {
         method: 'POST'
@@ -132,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Parse the JSON string into an array of objects
             lostAssetsCode = data.assets;
             lostAssetsLocation = data.locations;
+            allLostItems = data.allLostItem;
         })
         .catch(error => console.error("Error fetching keys:", error));
 
@@ -160,7 +169,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 ).values()
             );
         })
-        .catch(error => console.error("Error fetching keys:", error));
+        .catch(error => console.error("Error fetching keys:", error))
+        .finally(() => {
+            // Hide loading indicator
+            loadingIndicator.style.display = 'none';
+        });
 
     // Function to sort data and update the table
     function sortTableData(column) {
@@ -1035,6 +1048,28 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function openLostAssetsModal() {
+
+        const lostItemsTable = document.getElementById('lostItemsTableBody');
+        lostItemsTable.innerHTML = '';
+
+        allLostItems.forEach(item => {
+            const row = document.createElement('tr');
+
+            const nameCell = document.createElement('td');
+            nameCell.textContent = item.nameItem;
+            row.appendChild(nameCell);
+
+            const soldierCell = document.createElement('td');
+            soldierCell.textContent = item.soldierName;
+            row.appendChild(soldierCell);
+
+            const descriptionCell = document.createElement('td');
+            descriptionCell.textContent = item.description;
+            row.appendChild(descriptionCell);
+
+            lostItemsTable.appendChild(row);
+        });
+
         lostAssetsModal.classList.add('show');
         lostAssetsModalContent.classList.add('show');
         lostAssetsModalContent.classList.add('slide-in');
@@ -1053,6 +1088,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.classList.remove('is-valid');
                 input.classList.remove('is-invalid');
 
+                input.value = '';
+            });
+
+            document.querySelectorAll('.lost-item-search-input').forEach((input) => {
                 input.value = '';
             });
 
@@ -1169,6 +1208,8 @@ document.addEventListener('DOMContentLoaded', function () {
         assetsModal.classList.add('show');
         assetsModalContent.classList.add('show');
         assetsModalContent.classList.add('slide-in');
+
+        loadingIndicator.style.display = 'flex';
 
         fetch(`/assets/getSortedAssets?numRoom=${rowId}`, {
             method: 'POST'
@@ -1294,7 +1335,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     tbody.appendChild(row);
                 });
             })
-            .catch(error => console.error("Error fetching keys:", error));
+            .catch(error => console.error("Error fetching keys:", error))
+            .finally(() => {
+                // Hide loading indicator
+                loadingIndicator.style.display = 'none';
+            });
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         assetsModalContent.classList.remove('slide-out');
@@ -1462,6 +1507,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // Add focus class to the clicked button
             event.target.classList.add('focus-persistent');
 
+            loadingIndicator.style.display = 'flex';
+
             fetch(`/assets/getSortedRoom?numBuild=${id}`, {
                 method: 'POST'
             })
@@ -1509,7 +1556,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         tbody.appendChild(row);
                     });
                 })
-                .catch(error => console.error("Error fetching room:", error));
+                .catch(error => console.error("Error fetching room:", error))
+                .finally(() => {
+                    // Hide loading indicator
+                    loadingIndicator.style.display = 'none';
+                });
         }
     });
 
@@ -1538,6 +1589,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             isRemove = true;
             hasError = false;
+
+            loadingIndicator.style.display = 'flex';
 
             try {
                 for (const data of allCheckedRow) {
@@ -1576,6 +1629,8 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
                 result = { message: 'An error occurred while processing the request.' };
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
 
             closeMessModal();
@@ -1637,6 +1692,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    document.getElementById('form5').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
     document.getElementById('form1').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
@@ -1686,6 +1747,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -1705,6 +1768,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -1799,6 +1864,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -1818,6 +1885,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -1882,6 +1951,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
 
                 const response = await fetch(this.action, {
@@ -1902,6 +1973,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -1966,6 +2039,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
 
                 const response = await fetch(this.action, {
@@ -1986,6 +2061,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -2024,4 +2101,110 @@ document.addEventListener('DOMContentLoaded', function () {
         // Show the warning modal
         showMess('Warnning', 'Are you sure you want to remove this asset type?');
     };
+
+    document.getElementById('form5').onsubmit = async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        if (lostAssetSearchInput.value === '') {
+            toggleInputValidity(lostAssetSearchInput, false);
+            return;
+        }
+
+        if (!/^[a-zA-Z0-9\s]*$/.test(lostItemDescription.value)) {
+            toggleInputValidity(lostItemDescription, false);
+            return;
+        }
+
+        if (selectedLostAssetLocationId.value === '') {
+            toggleInputValidity(lostAssetLocationSearchInput, false);
+            return;
+        }
+
+        const data = {
+            itemName: lostAssetSearchInput.value,
+            description: lostItemDescription.value,
+            soldierId: selectedLostAssetLocationId.value
+        };
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            loadingIndicator.style.display = 'flex';
+
+            try {
+
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeLostAssetsModal();
+                    showMess('Info', 'The lost asset has been reported');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while reporting the lost asset');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'Are you sure you want to report this lost asset?');
+    };
+
+    lostItemDescription.addEventListener('input', function () {
+        const regex = /^[a-zA-Z0-9\s]*$/;
+        const isValid = regex.test(lostItemDescription.value);
+        toggleInputValidity(lostItemDescription, isValid);
+    });
 });

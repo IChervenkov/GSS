@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const total_percent_neutral = document.getElementById('percentNeutral');
     const total_percent_very_happy = document.getElementById('percentVeryHappy');
 
+    const loadingIndicator = document.getElementById('loadingIndicator');
+
     function formatDate(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -17,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function filterTableByDate() {
+
+        loadingIndicator.style.display = 'flex';
+
         const selectedDate1 = selectedDate1Input.value;
         const selectedDate2 = selectedDate2Input.value;
 
@@ -84,6 +89,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 tableBody.appendChild(tableRow);
             }
         });
+
+        loadingIndicator.style.display = 'none';
     }
 
     document.getElementById('btnFiltering').addEventListener('click', () => {
@@ -92,6 +99,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Download the report document when the Reports button is clicked
     document.getElementById("btnReport").addEventListener("click", async () => {
+
+        loadingIndicator.style.display = 'flex';
 
         try {
 
@@ -143,6 +152,8 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.error('Error downloading report:', error);
             alert('Failed to download report.');
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     });
 });

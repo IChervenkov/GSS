@@ -2,6 +2,8 @@ package com.example.rfidlaundryasset;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -156,6 +158,14 @@ public class EditAsset extends AppCompatActivity {
 
     // Method to send EPC to the server using the persistent OkHttpClient connection
     private void sendDataToServer(String oldEpcCode, String newEpcCode, String assetCode, String assetName, String assetType, String assetLocation, String assetSubLocation) {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(EditAsset.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -193,6 +203,8 @@ public class EditAsset extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }
@@ -342,6 +354,14 @@ public class EditAsset extends AppCompatActivity {
     }
 
     private void fetchAssetType() {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(EditAsset.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
 
@@ -372,6 +392,8 @@ public class EditAsset extends AppCompatActivity {
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(EditAsset.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }
@@ -417,6 +439,14 @@ public class EditAsset extends AppCompatActivity {
     }
 
     private void fetchAssetLocation() {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(EditAsset.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
                 // Define the media type for the JSON payload
@@ -486,7 +516,6 @@ public class EditAsset extends AppCompatActivity {
                             }
                         });
 
-
                         assetSubLocationText.setOnItemClickListener((parent, view, position, id) -> {
                             String selectedSubLocation = (String) parent.getItemAtPosition(position);
                             subLocationAssetId = subLocationIdMap.get(selectedSubLocation);
@@ -499,11 +528,21 @@ public class EditAsset extends AppCompatActivity {
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(EditAsset.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }
 
     private void fetchAssetCode() {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(EditAsset.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -562,6 +601,8 @@ public class EditAsset extends AppCompatActivity {
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(EditAsset.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }

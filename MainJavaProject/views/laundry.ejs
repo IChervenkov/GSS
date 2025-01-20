@@ -22,29 +22,35 @@
     <div class="horizontal-nav">
         <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
         <ul id="nav-links">
-            <% horizontalNavItems.forEach(item => { %>
+            <% horizontalNavItems.forEach(item=> { %>
                 <li>
                     <a href="<%= item.href %>">
-                        <% if (item.name.toLowerCase() === 'bicycles') { %>
+                        <% if (item.name.toLowerCase()==='bicycles' ) { %>
                             <i class="bi bi-bicycle"></i>
-                        <% } else if (item.name.toLowerCase() === 'main page') { %>
-                            <i class="bi bi-house-door"></i>
-                        <% } else if (item.name.toLowerCase() === 'assets') { %>
-                            <i class="bi bi-box"></i>
-                        <% } else if (item.name.toLowerCase() === 'laundry') { %>
-                            <i class="bi bi-water"></i>
-                        <% } else if (item.name.toLowerCase() === 'gym') { %>
-                            <i class="bi bi-activity"></i>
-                        <% } else if (item.name.toLowerCase() === 'accommodation and keys') { %>
-                            <i class="bi bi-key"></i>
-                        <% } else if (item.name.toLowerCase() === 'logout') { %>
-                            <i class="bi bi-box-arrow-right"></i>
-                        <% } %>
-                        <span><%= item.name %></span>
+                            <% } else if (item.name.toLowerCase()==='main page' ) { %>
+                                <i class="bi bi-house-door"></i>
+                                <% } else if (item.name.toLowerCase()==='assets' ) { %>
+                                    <i class="bi bi-box"></i>
+                                    <% } else if (item.name.toLowerCase()==='laundry' ) { %>
+                                        <i class="bi bi-water"></i>
+                                        <% } else if (item.name.toLowerCase()==='gym' ) { %>
+                                            <i class="bi bi-activity"></i>
+                                            <% } else if (item.name.toLowerCase()==='accommodation and keys' ) { %>
+                                                <i class="bi bi-key"></i>
+                                                <% } else if (item.name.toLowerCase()==='logout' ) { %>
+                                                    <i class="bi bi-box-arrow-right"></i>
+                                                    <% } %>
+                                                        <span>
+                                                            <%= item.name %>
+                                                        </span>
                     </a>
                 </li>
-            <% }); %>
+                <% }); %>
         </ul>
+    </div>
+
+    <div id="loadingIndicator" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
     </div>
 
     <div class="container">
@@ -201,9 +207,6 @@
                         <i class="bi bi-download"></i> Download App
                     </button>
                 </div>
-                <div id="loadingIndicator" class="loading-overlay" style="display: none;">
-                    <div class="spinner"></div>
-                </div>
                 <div class="w-100" <% if(username!='admin' && username!='helpDeskNikolay' ) { %> style="cursor:
                     not-allowed" <% } %>>
                         <button id="listOfBagsButton"
@@ -315,31 +318,37 @@
                                     <div id="bagsModal" class="modal">
                                         <div class="modal-content">
                                             <span class="close-btn">&times;</span>
-                                
+
                                             <h2 class="d-flex align-items-center gap-2">List of Bags
-                                                <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addButton"><i
-                                                        class="bi bi-plus"></i></button>
-                                                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold" id="removeButton"><i
-                                                        class="bi bi-dash"></i></button>
+                                                <button type="button"
+                                                    class="btn btn-outline-success btn-sm rounded-circle fw-bold"
+                                                    id="addButton"><i class="bi bi-plus"></i></button>
+                                                <button type="button"
+                                                    class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                                                    id="removeButton"><i class="bi bi-dash"></i></button>
                                             </h2>
-                                
+
                                             <div class="table-container">
                                                 <table id="bagsTable">
                                                     <thead>
                                                         <tr>
                                                             <th>
-                                                                <input type="text" class="laundry-search-input" placeholder="Search...">
+                                                                <input type="text" class="laundry-search-input"
+                                                                    placeholder="Search...">
                                                                 <label id="bag-code-header">Bag code</label>
                                                             </th>
-                                
+
                                                             <th>
-                                                                <input type="text" class="laundry-search-input" placeholder="Search...">
+                                                                <input type="text" class="laundry-search-input"
+                                                                    placeholder="Search...">
                                                                 <label id="bag-type-header">Bag type</label>
                                                             </th>
-                                
+
                                                             <th>
-                                                                <input type="text" class="laundry-search-input" placeholder="Search...">
-                                                                <label id="bag-type-header">Maximum number of washes</label>
+                                                                <input type="text" class="laundry-search-input"
+                                                                    placeholder="Search...">
+                                                                <label id="bag-type-header">Maximum number of
+                                                                    washes</label>
                                                             </th>
                                                         </tr>
                                                     </thead>
@@ -356,55 +365,50 @@
                                             <h2>Add bag</h2>
 
                                             <div class="mb-3">
-                                                <label for="epc-bag" class="form-label">EPC code <span class="text-danger">*</span></label>
-                                                <div class="input-group">
-                                                    <input type="text" id="epc-bag" name="epcBag" class="form-control"
-                                                        placeholder="EPC code" pattern="^[a-zA-Z0-9]+$">
-                                                    <div class="invalid-feedback">
-                                                        Please enter a valid EPC code (only letters and numbers)
-                                                    </div>
-                                                    <div class="valid-feedback"></div>
+                                                <label for="epc-bag" class="form-label">EPC code <span
+                                                        class="text-danger">*</span></label>
+                                                <input type="text" id="epc-bag" name="epcBag" class="form-control"
+                                                    placeholder="EPC code" pattern="^[a-zA-Z0-9]+$">
+                                                <div class="invalid-feedback">
+                                                    Please enter a valid EPC code (only letters and numbers)
                                                 </div>
+                                                <div class="valid-feedback"></div>
                                             </div>
 
                                             <div class="mb-3">
-                                                <label for="code-bag" class="form-label">Bag code <span class="text-danger">*</span></label>
-                                                <div class="input-group">
-                                                    <input type="text" id="code-bag" name="codeBag" class="form-control"
-                                                        placeholder="Code bag" pattern="^[a-zA-Z0-9]+$">
-                                                    <div class="invalid-feedback">
-                                                        Please enter a valid bag code (only letters and numbers)
-                                                    </div>
-                                                    <div class="valid-feedback"></div>
+                                                <label for="code-bag" class="form-label">Bag code <span
+                                                        class="text-danger">*</span></label>
+                                                <input type="text" id="code-bag" name="codeBag" class="form-control"
+                                                    placeholder="Code bag" pattern="^[a-zA-Z0-9]+$">
+                                                <div class="invalid-feedback">
+                                                    Please enter a valid bag code (only letters and numbers)
                                                 </div>
+                                                <div class="valid-feedback"></div>
                                             </div>
 
                                             <div class="mb-3">
-                                                <label for="type-bag" class="form-label">Bag type <span class="text-danger">*</span></label>
-                                                <div class="input-group">
-                                                    <input type="text" id="type-bag" name="typeBag" class="form-control"
-                                                        placeholder="Type bag" pattern="^[a-zA-Z0-9\s]+$">
+                                                <label for="type-bag" class="form-label">Bag type <span
+                                                        class="text-danger">*</span></label>
+                                                <input type="text" id="type-bag" name="typeBag" class="form-control"
+                                                    placeholder="Type bag" pattern="^[a-zA-Z0-9\s]+$">
 
-                                                    <div class="invalid-feedback">
-                                                        Please enter a valid bag type (only letters and numbers).
-                                                    </div>
-                                                    <div class="valid-feedback"></div>
+                                                <div class="invalid-feedback">
+                                                    Please enter a valid bag type (only letters and numbers).
                                                 </div>
+                                                <div class="valid-feedback"></div>
                                             </div>
 
                                             <div class="mb-3">
                                                 <label for="max-count-wash-bag" class="form-label">Maximum number of
                                                     washes <span class="text-danger">*</span></label>
-                                                <div class="input-group">
-                                                    <input type="text" id="max-count-wash-bag" name="maxCountWashBag"
-                                                        class="form-control" placeholder="Maximum number of washes"
-                                                        pattern="^[0-9]+$">
+                                                <input type="text" id="max-count-wash-bag" name="maxCountWashBag"
+                                                    class="form-control" placeholder="Maximum number of washes"
+                                                    pattern="^[0-9]+$">
 
-                                                    <div class="invalid-feedback">
-                                                        Please enter a valid max wash number (only numbers).
-                                                    </div>
-                                                    <div class="valid-feedback"></div>
+                                                <div class="invalid-feedback">
+                                                    Please enter a valid max wash number (only numbers).
                                                 </div>
+                                                <div class="valid-feedback"></div>
                                             </div>
 
                                             <!-- Buttons for confirming the selection -->
@@ -418,21 +422,19 @@
                                     </div>
 
                                     <div id="editBagModal" class="modal">
-                                        <form class="modal-content" action="/laundry/editBag" method="POST"
-                                            id="form7">
+                                        <form class="modal-content" action="/laundry/editBag" method="POST" id="form7">
                                             <span class="close-btn">&times;</span>
 
                                             <h2>Edit bag</h2>
 
                                             <!-- Bag Selection with Custom Search -->
                                             <div class="mb-3 search-container" id="search-edit-bag">
-                                                <label for="bagEditSearch" class="form-label">Bag code <span class="text-danger">*</span></label>
-                                                <div class="input-group">
-                                                    <input type="text" id="bagEditSearch" class="form-control"
-                                                        placeholder="Bag code">
-                                                    <div class="invalid-feedback"></div>
-                                                    <div class="valid-feedback"></div>
-                                                </div>
+                                                <label for="bagEditSearch" class="form-label">Bag code <span
+                                                        class="text-danger">*</span></label>
+                                                <input type="text" id="bagEditSearch" class="form-control"
+                                                    placeholder="Bag code">
+                                                <div class="invalid-feedback"></div>
+                                                <div class="valid-feedback"></div>
                                                 <ul id="editBagDropdown" class="list-group"></ul>
                                                 <!-- Custom dropdown for search -->
                                                 <input type="hidden" id="selectedEditBagId" name="editBagId" value="">
@@ -441,24 +443,22 @@
 
                                             <!-- Bag Selection with Custom Search -->
                                             <div class="mb-3" id="search-edit-type">
-                                                <label for="typeEditSearch" class="form-label">Bag type <span class="text-danger">*</span></label>
-                                                <div class="input-group">
-                                                    <input type="text" id="typeEditSearch" class="form-control"
-                                                        placeholder="Bag type">
-                                                    <div class="invalid-feedback"></div>
-                                                    <div class="valid-feedback"></div>
-                                                </div>
+                                                <label for="typeEditSearch" class="form-label">Bag type <span
+                                                        class="text-danger">*</span></label>
+                                                <input type="text" id="typeEditSearch" class="form-control"
+                                                    placeholder="Bag type">
+                                                <div class="invalid-feedback"></div>
+                                                <div class="valid-feedback"></div>
                                             </div>
 
                                             <!-- Bag Selection with Custom Search -->
                                             <div class="mb-3" id="search-edit-wash">
-                                                <label for="washEditSearch" class="form-label">Maximum number of washes <span class="text-danger">*</span></label>
-                                                <div class="input-group">
-                                                    <input type="text" id="washEditSearch" class="form-control"
-                                                        placeholder="Maximum number of washes" pattern="^[a-zA-Z0-9 ]+$">
-                                                    <div class="invalid-feedback"></div>
-                                                    <div class="valid-feedback"></div>
-                                                </div>
+                                                <label for="washEditSearch" class="form-label">Maximum number of washes
+                                                    <span class="text-danger">*</span></label>
+                                                <input type="text" id="washEditSearch" class="form-control"
+                                                    placeholder="Maximum number of washes" pattern="^[a-zA-Z0-9 ]+$">
+                                                <div class="invalid-feedback"></div>
+                                                <div class="valid-feedback"></div>
                                             </div>
 
                                             <!-- Buttons for confirming the selection -->

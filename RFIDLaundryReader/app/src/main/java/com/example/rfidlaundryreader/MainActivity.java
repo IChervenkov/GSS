@@ -3,6 +3,7 @@ package com.example.rfidlaundryreader;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
@@ -176,6 +177,13 @@ public class MainActivity extends AppCompatActivity {
     private boolean checkCountScanningCodes(Integer countScannedCode) {
         final boolean[] success = {true};
 
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         Thread thread = new Thread(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -209,6 +217,8 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
                 success[0] = false;
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         });
 
@@ -426,6 +436,13 @@ public class MainActivity extends AppCompatActivity {
     private boolean sendAllEpcsToServer(HashSet<String> epcs) {
         final boolean[] success = {true};
 
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         Thread thread = new Thread(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -468,6 +485,8 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
                 success[0] = false;
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         });
 

@@ -1,6 +1,8 @@
 package com.example.nfcreader;
 
+import android.app.Dialog;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.nfc.NfcAdapter;
@@ -141,18 +143,28 @@ public class RemoveBike extends AppCompatActivity {
                 .post(body)
                 .build();
 
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(RemoveBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         // Make the network call asynchronously
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 e.printStackTrace();
                 runOnUiThread(() -> {
+                    loadingDialog.dismiss();
                     Toast.makeText(RemoveBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
                 });
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+                runOnUiThread(loadingDialog::dismiss); // Dismiss the dialog
+
                 if (response.isSuccessful()) {
                     String responseData = response.body().string();
                     try {
@@ -175,6 +187,14 @@ public class RemoveBike extends AppCompatActivity {
     }
 
     private void sendDataToServer(String nfcContent) {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(RemoveBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             MediaType JSON = MediaType.parse("application/json; charset=utf-8");
             JSONObject jsonData = new JSONObject();
@@ -222,6 +242,8 @@ public class RemoveBike extends AppCompatActivity {
                 runOnUiThread(() -> {
                     Toast.makeText(RemoveBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }

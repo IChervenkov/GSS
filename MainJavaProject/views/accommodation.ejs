@@ -126,9 +126,9 @@
                     <div class="col-md">
                         <!-- Soldier Selection with Custom Search -->
                         <div class="search-container" id="search-all-key-container">
-                            <div class="input-group">
-                                <input type="text" id="allKeySearch" class="form-control" placeholder="Search...">
-                            </div>
+
+                            <input type="text" id="allKeySearch" class="form-control" placeholder="Search...">
+
                             <ul id="allKeyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                             <input type="hidden" id="selectedAllKeyId" name="allKeySelectId" value="">
                             <!-- To store the selected soldier ID -->
@@ -275,9 +275,9 @@
                 <!-- Soldier Selection with Custom Search -->
                 <div class="mb-3 search-container" id="search-soldier-container">
                     <label for="soldierSearch" class="form-label">Soldier Name:</label>
-                    <div class="input-group">
-                        <input type="text" id="soldierSearch" class="form-control" placeholder="Soldier Name">
-                    </div>
+
+                    <input type="text" id="soldierSearch" class="form-control" placeholder="Soldier Name">
+
                     <ul id="soldierDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                     <input type="hidden" id="selectedSoldierId" name="soldierId" value="">
                     <!-- To store the selected soldier ID -->
@@ -286,9 +286,9 @@
                 <!-- Bag Selection with Custom Search -->
                 <div class="mb-3 search-container" id="search-laundry-bag-container">
                     <label for="laundryBagSearch" class="form-label">Laundry Bag:</label>
-                    <div class="input-group">
-                        <input type="text" id="laundryBagSearch" class="form-control" placeholder="Laundry Bag">
-                    </div>
+
+                    <input type="text" id="laundryBagSearch" class="form-control" placeholder="Laundry Bag">
+
                     <ul id="bagDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                     <input type="hidden" id="selectedBagId" name="bagId" value="">
                     <!-- To store the selected soldier ID -->
@@ -296,10 +296,10 @@
 
                 <div class="mb-3" id="input-meal-card">
                     <label for="meal-card-value" class="form-label">Meal card:</label>
-                    <div class="input-group">
-                        <input type="text" id="meal-card-value" name="mealCardId" class="form-control"
-                            placeholder="Meal card" value="">
-                    </div>
+
+                    <input type="text" id="meal-card-value" name="mealCardId" class="form-control"
+                        placeholder="Meal card" value="">
+
                 </div>
 
                 <!-- Label for Country -->
@@ -402,13 +402,13 @@
 
                 <!-- Soldier Selection with Custom Search -->
                 <div class="mb-3 search-container" id="search-soldier-container-move">
-                    <div class="input-group">
-                        <input type="text" id="soldierSearchMove" class="form-control" placeholder="Key Number">
-                        <div class="invalid-feedback">
-                            Please choose a key number
-                        </div>
-                        <div class="valid-feedback"></div>
+
+                    <input type="text" id="soldierSearchMove" class="form-control" placeholder="Key Number">
+                    <div class="invalid-feedback">
+                        Please choose a key number
                     </div>
+                    <div class="valid-feedback"></div>
+
                     <ul id="soldierDropdownMove" class="list-group"></ul> <!-- Custom dropdown for search -->
                     <input type="hidden" id="selectedKeyMoveId" name="keyMoveId" value="">
                     <!-- To store the selected soldier ID -->
@@ -478,37 +478,37 @@
             <div class="mb-3">
                 <label for="edit-soldier-number" class="form-label">Soldier Number <span
                         class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="edit-soldier-number" name="editSoldierId" class="form-control"
-                        placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
 
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="edit-soldier-number" name="editSoldierId" class="form-control"
+                    placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
             </div>
 
             <div class="mb-3">
                 <label for="edit-soldier-name" class="form-label">Soldier Name <span
                         class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="edit-soldier-name" name="editSoldierName" class="form-control"
-                        placeholder="Soldier Name" pattern="^[0-9]+ [A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$">
 
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="edit-soldier-name" name="editSoldierName" class="form-control"
+                    placeholder="Soldier Name" pattern="^[0-9]+ [A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
             </div>
 
             <div class="mb-3">
                 <label for="edit-soldier-country" class="form-label">Soldier Country <span
                         class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="edit-soldier-country" name="editSoldierCountry" class="form-control"
-                        placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
 
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="edit-soldier-country" name="editSoldierCountry" class="form-control"
+                    placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
             </div>
 
             <!-- Buttons for confirming the selection -->
@@ -530,36 +530,36 @@
 
             <div class="mb-3">
                 <label for="soldier-number" class="form-label">Soldier Number <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="soldier-number" name="soldierId" class="form-control"
-                        placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
 
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="soldier-number" name="soldierId" class="form-control"
+                    placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
             </div>
 
             <div class="mb-3">
                 <label for="soldier-name" class="form-label">Soldier Name <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="soldier-name" name="soldierName" class="form-control"
-                        placeholder="Soldier Name" pattern="^[0-9]+ [A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$">
 
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="soldier-name" name="soldierName" class="form-control" placeholder="Soldier Name"
+                    pattern="^[0-9]+ [A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
             </div>
 
             <div class="mb-3">
                 <label for="soldier-country" class="form-label">Soldier Country <span
                         class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="soldier-country" name="soldierCountry" class="form-control"
-                        placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
 
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="soldier-country" name="soldierCountry" class="form-control"
+                    placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
             </div>
 
             <!-- Buttons for confirming the selection -->
@@ -638,12 +638,12 @@
             <input type="hidden" id="randomTextValue" value="">
 
             <div class="mb-3 search-container" id="search-delete-soldier-container">
-                <div class="input-group">
-                    <input type="text" id="buildSearch" class="form-control" placeholder="Building number">
 
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="buildSearch" class="form-control" placeholder="Building number">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
                 <ul id="buildDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedBuildId" name="roomSelectId" value="">
                 <!-- To store the selected soldier ID -->
@@ -759,12 +759,12 @@
             <!-- Room Selection with Custom Search -->
             <div class="mb-3 search-container" id="search-room-container">
                 <label for="roomSearch" class="form-label">Room Name <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="roomSearch" class="form-control" placeholder="Room Name">
 
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="roomSearch" class="form-control" placeholder="Room Name">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
                 <ul id="roomDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedRoomId" name="roomSelectId" value="">
                 <!-- To store the selected soldier ID -->
@@ -827,24 +827,24 @@
 
             <div class="mb-3 search-container" id="search-key-container">
                 <label for="keySearch" class="form-label">Old key name <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="keySearch" class="form-control" placeholder="Key name">
 
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="keySearch" class="form-control" placeholder="Key name">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
                 <ul id="keyDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedKeyId" name="keySelectId" value="">
                 <!-- To store the selected soldier ID -->
             </div>
 
             <label for="newKeyName" class="form-label">New key code <span class="text-danger">*</span></label>
-            <div class="input-group">
-                <input type="text" id="newKeyName" class="form-control" placeholder="Key code">
 
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
-            </div>
+            <input type="text" id="newKeyName" class="form-control" placeholder="Key code">
+
+            <div class="invalid-feedback"></div>
+            <div class="valid-feedback"></div>
+
 
             <button type="submit" id="remove-room-btn" class="modal-button">
                 <i class="bi bi-arrow-repeat"></i> Replace key

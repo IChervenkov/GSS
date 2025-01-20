@@ -130,6 +130,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to fetch soldier from the server
     async function fetchSpecialRoom(numBuild) {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
             const responseBike = await fetch(`/specialRooms`, {
                 method: 'POST',
@@ -148,6 +151,8 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.log(error);
             showGlobalMess('Error', 'There was a problem with the fetch operation:');
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -198,6 +203,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to fetch soldier from the server
     async function fetchSpecialKey(numBuild, numRoom) {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
             const responseBike = await fetch(`/specialKeys`, {
                 method: 'POST',
@@ -216,6 +224,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.log(error);
             showGlobalMess('Error', 'There was a problem with the fetch operation');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -266,6 +277,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to fetch all keys from the server
     async function fetchAllKey() {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
             const responseBike = await fetch(`/keys`, {
                 method: 'GET'
@@ -280,6 +294,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.log(error);
             showGlobalMess('Error', 'There was a problem with the fetch operation');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -337,12 +354,17 @@ document.addEventListener('DOMContentLoaded', function () {
             const maleCard = selectedAllKey.getAttribute('data-male-card');
             const laundryBag = selectedAllKey.getAttribute('data-laundry-bag');
 
+            loadingIndicator.style.display = 'flex';
+
             const response = await fetch('/getKeyBuildigType', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ keyId: keycode })
+            })
+            .finally(() => {
+                loadingIndicator.style.display = 'none';
             });
 
             const result = await response.json();
@@ -358,6 +380,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to fetch soldier from the server
     async function fetchItem() {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
             const responseBike = await fetch(`/clients`);
             if (!responseBike.ok) {
@@ -367,6 +392,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('There was a problem with the fetch operation:', error);
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -421,6 +449,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to fetch soldier from the server
     async function fetchFreeBag() {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
             const responseBag = await fetch(`/freeBags`);
             if (!responseBag.ok) {
@@ -432,11 +463,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('There was a problem with the fetch operation:', error);
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
     // Function to fetch soldier from the server
     async function fetchBag() {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
             const responseBag = await fetch(`/bags`, { method: "POST" });
             if (!responseBag.ok) {
@@ -448,6 +485,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('There was a problem with the fetch operation:', error);
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -492,6 +532,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to fetch soldier from the server
     async function fetchBuilding() {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
             const responseBuild = await fetch(`/builds`);
             if (!responseBuild.ok) {
@@ -502,6 +545,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('There was a problem with the fetch operation:', error);
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -549,6 +594,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to fetch room from the server
     async function fetchRoom() {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
             const responseBike = await fetch(`/rooms`);
             if (!responseBike.ok) {
@@ -558,6 +606,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('There was a problem with the fetch operation:', error);
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -595,6 +646,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedSoldier = event.target;
         if (selectedSoldier && selectedSoldier.dataset.id) {
 
+            loadingIndicator.style.display = 'flex';
+
             toggleInputValidity(soldierSearchMoveInput, true);
 
             soldierSearchMoveInput.value = selectedSoldier.textContent;
@@ -607,6 +660,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ keyId: selectedSoldierMoveId.value })
+            })
+            .finally(() => {
+                loadingIndicator.style.display = 'none';
             });
 
             if (!responseSoldier.ok) {
@@ -740,6 +796,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         selectedRoomForKey.value = cleanedRoomNumber;
 
+        loadingIndicator.style.display = 'flex';
+
         // Fetch and display keys only for the specific room using POST request with body
         fetch('/getRoomKeys', {
             method: 'POST',
@@ -755,8 +813,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Populate modal with room-specific keys data
                 populateModalWithKeys(data);
             })
-            .catch(error => console.error("Error fetching keys:", error));
-
+            .catch(error => console.error("Error fetching keys:", error))
+            .finally(() => {
+                loadingIndicator.style.display = 'none';
+            });
     }
 
     function populateModalWithKeys(data) {
@@ -902,6 +962,8 @@ document.addEventListener('DOMContentLoaded', function () {
         modalListSoldierContent.classList.add('show');
         modalListSoldierContent.classList.add('slide-in');
 
+        loadingIndicator.style.display = 'flex';
+
         fetch(`/clients`, {
             method: 'GET'
         })
@@ -1017,7 +1079,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     tbody.appendChild(row);
                 });
             })
-            .catch(error => console.error("Error fetching keys:", error));
+            .catch(error => console.error("Error fetching keys:", error))
+            .finally(() => {
+                loadingIndicator.style.display = 'none';
+            })
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         modalListSoldierContent.classList.remove('slide-out');
@@ -1030,6 +1095,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
+
+            document.querySelectorAll('.form-check-input').forEach((input) => {
+                input.checked = false;
+                input.style.backgroundColor = '';
+            });
+
+            document.querySelectorAll('.search-input-soldier').forEach((input) => {
+                input.value = '';
+            });
+
             modalListSoldier.classList.remove('show');
             modalListSoldierContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
@@ -1520,6 +1595,8 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('room-status-header').classList.remove('ascending', 'descending');
             document.getElementById('count-free-beds-header').classList.remove('ascending', 'descending');
 
+            loadingIndicator.style.display = 'flex';
+
             fetch(`/accommodation?isFirstTime=true&numBuild=${id}`, {
                 method: 'GET'
             })
@@ -1590,7 +1667,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         tbody.appendChild(row);
                     });
                 })
-                .catch(error => console.error("Error fetching keys:", error));
+                .catch(error => console.error("Error fetching keys:", error))
+                .finally(() => {
+                    loadingIndicator.style.display = 'none';
+                });
         }
     });
 
@@ -1705,6 +1785,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     async function fetchReport() {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
 
             const response = await fetch(`/accommodation/viewReport`, {
@@ -1743,6 +1826,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Error fetching the report:', error);
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -1912,6 +1997,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault();
 
+        loadingIndicator.style.display = 'flex';
+
         try {
             const table1 = document.getElementById("soldierUsageTable");
             const rows1 = Array.from(table1.querySelectorAll("tbody tr"));
@@ -1966,6 +2053,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.error('Error:', error);
             alert(error.message || 'Failed to download the report.');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
@@ -2166,6 +2256,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -2183,6 +2275,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
 
             closeGlobalMessModal();
@@ -2372,6 +2466,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
 
                 const response = await fetch(this.action, {
@@ -2390,6 +2486,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
 
             closeGlobalMessModal();
@@ -2479,6 +2577,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -2499,6 +2599,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -2583,6 +2686,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -2602,6 +2707,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -2674,6 +2782,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -2693,6 +2803,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+                
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -2764,6 +2877,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -2783,6 +2898,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -2863,6 +2981,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
 
                 const response = await fetch(this.action, {
@@ -2883,6 +3003,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -2960,6 +3083,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -2977,6 +3102,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
 
             closeGlobalMessModal();
@@ -3051,6 +3179,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -3070,6 +3200,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+                
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
 
@@ -3135,6 +3268,8 @@ document.addEventListener('DOMContentLoaded', function () {
             break;
     }
 
+    loadingIndicator.style.display = 'flex';
+
     fetch(`/accommodation?isFirstTime=true&numBuild=${numBuild}`, {
         method: 'GET'
     })
@@ -3143,7 +3278,10 @@ document.addEventListener('DOMContentLoaded', function () {
             // Parse the JSON string into an array of objects
             nameroomSetCount = data.nameroomSetCount;
         })
-        .catch(error => console.error("Error fetching keys:", error));
+        .catch(error => console.error("Error fetching keys:", error))
+        .finally(() => {
+            loadingIndicator.style.display = 'none';
+        });
 
     // Function to sort data and update the table
     function sortTableData(column) {
@@ -3281,6 +3419,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Add click event to the Delete button
             deleteBtn.addEventListener('click', async () => {
+
+                loadingIndicator.style.display = 'flex';
+
                 try {
                     if (document.getElementById('curent-dest').value !== numBuild) {
                         const response = await fetch(`/accommodation/removeDestination`, {
@@ -3310,6 +3451,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.error("Error:", error);
                     showGlobalMess("Error", "An unexpected error occurred.");
                     deleteBtn.remove();
+
+                } finally {
+                    loadingIndicator.style.display = 'none';
                 }
             });
 

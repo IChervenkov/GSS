@@ -60,7 +60,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         return response.blob();
                     })
                     .then(blob => {
-                        hideLoading();
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.style.display = 'none';
@@ -72,10 +71,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         window.URL.revokeObjectURL(url);
                     })
                     .catch(err => {
-                        hideLoading();
                         showMessError(err.message);
                     })
                     .finally(() => {
+                        hideLoading();
                         downloadApp.disabled = false; // Re-enable the button
                     });
             });

@@ -108,6 +108,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const clientSearchInput = document.getElementById('clientSearch');
     const clientSearchDropdown = document.getElementById('clientDropdown');
     const selectedClientId = document.getElementById('selectedClientId');
+
+    const loadingIndicator = document.getElementById('loadingIndicator');
+
     let clients = [];
 
     // Helper function to toggle input validity
@@ -288,6 +291,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to fetch bikes from the server
     async function fetchItem() {
+
+        loadingIndicator.style.disable = 'flex';
+
         try {
             const responseBike = await fetch(`/bikes`);
             if (!responseBike.ok) {
@@ -303,6 +309,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('There was a problem with the fetch operation:', error);
+
+        } finally {
+            loadingIndicator.style.disable = 'none';
         }
     }
 
@@ -492,7 +501,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Fetch the bikes when the script loads
     fetchItem();
 
-
     // Function to update the label based on the selected value
     function updateLabel(label, value) {
         if (value === 'None' || value.length === 0) {
@@ -600,6 +608,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectMinute = document.getElementById('minuteSelect').value;
             const action = document.getElementById("action").value;
 
+            loadingIndicator.style.disable = 'flex';
+
             try {
                 // Fetch bike status
                 const response = await fetch(`/checkBike`, {
@@ -670,6 +680,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 message.textContent = "An error occurred while checking the bike status.";
                 btnYes.style.display = "none";
                 openModal(modalMess, modalMessContent);
+
+            } finally {
+                loadingIndicator.style.disable = 'none';
             }
         };
     }
@@ -876,6 +889,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (bikeContent.length != 0) {
 
+            loadingIndicator.style.disable = 'flex';
+
             // Fetch bike data from server
             fetch(`/searchBikes`, {
                 method: 'POST',
@@ -919,6 +934,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .catch(error => {
                     console.error('Error fetching bike data:', error);
+                })
+                .finally(() => {
+                    loadingIndicator.style.disable = 'none';
                 });
         }
     });
@@ -936,6 +954,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const clientContent = clientSearchInput.value;
 
         if (clientContent.length != 0) {
+
+            loadingIndicator.style.disable = 'flex';
 
             // Fetch bike data from server
             fetch(`/searchClient`, {
@@ -980,11 +1000,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .catch(error => {
                     console.error('Error fetching bike data:', error);
+                })
+                .finally(() => {
+                    loadingIndicator.style.disable = 'none';
                 });
         }
     });
 
     async function fetchReport() {
+
+        loadingIndicator.style.disable = 'flex';
+
         try {
 
             const selectedDate1 = document.getElementById('selectedDate1').value;
@@ -1030,6 +1056,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Error fetching the report:', error);
+            
+        } finally {
+            loadingIndicator.style.disable = 'none';
         }
     }
 
@@ -1053,6 +1082,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const icon = document.getElementById('mess-icon-rep');
         const message = document.getElementById('mess-text-rep');
         const btnYes = document.getElementById('btnMess');
+
+        loadingIndicator.style.disable = 'flex';
 
         try {
             const response = await fetch(this.action, {
@@ -1082,6 +1113,9 @@ document.addEventListener('DOMContentLoaded', function () {
             btnYes.style.display = "none";
             openModal(modalMessRep, modalMessRepContent);
             this.reset();
+
+        } finally {
+            loadingIndicator.style.disable = 'none';
         }
     });
 
@@ -1124,6 +1158,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.disable = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -1144,6 +1180,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.disable = 'none';
             }
         });
 
@@ -1247,6 +1286,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.disable = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -1267,6 +1308,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.disable = 'none';
             }
         });
 
@@ -1393,6 +1437,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
+            loadingIndicator.style.disable = 'flex';
+
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
@@ -1413,6 +1459,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
+
+            } finally {
+                loadingIndicator.style.disable = 'none';
             }
         });
 

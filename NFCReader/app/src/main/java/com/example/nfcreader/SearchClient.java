@@ -1,5 +1,6 @@
 package com.example.nfcreader;
 
+import android.app.Dialog;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.View;
@@ -58,6 +59,14 @@ public class SearchClient extends AppCompatActivity {
     }
 
     private void fetchAvailableBikes() {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(SearchClient.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
                 Request request = new Request.Builder()
@@ -84,6 +93,8 @@ public class SearchClient extends AppCompatActivity {
                 runOnUiThread(() -> {
                     Toast.makeText(SearchClient.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }
@@ -125,16 +136,27 @@ public class SearchClient extends AppCompatActivity {
                 .post(body)
                 .build();
 
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(SearchClient.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                runOnUiThread(() ->
-                        Toast.makeText(SearchClient.this, "Error fetching data from server: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                );
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    Toast.makeText(SearchClient.this, "Error fetching data from server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+
+                runOnUiThread(loadingDialog::dismiss);
+
                 if (response.isSuccessful() && response.body() != null) {
                     String responseData = response.body().string();
                     try {

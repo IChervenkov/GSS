@@ -2,6 +2,8 @@ package com.example.rfidlaundryasset;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -75,6 +77,14 @@ public class DeleteAsset extends AppCompatActivity {
     }
 
     private void fetchAllAsset() {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(DeleteAsset.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
 
@@ -106,6 +116,8 @@ public class DeleteAsset extends AppCompatActivity {
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(DeleteAsset.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }
@@ -251,6 +263,14 @@ public class DeleteAsset extends AppCompatActivity {
 
     // Method to send EPC to the server using the persistent OkHttpClient connection
     private void sendDataToServer(String epc) {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(DeleteAsset.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -281,6 +301,8 @@ public class DeleteAsset extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }

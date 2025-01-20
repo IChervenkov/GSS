@@ -48,6 +48,10 @@
         </ul>
     </div>
 
+    <div id="loadingIndicator" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
     <div class="main-content">
 
         <div class="left-nav">
@@ -185,18 +189,16 @@
     </div>
 
     <div id="editAssetsModal" class="modal">
-        <form class="modal-content" method="POST" , action="/assets/editAsset" id="form1">
+        <form class="modal-content" method="POST" action="/assets/editAsset" id="form1">
             <span class="close-btn">&times;</span>
 
             <h2 class="mb-4">Asset information</h2>
 
             <div class="mb-3 search-container" id="search-assert-container">
                 <label for="assetSearch" class="form-label">Assert code <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="assetSearch" class="form-control" placeholder="Asset code">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="assetSearch" class="form-control" placeholder="Asset code">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
                 <ul id="assetDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedAssetId" name="assetId" value="">
                 <!-- To store the selected soldier ID -->
@@ -204,31 +206,26 @@
 
             <div class="mb-3">
                 <label for="assetName" class="form-label">Assert name <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="assetName" class="form-control" placeholder="Asset name"
-                        pattern="^[a-zA-Z0-9\s]+$">
-                </div>
+                <input type="text" id="assetName" class="form-control" placeholder="Asset name"
+                    pattern="^[a-zA-Z0-9\s]+$">
             </div>
 
             <div class="mb-3 search-container" id="search-type-container">
                 <label for="typeSearch" class="form-label">Assert type <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="typeSearch" class="form-control" placeholder="Asset type">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="typeSearch" class="form-control" placeholder="Asset type">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
                 <ul id="typeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedTypeId" name="typeId" value="">
                 <!-- To store the selected soldier ID -->
             </div>
 
             <div class="mb-3 search-container" id="search-location-container">
-                <label for="locationSearch" class="form-label">Assert location <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="locationSearch" class="form-control" placeholder="Asset location">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <label for="locationSearch" class="form-label">Assert location <span
+                        class="text-danger">*</span></label>
+                <input type="text" id="locationSearch" class="form-control" placeholder="Asset location">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
                 <ul id="locationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedLocationId" name="locationId" value="">
                 <!-- To store the selected soldier ID -->
@@ -236,11 +233,9 @@
 
             <div class="mb-3 search-container" id="search-sub-location-container">
                 <label for="subLocationSearch" class="form-label">Associated key</label>
-                <div class="input-group">
-                    <input type="text" id="subLocationSearch" class="form-control" placeholder="Associated key">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="subLocationSearch" class="form-control" placeholder="Associated key">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
                 <ul id="subLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedSubLocationId" name="subLocationId" value="">
                 <!-- To store the selected soldier ID -->
@@ -262,53 +257,44 @@
 
             <div class="mb-3" id="assert-epc-container">
                 <label for="assetEpc" class="form-label">Asset EPC code <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="assetEpc" class="form-control" placeholder="Asset EPC code" ,
-                        pattern="^[a-zA-Z0-9]+$">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="assetEpc" class="form-control" placeholder="Asset EPC code" ,
+                    pattern="^[a-zA-Z0-9]+$">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
             </div>
 
             <div class="mb-3" id="assert-code-container">
                 <label for="assetCodeSearch" class="form-label">Assert code <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="assetCodeSearch" class="form-control" placeholder="Asset code" ,
-                        pattern="^[a-zA-Z0-9]+$">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="assetCodeSearch" class="form-control" placeholder="Asset code" ,
+                    pattern="^[a-zA-Z0-9]+$">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
             </div>
 
             <div class="mb-3">
                 <label for="assetAddName" class="form-label">Assert name <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="assetAddName" class="form-control" placeholder="Asset name"
-                        pattern="^[a-zA-Z0-9\s]+$">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="assetAddName" class="form-control" placeholder="Asset name"
+                    pattern="^[a-zA-Z0-9\s]+$">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
             </div>
 
             <div class="mb-3 search-container" id="search-add-type-container">
                 <label for="addTypeSearch" class="form-label">Assert type <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="addTypeSearch" class="form-control" placeholder="Asset type">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="addTypeSearch" class="form-control" placeholder="Asset type">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
                 <ul id="addTypeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedAddTypeId" name="typeId" value="">
                 <!-- To store the selected soldier ID -->
             </div>
 
             <div class="mb-3 search-container" id="search-add-location-container">
-                <label for="addLocationSearch" class="form-label">Assert location <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="addLocationSearch" class="form-control" placeholder="Asset location">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <label for="addLocationSearch" class="form-label">Assert location <span
+                        class="text-danger">*</span></label>
+                <input type="text" id="addLocationSearch" class="form-control" placeholder="Asset location">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
                 <ul id="addLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedAddLocationId" name="locationId" value="">
                 <!-- To store the selected soldier ID -->
@@ -316,11 +302,9 @@
 
             <div class="mb-3 search-container" id="search-add-sub-location-container">
                 <label for="addSubLocationSearch" class="form-label">Associated key</label>
-                <div class="input-group">
-                    <input type="text" id="addSubLocationSearch" class="form-control" placeholder="Associated key">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="addSubLocationSearch" class="form-control" placeholder="Associated key">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
                 <ul id="addSubLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedAddSubLocationId" name="subLocationId" value="">
                 <!-- To store the selected soldier ID -->
@@ -341,12 +325,10 @@
 
             <div class="mb-3" id="assert-type-container">
                 <label for="assetType" class="form-label">Asset type <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="assetType" class="form-control" placeholder="Asset type" ,
-                        pattern="^[a-zA-Z\s]+$">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <input type="text" id="assetType" class="form-control" placeholder="Asset type" ,
+                    pattern="^[a-zA-Z\s]+$">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
             </div>
 
             <button type="submit" class="modal-button" id="edit-button">
@@ -363,12 +345,11 @@
             <h2 class="mb-4">Remove asset type</h2>
 
             <div class="mb-3 search-container" id="search-remove-type-container">
-                <label for="removeAssetTypeSearch" class="form-label">Asset type <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="removeAssetTypeSearch" class="form-control" placeholder="Asset type">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
+                <label for="removeAssetTypeSearch" class="form-label">Asset type <span
+                        class="text-danger">*</span></label>
+                <input type="text" id="removeAssetTypeSearch" class="form-control" placeholder="Asset type">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
                 <ul id="removeAssetTypeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                 <input type="hidden" id="selectedRemoveAssetId" name="removeAssetTypeId" value="">
                 <!-- To store the selected soldier ID -->
@@ -389,15 +370,14 @@
 
             <div class="modal-body">
 
-                <form id="lostAssetForm" class="form-section">
+                <form class="form-section" method="POST" action="/assets/lostItem" id="form5">
                     <div class="mb-3 search-container">
-                        <label class="form-label" for="lostAssetName">Asset code <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <input type="text" id="lostAssetName" name="lostAssetName" class="form-control"
-                                placeholder="Asset code" aria-label="Asset code">
-                            <div class="invalid-feedback"></div>
-                            <div class="valid-feedback"></div>
-                        </div>
+                        <label class="form-label" for="lostAssetName">Item code <span
+                                class="text-danger">*</span></label>
+                        <input type="text" id="lostAssetName" name="lostAssetName" class="form-control"
+                            placeholder="Item code" aria-label="Item code">
+                        <div class="invalid-feedback"></div>
+                        <div class="valid-feedback"></div>
                         <ul id="lostAssetNameDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
                         <input type="hidden" id="selectedLostAssetNameId" name="lostAssetNameId" value="">
                     </div>
@@ -406,12 +386,15 @@
                         <label class="form-label" for="assetDescription">Description</label>
                         <textarea id="assetDescription" name="assetDescription" class="form-control" rows="5"
                             placeholder="Description..."></textarea>
+                        <div class="invalid-feedback"></div>
+                        <div class="valid-feedback"></div>
                     </div>
 
                     <div class="mb-3 search-container">
-                        <label class="form-label" for="assetLocation">Last Known Person/Location <span class="text-danger">*</span></label>
+                        <label class="form-label" for="assetLocation">Last Known Person <span
+                                class="text-danger">*</span></label>
                         <input type="text" id="assetLocation" name="assetLocation" class="form-control"
-                            placeholder="Last Known Person/Location">
+                            placeholder="Last Known Person">
                         <div class="invalid-feedback"></div>
                         <div class="valid-feedback"></div>
                         <ul id="assetLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
@@ -425,12 +408,15 @@
                     <table id="lostItemsTable">
                         <thead>
                             <tr>
-                                <th>Asset Name</th>
-                                <th>Description</th>
-                                <th>Last Location/Person</th>
+                                <th><input type="text" class="lost-item-search-input" placeholder="Search...">Item Name
+                                </th>
+                                <th><input type="text" class="lost-item-search-input" placeholder="Search...">Last Known
+                                    Person</th>
+                                <th><input type="text" class="lost-item-search-input"
+                                        placeholder="Search...">Description</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="lostItemsTableBody">
                             <!-- Lost items will be dynamically added here -->
                         </tbody>
                     </table>

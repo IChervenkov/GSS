@@ -1,6 +1,8 @@
 package com.example.nfcreader;
 
+import android.app.Dialog;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.nfc.NfcAdapter;
@@ -95,6 +97,14 @@ public class EditBike extends AppCompatActivity {
     }
 
     private void fetchAvailableBikes() {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(EditBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
                 Request request = new Request.Builder()
@@ -121,6 +131,8 @@ public class EditBike extends AppCompatActivity {
                 runOnUiThread(() -> {
                     Toast.makeText(EditBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }
@@ -144,6 +156,14 @@ public class EditBike extends AppCompatActivity {
     }
 
     private void sendDataToServer(String oldNfcContent, String newNfcContent, String bikeName) {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(EditBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             MediaType JSON = MediaType.parse("application/json; charset=utf-8");
             JSONObject jsonData = new JSONObject();
@@ -192,6 +212,8 @@ public class EditBike extends AppCompatActivity {
                 runOnUiThread(() -> {
                     Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }

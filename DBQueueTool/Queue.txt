@@ -137,3 +137,11 @@ FROM (
     WHERE k.soldierid IN (SELECT s.id FROM soldier s WHERE s.date_accommodation IS NOT NULL)
 ) AS res
 WHERE soldier.id = res.soldierid;
+
+CREATE TABLE lostItem (
+	id TEXT NOT NULL PRIMARY KEY,
+	nameItem TEXT,
+	description TEXT,
+	soldier_id TEXT,
+	FOREIGN KEY(soldier_id) REFERENCES soldier(id)
+);

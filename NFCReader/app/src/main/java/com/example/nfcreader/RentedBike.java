@@ -1,7 +1,9 @@
 package com.example.nfcreader;
 
 import android.annotation.SuppressLint;
+import android.app.Dialog;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.nfc.NdefMessage;
@@ -121,6 +123,14 @@ public class RentedBike extends AppCompatActivity {
     }
 
     private void fetchAvailableBikes() {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(RentedBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
                 Request request = new Request.Builder()
@@ -147,6 +157,8 @@ public class RentedBike extends AppCompatActivity {
                 runOnUiThread(() -> {
                     Toast.makeText(RentedBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }
@@ -231,18 +243,29 @@ public class RentedBike extends AppCompatActivity {
                 .post(body)
                 .build();
 
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(RentedBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         // Make the network call asynchronously
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 e.printStackTrace();
                 runOnUiThread(() -> {
+                    loadingDialog.dismiss();
                     Toast.makeText(RentedBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
                 });
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+
+                runOnUiThread(loadingDialog::dismiss);
+
                 if (response.isSuccessful()) {
                     String responseData = response.body().string();
                     try {
@@ -283,18 +306,29 @@ public class RentedBike extends AppCompatActivity {
                 .post(body)
                 .build();
 
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(RentedBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         // Make the network call asynchronously
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 e.printStackTrace();
                 runOnUiThread(() -> {
+                    loadingDialog.dismiss();
                     Toast.makeText(RentedBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
                 });
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+
+                runOnUiThread(loadingDialog::dismiss);
+
                 if (response.isSuccessful()) {
                     String responseData = response.body().string();
                     try {
@@ -347,6 +381,14 @@ public class RentedBike extends AppCompatActivity {
 
 
     private void sendDataToServer(String nfcData, String date, String time, String selectedClientId) {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(RentedBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -386,6 +428,8 @@ public class RentedBike extends AppCompatActivity {
                 runOnUiThread(() -> {
                     Toast.makeText(RentedBike.this, "Error sending data to the server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }

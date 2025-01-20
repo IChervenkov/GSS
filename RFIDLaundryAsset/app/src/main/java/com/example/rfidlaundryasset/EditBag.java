@@ -1,6 +1,8 @@
 package com.example.rfidlaundryasset;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -263,6 +265,14 @@ public class EditBag extends AppCompatActivity {
 
     // Method to send EPC to the server using the persistent OkHttpClient connection
     private void sendDataToServer(String oldEpcCode, String newEpcContent, String code, String type, String maxcount) {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(EditBag.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -297,6 +307,8 @@ public class EditBag extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }
@@ -329,6 +341,14 @@ public class EditBag extends AppCompatActivity {
     }
 
     private void fetchAvailableBag() {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(EditBag.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
 
@@ -360,6 +380,8 @@ public class EditBag extends AppCompatActivity {
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(EditBag.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }

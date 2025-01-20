@@ -1,6 +1,8 @@
 package com.example.rfidlaundryasset;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -222,6 +224,14 @@ public class AddBag extends AppCompatActivity {
 
     // Method to send EPC to the server using the persistent OkHttpClient connection
     private void sendDataToServer(String epc, String code, String type, String maxcount) {
+
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(AddBag.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         new Thread(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -255,6 +265,8 @@ public class AddBag extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
             }
         }).start();
     }

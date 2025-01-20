@@ -1,5 +1,6 @@
 package com.example.nfcreader;
 
+import android.app.Dialog;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -129,18 +130,29 @@ public class SearchBike extends AppCompatActivity {
                 .post(body)
                 .build();
 
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(SearchBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         // Make the network call asynchronously
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 e.printStackTrace();
                 runOnUiThread(() -> {
+                    loadingDialog.dismiss();
                     Toast.makeText(SearchBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
                 });
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+
+                runOnUiThread(loadingDialog::dismiss);
+
                 if (response.isSuccessful()) {
                     String responseData = response.body().string();
                     try {
@@ -182,16 +194,27 @@ public class SearchBike extends AppCompatActivity {
                 .post(body)
                 .build();
 
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(SearchBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                runOnUiThread(() ->
-                        Toast.makeText(SearchBike.this, "Error fetching data from server: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                );
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    Toast.makeText(SearchBike.this, "Error fetching data from server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+
+                runOnUiThread(loadingDialog::dismiss);
+
                 if (response.isSuccessful() && response.body() != null) {
                     String responseData = response.body().string();
                     try {
