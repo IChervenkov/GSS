@@ -2582,6 +2582,21 @@ class Server {
                         [keyCodeId]
                     );
 
+                    const check_laundry_bag = await client.query(`SELECT status FROM laundrybags WHERE id = $1;`, [bagId]);
+
+                    if (check_laundry_bag.rows[0].status !== 'None') {
+                        return res.status(401).json({ message: "The soldier has an laundry bag an laundry and cannot be released." });
+                    }
+
+                    const check_bike = await client.query(`
+                        SELECT * FROM soldier s
+                        LEFT JOIN bikesoldier bs ON s.id = bs.soldierid
+                        WHERE s.id = $1 AND datefrom IS NOT NULL AND dateto IS NULL;`, [res_query.rows[0].soldierid]);
+
+                    if (check_bike.rows.length > 0) {
+                        return res.status(402).json({ message: "The soldier has an active bike rental and cannot be released." });
+                    }
+
                     await client.query(
                         "UPDATE key SET soldierid = NULL where id = $1;",
                         [keyCodeId]
@@ -3211,65 +3226,74 @@ class Server {
         });
 
         this.app.post('/accommodation/deleteSoldier', this.isLoggedIn.bind(this), async (req, res) => {
-
             const { error } = schemaReleaseAllRoom.validate(req.body);
             if (error) {
-                return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
+                return res.status(400).json({ message: "Invalid syntax. Only alphanumeric characters are allowed." });
             }
-
+        
             const { buildId } = req.body;
             const client = await pool.connect();
-
+        
             try {
                 await client.query('BEGIN');
-
-                const res_query = await client.query(
-                    `SELECT k.id, soldierid FROM key k
-                        LEFT JOIN soldier s ON s.id = k.soldierid
-                        LEFT JOIN roomskey rk ON rk.keyid = k.id
-                        LEFT JOIN buildroom br ON br.roomid = rk.roomid
-                        WHERE soldierid IS NOT NULL AND country <> 'None' AND buildid = $1;`, [buildId]
-                );
-
+        
+                const res_query = await client.query(`
+                    SELECT k.id AS key_id, s.id AS soldier_id, s.namesoldier AS soldier_name, lb.id AS laundry_bag_id, lb.status AS laundry_status,
+                        EXISTS (
+                            SELECT 1
+                            FROM bikesoldier bs
+                            WHERE bs.soldierid = s.id AND bs.datefrom IS NOT NULL AND bs.dateto IS NULL
+                        ) AS has_active_bike
+                    FROM key k
+                    JOIN soldier s ON s.id = k.soldierid
+                    LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
+                    LEFT JOIN roomskey rk ON rk.keyid = k.id
+                    LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                    WHERE s.id IS NOT NULL AND s.country <> 'None' AND br.buildid = $1;
+                `, [buildId]);
+        
                 if (res_query.rows.length === 0) {
                     await client.query('ROLLBACK');
-                    return res.status(401).json({ message: "This building is empty!" });
+                    return res.status(401).json({ message: "This building is empty." });
                 }
-
+        
                 for (const row of res_query.rows) {
-
-                    const queries = [];
-
-                    queries.push(client.query(
-                        "UPDATE soldier SET date_free = CURRENT_DATE WHERE id = $1;",
-                        [row.soldierid]
-                    ));
-
-                    queries.push(client.query(
-                        "UPDATE key SET soldierid = NULL WHERE id = $1;",
-                        [row.id]
-                    ));
-
-                    await Promise.all(queries);
+                    if (row.laundry_status !== 'None') {
+                        return res.status(402).json({
+                            message: `Soldier ${row.soldier_name} has an active laundry bag and cannot be released.`
+                        });
+                    }
+                    if (row.has_active_bike) {
+                        return res.status(403).json({
+                            message: `Soldier ${row.soldier_name} has an active bike rental and cannot be released.`
+                        });
+                    }
                 }
-
-                await client.query(
-                    "INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, 'Release all soldier']
-                );
-
+        
+                const soldierIds = res_query.rows.map(row => row.soldier_id);
+                const keyIds = res_query.rows.map(row => row.key_id);
+        
+                await Promise.all([
+                    client.query("UPDATE soldier SET date_free = CURRENT_DATE WHERE id = ANY($1)", [soldierIds]),
+                    client.query("UPDATE key SET soldierid = NULL WHERE id = ANY($1)", [keyIds])
+                ]);
+        
+                await client.query(`
+                    INSERT INTO usermonitoring (user_id, location)
+                    VALUES ((SELECT id FROM users WHERE username = $1), $2);
+                `, [req.session.username, 'Release all soldier']);
+        
                 await client.query('COMMIT');
-                return res.status(200).json({ message: 'All rooms are vacated' });
-
+                return res.status(200).json({ message: "All rooms are vacated." });
+        
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Error processing deleteSoldier:', error.message, error.stack);
-                res.status(500).json({ error: 'An error occurred while processing the data.' });
-
+                return res.status(500).json({ message: "An error occurred while processing the data." });
             } finally {
                 client.release();
             }
-        });
+        });        
 
         this.app.post('/accommodation/addDestination', this.isLoggedIn.bind(this), async (req, res) => {
 
