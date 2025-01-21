@@ -2946,6 +2946,16 @@ class Server {
                     if (result.rows.length > 0) {
                         errors.push({ type: 'DuplicateInDB', soldierId: row.soldierId, message: `Soldier '${row.soldierName}' already exists.` });
                     }
+
+                    if (!/^[0-9]+ [A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/.test(row.soldierName)) {
+                        errors.push({ type: 'InvalidFormat', message: `Soldier name '${row.soldierName}' have invalid format\n. All name must by in format: 'soldierNumber soldierName'.` });
+                        return;
+                    }
+
+                    if (row.soldierName.endsWith(' ')) {
+                        errors.push({ type: 'InvalidFormat', message: `Soldier name '${row.soldierName}' should not end with a space.` });
+                        return;
+                    }
                 }));
 
                 if (errors.length > 0) {
