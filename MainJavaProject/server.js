@@ -67,7 +67,7 @@ const updateBagsScanerSchema = Joi.object({
         .items(Joi.string().alphanum())
         .required(),
     destination: Joi.string()
-        .valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None')
+        .valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None', 'Linen Exchange service')
         .required(),
     prev_destination: Joi.string()
         .valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None')
@@ -271,6 +271,13 @@ const schemaAddAsset = Joi.object({
     selectedAddTypeId: Joi.string().alphanum().required(),
     selectedAddLocationId: Joi.string().alphanum().required(),
     selectedAddSubLocationId: Joi.string().alphanum().allow('').optional(),
+    assetAddCategorie: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    assetQuantity: Joi.number().integer().required(),
+    assetAddMrah: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    assetAddOwner: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    assetStatus: Joi.number().integer().required(),
+    assetAddExpandable: Joi.valid('Expandable', 'Non Expandable').required(),
+    assetAddDescription: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -633,6 +640,7 @@ class Server {
                     this.giveSpecificPermissionMain(req.session.username, [0, 5, 6], res);
                     break;
                 case 'helpDeskGatis':
+                case 'laundrySupervaizer':
                     this.giveSpecificPermissionMain(req.session.username, [0, 2, 6], res);
                     break;
                 case 'admin':
@@ -2818,6 +2826,11 @@ class Server {
                     return res.status(400).json({ message: `Soldier with id: '${soldierId}' already exists.` });
                 }
 
+                if (soldierName.endsWith(' ')) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: `Soldier name '${soldierName}' should not end with a space.` });
+                }
+
                 await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [soldierId, soldierName, soldierCountry]);
 
                 // Query the database for the user
@@ -2893,10 +2906,18 @@ class Server {
                     return res.status(400).json({ message: `Soldier with id: '${soldierNewId}' already exists.` });
                 }
 
+                if (soldierName.endsWith(' ')) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: `Soldier name '${soldierName}' should not end with a space.` });
+                }
+
                 if (soldierId === soldierNewId)
                     await client.query("UPDATE soldier SET namesoldier = $1, country = $2 WHERE id = $3;", [soldierName, soldierCountry, soldierId]);
                 else {
-                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [soldierNewId, soldierName, soldierCountry]);
+                    const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [soldierId]);
+                    const respons = result.rows[0];
+
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, $4, $5, $6, $7, $8);", [soldierNewId, soldierName, soldierCountry, respons.date_accommodation || null, respons.date_free || null, respons.meal_card || null, respons.laundry_bag_id || null, respons.used_room || null]);
                     await client.query("UPDATE movesoldier SET idsoldier = $1 WHERE idsoldier = $2;", [soldierNewId, soldierId]);
                     await client.query("UPDATE key SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
                     await client.query("UPDATE fitness SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
@@ -3230,13 +3251,13 @@ class Server {
             if (error) {
                 return res.status(400).json({ message: "Invalid syntax. Only alphanumeric characters are allowed." });
             }
-        
+
             const { buildId } = req.body;
             const client = await pool.connect();
-        
+
             try {
                 await client.query('BEGIN');
-        
+
                 const res_query = await client.query(`
                     SELECT k.id AS key_id, s.id AS soldier_id, s.namesoldier AS soldier_name, lb.id AS laundry_bag_id, lb.status AS laundry_status,
                         EXISTS (
@@ -3251,12 +3272,12 @@ class Server {
                     LEFT JOIN buildroom br ON br.roomid = rk.roomid
                     WHERE s.id IS NOT NULL AND s.country <> 'None' AND br.buildid = $1;
                 `, [buildId]);
-        
+
                 if (res_query.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.status(401).json({ message: "This building is empty." });
                 }
-        
+
                 for (const row of res_query.rows) {
                     if (row.laundry_status !== 'None') {
                         return res.status(402).json({
@@ -3269,23 +3290,23 @@ class Server {
                         });
                     }
                 }
-        
+
                 const soldierIds = res_query.rows.map(row => row.soldier_id);
                 const keyIds = res_query.rows.map(row => row.key_id);
-        
+
                 await Promise.all([
                     client.query("UPDATE soldier SET date_free = CURRENT_DATE WHERE id = ANY($1)", [soldierIds]),
                     client.query("UPDATE key SET soldierid = NULL WHERE id = ANY($1)", [keyIds])
                 ]);
-        
+
                 await client.query(`
                     INSERT INTO usermonitoring (user_id, location)
                     VALUES ((SELECT id FROM users WHERE username = $1), $2);
                 `, [req.session.username, 'Release all soldier']);
-        
+
                 await client.query('COMMIT');
                 return res.status(200).json({ message: "All rooms are vacated." });
-        
+
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Error processing deleteSoldier:', error.message, error.stack);
@@ -3293,7 +3314,7 @@ class Server {
             } finally {
                 client.release();
             }
-        });        
+        });
 
         this.app.post('/accommodation/addDestination', this.isLoggedIn.bind(this), async (req, res) => {
 
@@ -4171,7 +4192,8 @@ class Server {
                         this.giveSpecificPermissionLaundry(req.session.username, [0, 4, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
                         break;
                     case 'helpDeskGatis':
-                        this.giveSpecificPermissionLaundry(req.session.username, [0, 2, 5], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
+                    case 'laundrySupervaizer':
+                        this.giveSpecificPermissionLaundry(req.session.username, [0, 2, 6], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
                         break;
                     case 'admin':
                         this.giveSpecificPermissionLaundry(req.session.username, [0, 1, 2, 3, 4, 5, 6], res, bagData, totalCounts, avgTimeData, overallAverageFormatted, headerTable, overallTotalMountFormatted);
@@ -4343,6 +4365,48 @@ class Server {
                 await client.query('COMMIT');
                 res.status(200).json({ message: "Bulk status change successful" });
             } catch (err) {
+                await client.query('ROLLBACK');
+                console.error(err); // Log the error
+                res.status(500).json({ message: "Internal server error" });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/changeEndToEndStatus', async (req, res) => {
+
+            const { error } = updateBagsScanerSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { codes, destination, prev_destination } = req.body;
+
+            if (!Array.isArray(codes)) {
+                return res.status(400).json({ message: "Invalid codes array" });
+            }
+
+            if (codes.length === 0) {
+                return res.status(401).json({ message: "An empty list of scanned bags cannot be processed" });
+            }
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const insertPromises = codes.map((code, index) =>
+                    client.query(
+                        `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;`,
+                        [code]
+                    )
+                );
+                await Promise.all(insertPromises);
+                
+                await client.query('COMMIT');
+                res.status(200).json({ message: "Bulk status change successful" });
+
+            } catch (error) {
                 await client.query('ROLLBACK');
                 console.error(err); // Log the error
                 res.status(500).json({ message: "Internal server error" });
@@ -4757,7 +4821,7 @@ class Server {
                     return res.status(401).json({ message: 'This bag already exists!' });
                 }
 
-                await client.query(`INSERT INTO laundrybags(id, code, type, status, timein, timeout, maxcountlandry) VALUES ($1, $2, $3, 'None', null, null, $4);`,
+                await client.query(`INSERT INTO laundrybags(id, code, type, status, timein, timeout, maxcountlandry) VALUES ($1, $2, $3, 'None', NULL, NULL, $4);`,
                     [epc, code, type, maxcount]
                 );
 
@@ -4897,7 +4961,25 @@ class Server {
                     await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
                         [`Edit bag with code ${oldCode} set code ${code}, type ${type} and max washed ${maxcount}`]);
                 } else {
-                    await client.query(`INSERT INTO laundrybags(id, code, type, status, timein, timeout, maxcountlandry) VALUES ($1, $2, $3, 'None', null, null, $4);`, [newCode, code, type, maxcount]);
+
+                    const result = await client.query(`SELECT * FROM laundrybags WHERE id = $1;`, [oldCode]);
+                    const response = result.rows[0];
+
+                    await client.query(`INSERT INTO laundrybags(id, code, type, status, timein, timeout, maxcountlandry) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`, [
+                        newCode,
+                        code,
+                        type,
+                        response.status || 'None',
+                        response.timein || null,
+                        response.timeout || null,
+                        response.avg_drop_off_duration || 0,
+                        response.avg_transportation_duration || 0,
+                        response.avg_laundry_duration || 0,
+                        response.avg_ready_to_pick_up_duration || 0,
+                        response.avg_transportation_drop_off_duration || 0,
+                        response.laundrycount || 0,
+                        maxcount]);
+
                     await client.query(`UPDATE soldier SET laundry_bag_id = $1 WHERE laundry_bag_id = $2`, [newCode, oldCode]);
                     await client.query(`UPDATE laundryreport SET bag_id = $1 WHERE bag_id = $2`, [newCode, oldCode]);
                     await client.query(`DELETE FROM laundrybags WHERE id = $1`, [oldCode]);
@@ -5428,7 +5510,20 @@ class Server {
             if (!req.body.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId } = req.body;
+            const { 
+                assetEps, 
+                assetCodeSearch, 
+                assetAddName, 
+                selectedAddTypeId, 
+                selectedAddLocationId, 
+                selectedAddSubLocationId,
+                assetAddCategorie,
+                assetQuantity,
+                assetAddMrah,
+                assetAddOwner,
+                assetStatus,
+                assetAddExpandable,
+                assetAddDescription} = req.body;
 
             const client = await pool.connect();
 
@@ -5443,13 +5538,13 @@ class Server {
                 }
 
                 if (selectedAddSubLocationId !== '') {
-                    await client.query(`INSERT INTO assets(id, code, name_assets, type_id, location_room, location_key) VALUES ($1, $2, $3, $4, $5, $6);`,
-                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId]
+                    await client.query(`INSERT INTO assets(id, code, name_assets, type_id, location_room, location_key) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
+                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription]
                     );
 
                 } else {
-                    await client.query(`INSERT INTO assets(id, code, name_assets, type_id, location_room, location_key) VALUES ($1, $2, $3, $4, $5, NULL);`,
-                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId]
+                    await client.query(`INSERT INTO assets(id, code, name_assets, type_id, location_room, location_key) VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12);`,
+                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription]
                     );
                 }
 

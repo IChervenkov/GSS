@@ -79,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
             rfidReader.init();
 
             // Set the output power to minimum
-            rfidReader.setPower(1); // Replace '5' with the actual minimum value defined in the API
+            rfidReader.setPower(15); // Replace '5' with the actual minimum value defined in the API
 
             Toast.makeText(MainActivity.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -458,10 +458,18 @@ public class MainActivity extends AppCompatActivity {
                 payload.put("destination", destination);
                 payload.put("prev_destination", prev_destination);
 
+                String url;
+
+                if("Linen Exchange service".equals(destination)) {
+                    url = "https://bunker.bg/changeEndToEndStatus";
+                } else {
+                    url = "https://bunker.bg/changeStatusBulk";
+                }
+
                 RequestBody body = RequestBody.create(JSON, payload.toString());
 
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/changeStatusBulk")
+                        .url(url)
                         .post(body)
                         .build();
 
@@ -575,6 +583,11 @@ public class MainActivity extends AppCompatActivity {
 
             } else if (itemId == R.id.menu_taking_from_soldier) {
                 updateMode("None", "Ready to pick up");
+                resetData();
+                return true;
+
+            } else if (itemId == R.id.linen_exchange_service) {
+                updateMode("Linen Exchange service", "None");
                 resetData();
                 return true;
 

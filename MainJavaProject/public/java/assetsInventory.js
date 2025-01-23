@@ -36,6 +36,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const assetEps = document.getElementById('assetEpc');
     const assetCodeSearch = document.getElementById('assetCodeSearch');
     const assetAddName = document.getElementById('assetAddName');
+    const assetAddCategorie = document.getElementById('addCategorie');
+    const assetQuantity = document.getElementById('assetQuantity');
+    const assetAddMrah = document.getElementById('assetAddMrah');
+    const assetAddOwner = document.getElementById('assetAddOwner');
+    const assetStatus = document.getElementById('assetStatus');
+    const assetAddExpandable = document.getElementById('assetAddExpandable');
+    const assetAddDescription = document.getElementById('assetAddDescription');
 
     const typeSearchInput = document.getElementById('typeSearch');
     const typeSearchDropdown = document.getElementById('typeDropdown');
@@ -109,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Show loading indicator
     const loadingIndicator = document.getElementById('loadingIndicator');
-    
+
     loadingIndicator.style.display = 'flex';
 
     fetch(`/assets/getSortedRoom`, {
@@ -922,6 +929,36 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleInputValidity(assetAddName, assetAddName.value !== '' && assetAddName.checkValidity());
     });
 
+    assetAddCategorie.addEventListener('input', () => {
+        toggleInputValidity(assetAddCategorie, assetAddCategorie.value !== '' && assetAddCategorie.checkValidity());
+    });
+
+    assetQuantity.addEventListener('input', () => {
+        toggleInputValidity(assetQuantity, assetQuantity.value !== '' && assetQuantity.checkValidity());
+    });
+
+    assetAddMrah.addEventListener('input', () => {
+        toggleInputValidity(assetAddMrah, assetAddMrah.value !== '' && assetAddMrah.checkValidity());
+    });
+
+    assetAddOwner.addEventListener('input', () => {
+        toggleInputValidity(assetAddOwner, assetAddOwner.value !== '' && assetAddOwner.checkValidity());
+    });
+
+    assetStatus.addEventListener('input', () => {
+        toggleInputValidity(assetStatus, assetStatus.value !== '' && assetStatus.checkValidity());
+    });
+
+    assetAddExpandable.addEventListener('input', () => {
+        toggleInputValidity(assetAddExpandable, assetAddExpandable.value !== '' && assetAddExpandable.checkValidity());
+    });
+
+    assetAddDescription.addEventListener('input', () => {
+        const regex = /^[a-zA-Z0-9\s]*$/;
+        const isValid = regex.test(assetAddDescription.value);
+        toggleInputValidity(assetAddDescription, isValid);
+    });
+
     function showMess(type, message) {
 
         const icon = document.getElementById('mess-icon');
@@ -981,6 +1018,10 @@ document.addEventListener('DOMContentLoaded', function () {
         assetsAddModalContent.classList.add('show');
         assetsAddModalContent.classList.add('slide-in');
 
+        addSubLocationSearchInput.disabled = true;
+
+
+
         // Ensure that any 'slide-out' class is removed if it was previously added
         assetsAddModalContent.classList.remove('slide-out');
     }
@@ -994,7 +1035,18 @@ document.addEventListener('DOMContentLoaded', function () {
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
 
-            document.querySelectorAll('#assetEpc, #assetCodeSearch, #assetAddName, #addTypeSearch, #selectedAddTypeId, #addLocationSearch, #selectedAddLocationId, #addSubLocationSearch, #selectedAddSubLocationId').forEach((input) => {
+            document.querySelectorAll(`
+                #assetEpc, 
+                #assetCodeSearch, 
+                #assetAddName, 
+                #addTypeSearch, 
+                #selectedAddTypeId, 
+                #addLocationSearch, 
+                #selectedAddLocationId, 
+                #addSubLocationSearch, 
+                #selectedAddSubLocationId,
+                #addCategorie,
+                #assetAddDescription`).forEach((input) => {
 
                 input.classList.remove('is-valid');
                 input.classList.remove('is-invalid');
@@ -1002,6 +1054,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.value = '';
 
             });
+
+            document.querySelectorAll(`
+                #assetQuantity,
+                #assetAddMrah,
+                #assetAddOwner,
+                #assetStatus,
+                #assetAddExpandable`).forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+            });
+
+            assetQuantity.value = '1';
+            assetAddMrah.value = 'Global RTS';
+            assetAddOwner.value = 'Global RTS';
+            assetStatus.value = '1';
+            assetAddExpandable.value = 'Non Expandable';
 
             assetsAddModal.classList.remove('show');
             assetsAddModalContent.classList.remove('show');
@@ -1702,28 +1771,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (selectedAssetId.value === '') {
-            toggleInputValidity(assetSearchInput, false);
-            return;
-        }
+        const inputsToCheck = [
+            { input: assetSearchInput, condition: selectedAssetId.value === '' },
+            { input: assetName, condition: assetName.value === '' || !assetName.checkValidity() },
+            { input: typeSearchInput, condition: selectedTypeId.value === '' },
+            { input: locationSearchInput, condition: selectedLocationId.value === '' },
+            { input: subLocationSearchInput, condition: !subLocationSearchInput.disabled && selectedSubLocationId.value === '' }
+        ];
 
-        if (assetName.value === '' || !assetName.checkValidity()) {
-            toggleInputValidity(assetName, false);
-            return;
-        }
+        let isValid = true;
 
-        if (selectedTypeId.value === '') {
-            toggleInputValidity(typeSearchInput, false);
-            return;
-        }
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
 
-        if (selectedLocationId.value === '') {
-            toggleInputValidity(locationSearchInput, false);
-            return;
-        }
-
-        if (!subLocationSearchInput.disabled && selectedSubLocationId.value === '') {
-            toggleInputValidity(subLocationSearchInput, false);
+        if (!isValid) {
             return;
         }
 
@@ -1813,33 +1880,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (assetEps.value === '' || !assetEps.checkValidity()) {
-            toggleInputValidity(assetEps, false);
-            return;
-        }
+        const inputsToCheck = [
+            { input: assetEps, condition: assetEps.value === '' || !assetEps.checkValidity() },
+            { input: assetCodeSearch, condition: assetCodeSearch.value === '' || !assetCodeSearch.checkValidity() },
+            { input: assetAddName, condition: assetAddName.value === '' || !assetAddName.checkValidity() },
+            { input: typeAddSearchInput, condition: selectedAddTypeId.value === '' },
+            { input: addLocationSearchInput, condition: selectedAddLocationId.value === '' },
+            { input: addSubLocationSearchInput, condition: !addSubLocationSearchInput.disabled && selectedAddSubLocationId.value === '' },
+            { input: assetAddCategorie, condition: assetAddCategorie.value === '' || !assetAddCategorie.checkValidity() },
+            { input: assetQuantity, condition: assetQuantity.value === '' || !assetQuantity.checkValidity() },
+            { input: assetAddMrah, condition: assetAddMrah.value === '' || !assetAddMrah.checkValidity() },
+            { input: assetAddOwner, condition: assetAddOwner.value === '' || !assetAddOwner.checkValidity() },
+            { input: assetStatus, condition: assetStatus.value === '' || !assetStatus.checkValidity() },
+            { input: assetAddExpandable, condition: assetAddExpandable.value === '' || !assetAddExpandable.checkValidity() },
+            { input: assetAddDescription, condition: /^[a-zA-Z0-9\s]*$/.test(assetAddDescription.value) }
+        ];
 
-        if (assetCodeSearch.value === '' || !assetCodeSearch.checkValidity()) {
-            toggleInputValidity(assetCodeSearch, false);
-            return;
-        }
+        let isValid = true;
 
-        if (assetAddName.value === '' || !assetAddName.checkValidity()) {
-            toggleInputValidity(assetAddName, false);
-            return;
-        }
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
 
-        if (selectedAddTypeId.value === '') {
-            toggleInputValidity(typeAddSearchInput, false);
-            return;
-        }
-
-        if (selectedAddLocationId.value === '') {
-            toggleInputValidity(addLocationSearchInput, false);
-            return;
-        }
-
-        if (!addSubLocationSearchInput.disabled && selectedAddSubLocationId.value === '') {
-            toggleInputValidity(addSubLocationSearchInput, false);
+        if (!isValid) {
             return;
         }
 
@@ -1849,7 +1917,14 @@ document.addEventListener('DOMContentLoaded', function () {
             assetAddName: assetAddName.value,
             selectedAddTypeId: selectedAddTypeId.value,
             selectedAddLocationId: selectedAddLocationId.value,
-            selectedAddSubLocationId: selectedAddSubLocationId.value
+            selectedAddSubLocationId: selectedAddSubLocationId.value,
+            assetAddCategorie: assetAddCategorie.value,
+            assetQuantity: assetQuantity.value,
+            assetAddMrah: assetAddMrah.value,
+            assetAddOwner: assetAddOwner.value,
+            assetStatus: assetStatus.value,
+            assetAddExpandable: assetAddExpandable.value,
+            assetAddDescription: assetAddDescription.value
         };
 
         const submitButton = document.createElement('button');
@@ -1930,8 +2005,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (assetAddType.value === '' || !assetAddType.checkValidity()) {
-            toggleInputValidity(assetAddType, false);
+        const inputsToCheck = [
+            { input: assetAddType, condition: assetAddType.value === '' || !assetAddType.checkValidity() }
+        ];
+
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 
@@ -2018,8 +2107,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (selectedRemoveAssetId.value === '') {
-            toggleInputValidity(removeAssetTypeSearchInput, false);
+        const inputsToCheck = [
+            { input: removeAssetTypeSearchInput, condition: selectedRemoveAssetId.value === '' }
+        ];
+
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 
@@ -2106,18 +2209,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (lostAssetSearchInput.value === '') {
-            toggleInputValidity(lostAssetSearchInput, false);
-            return;
-        }
+        const inputsToCheck = [
+            { input: lostAssetSearchInput, condition: lostAssetSearchInput.value === '' },
+            { input: lostItemDescription, condition: !/^[a-zA-Z0-9\s]*$/.test(lostItemDescription.value) },
+            { input: lostAssetLocationSearchInput, condition: selectedLostAssetLocationId.value === '' }
+        ];
 
-        if (!/^[a-zA-Z0-9\s]*$/.test(lostItemDescription.value)) {
-            toggleInputValidity(lostItemDescription, false);
-            return;
-        }
+        let isValid = true;
 
-        if (selectedLostAssetLocationId.value === '') {
-            toggleInputValidity(lostAssetLocationSearchInput, false);
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 

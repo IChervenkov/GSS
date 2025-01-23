@@ -1588,82 +1588,76 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.querySelector('.left-nav').addEventListener('click', function (event) {
-        if (event.target.tagName === 'BUTTON' && event.target.classList.contains('main-button')) {
-            const id = event.target.id;
-
+        // Get the closest button ancestor if the clicked element is a span
+        let button = event.target.closest('button');
+    
+        if (button && button.classList.contains('main-button')) {
+            const id = button.id;
+    
             document.getElementById('room-number-header').classList.remove('ascending', 'descending');
             document.getElementById('room-status-header').classList.remove('ascending', 'descending');
             document.getElementById('count-free-beds-header').classList.remove('ascending', 'descending');
-
+    
             loadingIndicator.style.display = 'flex';
-
+    
             fetch(`/accommodation?isFirstTime=true&numBuild=${id}`, {
                 method: 'GET'
             })
                 .then(response => response.json())
                 .then(data => {
-                    // Parse the JSON string into an array of objects
                     nameroomSetCount = data.nameroomSetCount;
                     document.getElementById('previewTypeBuild').value = data.type;
                     document.getElementById('typeBuild').value = data.type;
-
+    
                     const headerTable = data.headerTable;
                     const tableHeader = document.querySelector('#keyModal .modal-content .table-container table thead tr');
                     tableHeader.innerHTML = '';
-
+    
                     headerTable.forEach(function (item) {
                         const th = document.createElement('th');
                         th.textContent = item.name;
                         tableHeader.appendChild(th);
                     });
-
-                    // Set the titlePage and countBeds variables
+    
                     const titlePage = data.titlePage;
                     const countBeds = data.countFreeBeds;
-
-                    // Update the title and count beds in the DOM
+    
                     document.querySelector('.col-md-auto h3 div').textContent = titlePage;
                     if (countBeds) {
                         document.querySelector('.col-md-auto h3 .name-add').textContent = `(${countBeds} free beds)`;
                     } else {
                         document.querySelector('.col-md-auto h3 .name-add').textContent = '';
                     }
-
-                    // Update the table with the fetched data
+    
                     const tbody = document.getElementById('tableBody');
                     tbody.innerHTML = '';
-
+    
                     nameroomSetCount.forEach(item => {
                         const row = document.createElement("tr");
                         row.classList.add('data-room');
-
-                        // Room number cell
+    
                         const nameroomCell = document.createElement("td");
                         nameroomCell.textContent = item.nameroom;
                         row.appendChild(nameroomCell);
-
-                        // Free beds cell
+    
                         const statusCell = document.createElement("td");
                         if (item.countFreeBeds != 0) {
                             statusCell.classList.add('undefined-data');
                         }
                         statusCell.textContent = item.countFreeBeds != 0 ? 'Free' : 'Occupied';
                         row.appendChild(statusCell);
-
-                        // Room status cell
+    
                         const quantityCell = document.createElement("td");
                         quantityCell.textContent = item.countFreeBeds;
                         row.appendChild(quantityCell);
-
-                        // Attach click event for each row
+    
                         row.addEventListener('click', function (event) {
                             const roomnumber = event.currentTarget.querySelector('td:nth-child(1)').textContent;
                             document.getElementById('numBuild').value = id;
-
+    
                             openModalKey(roomnumber);
                         });
-
-                        // Append row to the table body
+    
                         tbody.appendChild(row);
                     });
                 })
@@ -1672,7 +1666,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     loadingIndicator.style.display = 'none';
                 });
         }
-    });
+    });    
 
     function showGlobalMess(type, message) {
 

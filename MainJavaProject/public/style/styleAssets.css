@@ -102,22 +102,25 @@ thead th input:focus {
     max-width: 60%;
 }
 
-#assetDescription {
+#assetDescription #assetAddDescription {
     min-height: 50px;
     max-height: 250px;
     height: 250px;
 }
 
-#assetDescription::-webkit-scrollbar {
+#assetDescription::-webkit-scrollbar,
+#assetAddDescription::-webkit-scrollbar {
     width: 10px;
 }
 
-#assetDescription::-webkit-scrollbar-thumb {
+#assetDescription::-webkit-scrollbar-thumb,
+#assetAddDescription::-webkit-scrollbar-thumb {
     background-color: #28a745;
     border-radius: 4px;
 }
 
-#assetDescription::-webkit-scrollbar-thumb:hover {
+#assetDescription::-webkit-scrollbar-thumb:hover,
+#assetAddDescription::-webkit-scrollbar-thumb:hover {
     background-color: #218838;
 }
 
@@ -337,6 +340,37 @@ td {
     display: block;
     opacity: 1;
     /* Ensure it's visible when showing */
+}
+
+#addAssetsModal .modal-content {
+    margin-top: 0;
+}
+
+/* Tooltip styling */
+.tooltip-custom {
+    position: absolute;
+    background-color: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 2;
+}
+
+.btn-container {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-container:hover .tooltip-custom {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
 .modal-content {

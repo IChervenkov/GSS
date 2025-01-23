@@ -82,17 +82,32 @@
                 </div>
 
                 <div class="virtual-warehouse-labels">
-                    <button type="button" id="btnAddTypeAsset" class="btn-add-type">
-                        <i class="bi bi-plus-circle"></i> Add Type
-                    </button>
+                    <div class="btn-container">
+                        <button type="button" id="btnAddTypeAsset" class="btn-add-type">
+                            <i class="bi bi-plus-circle"></i> Add Type
+                        </button>
+                        <div class="tooltip-custom">
+                            Add a new type of asset to the list.
+                        </div>
+                    </div>
 
-                    <button type="button" id="btnRemoveTypeAsset" class="btn-add-type">
-                        <i class="bi bi-dash-circle"></i> Remove Type
-                    </button>
+                    <div class="btn-container">
+                        <button type="button" id="btnRemoveTypeAsset" class="btn-add-type">
+                            <i class="bi bi-dash-circle"></i> Remove Type
+                        </button>
+                        <div class="tooltip-custom">
+                            Remove a type of asset from the list.
+                        </div>
+                    </div>
 
-                    <button type="button" id="btnLostAsset" class="btn-add-type">
-                        <i class="bi bi-exclamation-circle"></i> Lost Asset
-                    </button>
+                    <div class="btn-container">
+                        <button type="button" id="btnLostAsset" class="btn-add-type">
+                            <i class="bi bi-exclamation-circle"></i> Lost Asset
+                        </button>
+                        <div class="tooltip-custom">
+                            Report a lost asset.
+                        </div>
+                    </div>
 
                 </div>
             </div>
@@ -145,10 +160,20 @@
             <span class="close-btn">&times;</span>
 
             <h2>List of Assets
-                <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addAsset"><i
-                        class="bi bi-plus"></i></button>
-                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold" id="removeAsset"><i
-                        class="bi bi-dash"></i></button>
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addAsset"><i
+                            class="bi bi-plus"></i></button>
+                    <div class="tooltip-custom">
+                        Add a new asset to the list.
+                    </div>
+                </div>
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                        id="removeAsset"><i class="bi bi-dash"></i></button>
+                    <div class="tooltip-custom">
+                        Remove an asset from the list.
+                    </div>
+                </div>
             </h2>
 
             <div class="table-container">
@@ -250,69 +275,133 @@
     </div>
 
     <div id="addAssetsModal" class="modal">
-        <form class="modal-content" method="POST" , action="/assets/addAsset" id="form2">
+        <form class="modal-content" method="POST" action="/assets/addAsset" id="form2">
             <span class="close-btn">&times;</span>
 
             <h2 class="mb-4">Add asset</h2>
 
-            <div class="mb-3" id="assert-epc-container">
-                <label for="assetEpc" class="form-label">Asset EPC code <span class="text-danger">*</span></label>
-                <input type="text" id="assetEpc" class="form-control" placeholder="Asset EPC code" ,
-                    pattern="^[a-zA-Z0-9]+$">
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
+            <div class="row">
+                <div class="col-md-4 mb-3" id="assert-epc-container">
+                    <label for="assetEpc" class="form-label">Asset EPC code <span class="text-danger">*</span></label>
+                    <input type="text" id="assetEpc" class="form-control" placeholder="Asset EPC code"
+                        pattern="^[a-zA-Z0-9]+$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-4 mb-3" id="assert-code-container">
+                    <label for="assetCodeSearch" class="form-label">Assert code <span
+                            class="text-danger">*</span></label>
+                    <input type="text" id="assetCodeSearch" class="form-control" placeholder="Asset code"
+                        pattern="^[a-zA-Z0-9]+$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="assetAddName" class="form-label">Assert name <span class="text-danger">*</span></label>
+                    <input type="text" id="assetAddName" class="form-control" placeholder="Asset name"
+                        pattern="^[a-zA-Z0-9\s]+$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
             </div>
 
-            <div class="mb-3" id="assert-code-container">
-                <label for="assetCodeSearch" class="form-label">Assert code <span class="text-danger">*</span></label>
-                <input type="text" id="assetCodeSearch" class="form-control" placeholder="Asset code" ,
-                    pattern="^[a-zA-Z0-9]+$">
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
+            <div class="row">
+
+                <div class="col-md-4 mb-3 search-container" id="search-add-type-container">
+                    <label for="addTypeSearch" class="form-label">Assert type <span class="text-danger">*</span></label>
+                    <input type="text" id="addTypeSearch" class="form-control" placeholder="Asset type">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                    <ul id="addTypeDropdown" class="list-group"></ul>
+                    <input type="hidden" id="selectedAddTypeId" name="typeId" value="">
+                </div>
+
+                <div class="col-md-4 mb-3 search-container" id="search-add-location-container">
+                    <label for="addLocationSearch" class="form-label">Assert location <span
+                            class="text-danger">*</span></label>
+                    <input type="text" id="addLocationSearch" class="form-control" placeholder="Asset location">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                    <ul id="addLocationDropdown" class="list-group"></ul>
+                    <input type="hidden" id="selectedAddLocationId" name="locationId" value="">
+                </div>
+
+                <div class="col-md-4 mb-3 search-container" id="search-add-sub-location-container">
+                    <label for="addSubLocationSearch" class="form-label">Associated key</label>
+                    <input type="text" id="addSubLocationSearch" class="form-control" placeholder="Associated key">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                    <ul id="addSubLocationDropdown" class="list-group"></ul>
+                    <input type="hidden" id="selectedAddSubLocationId" name="subLocationId" value="">
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label for="assetAddName" class="form-label">Assert name <span class="text-danger">*</span></label>
-                <input type="text" id="assetAddName" class="form-control" placeholder="Asset name"
-                    pattern="^[a-zA-Z0-9\s]+$">
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="addCategorie" class="form-label">Asset categories <span
+                            class="text-danger">*</span></label>
+                    <input type="text" id="addCategorie" class="form-control" placeholder="Asset categories" pattern="^[a-zA-Z\s]+$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="assetQuantity" class="form-label">Assert quantity <span class="text-danger">*</span></label>
+                    <input type="number" id="assetQuantity" class="form-control" placeholder="Asset quantity" min="1" value="1">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="assetAddMrah" class="form-label">MRAH <span class="text-danger">*</span></label>
+                    <input type="text" id="assetAddMrah" class="form-control" placeholder="MRAH"
+                        pattern="^[a-zA-Z\s]+$" value="Global RTS">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
             </div>
 
-            <div class="mb-3 search-container" id="search-add-type-container">
-                <label for="addTypeSearch" class="form-label">Assert type <span class="text-danger">*</span></label>
-                <input type="text" id="addTypeSearch" class="form-control" placeholder="Asset type">
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
-                <ul id="addTypeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
-                <input type="hidden" id="selectedAddTypeId" name="typeId" value="">
-                <!-- To store the selected soldier ID -->
+            <div class="row">
+                
+                <div class="col-md-4 mb-3">
+                    <label for="assetAddOwner" class="form-label">Assert owner <span class="text-danger">*</span></label>
+                    <input type="text" id="assetAddOwner" class="form-control" placeholder="Asset owner"
+                        pattern="^[a-zA-Z\s]+$" value="Global RTS">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="assetStatus" class="form-label">Status <span class="text-danger">*</span></label>
+                    <input type="number" id="assetStatus" class="form-control" placeholder="Status" min="1" max="3" value="1">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="assetAddExpandable" class="form-label">Expandable <span class="text-danger">*</span></label>
+                    <select id="assetAddExpandable" class="form-control">
+                        <option value="Expandable">Expandable</option>
+                        <option value="Non Expandable" selected>Non Expandable</option>
+                    </select>
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
             </div>
 
-            <div class="mb-3 search-container" id="search-add-location-container">
-                <label for="addLocationSearch" class="form-label">Assert location <span
-                        class="text-danger">*</span></label>
-                <input type="text" id="addLocationSearch" class="form-control" placeholder="Asset location">
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
-                <ul id="addLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
-                <input type="hidden" id="selectedAddLocationId" name="locationId" value="">
-                <!-- To store the selected soldier ID -->
-            </div>
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label for="assetAddDescription" class="form-label">Asset description</label>
+                    <textarea id="assetAddDescription" class="form-control" placeholder="Asset description"
+                        rows="5" style="max-height: 120px;"></textarea>
+                </div>
 
-            <div class="mb-3 search-container" id="search-add-sub-location-container">
-                <label for="addSubLocationSearch" class="form-label">Associated key</label>
-                <input type="text" id="addSubLocationSearch" class="form-control" placeholder="Associated key">
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
-                <ul id="addSubLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
-                <input type="hidden" id="selectedAddSubLocationId" name="subLocationId" value="">
-                <!-- To store the selected soldier ID -->
+                <button type="submit" class="modal-button" id="add-button">
+                    <i class="bi bi-plus-circle"></i> Add Asset
+                </button>
             </div>
-
-            <button type="submit" class="modal-button" id="add-button">
-                <i class="bi bi-plus-circle"></i> Add Asset
-            </button>
 
         </form>
     </div>
@@ -378,7 +467,8 @@
                             placeholder="Item code" aria-label="Item code">
                         <div class="invalid-feedback"></div>
                         <div class="valid-feedback"></div>
-                        <ul id="lostAssetNameDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                        <ul id="lostAssetNameDropdown" class="list-group"></ul>
+                        <!-- Custom dropdown for search -->
                         <input type="hidden" id="selectedLostAssetNameId" name="lostAssetNameId" value="">
                     </div>
 
@@ -397,7 +487,8 @@
                             placeholder="Last Known Person">
                         <div class="invalid-feedback"></div>
                         <div class="valid-feedback"></div>
-                        <ul id="assetLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                        <ul id="assetLocationDropdown" class="list-group"></ul>
+                        <!-- Custom dropdown for search -->
                         <input type="hidden" id="selectedAssetLocationId" name="assetLocationId" value="">
                     </div>
 
