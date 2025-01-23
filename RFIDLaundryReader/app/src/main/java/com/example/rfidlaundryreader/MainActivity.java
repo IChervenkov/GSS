@@ -302,6 +302,7 @@ public class MainActivity extends AppCompatActivity {
                             try {
                                 jsonPayload.put("code", epc);
                                 jsonPayload.put("prev_destination", prev_destination);
+                                jsonPayload.put("destination", destination);
                                 jsonPayload.put("permCount", perm_count);
                             } catch (JSONException e) {
                                 e.printStackTrace();

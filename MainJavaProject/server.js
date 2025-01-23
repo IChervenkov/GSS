@@ -83,6 +83,7 @@ const updateBagsSchema = Joi.object({
 const checkScaningCodeSchema = Joi.object({
     code: Joi.string().alphanum().required(),
     prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
+    destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None', 'Linen Exchange service').required(),
     permCount: Joi.number().required()
 });
 
@@ -4422,7 +4423,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { code, prev_destination, permCount } = req.body;
+            const { code, prev_destination, destination, permCount } = req.body;
             const client = await pool.connect();
 
             try {
@@ -4453,6 +4454,14 @@ class Server {
                 if (bag.status !== prev_destination) {
                     await client.query('ROLLBACK');
                     return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${status}, not ${prev_stat}.` });
+                }
+
+                const resultCount = await client.query(`
+                        SELECT COUNT(*) AS count FROM laundryreport WHERE bag_id = $1 AND date_drop_off::date = CURRENT_DATE;`, [code]);
+
+                if (destination === 'Linen Exchange service' && parseInt(resultCount.rows[0].count) > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: `The bag with number ${code} is already scaned with use Linen Exchange service` });
                 }
 
                 await client.query('COMMIT');

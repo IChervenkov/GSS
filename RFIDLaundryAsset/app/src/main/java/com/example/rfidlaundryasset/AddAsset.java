@@ -10,6 +10,7 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -50,6 +51,13 @@ public class AddAsset extends AppCompatActivity {
     private RFIDWithUHFUART rfidReader;
     private boolean isInventory = false;
     private ThreadInventory threadInventory;
+    private Spinner assetExpandable;
+    private EditText assetCategoriesText;
+    private EditText assetQuantityText;
+    private EditText assetMrahText;
+    private EditText assetOwnerText;
+    private EditText assetStatusText;
+    private EditText assetDescriptionText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,8 +72,29 @@ public class AddAsset extends AppCompatActivity {
         assetTypeTextList = findViewById(R.id.assetTypeAutoCompleteTextView);
         assetLocationText = findViewById(R.id.assetLocationAutoCompleteTextView);
         assetSubLocationText = findViewById(R.id.assetSubLocationAutoCompleteTextView);
+        assetCategoriesText = findViewById(R.id.assetCategoriesText);
+        assetExpandable = findViewById(R.id.assetExpandableText);
+        assetQuantityText = findViewById(R.id.assetQuantityText);
+        assetMrahText = findViewById(R.id.assetMrahText);
+        assetOwnerText = findViewById(R.id.assetOwnerText);
+        assetStatusText = findViewById(R.id.assetStatusText);
+        assetDescriptionText = findViewById(R.id.assetDescriptionText);
 
         assetSubLocationText.setEnabled(false);
+
+        // Create an ArrayAdapter using the string array and a default spinner layout
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                this,
+                R.array.asset_status_options,
+                android.R.layout.simple_spinner_item
+        );
+
+        // Specify the layout to use when the list of choices appears
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        // Apply the adapter to the spinner
+        assetExpandable.setAdapter(adapter);
+        assetExpandable.setSelection(0);
 
         // Fetch asset type from the server
         fetchAssetType();

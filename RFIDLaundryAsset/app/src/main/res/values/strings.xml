@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">RFIDLaundryAsset</string>
+    <string-array name="asset_status_options">
+        <item>Non Expandable</item>
+        <item>Expandable</item>
+    </string-array>
 </resources>
