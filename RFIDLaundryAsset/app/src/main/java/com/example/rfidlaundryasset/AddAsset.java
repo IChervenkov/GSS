@@ -2,7 +2,6 @@ package com.example.rfidlaundryasset;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -51,12 +50,12 @@ public class AddAsset extends AppCompatActivity {
     private RFIDWithUHFUART rfidReader;
     private boolean isInventory = false;
     private ThreadInventory threadInventory;
-    private Spinner assetExpandable;
+    private Spinner assetExpandableText;
     private EditText assetCategoriesText;
     private EditText assetQuantityText;
     private EditText assetMrahText;
     private EditText assetOwnerText;
-    private EditText assetStatusText;
+    private Spinner assetStatusText;
     private EditText assetDescriptionText;
 
     @Override
@@ -73,7 +72,7 @@ public class AddAsset extends AppCompatActivity {
         assetLocationText = findViewById(R.id.assetLocationAutoCompleteTextView);
         assetSubLocationText = findViewById(R.id.assetSubLocationAutoCompleteTextView);
         assetCategoriesText = findViewById(R.id.assetCategoriesText);
-        assetExpandable = findViewById(R.id.assetExpandableText);
+        assetExpandableText = findViewById(R.id.assetExpandableText);
         assetQuantityText = findViewById(R.id.assetQuantityText);
         assetMrahText = findViewById(R.id.assetMrahText);
         assetOwnerText = findViewById(R.id.assetOwnerText);
@@ -85,7 +84,7 @@ public class AddAsset extends AppCompatActivity {
         // Create an ArrayAdapter using the string array and a default spinner layout
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 this,
-                R.array.asset_status_options,
+                R.array.asset_expandable_options,
                 android.R.layout.simple_spinner_item
         );
 
@@ -93,8 +92,22 @@ public class AddAsset extends AppCompatActivity {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
         // Apply the adapter to the spinner
-        assetExpandable.setAdapter(adapter);
-        assetExpandable.setSelection(0);
+        assetExpandableText.setAdapter(adapter);
+        assetExpandableText.setSelection(0);
+
+        // Create an ArrayAdapter using the string array and a default spinner layout
+        ArrayAdapter<CharSequence> adapter_status = ArrayAdapter.createFromResource(
+                this,
+                R.array.asset_status_options,
+                android.R.layout.simple_spinner_item
+        );
+
+        // Specify the layout to use when the list of choices appears
+        adapter_status.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        // Apply the adapter to the spinner
+        assetStatusText.setAdapter(adapter_status);
+        assetStatusText.setSelection(0);
 
         // Fetch asset type from the server
         fetchAssetType();
@@ -144,6 +157,13 @@ public class AddAsset extends AppCompatActivity {
                 String assetType = typeAssetId;
                 String assetLocation = locationAssetId;
                 String assetSubLocation = subLocationAssetId;
+                String assetCategory = assetCategoriesText.getText().toString().trim();
+                String assetExpandable = assetExpandableText.getSelectedItem().toString().trim();
+                String assetQuantity = assetQuantityText.getText().toString().trim();
+                String assetMrah = assetMrahText.getText().toString().trim();
+                String assetOwner = assetOwnerText.getText().toString().trim();
+                String assetStatus = assetStatusText.getSelectedItem().toString().trim();
+                String assetDescription = assetDescriptionText.toString().trim();
 
                 if (assetCode.isEmpty()) {
                     Toast.makeText(this, "Please enter a asset code!", Toast.LENGTH_SHORT).show();
@@ -180,7 +200,52 @@ public class AddAsset extends AppCompatActivity {
                     return;
                 }
 
-                sendDataToServer(epc, assetCode, assetName, assetType, assetLocation, assetSubLocation);
+                if(assetCategory.isEmpty()) {
+                    Toast.makeText(this, "Please enter a asset category", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if(!assetCategory.matches("^[a-zA-Z\\s]+$")) {
+                    Toast.makeText(this, "Asset category must only contain big and small letters and spaces!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if(assetExpandable.isEmpty()) {
+                    Toast.makeText(this, "Please select a asset expandable", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if(assetQuantity.isEmpty()) {
+                    Toast.makeText(this, "Please enter a asset quantity", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if(assetMrah.isEmpty()) {
+                    Toast.makeText(this, "Please enter a asset MRAH", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if(!assetMrah.matches("^[a-zA-Z\\s]+$")) {
+                    Toast.makeText(this, "Asset MRAH must only contain big and small letters and spaces!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if(assetOwner.isEmpty()) {
+                    Toast.makeText(this, "Please enter a asset owner", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if(!assetOwner.matches("^[a-zA-Z\\s]+$")) {
+                    Toast.makeText(this, "Asset owner must only contain big and small letters and spaces!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if(assetStatus.isEmpty()) {
+                    Toast.makeText(this, "Please select a asset status", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                sendDataToServer(epc, assetCode, assetName, assetType, assetLocation, assetSubLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription);
 
             } else {
                 Toast.makeText(this, "No EPC content detected!", Toast.LENGTH_SHORT).show();
@@ -189,7 +254,7 @@ public class AddAsset extends AppCompatActivity {
     }
 
     // Method to send EPC to the server using the persistent OkHttpClient connection
-    private void sendDataToServer(String epc, String code, String name, String type, String location, String subLocation) {
+    private void sendDataToServer(String epc, String code, String name, String type, String location, String subLocation, String category, String quantity, String mrah, String owner, String status, String expandable, String description) {
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(AddAsset.this);
@@ -208,6 +273,13 @@ public class AddAsset extends AppCompatActivity {
                 payload.put("selectedAddTypeId", type);
                 payload.put("selectedAddLocationId", location);
                 payload.put("selectedAddSubLocationId", subLocation);
+                payload.put("assetAddCategorie", category);
+                payload.put("assetQuantity", quantity);
+                payload.put("assetAddMrah", mrah);
+                payload.put("assetAddOwner", owner);
+                payload.put("assetStatus", status);
+                payload.put("assetAddExpandable", expandable);
+                payload.put("assetAddDescription", description);
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
                 RequestBody body = RequestBody.create(JSON, payload.toString());
