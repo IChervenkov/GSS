@@ -274,7 +274,7 @@ public class MainActivity extends AppCompatActivity {
                 UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
                 if (uhftagInfo == null) {
                     try {
-                        Thread.sleep(20); // Wait for 20 milliseconds before reading the next tag
+                        Thread.sleep(10); // Wait for 10 milliseconds before reading the next tag
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                         if (Thread.interrupted()) {
