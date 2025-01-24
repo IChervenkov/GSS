@@ -144,10 +144,13 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
-                android:hint="Asset status"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
                 android:padding="10dp"
+                android:background="@drawable/spinner_background"
+                android:popupBackground="@android:color/white"
+                android:dropDownVerticalOffset="50dp"
+                android:textAlignment="center"
                 android:textSize="18sp" />
 
             <Spinner
@@ -156,11 +159,15 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="2"
                 android:layout_columnWeight="2"
-                android:hint="Asset expandable"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="18sp"/>
+                android:background="@drawable/spinner_background"
+                android:popupBackground="@android:color/white"
+                android:dropDownVerticalOffset="50dp"
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
 
             <EditText
                 android:id="@+id/assetDescriptionText"

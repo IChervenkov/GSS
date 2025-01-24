@@ -5547,12 +5547,12 @@ class Server {
                 }
 
                 if (selectedAddSubLocationId !== '') {
-                    await client.query(`INSERT INTO assets(id, code, name_assets, type_id, location_room, location_key) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
+                    await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
                         [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription]
                     );
 
                 } else {
-                    await client.query(`INSERT INTO assets(id, code, name_assets, type_id, location_room, location_key) VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12);`,
+                    await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12);`,
                         [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription]
                     );
                 }

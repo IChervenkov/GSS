@@ -1312,7 +1312,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 newRow.insertCell().textContent = row.namesoldier;
                 newRow.insertCell().textContent = row.country;
                 newRow.insertCell().textContent = row.type;
-                newRow.insertCell().textContent = row.status;
+                newRow.insertCell().textContent = row.date_drop_off === row.date_ready_to_pick_up ? 'In the soldier' : row.status;
                 newRow.insertCell().textContent = row.date_drop_off ? row.date_drop_off : 'Not accommodated';
                 newRow.insertCell().textContent = row.date_ready_to_pick_up ? row.date_ready_to_pick_up : 'No departure date';
             });
