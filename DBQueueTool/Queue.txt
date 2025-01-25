@@ -124,6 +124,13 @@ CREATE TABLE assets (
 	type_id INT,
 	location_room TEXT,
 	location_key TEXT,
+	categorie TEXT,
+	quantity TEXT,
+	mrah TEXT,
+	asset_owner TEXT,
+	status TEXT,
+	expandable TEXT,
+	description TEXT,
 	FOREIGN KEY(type_id) REFERENCES assetstype(id),
 	FOREIGN KEY(location_room) REFERENCES rooms(id),
 	FOREIGN KEY(location_key) REFERENCES key(id)

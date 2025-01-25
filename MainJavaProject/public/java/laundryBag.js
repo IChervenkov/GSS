@@ -452,6 +452,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
+
+            document.querySelectorAll('.search-input-view-laundry').forEach((input) => {
+                input.value = '';
+            });
+
+            document.querySelectorAll('.search-input-view-laundry-second').forEach((input) => {
+                input.value = '';
+            });
+
             reportViewModal.classList.remove('show');
             reportViewModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
