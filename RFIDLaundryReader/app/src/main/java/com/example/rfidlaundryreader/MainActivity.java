@@ -7,8 +7,10 @@ import android.app.Dialog;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
+import android.widget.Spinner;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -24,8 +26,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.InterruptedIOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import okhttp3.MediaType;
@@ -79,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
             rfidReader.init();
 
             // Set the output power to minimum
-            rfidReader.setPower(15); // Replace '5' with the actual minimum value defined in the API
+            rfidReader.setPower(5); // Replace '5' with the actual minimum value defined in the API
 
             Toast.makeText(MainActivity.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -90,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == 139 || keyCode == 280 || keyCode == 293) { // KeyCode may vary based on your Chainway device configuration
+        if (keyCode == 293) { // KeyCode may vary based on your Chainway device configuration
             if (isInventory) {
                 isSuccesful = true;
                 stopInventoryThread();
@@ -108,6 +114,10 @@ public class MainActivity extends AppCompatActivity {
                     });
                 }).start();
             }
+            return true;
+
+        } else if (keyCode == 139) {
+            runOnUiThread(() -> showPopupWindowService("Linen Exchange additional service"));
             return true;
         }
         return super.onKeyDown(keyCode, event);
@@ -254,6 +264,107 @@ public class MainActivity extends AppCompatActivity {
         builder.show();
     }
 
+    private void fetchBag(Spinner bagSpinner) {
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        new Thread(() -> {
+            try {
+                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+                JSONObject payload = new JSONObject();
+                payload.put("isValidCode", true);
+
+                RequestBody body = RequestBody.create(JSON, payload.toString());
+                Request request = new Request.Builder()
+                        .url("https://bunker.bg/bags")
+                        .post(body)
+                        .build();
+
+                Response response = client.newCall(request).execute();
+                if (response.isSuccessful() && response.body() != null) {
+                    final String responseData = response.body().string();
+                    runOnUiThread(() -> {
+                        try {
+                            JSONObject responseJson = new JSONObject(responseData);
+                            JSONArray bags = responseJson.getJSONArray("allBags");
+                            populateBagSpinner(bags, bagSpinner);
+
+                        } catch (JSONException e) {
+                            Toast.makeText(MainActivity.this, "JSON parsing error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                } else {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Error fetching data", Toast.LENGTH_SHORT).show());
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
+            }
+        }).start();
+    }
+
+    private void showPopupWindowService(String title) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        // Inflate the custom view
+        View customView = getLayoutInflater().inflate(R.layout.popup_spinner_layout, null);
+        Spinner bagSpinner = customView.findViewById(R.id.bagSpinner);
+
+        builder.setTitle(title)
+                .setView(customView)
+                .setPositiveButton("OK", (dialog, which) -> {
+                    String selectedBagCode = (String) bagSpinner.getSelectedItem();
+                    Map<String, String> bagIdMap = (Map<String, String>) bagSpinner.getTag();
+
+                    destination = "Linen Exchange service";
+                    uniqueEpcSet.clear();
+
+                    if (selectedBagCode != null && bagIdMap != null) {
+                        String selectedBagId = bagIdMap.get(selectedBagCode);
+                        uniqueEpcSet.add(selectedBagId);
+                        sendAllEpcsToServer(uniqueEpcSet);
+                        dialog.dismiss();
+                        showPopupWindow("Information", "Operation completed successfully");
+                    }
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        // Show the dialog before fetching data
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        // Fetch bags and populate the spinner
+        fetchBag(bagSpinner);
+    }
+
+    private void populateBagSpinner(JSONArray bags, Spinner bagSpinner) throws JSONException {
+        List<String> bagCodes = new ArrayList<>();
+        Map<String, String> bagIdMap = new HashMap<>(); // Maps code to id
+
+        for (int i = 0; i < bags.length(); i++) {
+            JSONObject bag = bags.getJSONObject(i);
+            String bagCode = bag.getString("name");
+            String bagId = bag.getString("id");
+            String bagStatus = bag.getString("status");
+
+            if (!bagStatus.equals("None")) {
+                bagCodes.add(bagCode);
+                bagIdMap.put(bagCode, bagId); // Store id associated with the code
+            }
+        }
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, bagCodes);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        bagSpinner.setAdapter(adapter);
+
+        // Store the bagIdMap somewhere accessible if you need the selected bag ID later
+        bagSpinner.setTag(bagIdMap);
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -274,7 +385,7 @@ public class MainActivity extends AppCompatActivity {
                 UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
                 if (uhftagInfo == null) {
                     try {
-                        Thread.sleep(10); // Wait for 10 milliseconds before reading the next tag
+                        Thread.sleep(0); // Wait for 0 milliseconds before reading the next tag
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                         if (Thread.interrupted()) {
@@ -291,6 +402,13 @@ public class MainActivity extends AppCompatActivity {
                     synchronized (invalidEpcSet) {
                         if (invalidEpcSet.contains(epc)) {
                             continue; // Skip rescanning invalid EPC
+                        }
+                    }
+
+                    // Check if the EPC is already processed
+                    synchronized (uniqueEpcSet) {
+                        if (uniqueEpcSet.contains(epc)) {
+                            continue; // Skip processing for already handled EPCs
                         }
                     }
 

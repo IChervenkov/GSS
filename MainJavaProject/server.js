@@ -4457,7 +4457,9 @@ class Server {
                 }
 
                 const resultCount = await client.query(`
-                        SELECT COUNT(*) AS count FROM laundryreport WHERE bag_id = $1 AND date_drop_off::date = CURRENT_DATE;`, [code]);
+                        SELECT COUNT(*) AS count
+                            FROM laundryreport
+                            WHERE bag_id = $1 AND date_drop_off > NOW() - INTERVAL '30 minutes';`, [code]);
 
                 if (destination === 'Linen Exchange service' && parseInt(resultCount.rows[0].count) > 0) {
                     await client.query('ROLLBACK');
