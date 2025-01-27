@@ -4,14 +4,35 @@
         <h2>
             <%= title %>
                 <div class="group-button">
-                    <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold ml-3" id="addBag"
-                        data-destination="<%= destination %>" data-preview="<%= previewDestination %>">+</button>
-                    <% if(id != 'readyToPickUp') { %>
-                    <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold mx-2"
-                        id="moveBag" data-destination="<%= destination %>"
-                        data-preview="<%= previewDestination %>">→</button> <% } %>
-                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold" id="removeBag"
-                        data-destination="<%= destination %>" data-preview="<%= previewDestination %>">−</button>
+                    <div class="btn-container">
+                        <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold ml-3"
+                            id="addBag" data-destination="<%= destination %>"
+                            data-preview="<%= previewDestination %>">+</button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Add bag in this section</span>
+                        </div>
+                    </div>
+                    <% if(id !='readyToPickUp' ) { %>
+                        <div class="btn-container">
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold mx-2"
+                                id="moveBag" data-destination="<%= destination %>"
+                                data-preview="<%= previewDestination %>">→</button>
+                            <div class="tooltip-custom">
+                                <i class="bi bi-question-circle"></i>
+                                <span class="tooltiptext">Move bag to another section</span>
+                            </div>
+                        </div>
+                        <% } %>
+                            <div class="btn-container">
+                                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                                    id="removeBag" data-destination="<%= destination %>"
+                                    data-preview="<%= previewDestination %>">−</button>
+                                <div class="tooltip-custom">
+                                    <i class="bi bi-question-circle"></i>
+                                    <span class="tooltiptext">Remove bag from this section</span>
+                                </div>
+                            </div>
                 </div>
         </h2>
         <div class="table-container">

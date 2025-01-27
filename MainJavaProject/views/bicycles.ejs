@@ -63,9 +63,15 @@
         <label for="bikeSearch" class="form-label">Bike </label>
         <div class="input-group">
           <input type="text" id="bikeSearch" class="form-control" placeholder="Search for a bike...">
-          <button class="btn btn-outline-secondary" type="button" id="searchButtonBike">
-            <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
-          </button>
+          <div class="btn-container">
+            <button class="btn btn-outline-secondary" type="button" id="searchButtonBike">
+              <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+            </button>
+            <div class="tooltip-custom">
+              <i class="bi bi-question-circle"></i>
+              <span class="tooltiptext">Search by bike number or name</span>
+            </div>
+          </div>
         </div>
         <ul id="bikeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
         <input type="hidden" id="selectedBikeId" name="bikeId" value=""> <!-- To store the selected bike ID -->
@@ -77,9 +83,15 @@
         <label for="clientSearch" class="form-label">Client </label>
         <div class="input-group">
           <input type="text" id="clientSearch" class="form-control" placeholder="Search for a client...">
-          <button class="btn btn-outline-secondary" type="button" id="searchButtonClient">
-            <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
-          </button>
+          <div class="btn-container">
+            <button class="btn btn-outline-secondary" type="button" id="searchButtonClient">
+              <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+            </button>
+            <div class="tooltip-custom">
+              <i class="bi bi-question-circle"></i>
+              <span class="tooltiptext">Search by soldier name</span>
+            </div>
+          </div>
         </div>
         <ul id="clientDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
         <input type="hidden" id="selectedClientId" name="clientId" value=""> <!-- To store the selected bike ID -->
@@ -110,16 +122,27 @@
 
       <!-- Buttons below the calendar -->
       <div class="button-container">
-        <button type="button" class="login-btn" id="rentBtn">
-          <i class="bi bi-bag"></i> Rent
-        </button>
-        <button type="button" class="login-btn" id="returnBtn">
-          <i class="bi bi-arrow-return-left"></i> Return
-        </button>
+        <div class="btn-container" style="width: 48%; display: inline-block; margin-right: 2%;">
+          <button type="button" class="login-btn" id="rentBtn" style="width: 100%;">
+            <i class="bi bi-bag"></i> Rent
+          </button>
+          <div class="tooltip-custom" style=" left: 30%;">
+            <i class="bi bi-question-circle"></i>
+            <span class="tooltiptext">Rent a bike</span>
+          </div>
+        </div>
+        <div class="btn-container" style="width: 48%; display: inline-block;">
+          <button type="button" class="login-btn" id="returnBtn" style="width: 100%;">
+            <i class="bi bi-arrow-return-left"></i> Return
+          </button>
+          <div class="tooltip-custom" style=" left: 30%;">
+            <i class="bi bi-question-circle"></i>
+            <span class="tooltiptext">Return a bike</span>
+          </div>
+        </div>
 
         <input type="hidden" id="action" name="actionId" value="">
         <input type="hidden" id="date" name="dateId" value="">
-
       </div>
     </div>
 
@@ -129,23 +152,72 @@
       <div class="visualization-header">
         <h3 class="d-flex align-items-center gap-2">
           <%= startMessage %>
-            <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addBike"><i
-                class="bi bi-plus"></i></button>
-            <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold" id="removeBike"><i
-                class="bi bi-dash"></i></button>
+            <div class="btn-container">
+              <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addBike"><i
+                  class="bi bi-plus"></i></button>
+              <div class="tooltip-custom">
+                <i class="bi bi-question-circle"></i>
+                <span class="tooltiptext">Add a bike</span>
+              </div>
+            </div>
+            <div class="btn-container">
+              <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold" id="removeBike"><i
+                  class="bi bi-dash"></i></button>
+              <div class="tooltip-custom">
+                <i class="bi bi-question-circle"></i>
+                <span class="tooltiptext">Remove a bike</span>
+              </div>
+            </div>
         </h3>
 
-        <div class="virtual-warehouse-labels">
-          <label class="virtual-warehouse-label">Total Bike: <%= totalBike %></label>
-          <label id="rentedBike" class="virtual-warehouse-label">Rented: <%= rentedBike %></label>
-          <label id="availableBike" class="virtual-warehouse-label">Available: <%= availableBike %></label>
-          <label id="repairBike" class="virtual-warehouse-label">Repair: <%= repairBike %></label>
-          <label id="lateBike" class="virtual-warehouse-label">Late: <%= lateBike %></label>
-          <label id="longTermBike" class="virtual-warehouse-label">Long Term: <%= longTermBike %></label>
+        <div class="virtual-warehouse-labels"> <label class="virtual-warehouse-label"
+            style="pointer-events: none;">Total Bike: <%= totalBike %></label>
 
-          <button type="button" id="btnReport" class="login-btn-report">
-            <i class="bi bi-file-earmark-text"></i> Reports
-          </button>
+          <div class="btn-container">
+            <label id="rentedBike" class="virtual-warehouse-label">Rented: <%= rentedBike %></label>
+            <div class="tooltip-custom">
+              <i class="bi bi-question-circle"></i>
+              <span class="tooltiptext">Number and list of rented bikes</span>
+            </div>
+          </div>
+          <div class="btn-container">
+            <label id="availableBike" class="virtual-warehouse-label">Available: <%= availableBike %></label>
+            <div class="tooltip-custom">
+              <i class="bi bi-question-circle"></i>
+              <span class="tooltiptext">Number and list of available bikes</span>
+            </div>
+          </div>
+          <div class="btn-container">
+            <label id="repairBike" class="virtual-warehouse-label">Repair: <%= repairBike %></label>
+            <div class="tooltip-custom">
+              <i class="bi bi-question-circle"></i>
+              <span class="tooltiptext">Number and list of bikes under repair</span>
+            </div>
+          </div>
+          <div class="btn-container">
+            <label id="lateBike" class="virtual-warehouse-label">Late: <%= lateBike %></label>
+            <div class="tooltip-custom">
+              <i class="bi bi-question-circle"></i>
+              <span class="tooltiptext">Number and list of late bikes</span>
+            </div>
+          </div>
+          <div class="btn-container">
+            <label id="longTermBike" class="virtual-warehouse-label">Long Term: <%= longTermBike %></label>
+            <div class="tooltip-custom">
+              <i class="bi bi-question-circle"></i>
+              <span class="tooltiptext">Number and list of long-term bikes</span>
+            </div>
+          </div>
+
+          <div class="btn-container">
+            <button type="button" id="btnReport" class="login-btn-report">
+              <i class="bi bi-file-earmark-text"></i> Reports
+            </button>
+            <div class="tooltip-custom" style="right: 0;">
+              <i class="bi bi-question-circle"></i>
+              <span class="tooltiptext">Generate reports</span>
+            </div>
+          </div>
         </div>
         <div class="button-container-report">
           <button type="button" id="btnReportPhone" class="login-btn-report"><i class="bi bi-file-earmark-text"></i>

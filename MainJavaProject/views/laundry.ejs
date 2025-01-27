@@ -76,9 +76,16 @@
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button id="drop-off" class="main-btn">
-                        <i class="bi bi-box-arrow-in-down"></i> Drop off
-                    </button>
+                    <div class="btn-container">
+                        <button id="drop-off" class="main-btn">
+                            <i class="bi bi-box-arrow-in-down"></i> Drop off
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">This is the first step of the laundry process. The bags are<br>
+                                dropped off here.</span>
+                        </div>
+                    </div>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-drop-off">
                         <%= avgTimeData['drop off'] || '0 mins' %>
@@ -101,9 +108,15 @@
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button id="transportation-to-laundry-facility" class="main-btn">
-                        <i class="bi bi-truck"></i> Transportation to Laundry Facility
-                    </button>
+                    <div class="btn-container">
+                        <button id="transportation-to-laundry-facility" class="main-btn">
+                            <i class="bi bi-truck"></i> Transportation to Laundry Facility
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">The bags are transported to the laundry facility from here.</span>
+                        </div>
+                    </div>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-transportation-to-laundry-facility">
                         <%= avgTimeData['transportation to laundry facility'] || '0 mins' %>
@@ -126,9 +139,15 @@
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button id="laundry-facility" class="main-btn">
-                        <i class="bi bi-building"></i> Laundry facility
-                    </button>
+                    <div class="btn-container">
+                        <button id="laundry-facility" class="main-btn">
+                            <i class="bi bi-building"></i> Laundry facility
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">The bags are washed here.</span>
+                        </div>
+                    </div>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-laundry-facility">
                         <%= avgTimeData['laundry facility'] || '0 mins' %>
@@ -151,9 +170,16 @@
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button id="transportation-to-drop-off" class="main-btn">
-                        <i class="bi bi-truck"></i> Transportation to drop off
-                    </button>
+                    <div class="btn-container">
+                        <button id="transportation-to-drop-off" class="main-btn">
+                            <i class="bi bi-truck"></i> Transportation to drop off
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">The bags are transported to the drop off location from
+                                here.</span>
+                        </div>
+                    </div>
                 </div>
                 <p class="avg-in">Average Time IN: <span id="avg-in-transportation-to-drop-off">
                         <%= avgTimeData['transportation to drop off'] || '0 mins' %>
@@ -176,9 +202,15 @@
                                     <% } %>
                 </div>
                 <div class="progress-box">
-                    <button id="ready-to-pick-up" class="main-btn">
-                        <i class="bi bi-bag-check"></i> Ready to pick up
-                    </button>
+                    <div class="btn-container">
+                        <button id="ready-to-pick-up" class="main-btn">
+                            <i class="bi bi-bag-check"></i> Ready to pick up
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">The bags are ready to be picked up by the soldiers.</span>
+                        </div>
+                    </div>
                 </div>
 
                 <p class="avg-in">Average Time IN: <span id="avg-in-ready-to-pick-up">
@@ -199,9 +231,15 @@
             </div>
 
             <div class="button-row">
-                <button id="reportButton" class="report-button d-flex align-items-center justify-content-center">
-                    <i class="bi bi-file-earmark-text me-2"></i> <span>Report</span>
-                </button>
+                <div class="btn-container">
+                    <button id="reportButton" class="report-button d-flex align-items-center justify-content-center">
+                        <i class="bi bi-file-earmark-text me-2"></i> <span>Report</span>
+                    </button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Generate report</span>
+                    </div>
+                </div>
                 <div class="button-container-report">
                     <button type="button" class="download-btn" id="downloadRFIDAppBtn">
                         <i class="bi bi-download"></i> Download App
@@ -209,10 +247,16 @@
                 </div>
                 <div class="w-100" <% if(username!='admin' && username!='helpDeskNikolay' ) { %> style="cursor:
                     not-allowed" <% } %>>
-                        <button id="listOfBagsButton"
-                            class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
-                            <i class="bi bi-list"></i> List of bags
-                        </button>
+                        <div class="btn-container">
+                            <button id="listOfBagsButton"
+                                class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
+                                <i class="bi bi-list"></i> List of bags
+                            </button>
+                            <div class="tooltip-custom">
+                                <i class="bi bi-question-circle"></i>
+                                <span class="tooltiptext">List of all bags in system</span>
+                            </div>
+                        </div>
                 </div>
             </div>
 
@@ -320,12 +364,24 @@
                                             <span class="close-btn">&times;</span>
 
                                             <h2 class="d-flex align-items-center gap-2">List of Bags
-                                                <button type="button"
-                                                    class="btn btn-outline-success btn-sm rounded-circle fw-bold"
-                                                    id="addButton"><i class="bi bi-plus"></i></button>
-                                                <button type="button"
-                                                    class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
-                                                    id="removeButton"><i class="bi bi-dash"></i></button>
+                                                <div class="btn-container">
+                                                    <button type="button"
+                                                        class="btn btn-outline-success btn-sm rounded-circle fw-bold"
+                                                        id="addButton"><i class="bi bi-plus"></i></button>
+                                                    <div class="tooltip-custom">
+                                                        <i class="bi bi-question-circle"></i>
+                                                        <span class="tooltiptext">Add bag to the system</span>
+                                                    </div>
+                                                </div>
+                                                <div class="btn-container">
+                                                    <button type="button"
+                                                        class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                                                        id="removeButton"><i class="bi bi-dash"></i></button>
+                                                    <div class="tooltip-custom">
+                                                        <i class="bi bi-question-circle"></i>
+                                                        <span class="tooltiptext">Remove bag from the system</span>
+                                                    </div>
+                                                </div>
                                             </h2>
 
                                             <div class="table-container">

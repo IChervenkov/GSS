@@ -62,10 +62,16 @@
         <div class="left-nav">
             <div class="title-container mb-2 sticky-top p-3 w-100 transparent-bg" <% if(username !='helpDeskNikolay' &&
                 username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
-                    <button type="button" id="btnAddDestination"
-                        class="btn-add-destination w-100 <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">
-                        <i class="bi bi-plus-circle"></i> Add Destination
-                    </button>
+                    <div class="btn-container" style="width: 100%;">
+                        <button type="button" id="btnAddDestination"
+                            class="btn-add-destination w-100 <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">
+                            <i class="bi bi-plus-circle"></i> Add Destination
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Add building to the list of destinations</span>
+                        </div>
+                    </div>
             </div>
             <ul>
                 <% navItems.forEach(function(item) { %>
@@ -140,28 +146,52 @@
 
                     <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
-                            <button type="button" id="btnListSoldier"
-                                class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
-                                <i class="bi bi-person"></i> List of soldier
-                            </button>
+                            <div class="btn-container">
+                                <button type="button" id="btnListSoldier"
+                                    class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
+                                    <i class="bi bi-person"></i> List of soldier
+                                </button>
+                                <div class="tooltip-custom">
+                                    <i class="bi bi-question-circle"></i>
+                                    <span class="tooltiptext">List of soldiers in the system</span>
+                                </div>
+                            </div>
                     </div>
                     <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
-                            <button type="button" id="btnAccommSoldier"
-                                class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
-                                <i class="bi bi-person-fill"></i> Accommodation soldiers
-                            </button>
+                            <div class="btn-container">
+                                <button type="button" id="btnAccommSoldier"
+                                    class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
+                                    <i class="bi bi-person-fill"></i> Accommodation soldiers
+                                </button>
+                                <div class="tooltip-custom">
+                                    <i class="bi bi-question-circle"></i>
+                                    <span class="tooltiptext">Accommodation multiple of soldiers</span>
+                                </div>
+                            </div>
                     </div>
                     <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
-                            <button type="button" id="btnFreeAllRoom"
-                                class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">
-                                <i class="bi bi-building"></i> Release building
-                            </button>
+                            <div class="btn-container">
+                                <button type="button" id="btnFreeAllRoom"
+                                    class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">
+                                    <i class="bi bi-building"></i> Release building
+                                </button>
+                                <div class="tooltip-custom">
+                                    <i class="bi bi-question-circle"></i>
+                                    <span class="tooltiptext">Release all rooms in selected building</span>
+                                </div>
+                            </div>
                     </div>
-                    <button type="button" id="btnReport" class="btn-report">
-                        <i class="bi bi-file-earmark-text"></i> Reports
-                    </button>
+                    <div class="btn-container">
+                        <button type="button" id="btnReport" class="btn-report">
+                            <i class="bi bi-file-earmark-text"></i> Reports
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Generate reports</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -231,10 +261,22 @@
             <span class="close-btn">&times;</span>
 
             <h2>List of Keys
-                <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addKey"><i
-                        class="bi bi-plus"></i></button>
-                <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold" id="removeKey"><i
-                        class="bi bi-arrow-repeat"></i></button>
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addKey"><i
+                            class="bi bi-plus"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Add key</span>
+                    </div>
+                </div>
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold"
+                        id="removeKey"><i class="bi bi-arrow-repeat"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Reload keys</span>
+                    </div>
+                </div>
             </h2>
 
             <div class="table-container">
@@ -311,9 +353,15 @@
                 <button type="submit" class="modal-button" id="save-button">
                     <i class="bi bi-save"></i> Save
                 </button>
-                <button type="button" class="modal-button" id="move-button">
-                    <i class="bi bi-arrows-move"></i> Move Soldier
-                </button>
+                <div class="btn-container">
+                    <button type="button" class="modal-button" id="move-button">
+                        <i class="bi bi-arrows-move"></i> Move Soldier
+                    </button>
+                    <div class="tooltip-custom" style="left: 40%;">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Move soldier to another room</span>
+                    </div>
+                </div>
             </div>
         </div>
     </form>
@@ -432,10 +480,22 @@
             <span class="close-btn">&times;</span>
 
             <h2>List of Soldiers
-                <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addSoldier"><i
-                        class="bi bi-plus"></i></button>
-                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold" id="removeSoldier"><i
-                        class="bi bi-dash"></i></button>
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold"
+                        id="addSoldier"><i class="bi bi-plus"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Add soldier to the system</span>
+                    </div>
+                </div>
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                        id="removeSoldier"><i class="bi bi-dash"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Remove soldier to the system</span>
+                    </div>
+                </div>
             </h2>
 
             <div class="table-container">
