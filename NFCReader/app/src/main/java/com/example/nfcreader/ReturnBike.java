@@ -170,9 +170,7 @@ public class ReturnBike extends AppCompatActivity {
 
     // Method to call the API endpoint
     private void readBikeDataFromServer(String nfcData) {
-        OkHttpClient client = new OkHttpClient();
-
-        // Prepare the JSON request body
+        // Reuse existing OkHttpClient
         JSONObject json = new JSONObject();
         try {
             json.put("nfcData", nfcData);
@@ -181,40 +179,37 @@ public class ReturnBike extends AppCompatActivity {
         }
 
         RequestBody body = RequestBody.create(json.toString(), MediaType.get("application/json; charset=utf-8"));
-
-        // Define the request
         Request request = new Request.Builder()
-                .url("https://bunker.bg/readBikeNfc")  // Replace with your server URL
+                .url("https://bunker.bg/readBikeNfc")
                 .post(body)
                 .build();
 
-        // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(ReturnBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.setCancelable(false);
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        // Make the network call asynchronously
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 e.printStackTrace();
                 runOnUiThread(() -> {
+                    loadingDialog.dismiss(); // Ensure the dialog is dismissed
                     Toast.makeText(ReturnBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
                 });
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+                loadingDialog.dismiss(); // Dismiss the dialog
+
                 if (response.isSuccessful()) {
                     String responseData = response.body().string();
                     try {
-                        // Parse the response if it's JSON
                         JSONObject jsonResponse = new JSONObject(responseData);
                         final String bikeName = jsonResponse.getString("namebike");
 
-                        // Update the UI with the bike name
                         runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -229,47 +224,62 @@ public class ReturnBike extends AppCompatActivity {
     }
 
     private void sendDataToServer(String nfcData, String date, String time) {
-        new Thread(() -> {
-            try {
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                JSONObject jsonData = new JSONObject();
-                jsonData.put("nfcData", nfcData);
-                jsonData.put("date", date);
-                jsonData.put("time", time);
+        JSONObject jsonData = new JSONObject();
+        try {
+            jsonData.put("nfcData", nfcData);
+            jsonData.put("date", date);
+            jsonData.put("time", time);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            runOnUiThread(() ->
+                    Toast.makeText(ReturnBike.this, "JSON Error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+            );
+            return;
+        }
 
-                RequestBody body = RequestBody.create(JSON, jsonData.toString());
+        RequestBody body = RequestBody.create(jsonData.toString(), MediaType.get("application/json; charset=utf-8"));
+        Request request = new Request.Builder()
+                .url("https://bunker.bg/nfcReturn")
+                .post(body)
+                .build();
 
-                Request request = new Request.Builder()
-                        .url("https://bunker.bg/nfcReturn")
-                        .post(body)
-                        .build();
+        // Show loading dialog
+        Dialog loadingDialog = new Dialog(ReturnBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
 
-                Response response = client.newCall(request).execute();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    Toast.makeText(ReturnBike.this, "Network Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
 
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                loadingDialog.dismiss();
                 if (response.isSuccessful()) {
-                    final String responseData = response.body().string();
+                    String responseData = response.body().string();
                     runOnUiThread(() -> {
-                        Toast.makeText(ReturnBike.this, "Server response: " + responseData, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ReturnBike.this, "Success: " + responseData, Toast.LENGTH_SHORT).show();
 
-                        // Navigate back to the main page
+                        // Navigate back to main activity
                         Intent intent = new Intent(ReturnBike.this, MainActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
                         startActivity(intent);
                         finish();
                     });
                 } else {
-                    runOnUiThread(() -> {
-                        Toast.makeText(ReturnBike.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show();
-                    });
+                    runOnUiThread(() ->
+                            Toast.makeText(ReturnBike.this, "Server Error: " + response.code(), Toast.LENGTH_SHORT).show()
+                    );
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    Toast.makeText(ReturnBike.this, "Error sending data to the server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
             }
-        }).start();
+        });
     }
-
-
 }

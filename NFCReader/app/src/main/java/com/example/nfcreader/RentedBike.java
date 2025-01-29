@@ -17,6 +17,7 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.DatePicker;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
@@ -54,12 +55,10 @@ public class RentedBike extends AppCompatActivity {
     private TimePicker timePicker;
     private Button submitButton;
     private String nfcContent = "";
-    private Map<String, String> clientIdMap = new HashMap<>();
-
+    private Map<BikeInfo, String> clientIdMap = new HashMap<>();
     private OkHttpClient client = new OkHttpClient();
-
     private AutoCompleteTextView clientAutoCompleteTextView;
-    private ArrayList<String> ownerList = new ArrayList<>();
+    private ArrayList<BikeInfo> ownerList = new ArrayList<>();
 
     @SuppressLint("MissingInflatedId")
     @Override
@@ -104,12 +103,23 @@ public class RentedBike extends AppCompatActivity {
 
                 // Check if the bike type is selected
                 String selectedClientName  = clientAutoCompleteTextView.getText().toString();
-                String selectedClientId = clientIdMap.get(selectedClientName );
 
                 if (selectedClientName.isEmpty()) {
                     Toast.makeText(this, "Please select a client!", Toast.LENGTH_SHORT).show();
                     return;
                 }
+
+                // Find the selected BikeInfo
+                BikeInfo selectedBikeInfo = null;
+                for (BikeInfo bike : ownerList) {
+                    if (selectedClientName.equals(bike.toString())) {
+                        selectedBikeInfo = bike;
+                        break;
+                    }
+                }
+
+                // Get the ID of the selected bike
+                String selectedClientId = clientIdMap.get(selectedBikeInfo);
 
                 String date = year + "-" + (month < 10 ? "0" + month : month) + "-" + (day < 10 ? "0" + day : day);
                 String time = (hour < 10 ? "0" + hour : hour) + ":" + (minute < 10 ? "0" + minute : minute);
@@ -123,44 +133,57 @@ public class RentedBike extends AppCompatActivity {
     }
 
     private void fetchAvailableBikes() {
+        runOnUiThread(() -> {
+            Dialog loadingDialog = new Dialog(RentedBike.this);
+            loadingDialog.setContentView(R.layout.progress_dialog);
+            loadingDialog.setCancelable(false);
+            loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            loadingDialog.show();
 
-        // Create and show the loading dialog
-        Dialog loadingDialog = new Dialog(RentedBike.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
+            Request request = new Request.Builder()
+                    .url("https://bunker.bg/getClient")
+                    .build();
 
-        new Thread(() -> {
-            try {
-                Request request = new Request.Builder()
-                        .url("https://bunker.bg/getClient")
-                        .build();
-
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful()) {
-                    final String responseData = response.body().string();
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
                     runOnUiThread(() -> {
-                        try {
-                            populateBikeAutoComplete(new JSONArray(responseData));
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    });
-                } else {
-                    runOnUiThread(() -> {
-                        Toast.makeText(RentedBike.this, "Error fetching client", Toast.LENGTH_SHORT).show();
+                        loadingDialog.dismiss();
+                        Toast.makeText(RentedBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     });
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    Toast.makeText(RentedBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
-            }
-        }).start();
+
+                @Override
+                public void onResponse(Call call, Response response) {
+                    try {
+                        if (response.isSuccessful() && response.body() != null) {
+                            String responseData = response.body().string();
+                            runOnUiThread(() -> {
+                                loadingDialog.dismiss();
+                                try {
+                                    populateBikeAutoComplete(new JSONArray(responseData));
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
+                            });
+                        } else {
+                            runOnUiThread(() -> {
+                                loadingDialog.dismiss();
+                                Toast.makeText(RentedBike.this, "Error fetching client", Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        runOnUiThread(() -> {
+                            loadingDialog.dismiss();
+                            Toast.makeText(RentedBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        });
+                    } finally {
+                        response.close();
+                    }
+                }
+            });
+        });
     }
 
     private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
@@ -171,12 +194,15 @@ public class RentedBike extends AppCompatActivity {
             JSONObject bike = bikes.getJSONObject(i);
             String bikeId = bike.getString("id");
             String bikeName = bike.getString("namesoldier");
+            String soldierKey = bike.getString("namekey");
 
-            ownerList.add(bikeName);
-            clientIdMap.put(bikeName, bikeId);
+            BikeInfo bikeInfo = new BikeInfo(bikeName, soldierKey);
+
+            ownerList.add(bikeInfo);
+            clientIdMap.put(bikeInfo, bikeId);
         }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
+        ArrayAdapter<BikeInfo> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
         clientAutoCompleteTextView.setAdapter(adapter);
     }
 
@@ -225,65 +251,50 @@ public class RentedBike extends AppCompatActivity {
 
     // Method to call the API endpoint
     private void readBikeDataFromServer(String nfcData) {
-        OkHttpClient client = new OkHttpClient();
+        runOnUiThread(() -> {
+            Dialog loadingDialog = new Dialog(RentedBike.this);
+            loadingDialog.setContentView(R.layout.progress_dialog);
+            loadingDialog.setCancelable(false);
+            loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            loadingDialog.show();
 
-        // Prepare the JSON request body
-        JSONObject json = new JSONObject();
-        try {
-            json.put("nfcData", nfcData);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-        RequestBody body = RequestBody.create(json.toString(), MediaType.get("application/json; charset=utf-8"));
-
-        // Define the request
-        Request request = new Request.Builder()
-                .url("https://bunker.bg/readBikeNfc")  // Replace with your server URL
-                .post(body)
-                .build();
-
-        // Create and show the loading dialog
-        Dialog loadingDialog = new Dialog(RentedBike.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
-
-        // Make the network call asynchronously
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
+            JSONObject json = new JSONObject();
+            try {
+                json.put("nfcData", nfcData);
+            } catch (JSONException e) {
                 e.printStackTrace();
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(RentedBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
-                });
             }
 
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            RequestBody body = RequestBody.create(json.toString(), MediaType.get("application/json; charset=utf-8"));
+            Request request = new Request.Builder()
+                    .url("https://bunker.bg/readBikeNfc")
+                    .post(body)
+                    .build();
 
-                runOnUiThread(loadingDialog::dismiss);
-
-                if (response.isSuccessful()) {
-                    String responseData = response.body().string();
-                    try {
-                        // Parse the response if it's JSON
-                        JSONObject jsonResponse = new JSONObject(responseData);
-                        final String bikeName = jsonResponse.getString("namebike");
-
-                        // Update the UI with the bike name
-                        runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                } else {
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
                     runOnUiThread(() -> {
-                        Toast.makeText(RentedBike.this, "Bike not found", Toast.LENGTH_SHORT).show();
+                        loadingDialog.dismiss();
+                        Toast.makeText(RentedBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
                     });
                 }
-            }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    String responseData = response.body().string();
+                    runOnUiThread(() -> {
+                        loadingDialog.dismiss();
+                        try {
+                            JSONObject jsonResponse = new JSONObject(responseData);
+                            String bikeName = jsonResponse.getString("namebike");
+                            nfcTextView.setText("Bike code: " + bikeName);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    });
+                }
+            });
         });
     }
 
@@ -382,55 +393,54 @@ public class RentedBike extends AppCompatActivity {
 
     private void sendDataToServer(String nfcData, String date, String time, String selectedClientId) {
 
-        // Create and show the loading dialog
-        Dialog loadingDialog = new Dialog(RentedBike.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
+        try {
+            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+            JSONObject jsonData = new JSONObject();
+            jsonData.put("nfcData", nfcData);
+            jsonData.put("date", date);
+            jsonData.put("time", time);
+            jsonData.put("selectClient", selectedClientId);
 
-        new Thread(() -> {
-            try {
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                JSONObject jsonData = new JSONObject();
-                jsonData.put("nfcData", nfcData);
-                jsonData.put("date", date);
-                jsonData.put("time", time);
-                jsonData.put("selectClient", selectedClientId); // Include the client type
+            RequestBody body = RequestBody.create(JSON, jsonData.toString());
 
-                RequestBody body = RequestBody.create(JSON, jsonData.toString());
+            Request request = new Request.Builder()
+                    .url("https://bunker.bg/nfcRent")
+                    .post(body)
+                    .build();
 
-                Request request = new Request.Builder()
-                        .url("https://bunker.bg/nfcRent")
-                        .post(body)
-                        .build();
-
-                Response response = client.newCall(request).execute();
-
-                if (response.isSuccessful()) {
-                    final String responseData = response.body().string();
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    e.printStackTrace();
                     runOnUiThread(() -> {
-                        Toast.makeText(RentedBike.this, "Server response: " + responseData, Toast.LENGTH_SHORT).show();
-
-                        // Navigate back to the main page
-                        Intent intent = new Intent(RentedBike.this, MainActivity.class);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
-                        finish();
-                    });
-                } else {
-                    runOnUiThread(() -> {
-                        Toast.makeText(RentedBike.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(RentedBike.this, "Error sending data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     });
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    Toast.makeText(RentedBike.this, "Error sending data to the server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
-            }
-        }).start();
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+
+                    if (response.isSuccessful()) {
+                        String responseData = response.body().string();
+                        runOnUiThread(() -> {
+                            Toast.makeText(RentedBike.this, "Server response: " + responseData, Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(RentedBike.this, MainActivity.class);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(intent);
+                            finish();
+                        });
+                    } else {
+                        runOnUiThread(() -> {
+                            Toast.makeText(RentedBike.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                }
+            });
+        } catch (JSONException e) {
+            e.printStackTrace();
+            runOnUiThread(() -> {
+                Toast.makeText(RentedBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            });
+        }
     }
 }

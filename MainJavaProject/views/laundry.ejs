@@ -231,7 +231,7 @@
             </div>
 
             <div class="button-row">
-                <div class="btn-container">
+                <div class="btn-container w-100 w-md-auto">
                     <button id="reportButton" class="report-button d-flex align-items-center justify-content-center">
                         <i class="bi bi-file-earmark-text me-2"></i> <span>Report</span>
                     </button>
@@ -247,9 +247,9 @@
                 </div>
                 <div class="w-100" <% if(username!='admin' && username!='helpDeskNikolay' ) { %> style="cursor:
                     not-allowed" <% } %>>
-                        <div class="btn-container">
+                        <div class="btn-container w-100 w-md-auto">
                             <button id="listOfBagsButton"
-                                class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %>">
+                                class="report-button <% if(username!='admin' && username != 'helpDeskNikolay') { %> disabled-button <% } %> w-100 w-md-auto">
                                 <i class="bi bi-list"></i> List of bags
                             </button>
                             <div class="tooltip-custom">

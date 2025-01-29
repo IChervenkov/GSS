@@ -278,7 +278,7 @@ const schemaAddAsset = Joi.object({
     assetAddOwner: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
     assetStatus: Joi.number().integer().required(),
     assetAddExpandable: Joi.valid('Expandable', 'Non Expandable').required(),
-    assetAddDescription: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    assetAddDescription: Joi.string().allow('').pattern(/^[a-zA-Z0-9\s]*$/).required(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -287,7 +287,14 @@ const schemaEditAsset = Joi.object({
     assetName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
     assetType: Joi.string().alphanum().required(),
     assetLocation: Joi.string().alphanum().required(),
-    assetSubLocation: Joi.string().alphanum().allow('').optional()
+    assetSubLocation: Joi.string().alphanum().allow('').optional(),
+    assetCategory: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
+    assetQuantity: Joi.number().integer().required(),
+    assetMrah: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
+    assetOwner: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
+    assetStatus: Joi.number().integer().required(),
+    assetExpandable: Joi.valid('Expandable', 'Non Expandable').required(),
+    assetDescription: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required()
 });
 
 const schemaEditAssetDevice = Joi.object({
@@ -298,6 +305,13 @@ const schemaEditAssetDevice = Joi.object({
     type: Joi.string().alphanum().required(),
     location: Joi.string().alphanum().required(),
     subLocation: Joi.string().alphanum().allow('').optional(),
+    category: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
+    quantity: Joi.number().integer().required(),
+    mrah: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
+    owner: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
+    status: Joi.number().integer().required(),
+    expandable: Joi.valid('Expandable', 'Non Expandable').required(),
+    description: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -825,7 +839,11 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result = await client.query('SELECT id, namesoldier FROM soldier');
+                const result = await client.query(`
+                    SELECT s.id, namesoldier, k.namekey
+                    FROM soldier s
+                    LEFT JOIN key k ON k.soldierid = s.id
+                    WHERE date_accommodation IS NOT NULL AND date_free IS NULL`);
 
                 await client.query('COMMIT');
                 res.status(200).json(result.rows);
@@ -1782,6 +1800,13 @@ class Server {
 
                 await client.query('BEGIN');
 
+                const result_check_bike = await client.query(`SELECT * FROM bicycles WHERE id = $1;`, [bikeId]);
+
+                if (result_check_bike.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    res.status(401).json();
+                }
+
                 const result_bike = await client.query(`
                 SELECT status, datefrom FROM bicycles b
                 LEFT JOIN bikesoldier bs ON bs.bikeid = b.id
@@ -1819,8 +1844,9 @@ class Server {
                 await client.query('BEGIN');
 
                 const result_client = await client.query(`
-                    SELECT s.id, namesoldier, country, l.id as etc, l.code, s.meal_card, s.date_free, s.date_accommodation
+                    SELECT s.id, namesoldier, country, namekey, l.id as etc, l.code, s.meal_card, s.date_free, s.date_accommodation
                     FROM soldier s
+					LEFT JOIN key k ON k.soldierid = s.id
                     LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id;`);
 
                 result_client.rows.forEach(element => {
@@ -1828,6 +1854,7 @@ class Server {
                         id: element.id,
                         name: element.namesoldier,
                         country: element.country,
+                        namekey: element.namekey ? element.namekey : '',
                         etc: element.etc ? element.etc : '',
                         code: element.code ? element.code : '',
                         meal_card: element.meal_card ? element.meal_card : '',
@@ -4976,7 +5003,7 @@ class Server {
                     const result = await client.query(`SELECT * FROM laundrybags WHERE id = $1;`, [oldCode]);
                     const response = result.rows[0];
 
-                    await client.query(`INSERT INTO laundrybags(id, code, type, status, timein, timeout, maxcountlandry) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`, [
+                    await client.query(`INSERT INTO laundrybags VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`, [
                         newCode,
                         code,
                         type,
@@ -5067,7 +5094,14 @@ class Server {
                     name_assets: row.name_assets,
                     type_id: row.type_id,
                     location_id: row.location_room,
-                    sub_location_id: row.location_key
+                    sub_location_id: row.location_key,
+                    categorie: row.categorie,
+                    quantity: row.quantity,
+                    mrah: row.mrah,
+                    owner: row.asset_owner,
+                    status: row.status,
+                    expandable: row.expandable,
+                    description: row.description,
                 }));
 
                 const allLostItem = resultAllLostItem.rows.map(row => ({
@@ -5348,7 +5382,7 @@ class Server {
                 await client.query('BEGIN');
 
                 const result_get_room = await client.query(`
-                    SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.namekey
+                    SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.id AS keyid, k.namekey, categorie, quantity, mrah, asset_owner, status, expandable, description
                     FROM assets a
                     LEFT JOIN assetstype t ON t.id = a.type_id
                     LEFT JOIN rooms r ON r.id = a.location_room
@@ -5362,7 +5396,15 @@ class Server {
                         name: row.name_assets,
                         type: row.type_name,
                         location: row.nameroom,
-                        namekey: row.namekey ? row.namekey : 'There is no associated key'
+                        keyid: row.keyid,
+                        namekey: row.namekey ? row.namekey : 'There is no associated key',
+                        categorie: row.categorie,
+                        quantity: row.quantity,
+                        mrah: row.mrah,
+                        owner: row.asset_owner,
+                        status: row.status,
+                        expandable: row.expandable,
+                        description: row.description
                     });
                 }
 
@@ -5418,7 +5460,19 @@ class Server {
                 return res.status(400).send({ message: error.details[0].message });
             }
 
-            const { assetId, assetName, assetType, assetLocation, assetSubLocation } = req.body;
+            const { assetId, 
+                assetName, 
+                assetType, 
+                assetLocation, 
+                assetSubLocation,
+                assetCategory,
+                assetQuantity,
+                assetMrah,
+                assetOwner,
+                assetStatus,
+                assetExpandable,
+                assetDescription
+             } = req.body;
 
             const client = await pool.connect();
 
@@ -5426,12 +5480,34 @@ class Server {
                 await client.query('BEGIN');
 
                 if (assetSubLocation !== '') {
-                    await client.query(`UPDATE assets SET name_assets = $2, type_id = $3, location_room = $4, location_key = $5 WHERE id = $1`,
-                        [assetId, assetName, assetType, assetLocation, assetSubLocation]
+                    await client.query(`UPDATE assets SET 
+                        name_assets = $2, 
+                        type_id = $3, 
+                        location_room = $4, 
+                        location_key = $5,
+                        categorie = $6,
+                        quantity = $7,
+                        mrah = $8,
+                        asset_owner = $9,
+                        status = $10,
+                        expandable = $11,
+                        description = $12 WHERE id = $1`,
+                        [assetId, assetName, assetType, assetLocation, assetSubLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription]
                     );
                 } else {
-                    await client.query(`UPDATE assets SET name_assets = $2, type_id = $3, location_room = $4, location_key = NULL WHERE id = $1`,
-                        [assetId, assetName, assetType, assetLocation]
+                    await client.query(`UPDATE assets SET 
+                        name_assets = $2, 
+                        type_id = $3, 
+                        location_room = $4, 
+                        location_key = NULL,
+                        categorie = $5,
+                        quantity = $6,
+                        mrah = $7,
+                        asset_owner = $8,
+                        status = $9,
+                        expandable = $10,
+                        description = $11 WHERE id = $1`,
+                        [assetId, assetName, assetType, assetLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription]
                     );
                 }
 
@@ -5458,7 +5534,7 @@ class Server {
             if (!req.body.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { oldCode, newCode, code, name, type, location, subLocation } = req.body;
+            const { oldCode, newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description } = req.body;
 
             const client = await pool.connect();
 
@@ -5467,20 +5543,46 @@ class Server {
 
                 if (oldCode === newCode) {
                     if (subLocation !== '') {
-                        await client.query(`UPDATE assets SET code = $2 name_assets = $3, type_id = $4, location_room = $5, location_key = $6 WHERE id = $1`,
-                            [newCode, code, name, type, location, subLocation]
+                        await client.query(`UPDATE assets SET 
+                            code = $2,
+                            name_assets = $3, 
+                            type_id = $4, 
+                            location_room = $5, 
+                            location_key = $6, 
+                            categorie = $7, 
+                            quantity = $8,
+                            mrah = $9, 
+                            asset_owner = $10, 
+                            status = $11,
+                            expandable = $12,
+                            description = $13
+                            WHERE id = $1`,
+                            [newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description]
                         );
                     } else {
-                        await client.query(`UPDATE assets SET code = $2, name_assets = $3, type_id = $4, location_room = $5, location_key = NULL WHERE id = $1`,
-                            [newCode, code, name, type, location]
+                        await client.query(`UPDATE assets SET 
+                            code = $2, 
+                            name_assets = $3, 
+                            type_id = $4, 
+                            location_room = $5, 
+                            location_key = NULL,
+                            categorie = $6, 
+                            quantity = $7,
+                            mrah = $8, 
+                            asset_owner = $9, 
+                            status = $10,
+                            expandable = $11,
+                            description = $12
+                             WHERE id = $1`,
+                            [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description]
                         );
                     }
                 } else {
 
                     if (subLocation !== '') {
 
-                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6);`,
-                            [newCode, code, name, type, location, subLocation]
+                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
+                            [newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description]
                         );
 
                         await client.query(`DELETE FROM assets WHERE id = $1`,
@@ -5488,8 +5590,8 @@ class Server {
                         );
 
                     } else {
-                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5);`,
-                            [newCode, code, name, type, location]
+                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12);`,
+                            [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description]
                         );
 
                         await client.query(`DELETE FROM assets WHERE id = $1`,

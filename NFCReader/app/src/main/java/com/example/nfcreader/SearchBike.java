@@ -112,7 +112,6 @@ public class SearchBike extends AppCompatActivity {
 
     // Method to call the API endpoint
     private void readBikeDataFromServer(String nfcData) {
-        OkHttpClient client = new OkHttpClient();
 
         // Prepare the JSON request body
         JSONObject json = new JSONObject();

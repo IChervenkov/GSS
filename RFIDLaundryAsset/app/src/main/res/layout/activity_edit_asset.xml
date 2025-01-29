@@ -3,25 +3,23 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools">
+    android:padding="16dp">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
+        <!-- AutoComplete for Code -->
         <AutoCompleteTextView
             android:id="@+id/assetAutoCompleteTextView"
-            android:layout_width="650px"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Select Code"
-            android:layout_marginTop="120dp"
-            tools:ignore="MissingConstraints"
-            tools:text="Select Asset Code"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            android:layout_centerHorizontal="true"/>
+            android:layout_marginTop="16dp"
+            android:textSize="18sp"
+            android:padding="10dp" />
 
+        <!-- EPC Code Display -->
         <TextView
             android:id="@+id/epcTextView"
             android:layout_width="wrap_content"
@@ -29,87 +27,185 @@
             android:text="EPC code: None"
             android:textSize="24sp"
             android:layout_below="@id/assetAutoCompleteTextView"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="12dp"
             android:layout_centerHorizontal="true"
             android:gravity="center" />
 
-        <EditText
-            android:id="@+id/assetCodeText"
-            android:layout_width="650px"
+        <!-- Grid Layout for Inputs -->
+        <GridLayout
+            android:id="@+id/inputGridLayout"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/epcTextView"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="20dp"
-            android:hint="Enter asset code"
-            android:minHeight="48dp"
-            android:padding="10dp"
-            android:textSize="18sp" />
+            android:layout_marginTop="16dp"
+            android:columnCount="2"
+            android:padding="8dp">
 
-        <EditText
-            android:id="@+id/assetNameText"
-            android:layout_width="650px"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/assetCodeText"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="20dp"
-            android:hint="Enter asset name"
-            android:minHeight="48dp"
-            android:padding="10dp"
-            android:textSize="18sp" />
+            <!-- Asset Code -->
+            <EditText
+                android:id="@+id/assetCodeText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="8dp"
+                android:hint="Enter asset code"
+                android:padding="10dp"
+                android:textSize="16sp" />
 
-        <AutoCompleteTextView
-            android:id="@+id/assetTypeAutoCompleteTextView"
-            android:layout_width="650px"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/assetNameText"
-            android:hint="Select type"
-            android:layout_marginTop="20dp"
-            tools:ignore="MissingConstraints"
-            tools:text="Select asset type"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            android:layout_centerHorizontal="true"/>
+            <!-- Asset Name -->
+            <EditText
+                android:id="@+id/assetNameText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="8dp"
+                android:hint="Enter asset name"
+                android:padding="10dp"
+                android:textSize="16sp" />
+
+            <!-- Asset Type -->
+            <AutoCompleteTextView
+                android:id="@+id/assetTypeAutoCompleteTextView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="8dp"
+                android:hint="Select type"
+                android:padding="10dp"
+                android:textSize="16sp" />
+
+            <!-- Asset Location -->
+            <AutoCompleteTextView
+                android:id="@+id/assetLocationAutoCompleteTextView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="8dp"
+                android:hint="Select location"
+                android:padding="10dp"
+                android:textSize="16sp" />
+
+            <!-- Asset Sub-location -->
+            <AutoCompleteTextView
+                android:id="@+id/assetSubLocationAutoCompleteTextView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="8dp"
+                android:hint="Select sub-location"
+                android:padding="10dp"
+                android:textSize="16sp" />
+
+            <EditText
+                android:id="@+id/assetCategoriesText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnSpan="1"
+                android:layout_columnWeight="1"
+                android:hint="Enter category"
+                android:layout_margin="8dp"
+                android:minHeight="48dp"
+                android:padding="10dp"
+                android:textSize="18sp" />
+
+            <EditText
+                android:id="@+id/assetQuantityText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnSpan="1"
+                android:layout_columnWeight="1"
+                android:hint="Asset quantity"
+                android:layout_margin="8dp"
+                android:minHeight="48dp"
+                android:padding="10dp"
+                android:textSize="18sp"
+                android:inputType="number"
+                android:text="1" />
+
+            <EditText
+                android:id="@+id/assetMrahText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnSpan="1"
+                android:layout_columnWeight="1"
+                android:hint="Enter MRAH"
+                android:layout_margin="8dp"
+                android:minHeight="48dp"
+                android:padding="10dp"
+                android:textSize="18sp"
+                android:text="Global RTS"/>
+
+            <EditText
+                android:id="@+id/assetOwnerText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnSpan="1"
+                android:layout_columnWeight="1"
+                android:hint="Enter MRAH"
+                android:layout_margin="8dp"
+                android:minHeight="48dp"
+                android:padding="10dp"
+                android:textSize="18sp"
+                android:text="Global RTS"/>
+
+            <Spinner
+                android:id="@+id/assetStatusText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnSpan="1"
+                android:layout_columnWeight="1"
+                android:layout_margin="8dp"
+                android:minHeight="48dp"
+                android:padding="10dp"
+                android:background="@drawable/spinner_background"
+                android:popupBackground="@android:color/white"
+                android:dropDownVerticalOffset="50dp"
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+            <Spinner
+                android:id="@+id/assetExpandableText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnSpan="2"
+                android:layout_columnWeight="2"
+                android:layout_margin="8dp"
+                android:minHeight="48dp"
+                android:padding="10dp"
+                android:background="@drawable/spinner_background"
+                android:popupBackground="@android:color/white"
+                android:dropDownVerticalOffset="50dp"
+                android:textAlignment="center"
+                android:textSize="18sp" />
 
 
-        <AutoCompleteTextView
-            android:id="@+id/assetLocationAutoCompleteTextView"
-            android:layout_width="650px"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/assetTypeAutoCompleteTextView"
-            android:hint="Select location"
-            android:layout_marginTop="20dp"
-            tools:ignore="MissingConstraints"
-            tools:text="Select asset location"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            android:layout_centerHorizontal="true"/>
+            <EditText
+                android:id="@+id/assetDescriptionText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnSpan="2"
+                android:layout_columnWeight="2"
+                android:hint="Asset description"
+                android:layout_margin="8dp"
+                android:minHeight="48dp"
+                android:padding="10dp"
+                android:textSize="18sp" />
 
-        <AutoCompleteTextView
-            android:id="@+id/assetSubLocationAutoCompleteTextView"
-            android:layout_width="650px"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/assetLocationAutoCompleteTextView"
-            android:hint="Select sub location"
-            android:layout_marginTop="20dp"
-            tools:ignore="MissingConstraints"
-            tools:text="Select asset sub-location"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            android:layout_centerHorizontal="true"/>
+        </GridLayout>
 
+        <!-- Edit Button -->
         <Button
             android:id="@+id/editButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Edit bag"
-            android:layout_below="@id/assetSubLocationAutoCompleteTextView"
+            android:layout_below="@id/inputGridLayout"
             android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
             android:textColor="@android:color/white"
-            android:backgroundTint="@android:color/holo_green_dark"/>
+            android:backgroundTint="@android:color/holo_green_dark"
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="12dp" />
 
     </RelativeLayout>
 </ScrollView>

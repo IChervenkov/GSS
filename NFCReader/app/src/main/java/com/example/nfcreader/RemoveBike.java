@@ -125,7 +125,6 @@ public class RemoveBike extends AppCompatActivity {
     }
 
     private void readBikeDataFromServer(String nfcData) {
-        OkHttpClient client = new OkHttpClient();
 
         // Prepare the JSON request body
         JSONObject json = new JSONObject();
@@ -187,7 +186,6 @@ public class RemoveBike extends AppCompatActivity {
     }
 
     private void sendDataToServer(String nfcContent) {
-
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(RemoveBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -195,26 +193,38 @@ public class RemoveBike extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
-            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-            JSONObject jsonData = new JSONObject();
-            try {
-                jsonData.put("bikeRemoveId", nfcContent);
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject jsonData = new JSONObject();
+        try {
+            jsonData.put("bikeRemoveId", nfcContent);
 
-                RequestBody body = RequestBody.create(JSON, jsonData.toString());
-                Request request = new Request.Builder()
-                        .url("https://bunker.bg/bicycles/removeBike")
-                        .post(body)
-                        .build();
+            RequestBody body = RequestBody.create(JSON, jsonData.toString());
+            Request request = new Request.Builder()
+                    .url("https://bunker.bg/bicycles/removeBike")
+                    .post(body)
+                    .build();
 
-                try (Response response = client.newCall(request).execute()) {
+            // Use enqueue for the asynchronous call
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    e.printStackTrace();
+                    runOnUiThread(() -> {
+                        loadingDialog.dismiss();
+                        Toast.makeText(RemoveBike.this, "Failed to remove bike", Toast.LENGTH_SHORT).show();
+                    });
+                }
 
-                    if (response.body() != null) {
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    runOnUiThread(loadingDialog::dismiss); // Dismiss the dialog
+
+                    if (response.isSuccessful()) {
                         String responseData = response.body().string();
-
-                        if (response.isSuccessful()) {
+                        try {
+                            // Parse the response if it's JSON
                             JSONObject jsonResponse = new JSONObject(responseData);
-                            String message = jsonResponse.optString("message", "Bike remove successfully.");
+                            String message = jsonResponse.optString("message", "Bike removed successfully.");
 
                             runOnUiThread(() -> {
                                 Toast.makeText(RemoveBike.this, message, Toast.LENGTH_SHORT).show();
@@ -223,28 +233,26 @@ public class RemoveBike extends AppCompatActivity {
                                 startActivity(intent);
                                 finish();
                             });
-                        } else {
-                            JSONObject jsonResponse = new JSONObject(responseData);
-                            String error = jsonResponse.optString("error", "Server error occurred.");
-
+                        } catch (JSONException e) {
+                            e.printStackTrace();
                             runOnUiThread(() -> {
-                                Toast.makeText(RemoveBike.this, "Error: " + error, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(RemoveBike.this, "Error parsing response", Toast.LENGTH_SHORT).show();
                             });
                         }
                     } else {
                         runOnUiThread(() -> {
-                            Toast.makeText(RemoveBike.this, "Response body is null", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(RemoveBike.this, "Error: " + response.message(), Toast.LENGTH_SHORT).show();
                         });
                     }
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    Toast.makeText(RemoveBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
-            }
-        }).start();
+            });
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+            runOnUiThread(() -> {
+                Toast.makeText(RemoveBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            });
+            loadingDialog.dismiss();
+        }
     }
 }

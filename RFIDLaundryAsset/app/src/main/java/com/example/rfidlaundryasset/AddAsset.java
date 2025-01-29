@@ -35,7 +35,7 @@ import okhttp3.Response;
 public class AddAsset extends AppCompatActivity {
 
     private OkHttpClient client; // Reuse a single OkHttpClient instance
-    private String epc;
+    private String epc = "";
     private Button submitButton;
     private EditText assetCodeText;
     private EditText assetNameText;
@@ -151,106 +151,80 @@ public class AddAsset extends AppCompatActivity {
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
-            if (!epc.isEmpty()) {
-                String assetCode = assetCodeText.getText().toString().trim();
-                String assetName = assetNameText.getText().toString().trim();
-                String assetType = typeAssetId;
-                String assetLocation = locationAssetId;
-                String assetSubLocation = subLocationAssetId;
-                String assetCategory = assetCategoriesText.getText().toString().trim();
-                String assetExpandable = assetExpandableText.getSelectedItem().toString().trim();
-                String assetQuantity = assetQuantityText.getText().toString().trim();
-                String assetMrah = assetMrahText.getText().toString().trim();
-                String assetOwner = assetOwnerText.getText().toString().trim();
-                String assetStatus = assetStatusText.getSelectedItem().toString().trim();
-                String assetDescription = assetDescriptionText.toString().trim();
-
-                if (assetCode.isEmpty()) {
-                    Toast.makeText(this, "Please enter a asset code!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (!assetCode.matches("^[a-zA-Z0-9]+$")) {
-                    Toast.makeText(this, "Asset code must only contain alphanumeric characters!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (assetName.isEmpty()) {
-                    Toast.makeText(this, "Please enter a asset name!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (!assetName.matches("^[a-zA-Z0-9\\s]+$")) {
-                    Toast.makeText(this, "Asset name must only contain alphanumeric characters and spaces!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (assetType.isEmpty()) {
-                    Toast.makeText(this, "Please select a asset type!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (assetLocation.isEmpty()) {
-                    Toast.makeText(this, "Please select a asset location!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(assetSubLocation.isEmpty() && assetSubLocationText.isEnabled()) {
-                    Toast.makeText(this, "Please select an asset sub-location!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(assetCategory.isEmpty()) {
-                    Toast.makeText(this, "Please enter a asset category", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(!assetCategory.matches("^[a-zA-Z\\s]+$")) {
-                    Toast.makeText(this, "Asset category must only contain big and small letters and spaces!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(assetExpandable.isEmpty()) {
-                    Toast.makeText(this, "Please select a asset expandable", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(assetQuantity.isEmpty()) {
-                    Toast.makeText(this, "Please enter a asset quantity", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(assetMrah.isEmpty()) {
-                    Toast.makeText(this, "Please enter a asset MRAH", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(!assetMrah.matches("^[a-zA-Z\\s]+$")) {
-                    Toast.makeText(this, "Asset MRAH must only contain big and small letters and spaces!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(assetOwner.isEmpty()) {
-                    Toast.makeText(this, "Please enter a asset owner", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(!assetOwner.matches("^[a-zA-Z\\s]+$")) {
-                    Toast.makeText(this, "Asset owner must only contain big and small letters and spaces!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(assetStatus.isEmpty()) {
-                    Toast.makeText(this, "Please select a asset status", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                sendDataToServer(epc, assetCode, assetName, assetType, assetLocation, assetSubLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription);
-
-            } else {
+            if (epc.isEmpty()) {
                 Toast.makeText(this, "No EPC content detected!", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            // Retrieve all inputs
+            String assetCode = assetCodeText.getText().toString().trim();
+            String assetName = assetNameText.getText().toString().trim();
+            String assetType = typeAssetId;
+            String assetLocation = locationAssetId;
+            String assetSubLocation = subLocationAssetId;
+            String assetCategory = assetCategoriesText.getText().toString().trim();
+            String assetExpandable = assetExpandableText.getSelectedItem().toString().trim();
+            String assetQuantity = assetQuantityText.getText().toString().trim();
+            String assetMrah = assetMrahText.getText().toString().trim();
+            String assetOwner = assetOwnerText.getText().toString().trim();
+            String assetStatus = assetStatusText.getSelectedItem().toString().trim();
+            String assetDescription = assetDescriptionText.getText().toString().trim();
+
+            // Validation
+            if (!isValidText(assetCode, "Asset code", assetCodeText, "^[a-zA-Z0-9]+$")) return;
+            if (!isValidText(assetName, "Asset name", assetNameText, "^[a-zA-Z0-9\\s]+$")) return;
+            if (!isValidSelection(assetType, "asset type")) return;
+            if (!isValidSelection(assetLocation, "asset location")) return;
+            if (assetSubLocationText.isEnabled() && assetSubLocation.isEmpty()) {
+                assetSubLocationText.requestFocus();
+                Toast.makeText(this, "Please select an asset sub-location!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!isValidText(assetCategory, "Asset category", assetCategoriesText, "^[a-zA-Z\\s]+$")) return;
+            if (assetExpandable.isEmpty()) {
+                Toast.makeText(this, "Please select a asset expandable", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!isValidText(assetQuantity, "Asset quantity", assetQuantityText, "^[0-9]+$")) return;
+            if (!isValidText(assetMrah, "Asset MRAH", assetMrahText, "^[a-zA-Z\\s]+$")) return;
+            if (!isValidText(assetOwner, "Asset owner", assetOwnerText, "^[a-zA-Z\\s]+$")) return;
+            if (assetStatus.isEmpty()) {
+                Toast.makeText(this, "Please select a asset status", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!assetDescription.matches("^[a-zA-Z\\s]*$")) {
+                assetDescriptionText.requestFocus();
+                Toast.makeText(this, "Asset description is invalid!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Send data
+            sendDataToServer(epc, assetCode, assetName, assetType, assetLocation, assetSubLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription);
         });
+    }
+
+    // Helper method to validate text fields
+    private boolean isValidText(String input, String fieldName, EditText field, String regex) {
+        if (input.isEmpty()) {
+            field.requestFocus();
+            Toast.makeText(this, "Please enter " + fieldName + "!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if (!input.matches(regex)) {
+            field.requestFocus();
+            Toast.makeText(this, fieldName + " is invalid!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        return true;
+    }
+
+    // Helper method to validate selection fields
+    private boolean isValidSelection(String input, String fieldName) {
+        if (input.isEmpty()) {
+            Toast.makeText(this, "Please select " + fieldName + "!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        return true;
     }
 
     // Method to send EPC to the server using the persistent OkHttpClient connection

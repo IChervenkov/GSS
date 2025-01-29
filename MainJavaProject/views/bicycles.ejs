@@ -69,7 +69,7 @@
             </button>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
-              <span class="tooltiptext">Search by bike number or name</span>
+              <span class="tooltiptext">Search<br>by<br>bike name</span>
             </div>
           </div>
         </div>
@@ -89,7 +89,7 @@
             </button>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
-              <span class="tooltiptext">Search by soldier name</span>
+              <span class="tooltiptext">Search<br>by soldier<br>name</span>
             </div>
           </div>
         </div>
@@ -122,20 +122,20 @@
 
       <!-- Buttons below the calendar -->
       <div class="button-container">
-        <div class="btn-container" style="width: 48%; display: inline-block; margin-right: 2%;">
-          <button type="button" class="login-btn" id="rentBtn" style="width: 100%;">
+        <div class="btn-container w-100 w-md-auto">
+          <button type="button" class="login-btn w-100 w-md-auto" id="rentBtn">
             <i class="bi bi-bag"></i> Rent
           </button>
-          <div class="tooltip-custom" style=" left: 30%;">
+          <div class="tooltip-custom">
             <i class="bi bi-question-circle"></i>
             <span class="tooltiptext">Rent a bike</span>
           </div>
         </div>
-        <div class="btn-container" style="width: 48%; display: inline-block;">
-          <button type="button" class="login-btn" id="returnBtn" style="width: 100%;">
+        <div class="btn-container w-100 w-md-auto">
+          <button type="button" class="login-btn w-100 w-md-auto" id="returnBtn">
             <i class="bi bi-arrow-return-left"></i> Return
           </button>
-          <div class="tooltip-custom" style=" left: 30%;">
+          <div class="tooltip-custom">
             <i class="bi bi-question-circle"></i>
             <span class="tooltiptext">Return a bike</span>
           </div>
@@ -174,38 +174,38 @@
             style="pointer-events: none;">Total Bike: <%= totalBike %></label>
 
           <div class="btn-container">
-            <label id="rentedBike" class="virtual-warehouse-label">Rented: <%= rentedBike %></label>
+            <label id="rentedBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Rented: <%= rentedBike %></label>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
-              <span class="tooltiptext">Number and list of rented bikes</span>
+              <span class="tooltiptext">Number and list <br> of rented bikes</span>
             </div>
           </div>
           <div class="btn-container">
-            <label id="availableBike" class="virtual-warehouse-label">Available: <%= availableBike %></label>
+            <label id="availableBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Available: <%= availableBike %></label>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
-              <span class="tooltiptext">Number and list of available bikes</span>
+              <span class="tooltiptext">Number and list <br> of available bikes</span>
             </div>
           </div>
           <div class="btn-container">
-            <label id="repairBike" class="virtual-warehouse-label">Repair: <%= repairBike %></label>
+            <label id="repairBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Repair: <%= repairBike %></label>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
-              <span class="tooltiptext">Number and list of bikes under repair</span>
+              <span class="tooltiptext">Number and list <br> of bikes under repair</span>
             </div>
           </div>
           <div class="btn-container">
-            <label id="lateBike" class="virtual-warehouse-label">Late: <%= lateBike %></label>
+            <label id="lateBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Late: <%= lateBike %></label>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
-              <span class="tooltiptext">Number and list of late bikes</span>
+              <span class="tooltiptext">Number and list <br> of late bikes</span>
             </div>
           </div>
           <div class="btn-container">
-            <label id="longTermBike" class="virtual-warehouse-label">Long Term: <%= longTermBike %></label>
+            <label id="longTermBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Long Term: <%= longTermBike %></label>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
-              <span class="tooltiptext">Number and list of long-term bikes</span>
+              <span class="tooltiptext">Number and list <br> of long-term bikes</span>
             </div>
           </div>
 
@@ -213,7 +213,7 @@
             <button type="button" id="btnReport" class="login-btn-report">
               <i class="bi bi-file-earmark-text"></i> Reports
             </button>
-            <div class="tooltip-custom" style="right: 0;">
+            <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
               <span class="tooltiptext">Generate reports</span>
             </div>

@@ -68,8 +68,17 @@ public class DeleteAsset extends AppCompatActivity {
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
             if (!epc.isEmpty()) {
-                sendDataToServer(epc);
-
+                new androidx.appcompat.app.AlertDialog.Builder(DeleteAsset.this)
+                        .setTitle("Attention")
+                        .setMessage("Are you sure you want to remove this asset?")
+                        .setPositiveButton("Yes", (dialog, which) -> {
+                            sendDataToServer(epc);  // Proceed with submission
+                        })
+                        .setNegativeButton("No", (dialog, which) -> {
+                            // Do nothing, just dismiss the dialog
+                            dialog.dismiss();
+                        })
+                        .show();
             } else {
                 Toast.makeText(this, "No EPC content detected!", Toast.LENGTH_SHORT).show();
             }
@@ -247,6 +256,7 @@ public class DeleteAsset extends AppCompatActivity {
         } else {
             showPopupWindow("Error", "Asset not found!");
             assetEpcText.setText("Asset code: None");
+            epc = "";
         }
     }
 

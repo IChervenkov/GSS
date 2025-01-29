@@ -336,7 +336,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered bikes in the dropdown
     function filterEditSoldiers(query) {
         editSoldierSearchDropdown.innerHTML = '';
-        const filteredSoldiers = clients.filter(client => (client.id === '4' || (client.date_accommodation !== '' && client.date_free === '')) && client.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredSoldiers = clients.filter(client => (client.id === '4' || (client.date_accommodation !== '' && client.date_free === '')) && (
+            client.name.toLowerCase().includes(query.toLowerCase()) ||
+            client.namekey.toLowerCase().includes(query.toLowerCase())
+        ));
 
         if (filteredSoldiers.length > 0) {
             editSoldierSearchDropdown.style.display = 'block';
@@ -372,7 +375,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered bikes in the dropdown
     function filterClient(query) {
         clientSearchDropdown.innerHTML = '';
-        const filteredClients = clients.filter(client => (client.id === '4' || (client.date_accommodation !== '' && client.date_free === '')) && client.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredClients = clients.filter(client => (client.id === '4' || (client.date_accommodation !== '' && client.date_free === '')) && (
+            client.name.toLowerCase().includes(query.toLowerCase()) ||
+            client.namekey.toLowerCase().includes(query.toLowerCase())
+        ));
 
         if (filteredClients.length > 0) {
             clientSearchDropdown.style.display = 'block';

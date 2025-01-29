@@ -73,8 +73,17 @@ public class DeleteBag extends AppCompatActivity {
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
             if (!epc.isEmpty()) {
-                sendDataToServer(epc);
-
+                new androidx.appcompat.app.AlertDialog.Builder(DeleteBag.this)
+                        .setTitle("Attention")
+                        .setMessage("Are you sure you want to remove this bag?")
+                        .setPositiveButton("Yes", (dialog, which) -> {
+                            sendDataToServer(epc);  // Proceed with submission
+                        })
+                        .setNegativeButton("No", (dialog, which) -> {
+                            // Do nothing, just dismiss the dialog
+                            dialog.dismiss();
+                        })
+                        .show();
             } else {
                 Toast.makeText(this, "No EPC content detected!", Toast.LENGTH_SHORT).show();
             }
@@ -192,6 +201,7 @@ public class DeleteBag extends AppCompatActivity {
         } else {
             showPopupWindow("Error", "Bag not found!");
             bagEpcText.setText("Bag code: None");
+            epc = "";
         }
     }
 
@@ -282,7 +292,7 @@ public class DeleteBag extends AppCompatActivity {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
-                payload.put("bagId", epc);
+                payload.put("code", epc);
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
                 RequestBody body = RequestBody.create(JSON, payload.toString());

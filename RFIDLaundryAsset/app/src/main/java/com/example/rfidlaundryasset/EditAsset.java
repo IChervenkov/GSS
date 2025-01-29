@@ -3,7 +3,6 @@ package com.example.rfidlaundryasset;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -11,6 +10,7 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,8 +37,8 @@ import okhttp3.Response;
 public class EditAsset extends AppCompatActivity {
 
     private OkHttpClient client; // Reuse a single OkHttpClient instance
-    private String oldEpc;
-    private String newEpc;
+    private String oldEpc = "";
+    private String newEpc = "";
     private Button submitButton;
     private EditText assetCodeText;
     private EditText assetNameText;
@@ -59,6 +59,13 @@ public class EditAsset extends AppCompatActivity {
     private ThreadInventory threadInventory;
     private AutoCompleteTextView assetAutoCompleteTextView;
     private TextView assetEpcText;
+    private EditText assetCategoriesText;
+    private EditText assetQuantityText;
+    private EditText assetMrahText;
+    private EditText assetOwnerText;
+    private Spinner assetStatusText;
+    private Spinner assetExpandableText;
+    private EditText assetDescriptionText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,8 +82,43 @@ public class EditAsset extends AppCompatActivity {
         assetLocationText = findViewById(R.id.assetLocationAutoCompleteTextView);
         assetSubLocationText = findViewById(R.id.assetSubLocationAutoCompleteTextView);
         assetEpcText = findViewById(R.id.epcTextView);
+        assetCategoriesText = findViewById(R.id.assetCategoriesText);
+        assetQuantityText = findViewById(R.id.assetQuantityText);
+        assetMrahText = findViewById(R.id.assetMrahText);
+        assetOwnerText = findViewById(R.id.assetOwnerText);
+        assetStatusText = findViewById(R.id.assetStatusText);
+        assetExpandableText = findViewById(R.id.assetExpandableText);
+        assetDescriptionText = findViewById(R.id.assetDescriptionText);
 
         assetSubLocationText.setEnabled(false);
+
+        // Create an ArrayAdapter using the string array and a default spinner layout
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                this,
+                R.array.asset_expandable_options,
+                android.R.layout.simple_spinner_item
+        );
+
+        // Specify the layout to use when the list of choices appears
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        // Apply the adapter to the spinner
+        assetExpandableText.setAdapter(adapter);
+        assetExpandableText.setSelection(0);
+
+        // Create an ArrayAdapter using the string array and a default spinner layout
+        ArrayAdapter<CharSequence> adapter_status = ArrayAdapter.createFromResource(
+                this,
+                R.array.asset_status_options,
+                android.R.layout.simple_spinner_item
+        );
+
+        // Specify the layout to use when the list of choices appears
+        adapter_status.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        // Apply the adapter to the spinner
+        assetStatusText.setAdapter(adapter_status);
+        assetStatusText.setSelection(0);
 
         // Fetch asset type from the server
         fetchAssetType();
@@ -103,61 +145,71 @@ public class EditAsset extends AppCompatActivity {
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
-            if (!newEpc.isEmpty()) {
-                String selectAssetCode = assetAutoCompleteTextView.getText().toString().trim();
-                String newEpcCode = newEpc;
-                String oldEpcCode = oldEpc;
-                String assetCode = assetCodeText.getText().toString().trim();
-                String assetName = assetNameText.getText().toString().trim();
-                String assetType = typeAssetId;
-                String assetLocation = locationAssetId;
-                String assetSubLocation = subLocationAssetId;
-
-                if (selectAssetCode.isEmpty()) {
-                    Toast.makeText(this, "Please select edit asset code!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (assetCode.isEmpty()) {
-                    Toast.makeText(this, "Please enter a asset code!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (assetName.isEmpty()) {
-                    Toast.makeText(this, "Please enter a asset name!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (!assetName.matches("^[a-zA-Z0-9\\s]+$")) {
-                    Toast.makeText(this, "Asset name must only contain alphanumeric characters and space!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(assetType.isEmpty()) {
-                    Toast.makeText(this, "Please select asset type!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(assetLocation.isEmpty()) {
-                    Toast.makeText(this, "Please select asset location!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(assetSubLocationText.isEnabled() && assetSubLocation.isEmpty()) {
-                    Toast.makeText(this, "Please select asset sub location!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                sendDataToServer(oldEpcCode, newEpcCode, assetCode, assetName, assetType, assetLocation, assetSubLocation);
-
-            } else {
+            if (newEpc.isEmpty()) {
                 Toast.makeText(this, "No EPC content detected!", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            String selectAssetCode = assetAutoCompleteTextView.getText().toString().trim();
+            String newEpcCode = newEpc;
+            String oldEpcCode = oldEpc;
+            String assetCode = assetCodeText.getText().toString().trim();
+            String assetName = assetNameText.getText().toString().trim();
+            String assetType = typeAssetId;
+            String assetLocation = locationAssetId;
+            String assetSubLocation = subLocationAssetId;
+            String assetCategories = assetCategoriesText.getText().toString().trim();
+            String assetQuantity = assetQuantityText.getText().toString().trim();
+            String assetMrah = assetMrahText.getText().toString().trim();
+            String assetOwner = assetOwnerText.getText().toString().trim();
+            String assetStatus = assetStatusText.getSelectedItem().toString();
+            String assetExpandable = assetExpandableText.getSelectedItem().toString();
+            String assetDescription = assetDescriptionText.getText().toString().trim();
+
+            // Validation
+            if (!isValidText(selectAssetCode, "edit asset code")) return;
+            if (!isValidText(assetCode, "asset code")) return;
+            if (!isValidText(assetName, "asset name", "^[a-zA-Z0-9\\s]+$")) return;
+            if (!isValidText(assetType, "asset type")) return;
+            if (!isValidText(assetLocation, "asset location")) return;
+            if (assetSubLocationText.isEnabled() && !isValidText(assetSubLocation, "asset sub-location")) return;
+            if (!isValidText(assetCategories, "asset category", "^[a-zA-Z\\s]+$")) return;
+            if (!isValidText(assetQuantity, "asset quantity")) return;
+            if (!isValidText(assetMrah, "asset MRAH", "^[a-zA-Z\\s]+$")) return;
+            if (!isValidText(assetOwner, "asset owner", "^[a-zA-Z\\s]+$")) return;
+            if (!isValidText(assetStatus, "asset status")) return;
+            if (!isValidText(assetExpandable, "asset expandable")) return;
+            if (!isValidText(assetDescription, "asset description", "^[a-zA-Z0-9\\s]*$")) return;
+
+            // Send data to server
+            sendDataToServer(oldEpcCode, newEpcCode, assetCode, assetName, assetType, assetLocation, assetSubLocation, assetCategories, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription);
         });
     }
 
+    // Helper method for validation
+    private boolean isValidText(String input, String fieldName) {
+        if (input.isEmpty()) {
+            Toast.makeText(this, "Please enter/select " + fieldName + "!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        return true;
+    }
+
+    // Overloaded helper method with regex validation
+    private boolean isValidText(String input, String fieldName, String regex) {
+        if (input.isEmpty()) {
+            Toast.makeText(this, "Please enter/select " + fieldName + "!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if (!input.matches(regex)) {
+            Toast.makeText(this, fieldName + " must contain only valid characters!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        return true;
+    }
+
     // Method to send EPC to the server using the persistent OkHttpClient connection
-    private void sendDataToServer(String oldEpcCode, String newEpcCode, String assetCode, String assetName, String assetType, String assetLocation, String assetSubLocation) {
+    private void sendDataToServer(String oldEpcCode, String newEpcCode, String assetCode, String assetName, String assetType, String assetLocation, String assetSubLocation, String assetCategories, String assetQuantity, String assetMrah, String assetOwner, String assetStatus, String assetExpandable, String assetDescription) {
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(EditAsset.this);
@@ -177,6 +229,13 @@ public class EditAsset extends AppCompatActivity {
                 payload.put("type", assetType);
                 payload.put("location", assetLocation);
                 payload.put("subLocation", assetSubLocation);
+                payload.put("category", assetCategories);
+                payload.put("quantity", assetQuantity);
+                payload.put("mrah", assetMrah);
+                payload.put("owner", assetOwner);
+                payload.put("status", assetStatus);
+                payload.put("expandable", assetExpandable);
+                payload.put("description", assetDescription);
 
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
@@ -662,6 +721,13 @@ public class EditAsset extends AppCompatActivity {
                 String assetLocationName = selectedAssetDetails.optString("location_name", "N/A");
                 String assetSubLocationName = selectedAssetDetails.optString("sub_location_name", "N/A");
                 String assetEPC = selectedAssetDetails.optString("id", "N/A");
+                String assetCategory = selectedAssetDetails.optString("categorie", "N/A");
+                String assetQuantity = selectedAssetDetails.optString("quantity", "N/A");
+                String assetMrah = selectedAssetDetails.optString("mrah", "N/A");
+                String assetOwner = selectedAssetDetails.optString("owner", "N/A");
+                String assetStatus = selectedAssetDetails.optString("status", "N/A");
+                String assetExpandable = selectedAssetDetails.optString("expandable", "N/A");
+                String assetDescription = selectedAssetDetails.optString("description", "N/A");
 
                 // Update UI fields
                 assetNameText.setText(assetName);
@@ -670,6 +736,20 @@ public class EditAsset extends AppCompatActivity {
                 assetLocationText.setText(assetLocationName, false);
                 assetSubLocationText.setText(assetSubLocationName, false);
                 assetEpcText.setText("EPC code: " + assetEPC);
+                assetCategoriesText.setText(assetCategory);
+                assetQuantityText.setText(assetQuantity);
+                assetMrahText.setText(assetMrah);
+                assetOwnerText.setText(assetOwner);
+
+                ArrayAdapter<String> adapterSpinnerStatus = (ArrayAdapter<String>) assetStatusText.getAdapter();
+                int positionStatus = adapterSpinnerStatus.getPosition(assetStatus);
+                assetStatusText.setSelection(positionStatus);
+
+                ArrayAdapter<String> adapterSpinnerExpandable = (ArrayAdapter<String>) assetExpandableText.getAdapter();
+                int positionExpandable = adapterSpinnerExpandable.getPosition(assetExpandable);
+                assetExpandableText.setSelection(positionExpandable);
+
+                assetDescriptionText.setText(assetDescription);
                 oldEpc = newEpc = assetEPC;
 
                 // Update IDs

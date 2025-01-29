@@ -360,6 +360,9 @@ td {
     transform: translateY(10px);
     transition: opacity 0.3s, transform 0.3s;
     z-index: 2;
+    left: 50%;
+    transform: translate(-50%, 10px);
+    text-align: center;
 }
 
 .btn-container {
@@ -370,7 +373,7 @@ td {
 .btn-container:hover .tooltip-custom {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
 }
 
 .modal-content {

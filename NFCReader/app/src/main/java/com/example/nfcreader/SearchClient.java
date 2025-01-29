@@ -37,8 +37,8 @@ import okhttp3.Response;
 public class SearchClient extends AppCompatActivity {
 
     private OkHttpClient client = new OkHttpClient();
-    private ArrayList<String> ownerList = new ArrayList<>();
-    private Map<String, String> clientIdMap = new HashMap<>();
+    private ArrayList<BikeInfo> ownerList = new ArrayList<>();
+    private Map<BikeInfo, String> clientIdMap = new HashMap<>();
     private AutoCompleteTextView clientAutoCompleteTextView;
 
     @Override
@@ -52,14 +52,16 @@ public class SearchClient extends AppCompatActivity {
         fetchAvailableBikes();
 
         clientAutoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> {
-            String selectedClientName = (String) parent.getItemAtPosition(position);
-            String clientId = clientIdMap.get(selectedClientName);
-            loadBikeData(clientId);
+            BikeInfo selectedBikeInfo = (BikeInfo) parent.getItemAtPosition(position);
+
+            // Fetch the ID from the map using the selected BikeInfo
+            String selectedClientId = clientIdMap.get(selectedBikeInfo);
+
+            loadBikeData(selectedClientId);
         });
     }
 
     private void fetchAvailableBikes() {
-
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(SearchClient.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -67,36 +69,39 @@ public class SearchClient extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
-            try {
-                Request request = new Request.Builder()
-                        .url("https://bunker.bg/getClient")
-                        .build();
+        Request request = new Request.Builder()
+                .url("https://bunker.bg/getClient")
+                .build();
 
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful()) {
-                    final String responseData = response.body().string();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    Toast.makeText(SearchClient.this, "Error fetching client: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                loadingDialog.dismiss();
+                if (response.isSuccessful() && response.body() != null) {
+                    String responseData = response.body().string();
                     runOnUiThread(() -> {
                         try {
                             populateBikeAutoComplete(new JSONArray(responseData));
                         } catch (JSONException e) {
                             e.printStackTrace();
+                            Toast.makeText(SearchClient.this, "JSON Parsing Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
                 } else {
-                    runOnUiThread(() -> {
-                        Toast.makeText(SearchClient.this, "Error fetching client", Toast.LENGTH_SHORT).show();
-                    });
+                    runOnUiThread(() ->
+                            Toast.makeText(SearchClient.this, "Error fetching client, code: " + response.code(), Toast.LENGTH_SHORT).show()
+                    );
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    Toast.makeText(SearchClient.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
@@ -107,12 +112,15 @@ public class SearchClient extends AppCompatActivity {
             JSONObject bike = bikes.getJSONObject(i);
             String bikeId = bike.getString("id");
             String bikeName = bike.getString("namesoldier");
+            String soldierKey = bike.getString("namekey");
 
-            ownerList.add(bikeName);
-            clientIdMap.put(bikeName, bikeId);
+            BikeInfo bikeInfo = new BikeInfo(bikeName, soldierKey);
+
+            ownerList.add(bikeInfo);
+            clientIdMap.put(bikeInfo, bikeId);
         }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
+        ArrayAdapter<BikeInfo> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
         clientAutoCompleteTextView.setAdapter(adapter);
     }
 

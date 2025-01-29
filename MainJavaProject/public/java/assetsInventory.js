@@ -73,6 +73,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedAddSubLocationId = document.getElementById('selectedAddSubLocationId');
 
     const assetName = document.getElementById('assetName');
+    const assetCategory = document.getElementById('categorie');
+    const assetEditQuantity = document.getElementById('quantity');
+    const assetMrah = document.getElementById('mrah');
+    const assetOwner = document.getElementById('owner');
+    const assetEditStatus = document.getElementById('status');
+    const assetExpandable = document.getElementById('expandable');
+    const assetDescription = document.getElementById('description');
     const assetAddType = document.getElementById('assetType');
 
     const lostItemDescription = document.getElementById('assetDescription');
@@ -281,6 +288,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (col === 'location') {
                     valA = a.location.toLowerCase();
                     valB = b.location.toLowerCase();
+                }  else if (col === 'description') {
+                    valA = a.description.toLowerCase();
+                    valB = b.description.toLowerCase();
                 }
 
                 // Compare values for the current column
@@ -391,15 +401,15 @@ document.addEventListener('DOMContentLoaded', function () {
             locationCell.textContent = item.location;
             row.appendChild(locationCell);
 
-            const subLocationCell = document.createElement("td");
-            subLocationCell.textContent = item.namekey;
-            row.appendChild(subLocationCell);
+            const descriptionCell = document.createElement("td");
+            descriptionCell.textContent = item.description;
+            row.appendChild(descriptionCell);
 
             // Attach click event for each row
             row.addEventListener('click', (event) => {
                 // Check if the clicked element is not the first td in the row
                 if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
-                    openEditAssetsModal(item.code, item.name, item.type, item.location, item.namekey);
+                    openEditAssetsModal(item.code, item.name, item.type, item.location, item.namekey, item.categorie, item.quantity, item.mrah, item.owner, item.status, item.expandable, item.description);
                 }
             });
 
@@ -440,7 +450,7 @@ document.addEventListener('DOMContentLoaded', function () {
             name: document.getElementById('asset-name-header'),
             type: document.getElementById('asset-type-header'),
             location: document.getElementById('asset-location-header'),
-            namekey: document.getElementById('asset-sub-location-header')
+            description: document.getElementById('asset-description-header')
         };
 
         // Reset all headers by removing sort classes
@@ -494,6 +504,25 @@ document.addEventListener('DOMContentLoaded', function () {
             assetSearchInput.value = selectedAsset.textContent;
             selectedAssetId.value = selectedAsset.getAttribute('data-id');
             assetSearchDropdown.style.display = 'none';
+
+            assetName.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).name;
+
+            typeSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).type;
+            selectedTypeId.value = assetType.find(type => type.name === typeSearchInput.value).id;
+
+            locationSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).location;
+            selectedLocationId.value = assetLocation.find(item => item.nameroom === locationSearchInput.value) ? assetLocation.find(item => item.nameroom === locationSearchInput.value).roomid : '';
+
+            subLocationSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).namekey;
+            selectedSubLocationId.value = nameAssetSetCount.find(item => item.namekey === subLocationSearchInput.value) ? nameAssetSetCount.find(item => item.namekey === subLocationSearchInput.value).keyid : '';
+
+            assetCategory.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).categorie;
+            assetEditQuantity.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).quantity;
+            assetMrah.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).mrah;
+            assetOwner.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).owner;
+            assetEditStatus.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).status;
+            assetExpandable.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).expandable;
+            assetDescription.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).description;
 
             toggleInputValidity(assetSearchInput, true);
         }
@@ -913,6 +942,32 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleInputValidity(assetName, assetName.value !== '' && assetName.checkValidity());
     });
 
+    assetCategory.addEventListener('input', () => {
+        toggleInputValidity(assetCategory, assetCategory.value !== '' && assetCategory.checkValidity());
+    });
+
+    assetEditQuantity.addEventListener('input', () => {
+        toggleInputValidity(assetEditQuantity, assetEditQuantity.value !== '' && assetEditQuantity.checkValidity());
+    });
+
+    assetMrah.addEventListener('input', () => {
+        toggleInputValidity(assetMrah, assetMrah.value !== '' && assetMrah.checkValidity());
+    });
+
+    assetOwner.addEventListener('input', () => {
+        toggleInputValidity(assetOwner, assetOwner.value !== '' && assetOwner.checkValidity());
+    });
+
+    assetExpandable.addEventListener('input', () => {
+        toggleInputValidity(assetExpandable, assetExpandable.value !== '' && assetExpandable.checkValidity());
+    });
+
+    assetDescription.addEventListener('input', () => {
+        const regex = /^[a-zA-Z0-9\s]*$/;
+        const isValid = regex.test(assetDescription.value);
+        toggleInputValidity(assetDescription, isValid);
+    });
+
     assetAddType.addEventListener('input', () => {
         toggleInputValidity(assetAddType, assetAddType.value !== '' && assetAddType.checkValidity());
     });
@@ -1208,7 +1263,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    function openEditAssetsModal(assetCode, name, type, location, assetNameKey) {
+    function openEditAssetsModal(assetCode, name, type, location, assetNameKey, categorie, quantity, mrah, owner, status, expandable, description) {
 
         assetSearchInput.value = assetCode;
         selectedAssetId.value = nameAssetSetCount.find(asset => asset.code === assetCode).id;
@@ -1230,8 +1285,15 @@ document.addEventListener('DOMContentLoaded', function () {
             subLocationSearchInput.disabled = false;
             subLocationSearchInput.value = assetNameKey !== 'There is no associated key' ? assetNameKey : '';
             selectedSubLocationId.value = assetLocation.find(item => item.name === assetNameKey) ? assetLocation.find(item => item.name === assetNameKey).id : '';
-            console.log(assetNameKey);
         }
+
+        assetCategory.value = categorie;
+        assetEditQuantity.value = quantity;
+        assetMrah.value = mrah;
+        assetOwner.value = owner;
+        assetEditStatus.value = status;
+        assetExpandable.value = expandable;
+        assetDescription.value = description;
 
         // Add the slide-in effect by adding the necessary classes
         assetsEditModal.classList.add('show');
@@ -1251,7 +1313,18 @@ document.addEventListener('DOMContentLoaded', function () {
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
 
-            document.querySelectorAll('#assetSearch, #selectedAssetId, #assetName, #typeSearch, #selectedTypeId, #locationSearch, #selectedLocationId, #subLocationSearch, #selectedSubLocationId').forEach((input) => {
+            document.querySelectorAll(`
+                #assetSearch, 
+                #selectedAssetId, 
+                #assetName, 
+                #typeSearch, 
+                #selectedTypeId, 
+                #locationSearch, 
+                #selectedLocationId, 
+                #subLocationSearch, 
+                #selectedSubLocationId, 
+                #categorie,
+                #description`).forEach((input) => {
 
                 input.classList.remove('is-valid');
                 input.classList.remove('is-invalid');
@@ -1259,6 +1332,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.value = '';
 
             });
+
+            document.querySelectorAll(`
+                #quantity,
+                #mrah,
+                #owner,
+                #status,
+                #expandable`).forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+            });
+
+            assetEditQuantity.value = '1';
+            assetMrah.value = 'Global RTS';
+            assetOwner.value = 'Global RTS';
+            assetEditStatus.value = '1';
+            assetExpandable.value = 'Non Expandable';
 
             assetsEditModal.classList.remove('show');
             assetsEditModalContent.classList.remove('show');
@@ -1388,15 +1478,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.appendChild(locationCell);
 
                     // Room status cell
-                    const subLocationCell = document.createElement("td");
-                    subLocationCell.textContent = item.namekey;
-                    row.appendChild(subLocationCell);
+                    const descriptionCell = document.createElement("td");
+                    descriptionCell.textContent = item.description ? item.description : 'No description';
+                    row.appendChild(descriptionCell);
 
                     // Attach click event for each row
                     row.addEventListener('click', (event) => {
                         // Check if the clicked element is not the first td in the row
                         if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
-                            openEditAssetsModal(item.code, item.name, item.type, item.location, item.namekey);
+                            openEditAssetsModal(item.code, item.name, item.type, item.location, item.namekey, item.categorie, item.quantity, item.mrah, item.owner, item.status, item.expandable, item.description);
                         }
                     });
 
@@ -1432,7 +1522,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 name: document.getElementById('asset-name-header'),
                 type: document.getElementById('asset-type-header'),
                 location: document.getElementById('asset-location-header'),
-                namekey: document.getElementById('asset-sub-location-header')
+                description: document.getElementById('asset-description-header')
             };
 
             // Reset all headers by removing sort classes
@@ -1547,8 +1637,8 @@ document.addEventListener('DOMContentLoaded', function () {
         sortTableAssetsData('location');
     });
 
-    document.getElementById('asset-sub-location-header').addEventListener('click', function () {
-        sortTableAssetsData('namekey');
+    document.getElementById('asset-description-header').addEventListener('click', function () {
+        sortTableAssetsData('description');
     });
 
     // Add event listeners to the buttons
@@ -1776,7 +1866,14 @@ document.addEventListener('DOMContentLoaded', function () {
             { input: assetName, condition: assetName.value === '' || !assetName.checkValidity() },
             { input: typeSearchInput, condition: selectedTypeId.value === '' },
             { input: locationSearchInput, condition: selectedLocationId.value === '' },
-            { input: subLocationSearchInput, condition: !subLocationSearchInput.disabled && selectedSubLocationId.value === '' }
+            { input: subLocationSearchInput, condition: !subLocationSearchInput.disabled && selectedSubLocationId.value === '' },
+            { input: assetCategory, condition: assetCategory.value === '' || !assetCategory.checkValidity() },
+            { input: assetEditQuantity, condition: assetEditQuantity.value === '' || !assetEditQuantity.checkValidity() },
+            { input: assetMrah, condition: assetMrah.value === '' || !assetMrah.checkValidity() },
+            { input: assetOwner, condition: assetOwner.value === '' || !assetOwner.checkValidity() },
+            { input: assetEditStatus, condition: assetEditStatus.value === '' || !assetEditStatus.checkValidity() },
+            { input: assetExpandable, condition: assetExpandable.value === '' || !assetExpandable.checkValidity() },
+            { input: assetDescription, condition: !/^[a-zA-Z0-9\s]*$/.test(assetDescription.value) }
         ];
 
         let isValid = true;
@@ -1799,7 +1896,14 @@ document.addEventListener('DOMContentLoaded', function () {
             assetName: assetName.value,
             assetType: selectedTypeId.value,
             assetLocation: selectedLocationId.value,
-            assetSubLocation: selectedSubLocationId.value
+            assetSubLocation: selectedSubLocationId.value,
+            assetCategory: assetCategory.value,
+            assetQuantity: assetEditQuantity.value,
+            assetMrah: assetMrah.value,
+            assetOwner: assetOwner.value,
+            assetStatus: assetEditStatus.value,
+            assetExpandable: assetExpandable.value,
+            assetDescription: assetDescription.value
         };
 
         const submitButton = document.createElement('button');

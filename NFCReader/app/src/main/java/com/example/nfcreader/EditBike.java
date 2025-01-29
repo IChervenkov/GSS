@@ -21,10 +21,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -97,7 +100,6 @@ public class EditBike extends AppCompatActivity {
     }
 
     private void fetchAvailableBikes() {
-
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(EditBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -105,13 +107,21 @@ public class EditBike extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
-            try {
-                Request request = new Request.Builder()
-                        .url("https://bunker.bg/bikes")
-                        .build();
+        Request request = new Request.Builder()
+                .url("https://bunker.bg/bikes")
+                .build();
 
-                Response response = client.newCall(request).execute();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                runOnUiThread(() -> {
+                    Toast.makeText(EditBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    loadingDialog.dismiss();
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
                 if (response.isSuccessful()) {
                     final String responseData = response.body().string();
                     runOnUiThread(() -> {
@@ -120,21 +130,16 @@ public class EditBike extends AppCompatActivity {
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
+                        loadingDialog.dismiss();
                     });
                 } else {
                     runOnUiThread(() -> {
                         Toast.makeText(EditBike.this, "Error fetching client", Toast.LENGTH_SHORT).show();
+                        loadingDialog.dismiss();
                     });
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    Toast.makeText(EditBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
@@ -156,7 +161,6 @@ public class EditBike extends AppCompatActivity {
     }
 
     private void sendDataToServer(String oldNfcContent, String newNfcContent, String bikeName) {
-
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(EditBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -164,58 +168,70 @@ public class EditBike extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
-            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-            JSONObject jsonData = new JSONObject();
-            try {
-                jsonData.put("oldBikeId", oldNfcContent);
-                jsonData.put("newBikeId", newNfcContent);
-                jsonData.put("bikeName", bikeName);
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject jsonData = new JSONObject();
+        try {
+            jsonData.put("oldBikeId", oldNfcContent);
+            jsonData.put("newBikeId", newNfcContent);
+            jsonData.put("bikeName", bikeName);
 
-                RequestBody body = RequestBody.create(JSON, jsonData.toString());
-                Request request = new Request.Builder()
-                        .url("https://bunker.bg/editParameturBike")
-                        .post(body)
-                        .build();
+            RequestBody body = RequestBody.create(JSON, jsonData.toString());
+            Request request = new Request.Builder()
+                    .url("https://bunker.bg/editParameturBike")
+                    .post(body)
+                    .build();
 
-                try (Response response = client.newCall(request).execute()) {
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        loadingDialog.dismiss();
+                    });
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
                     if (response.body() != null) {
                         String responseData = response.body().string();
-
-                        if (response.isSuccessful()) {
+                        try {
                             JSONObject jsonResponse = new JSONObject(responseData);
-                            String message = jsonResponse.optString("message", "Bike edit successfully.");
-
+                            if (response.isSuccessful()) {
+                                String message = jsonResponse.optString("message", "Bike edit successfully.");
+                                runOnUiThread(() -> {
+                                    Toast.makeText(EditBike.this, message, Toast.LENGTH_SHORT).show();
+                                    Intent intent = new Intent(EditBike.this, MainActivity.class);
+                                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    startActivity(intent);
+                                    finish();
+                                });
+                            } else {
+                                String error = jsonResponse.optString("error", "Server error occurred.");
+                                runOnUiThread(() -> {
+                                    Toast.makeText(EditBike.this, "Error: " + error, Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
                             runOnUiThread(() -> {
-                                Toast.makeText(EditBike.this, message, Toast.LENGTH_SHORT).show();
-                                Intent intent = new Intent(EditBike.this, MainActivity.class);
-                                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(intent);
-                                finish();
-                            });
-                        } else {
-                            JSONObject jsonResponse = new JSONObject(responseData);
-                            String error = jsonResponse.optString("error", "Server error occurred.");
-
-                            runOnUiThread(() -> {
-                                Toast.makeText(EditBike.this, "Error: " + error, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(EditBike.this, "Error processing response", Toast.LENGTH_SHORT).show();
                             });
                         }
                     } else {
                         runOnUiThread(() -> {
                             Toast.makeText(EditBike.this, "Response body is null", Toast.LENGTH_SHORT).show();
+                            loadingDialog.dismiss();
                         });
                     }
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
-            }
-        }).start();
+            });
+        } catch (JSONException e) {
+            e.printStackTrace();
+            runOnUiThread(() -> {
+                Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                loadingDialog.dismiss();
+            });
+        }
     }
 
     @Override

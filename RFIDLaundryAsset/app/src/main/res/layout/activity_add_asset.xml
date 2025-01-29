@@ -131,7 +131,7 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
-                android:hint="Enter MRAH"
+                android:hint="Enter owner"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
                 android:padding="10dp"

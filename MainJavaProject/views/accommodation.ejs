@@ -146,7 +146,7 @@
 
                     <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
-                            <div class="btn-container">
+                            <div class="btn-container w-100 w-md-auto">
                                 <button type="button" id="btnListSoldier"
                                     class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
                                     <i class="bi bi-person"></i> List of soldier
@@ -159,7 +159,7 @@
                     </div>
                     <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
-                            <div class="btn-container">
+                            <div class="btn-container w-100 w-md-auto">
                                 <button type="button" id="btnAccommSoldier"
                                     class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
                                     <i class="bi bi-person-fill"></i> Accommodation soldiers
@@ -172,7 +172,7 @@
                     </div>
                     <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
-                            <div class="btn-container">
+                            <div class="btn-container w-100 w-md-auto">
                                 <button type="button" id="btnFreeAllRoom"
                                     class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">
                                     <i class="bi bi-building"></i> Release building
@@ -357,7 +357,7 @@
                     <button type="button" class="modal-button" id="move-button">
                         <i class="bi bi-arrows-move"></i> Move Soldier
                     </button>
-                    <div class="tooltip-custom" style="left: 40%;">
+                    <div class="tooltip-custom">
                         <i class="bi bi-question-circle"></i>
                         <span class="tooltiptext">Move soldier to another room</span>
                     </div>

@@ -207,7 +207,7 @@
 
                             <th>
                                 <input type="text" class="asset-search-input" placeholder="Search...">
-                                <label id="asset-sub-location-header">Associated key</label>
+                                <label id="asset-description-header">Description</label>
                             </th>
                         </tr>
                     </thead>
@@ -224,55 +224,127 @@
 
             <h2 class="mb-4">Asset information</h2>
 
-            <div class="mb-3 search-container" id="search-assert-container">
-                <label for="assetSearch" class="form-label">Assert code <span class="text-danger">*</span></label>
-                <input type="text" id="assetSearch" class="form-control" placeholder="Asset code">
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
-                <ul id="assetDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
-                <input type="hidden" id="selectedAssetId" name="assetId" value="">
-                <!-- To store the selected soldier ID -->
+            <div class="row">
+                <div class="col-md-4 mb-3 search-container" id="search-assert-container">
+                    <label for="assetSearch" class="form-label">Assert code <span class="text-danger">*</span></label>
+                    <input type="text" id="assetSearch" class="form-control" placeholder="Asset code">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                    <ul id="assetDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedAssetId" name="assetId" value="">
+                    <!-- To store the selected soldier ID -->
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="assetName" class="form-label">Assert name <span class="text-danger">*</span></label>
+                    <input type="text" id="assetName" class="form-control" placeholder="Asset name"
+                        pattern="^[a-zA-Z0-9\s]+$">
+                </div>
+
+                <div class="col-md-4 mb-3 search-container" id="search-type-container">
+                    <label for="typeSearch" class="form-label">Assert type <span class="text-danger">*</span></label>
+                    <input type="text" id="typeSearch" class="form-control" placeholder="Asset type">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                    <ul id="typeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedTypeId" name="typeId" value="">
+                    <!-- To store the selected soldier ID -->
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label for="assetName" class="form-label">Assert name <span class="text-danger">*</span></label>
-                <input type="text" id="assetName" class="form-control" placeholder="Asset name"
-                    pattern="^[a-zA-Z0-9\s]+$">
+            <div class="row">
+                <div class="col-md-4 mb-3 search-container" id="search-location-container">
+                    <label for="locationSearch" class="form-label">Assert location <span
+                            class="text-danger">*</span></label>
+                    <input type="text" id="locationSearch" class="form-control" placeholder="Asset location">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                    <ul id="locationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedLocationId" name="locationId" value="">
+                    <!-- To store the selected soldier ID -->
+                </div>
+
+                <div class="col-md-4 mb-3 search-container" id="search-sub-location-container">
+                    <label for="subLocationSearch" class="form-label">Associated key</label>
+                    <input type="text" id="subLocationSearch" class="form-control" placeholder="Associated key">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                    <ul id="subLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedSubLocationId" name="subLocationId" value="">
+                    <!-- To store the selected soldier ID -->
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="categorie" class="form-label">Asset categories <span
+                            class="text-danger">*</span></label>
+                    <input type="text" id="categorie" class="form-control" placeholder="Asset categories"
+                        pattern="^[a-zA-Z\s]+$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
             </div>
 
-            <div class="mb-3 search-container" id="search-type-container">
-                <label for="typeSearch" class="form-label">Assert type <span class="text-danger">*</span></label>
-                <input type="text" id="typeSearch" class="form-control" placeholder="Asset type">
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
-                <ul id="typeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
-                <input type="hidden" id="selectedTypeId" name="typeId" value="">
-                <!-- To store the selected soldier ID -->
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="quantity" class="form-label">Assert quantity <span
+                            class="text-danger">*</span></label>
+                    <input type="number" id="quantity" class="form-control" placeholder="Asset quantity" min="1"
+                        value="1">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="mrah" class="form-label">MRAH <span class="text-danger">*</span></label>
+                    <input type="text" id="mrah" class="form-control" placeholder="MRAH" pattern="^[a-zA-Z\s]+$"
+                        value="Global RTS">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="owner" class="form-label">Assert owner <span
+                            class="text-danger">*</span></label>
+                    <input type="text" id="owner" class="form-control" placeholder="Asset owner"
+                        pattern="^[a-zA-Z\s]+$" value="Global RTS">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
             </div>
 
-            <div class="mb-3 search-container" id="search-location-container">
-                <label for="locationSearch" class="form-label">Assert location <span
-                        class="text-danger">*</span></label>
-                <input type="text" id="locationSearch" class="form-control" placeholder="Asset location">
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
-                <ul id="locationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
-                <input type="hidden" id="selectedLocationId" name="locationId" value="">
-                <!-- To store the selected soldier ID -->
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                    <input type="number" id="status" class="form-control" placeholder="Status" min="1" max="3"
+                        value="1">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="expandable" class="form-label">Expandable <span
+                            class="text-danger">*</span></label>
+                    <select id="expandable" class="form-control">
+                        <option value="Expandable">Expandable</option>
+                        <option value="Non Expandable" selected>Non Expandable</option>
+                    </select>
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>  
             </div>
 
-            <div class="mb-3 search-container" id="search-sub-location-container">
-                <label for="subLocationSearch" class="form-label">Associated key</label>
-                <input type="text" id="subLocationSearch" class="form-control" placeholder="Associated key">
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
-                <ul id="subLocationDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
-                <input type="hidden" id="selectedSubLocationId" name="subLocationId" value="">
-                <!-- To store the selected soldier ID -->
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label for="description" class="form-label">Asset description</label>
+                    <textarea id="description" class="form-control" placeholder="Asset description" rows="5"
+                        style="max-height: 120px;"></textarea>
+                </div>
             </div>
 
             <button type="submit" class="modal-button" id="edit-button">
-                <i class="bi bi-pencil"></i> Edit
+                <i class="bi bi-pencil-square"></i> Edit
             </button>
 
 
@@ -347,31 +419,35 @@
                 <div class="col-md-4 mb-3">
                     <label for="addCategorie" class="form-label">Asset categories <span
                             class="text-danger">*</span></label>
-                    <input type="text" id="addCategorie" class="form-control" placeholder="Asset categories" pattern="^[a-zA-Z\s]+$">
+                    <input type="text" id="addCategorie" class="form-control" placeholder="Asset categories"
+                        pattern="^[a-zA-Z\s]+$">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <label for="assetQuantity" class="form-label">Assert quantity <span class="text-danger">*</span></label>
-                    <input type="number" id="assetQuantity" class="form-control" placeholder="Asset quantity" min="1" value="1">
+                    <label for="assetQuantity" class="form-label">Assert quantity <span
+                            class="text-danger">*</span></label>
+                    <input type="number" id="assetQuantity" class="form-control" placeholder="Asset quantity" min="1"
+                        value="1">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
 
                 <div class="col-md-4 mb-3">
                     <label for="assetAddMrah" class="form-label">MRAH <span class="text-danger">*</span></label>
-                    <input type="text" id="assetAddMrah" class="form-control" placeholder="MRAH"
-                        pattern="^[a-zA-Z\s]+$" value="Global RTS">
+                    <input type="text" id="assetAddMrah" class="form-control" placeholder="MRAH" pattern="^[a-zA-Z\s]+$"
+                        value="Global RTS">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
             </div>
 
             <div class="row">
-                
+
                 <div class="col-md-4 mb-3">
-                    <label for="assetAddOwner" class="form-label">Assert owner <span class="text-danger">*</span></label>
+                    <label for="assetAddOwner" class="form-label">Assert owner <span
+                            class="text-danger">*</span></label>
                     <input type="text" id="assetAddOwner" class="form-control" placeholder="Asset owner"
                         pattern="^[a-zA-Z\s]+$" value="Global RTS">
                     <div class="invalid-feedback"></div>
@@ -380,13 +456,15 @@
 
                 <div class="col-md-4 mb-3">
                     <label for="assetStatus" class="form-label">Status <span class="text-danger">*</span></label>
-                    <input type="number" id="assetStatus" class="form-control" placeholder="Status" min="1" max="3" value="1">
+                    <input type="number" id="assetStatus" class="form-control" placeholder="Status" min="1" max="3"
+                        value="1">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <label for="assetAddExpandable" class="form-label">Expandable <span class="text-danger">*</span></label>
+                    <label for="assetAddExpandable" class="form-label">Expandable <span
+                            class="text-danger">*</span></label>
                     <select id="assetAddExpandable" class="form-control">
                         <option value="Expandable">Expandable</option>
                         <option value="Non Expandable" selected>Non Expandable</option>
@@ -399,8 +477,8 @@
             <div class="row">
                 <div class="col-md-12 mb-3">
                     <label for="assetAddDescription" class="form-label">Asset description</label>
-                    <textarea id="assetAddDescription" class="form-control" placeholder="Asset description"
-                        rows="5" style="max-height: 120px;"></textarea>
+                    <textarea id="assetAddDescription" class="form-control" placeholder="Asset description" rows="5"
+                        style="max-height: 120px;"></textarea>
                 </div>
 
                 <button type="submit" class="modal-button" id="add-button">

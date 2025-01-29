@@ -95,54 +95,48 @@ public class EditBag extends AppCompatActivity {
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
-            if (!newEpcContent.isEmpty()) {
-                String newEpcCode = newEpcContent;
-                String oldEpcCode = oldEpcContent;
-                String bagCode = bagCodeText.getText().toString().trim();
-                String bagType = bagTypeText.getText().toString().trim();
-                String bagMaxWash = bagMaxWashText.getText().toString().trim();
-
-                if (newEpcCode.isEmpty()) {
-                    Toast.makeText(this, "Please scanned a bag EPC code!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (!bagCode.matches("^[a-zA-Z0-9]+$")) {
-                    Toast.makeText(this, "Bag code must only contain alphanumeric characters!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (bagCode.isEmpty()) {
-                    Toast.makeText(this, "Please enter a bag code!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (!bagCode.matches("^[a-zA-Z0-9]+$")) {
-                    Toast.makeText(this, "Bag code must only contain alphanumeric characters!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (bagType.isEmpty()) {
-                    Toast.makeText(this, "Please enter a bag type!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (!bagType.matches("^[a-zA-Z0-9\\s]+$")) {
-                    Toast.makeText(this, "Bag type must only contain alphanumeric characters and spaces!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if (bagMaxWash.isEmpty()) {
-                    Toast.makeText(this, "Please enter a maximum wash number!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                sendDataToServer(oldEpcCode, newEpcCode, bagCode, bagType, bagMaxWash);
-
-            } else {
+            if (newEpcContent.isEmpty()) {
                 Toast.makeText(this, "No EPC content detected!", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            String newEpcCode = newEpcContent;
+            String oldEpcCode = oldEpcContent;
+            String bagCode = bagCodeText.getText().toString().trim();
+            String bagType = bagTypeText.getText().toString().trim();
+            String bagMaxWash = bagMaxWashText.getText().toString().trim();
+
+            // Validate inputs
+            if (!isValidText(newEpcCode, "bag EPC code")) return;
+            if (!isValidText(bagCode, "bag code", "^[a-zA-Z0-9]+$")) return;
+            if (!isValidText(bagType, "bag type", "^[a-zA-Z0-9\\s]+$")) return;
+            if (!isValidText(bagMaxWash, "maximum wash number")) return;
+
+            // Send data to server
+            sendDataToServer(oldEpcCode, newEpcCode, bagCode, bagType, bagMaxWash);
         });
+    }
+
+    // Helper method for text validation
+    private boolean isValidText(String input, String fieldName) {
+        if (input.isEmpty()) {
+            Toast.makeText(this, "Please enter " + fieldName + "!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        return true;
+    }
+
+    // Overloaded helper method for validation with regex
+    private boolean isValidText(String input, String fieldName, String regex) {
+        if (input.isEmpty()) {
+            Toast.makeText(this, "Please enter " + fieldName + "!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if (!input.matches(regex)) {
+            Toast.makeText(this, fieldName + " must only contain valid characters!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        return true;
     }
 
     @Override
