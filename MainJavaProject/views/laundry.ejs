@@ -359,248 +359,264 @@
                                     selectSearchId: 'removeBagSelectId' , buttonId: 'remove-btn' ,
                                     buttonText: 'Remove bag' }) %>
 
-                                    <div id="bagsModal" class="modal">
-                                        <div class="modal-content">
-                                            <span class="close-btn">&times;</span>
+                                    <%- include('partials/modal_laundry_action', { id: 'linenExchangeBag' ,
+                                        destination: '/changeEndToEndStatusConsole' , formId: 'form5' ,
+                                        title: 'Linen Exchange service' , searchId: 'search-bags' ,
+                                        inputSearchId: 'search-exchange-input-bags' , labelSearch: 'Bag Number' ,
+                                        dropDownSearchId: 'exchangeBagDropDown' , selectSearchId: 'exchangeBagSelectId'
+                                        , buttonId: 'exchange-btn' , buttonText: 'Exchange bag' }) %>
 
-                                            <h2 class="d-flex align-items-center gap-2">List of Bags
-                                                <div class="btn-container">
-                                                    <button type="button"
-                                                        class="btn btn-outline-success btn-sm rounded-circle fw-bold"
-                                                        id="addButton"><i class="bi bi-plus"></i></button>
-                                                    <div class="tooltip-custom">
-                                                        <i class="bi bi-question-circle"></i>
-                                                        <span class="tooltiptext">Add bag to the system</span>
+                                        <div id="bagsModal" class="modal">
+                                            <div class="modal-content">
+                                                <span class="close-btn">&times;</span>
+
+                                                <h2 class="d-flex align-items-center gap-2">List of Bags
+                                                    <div class="btn-container">
+                                                        <button type="button"
+                                                            class="btn btn-outline-success btn-sm rounded-circle fw-bold"
+                                                            id="addButton"><i class="bi bi-plus"></i></button>
+                                                        <div class="tooltip-custom">
+                                                            <i class="bi bi-question-circle"></i>
+                                                            <span class="tooltiptext">Add bag to the system</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="btn-container">
+                                                        <button type="button"
+                                                            class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                                                            id="removeButton"><i class="bi bi-dash"></i></button>
+                                                        <div class="tooltip-custom">
+                                                            <i class="bi bi-question-circle"></i>
+                                                            <span class="tooltiptext">Remove bag from the system</span>
+                                                        </div>
+                                                    </div>
+                                                </h2>
+
+                                                <div class="table-container">
+                                                    <table id="bagsTable">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>
+                                                                    <input type="text" class="laundry-search-input"
+                                                                        placeholder="Search...">
+                                                                    <label id="bag-code-header">Bag code</label>
+                                                                </th>
+
+                                                                <th>
+                                                                    <input type="text" class="laundry-search-input"
+                                                                        placeholder="Search...">
+                                                                    <label id="bag-type-header">Bag type</label>
+                                                                </th>
+
+                                                                <th>
+                                                                    <input type="text" class="laundry-search-input"
+                                                                        placeholder="Search...">
+                                                                    <label id="bag-type-header">Maximum number of
+                                                                        washes</label>
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="tableBodyModal">
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div id="insertBagModal" class="modal">
+                                            <form class="modal-content" action="/laundry/addBag" method="POST"
+                                                id="form6">
+                                                <span class="close-btn">&times;</span>
+                                                <h2>Add bag</h2>
+
+                                                <div class="mb-3">
+                                                    <label for="epc-bag" class="form-label">EPC code <span
+                                                            class="text-danger">*</span></label>
+                                                    <input type="text" id="epc-bag" name="epcBag" class="form-control"
+                                                        placeholder="EPC code" pattern="^[a-zA-Z0-9]+$">
+                                                    <div class="invalid-feedback">
+                                                        Please enter a valid EPC code (only letters and numbers)
+                                                    </div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="code-bag" class="form-label">Bag code <span
+                                                            class="text-danger">*</span></label>
+                                                    <input type="text" id="code-bag" name="codeBag" class="form-control"
+                                                        placeholder="Code bag" pattern="^[a-zA-Z0-9]+$">
+                                                    <div class="invalid-feedback">
+                                                        Please enter a valid bag code (only letters and numbers)
+                                                    </div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="type-bag" class="form-label">Bag type <span
+                                                            class="text-danger">*</span></label>
+                                                    <input type="text" id="type-bag" name="typeBag" class="form-control"
+                                                        placeholder="Type bag" pattern="^[a-zA-Z0-9\s]+$">
+
+                                                    <div class="invalid-feedback">
+                                                        Please enter a valid bag type (only letters and numbers).
+                                                    </div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="max-count-wash-bag" class="form-label">Maximum number of
+                                                        washes <span class="text-danger">*</span></label>
+                                                    <input type="text" id="max-count-wash-bag" name="maxCountWashBag"
+                                                        class="form-control" placeholder="Maximum number of washes"
+                                                        pattern="^[0-9]+$">
+
+                                                    <div class="invalid-feedback">
+                                                        Please enter a valid max wash number (only numbers).
+                                                    </div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+
+                                                <!-- Buttons for confirming the selection -->
+
+                                                <div class="button-container">
+                                                    <button type="submit" id="addBagButton" class="modal-button">
+                                                        <i class="bi bi-plus-circle"></i> Add
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+
+                                        <div id="editBagModal" class="modal">
+                                            <form class="modal-content" action="/laundry/editBag" method="POST"
+                                                id="form7">
+                                                <span class="close-btn">&times;</span>
+
+                                                <h2>Edit bag</h2>
+
+                                                <!-- Bag Selection with Custom Search -->
+                                                <div class="mb-3 search-container" id="search-edit-bag">
+                                                    <label for="bagEditSearch" class="form-label">Bag code <span
+                                                            class="text-danger">*</span></label>
+                                                    <input type="text" id="bagEditSearch" class="form-control"
+                                                        placeholder="Bag code">
+                                                    <div class="invalid-feedback"></div>
+                                                    <div class="valid-feedback"></div>
+                                                    <ul id="editBagDropdown" class="list-group"></ul>
+                                                    <!-- Custom dropdown for search -->
+                                                    <input type="hidden" id="selectedEditBagId" name="editBagId"
+                                                        value="">
+                                                    <!-- To store the selected soldier ID -->
+                                                </div>
+
+                                                <!-- Bag Selection with Custom Search -->
+                                                <div class="mb-3" id="search-edit-type">
+                                                    <label for="typeEditSearch" class="form-label">Bag type <span
+                                                            class="text-danger">*</span></label>
+                                                    <input type="text" id="typeEditSearch" class="form-control"
+                                                        placeholder="Bag type">
+                                                    <div class="invalid-feedback"></div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+
+                                                <!-- Bag Selection with Custom Search -->
+                                                <div class="mb-3" id="search-edit-wash">
+                                                    <label for="washEditSearch" class="form-label">Maximum number of
+                                                        washes
+                                                        <span class="text-danger">*</span></label>
+                                                    <input type="text" id="washEditSearch" class="form-control"
+                                                        placeholder="Maximum number of washes"
+                                                        pattern="^[a-zA-Z0-9 ]+$">
+                                                    <div class="invalid-feedback"></div>
+                                                    <div class="valid-feedback"></div>
+                                                </div>
+
+                                                <!-- Buttons for confirming the selection -->
+                                                <div class="button-container">
+                                                    <button type="submit" id="editBagButton" class="modal-button">
+                                                        <i class="bi bi-pencil-square"></i> Edit
+                                                    </button>
+                                                </div>
+
+                                            </form>
+                                        </div>
+
+                                        <!-- The Modal for Reports -->
+                                        <div id="reportModal" class="modal">
+                                            <div class="modal-content-multi-calendar">
+                                                <span class="close-btn">&times;</span>
+                                                <h3 class="header-modal-report">Reports - Select Date Range (From/To
+                                                    Date)
+                                                </h3>
+
+                                                <!-- Container for two side-by-side calendars -->
+                                                <div class="calendar-container">
+                                                    <div class="calendar" id="calendar1">
+                                                        <header>
+                                                            <h3></h3>
+                                                            <nav>
+                                                                <button type="button" id="prev"></button>
+                                                                <button type="button" id="next"></button>
+                                                            </nav>
+                                                        </header>
+                                                        <section>
+                                                            <ul class="days">
+                                                                <li>Sun</li>
+                                                                <li>Mon</li>
+                                                                <li>Tue</li>
+                                                                <li>Wed</li>
+                                                                <li>Thu</li>
+                                                                <li>Fri</li>
+                                                                <li>Sat</li>
+                                                            </ul>
+                                                            <ul class="dates"></ul>
+                                                        </section>
+                                                    </div>
+
+                                                    <div class="calendar" id="calendar2">
+                                                        <header>
+                                                            <h3></h3>
+                                                            <nav>
+                                                                <button type="button" id="prev"></button>
+                                                                <button type="button" id="next"></button>
+                                                            </nav>
+                                                        </header>
+                                                        <section>
+                                                            <ul class="days">
+                                                                <li>Sun</li>
+                                                                <li>Mon</li>
+                                                                <li>Tue</li>
+                                                                <li>Wed</li>
+                                                                <li>Thu</li>
+                                                                <li>Fri</li>
+                                                                <li>Sat</li>
+                                                            </ul>
+                                                            <ul class="dates"></ul>
+                                                        </section>
                                                     </div>
                                                 </div>
-                                                <div class="btn-container">
-                                                    <button type="button"
-                                                        class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
-                                                        id="removeButton"><i class="bi bi-dash"></i></button>
-                                                    <div class="tooltip-custom">
-                                                        <i class="bi bi-question-circle"></i>
-                                                        <span class="tooltiptext">Remove bag from the system</span>
-                                                    </div>
+
+                                                <!-- Buttons for confirming the selection -->
+                                                <div class="button-container">
+                                                    <button id="confirmReportBtn" class="modal-button">View
+                                                        Report</button>
                                                 </div>
-                                            </h2>
 
-                                            <div class="table-container">
-                                                <table id="bagsTable">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>
-                                                                <input type="text" class="laundry-search-input"
-                                                                    placeholder="Search...">
-                                                                <label id="bag-code-header">Bag code</label>
-                                                            </th>
-
-                                                            <th>
-                                                                <input type="text" class="laundry-search-input"
-                                                                    placeholder="Search...">
-                                                                <label id="bag-type-header">Bag type</label>
-                                                            </th>
-
-                                                            <th>
-                                                                <input type="text" class="laundry-search-input"
-                                                                    placeholder="Search...">
-                                                                <label id="bag-type-header">Maximum number of
-                                                                    washes</label>
-                                                            </th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="tableBodyModal">
-                                                    </tbody>
-                                                </table>
+                                                <input name="selectedDate1" class="show-date" id="selectedDate1"
+                                                    value="">
+                                                <input name="selectedDate2" class="show-date" id="selectedDate2"
+                                                    value="">
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div id="insertBagModal" class="modal">
-                                        <form class="modal-content" action="/laundry/addBag" method="POST" id="form5">
-                                            <span class="close-btn">&times;</span>
-                                            <h2>Add bag</h2>
+                                        <!-- The Modal Message -->
+                                        <div id="myMessage" class="modal">
+                                            <div class="modal-content-mess">
+                                                <span class="close-btn">&times;</span>
 
-                                            <div class="mb-3">
-                                                <label for="epc-bag" class="form-label">EPC code <span
-                                                        class="text-danger">*</span></label>
-                                                <input type="text" id="epc-bag" name="epcBag" class="form-control"
-                                                    placeholder="EPC code" pattern="^[a-zA-Z0-9]+$">
-                                                <div class="invalid-feedback">
-                                                    Please enter a valid EPC code (only letters and numbers)
-                                                </div>
-                                                <div class="valid-feedback"></div>
+                                                <img src="/icon/information.png" alt="Confirmation Image"
+                                                    class="modal-image" id="mess-icon">
+                                                <p id="mess-text"></p>
                                             </div>
-
-                                            <div class="mb-3">
-                                                <label for="code-bag" class="form-label">Bag code <span
-                                                        class="text-danger">*</span></label>
-                                                <input type="text" id="code-bag" name="codeBag" class="form-control"
-                                                    placeholder="Code bag" pattern="^[a-zA-Z0-9]+$">
-                                                <div class="invalid-feedback">
-                                                    Please enter a valid bag code (only letters and numbers)
-                                                </div>
-                                                <div class="valid-feedback"></div>
-                                            </div>
-
-                                            <div class="mb-3">
-                                                <label for="type-bag" class="form-label">Bag type <span
-                                                        class="text-danger">*</span></label>
-                                                <input type="text" id="type-bag" name="typeBag" class="form-control"
-                                                    placeholder="Type bag" pattern="^[a-zA-Z0-9\s]+$">
-
-                                                <div class="invalid-feedback">
-                                                    Please enter a valid bag type (only letters and numbers).
-                                                </div>
-                                                <div class="valid-feedback"></div>
-                                            </div>
-
-                                            <div class="mb-3">
-                                                <label for="max-count-wash-bag" class="form-label">Maximum number of
-                                                    washes <span class="text-danger">*</span></label>
-                                                <input type="text" id="max-count-wash-bag" name="maxCountWashBag"
-                                                    class="form-control" placeholder="Maximum number of washes"
-                                                    pattern="^[0-9]+$">
-
-                                                <div class="invalid-feedback">
-                                                    Please enter a valid max wash number (only numbers).
-                                                </div>
-                                                <div class="valid-feedback"></div>
-                                            </div>
-
-                                            <!-- Buttons for confirming the selection -->
-
-                                            <div class="button-container">
-                                                <button type="submit" id="addBagButton" class="modal-button">
-                                                    <i class="bi bi-plus-circle"></i> Add
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
-
-                                    <div id="editBagModal" class="modal">
-                                        <form class="modal-content" action="/laundry/editBag" method="POST" id="form7">
-                                            <span class="close-btn">&times;</span>
-
-                                            <h2>Edit bag</h2>
-
-                                            <!-- Bag Selection with Custom Search -->
-                                            <div class="mb-3 search-container" id="search-edit-bag">
-                                                <label for="bagEditSearch" class="form-label">Bag code <span
-                                                        class="text-danger">*</span></label>
-                                                <input type="text" id="bagEditSearch" class="form-control"
-                                                    placeholder="Bag code">
-                                                <div class="invalid-feedback"></div>
-                                                <div class="valid-feedback"></div>
-                                                <ul id="editBagDropdown" class="list-group"></ul>
-                                                <!-- Custom dropdown for search -->
-                                                <input type="hidden" id="selectedEditBagId" name="editBagId" value="">
-                                                <!-- To store the selected soldier ID -->
-                                            </div>
-
-                                            <!-- Bag Selection with Custom Search -->
-                                            <div class="mb-3" id="search-edit-type">
-                                                <label for="typeEditSearch" class="form-label">Bag type <span
-                                                        class="text-danger">*</span></label>
-                                                <input type="text" id="typeEditSearch" class="form-control"
-                                                    placeholder="Bag type">
-                                                <div class="invalid-feedback"></div>
-                                                <div class="valid-feedback"></div>
-                                            </div>
-
-                                            <!-- Bag Selection with Custom Search -->
-                                            <div class="mb-3" id="search-edit-wash">
-                                                <label for="washEditSearch" class="form-label">Maximum number of washes
-                                                    <span class="text-danger">*</span></label>
-                                                <input type="text" id="washEditSearch" class="form-control"
-                                                    placeholder="Maximum number of washes" pattern="^[a-zA-Z0-9 ]+$">
-                                                <div class="invalid-feedback"></div>
-                                                <div class="valid-feedback"></div>
-                                            </div>
-
-                                            <!-- Buttons for confirming the selection -->
-                                            <div class="button-container">
-                                                <button type="submit" id="editBagButton" class="modal-button">
-                                                    <i class="bi bi-pencil-square"></i> Edit
-                                                </button>
-                                            </div>
-
-                                        </form>
-                                    </div>
-
-                                    <!-- The Modal for Reports -->
-                                    <div id="reportModal" class="modal">
-                                        <div class="modal-content-multi-calendar">
-                                            <span class="close-btn">&times;</span>
-                                            <h3 class="header-modal-report">Reports - Select Date Range (From/To Date)
-                                            </h3>
-
-                                            <!-- Container for two side-by-side calendars -->
-                                            <div class="calendar-container">
-                                                <div class="calendar" id="calendar1">
-                                                    <header>
-                                                        <h3></h3>
-                                                        <nav>
-                                                            <button type="button" id="prev"></button>
-                                                            <button type="button" id="next"></button>
-                                                        </nav>
-                                                    </header>
-                                                    <section>
-                                                        <ul class="days">
-                                                            <li>Sun</li>
-                                                            <li>Mon</li>
-                                                            <li>Tue</li>
-                                                            <li>Wed</li>
-                                                            <li>Thu</li>
-                                                            <li>Fri</li>
-                                                            <li>Sat</li>
-                                                        </ul>
-                                                        <ul class="dates"></ul>
-                                                    </section>
-                                                </div>
-
-                                                <div class="calendar" id="calendar2">
-                                                    <header>
-                                                        <h3></h3>
-                                                        <nav>
-                                                            <button type="button" id="prev"></button>
-                                                            <button type="button" id="next"></button>
-                                                        </nav>
-                                                    </header>
-                                                    <section>
-                                                        <ul class="days">
-                                                            <li>Sun</li>
-                                                            <li>Mon</li>
-                                                            <li>Tue</li>
-                                                            <li>Wed</li>
-                                                            <li>Thu</li>
-                                                            <li>Fri</li>
-                                                            <li>Sat</li>
-                                                        </ul>
-                                                        <ul class="dates"></ul>
-                                                    </section>
-                                                </div>
-                                            </div>
-
-                                            <!-- Buttons for confirming the selection -->
-                                            <div class="button-container">
-                                                <button id="confirmReportBtn" class="modal-button">View Report</button>
-                                            </div>
-
-                                            <input name="selectedDate1" class="show-date" id="selectedDate1" value="">
-                                            <input name="selectedDate2" class="show-date" id="selectedDate2" value="">
                                         </div>
-                                    </div>
-
-                                    <!-- The Modal Message -->
-                                    <div id="myMessage" class="modal">
-                                        <div class="modal-content-mess">
-                                            <span class="close-btn">&times;</span>
-
-                                            <img src="/icon/information.png" alt="Confirmation Image"
-                                                class="modal-image" id="mess-icon">
-                                            <p id="mess-text"></p>
-                                        </div>
-                                    </div>
 
 </body>
 

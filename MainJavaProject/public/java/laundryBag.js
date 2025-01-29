@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeBagModal = document.getElementById('removeBagModal');
     const removeBagModalContent = removeBagModal.querySelector('.modal-content');
 
+    const linenExchangeBagModal = document.getElementById('linenExchangeBagModal');
+    const linenExchangeBagModalContent = linenExchangeBagModal.querySelector('.modal-content');
+
     const insertBagModal = document.getElementById('insertBagModal');
     const insertBagModalContent = insertBagModal.querySelector('.modal-content');
 
@@ -57,6 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeBagSearchInput = document.getElementById('search-remove-input-bags');
     const removeBagSearchDropdown = document.getElementById('removeBagDropDown');
     const selectedRemoveBagId = document.getElementById('removeBagSelectId');
+
+    const linenExchangeBagSearchInput = document.getElementById('search-exchange-input-bags');
+    const linenExchangeBagSearchDropdown = document.getElementById('exchangeBagDropDown');
+    const selectedLinenExchangeBagId = document.getElementById('exchangeBagSelectId');
 
     const modalMess = document.getElementById("myMessage");
     const modalMessContent = modalMess.querySelector('.modal-content-mess');
@@ -241,6 +248,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize for Remove Bag search
     initializeBagSearch(removeBagSearchInput, removeBagSearchDropdown, selectedRemoveBagId);
+
+    // Initialize for Remove Bag search
+    initializeBagSearch(linenExchangeBagSearchInput, linenExchangeBagSearchDropdown, selectedLinenExchangeBagId);
 
 
     function openMess(type, message) {
@@ -764,6 +774,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    function openLinenExchangeBagModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        linenExchangeBagModal.classList.add('show');
+        linenExchangeBagModalContent.classList.add('show');
+        linenExchangeBagModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        linenExchangeBagModalContent.classList.remove('slide-out');
+    }
+
+    function closeLinenExchangeBagModal() {
+        // Add the slide-out effect
+        linenExchangeBagModalContent.classList.add('slide-out');
+        linenExchangeBagModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            linenExchangeBagSearchDropdown.style.display = 'none';
+            linenExchangeBagSearchInput.value = '';
+
+            linenExchangeBagSearchInput.classList.remove("is-invalid");
+            linenExchangeBagSearchInput.classList.remove("is-valid");
+
+            linenExchangeBagModal.classList.remove('show');
+            linenExchangeBagModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
     document.getElementsByClassName('close-btn')[0].onclick = closeDropOffModal;
     document.getElementsByClassName('close-btn')[1].onclick = closeTransportationToLaundryFacilityModal;
     document.getElementsByClassName('close-btn')[2].onclick = closeLaundryFacilityModal;
@@ -773,11 +813,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementsByClassName('close-btn')[6].onclick = closeAddBagModal;
     document.getElementsByClassName('close-btn')[7].onclick = closeMoveBagModal;
     document.getElementsByClassName('close-btn')[8].onclick = closeRemoveBagModal;
-    document.getElementsByClassName('close-btn')[9].onclick = closeListBagModal;
-    document.getElementsByClassName('close-btn')[10].onclick = closeInsertBagModal;
-    document.getElementsByClassName('close-btn')[11].onclick = closeEditBagModal;
-    document.getElementsByClassName('close-btn')[12].onclick = closeViewReportModal;
-    document.getElementsByClassName('close-btn')[13].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[9].onclick = closeLinenExchangeBagModal;
+    document.getElementsByClassName('close-btn')[10].onclick = closeListBagModal;
+    document.getElementsByClassName('close-btn')[11].onclick = closeInsertBagModal;
+    document.getElementsByClassName('close-btn')[12].onclick = closeEditBagModal;
+    document.getElementsByClassName('close-btn')[13].onclick = closeViewReportModal;
+    document.getElementsByClassName('close-btn')[14].onclick = closeMessModal;
 
     window.onclick = function (event) {
 
@@ -822,6 +863,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeRemoveBagModal();
                 break;
 
+            case linenExchangeBagModal:
+                closeLinenExchangeBagModal();
+                break;
+
             case insertBagModal:
                 closeInsertBagModal();
                 break;
@@ -856,6 +901,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!removeBagSearchDropdown.contains(event.target) && event.target !== removeBagSearchDropdown) {
             removeBagSearchDropdown.style.display = 'none';
+        }
+
+        if (!linenExchangeBagSearchDropdown.contains(event.target) && event.target !== linenExchangeBagSearchDropdown) {
+            linenExchangeBagSearchDropdown.style.display = 'none';
         }
     });
 
@@ -1255,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
     });
 
-    document.querySelectorAll('#addBag').forEach((button) => {
+    document.querySelectorAll('#addBag, #linenExchange').forEach((button) => {
         button.addEventListener('click', (event) => {
             const button = event.target;
 
@@ -1281,6 +1330,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 //     fetchBags(prev_destination);
                 //     openRemoveBagModal();
                 //     break;
+
+                case 'linenExchange':
+                    fetchBags('');
+                    openLinenExchangeBagModal();
+                    break;
             }
         });
     });
@@ -1353,6 +1407,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopEnter('form3');
     stopEnter('form4');
     stopEnter('form5');
+    stopEnter('form6');
     stopEnter('form7');
 
     async function handleFormSubmit(event, formId, modalCloseFn, bagId, destination = null, prevDestination = null, input) {
@@ -1429,10 +1484,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    openMess('Info', 'Laundry bag has been updated successfully');
+                    openMess('Info', formId !== 'form5' ? 'Laundry bag has been updated successfully' : 'Line Exchange bag has been applay successfully');
                     modalCloseFn();
                 } else if (isSubmit) {
-                    openMess('Error', responseData.message || 'Failed to update the laundry bag');
+                    openMess('Error', responseData.message || formId !== 'form5' ? 'Failed to update the laundry bag' : 'Failed to apply the Line Exchange bag');
                 }
             }
         });
@@ -1440,7 +1495,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
 
         // Show the warning modal
-        openMess('Warning', 'Are you sure you want to update this laundry bag?');
+        openMess('Warning', formId !== 'form5' ? 'Are you sure you want to update this laundry bag?' : 'Are you sure you want to apply this Line Exchange bag?');
     }
 
     // Attach the handler to each form
@@ -1453,7 +1508,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('form4').onsubmit = (event) =>
         handleFormSubmit(event, 'form4', closeRemoveBagModal, selectedRemoveBagId, null, destinationByBtn, removeBagSearchInput);
 
-    document.getElementById('form5').onsubmit = async (event) => {
+    document.getElementById('form5').onsubmit = (event) =>
+        handleFormSubmit(event, 'form5', closeLinenExchangeBagModal, selectedLinenExchangeBagId, null, null, linenExchangeBagSearchInput);
+
+    document.getElementById('form6').onsubmit = async (event) => {
 
         event.preventDefault();
 
@@ -1504,7 +1562,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingIndicator.style.display = 'flex';
 
             try {
-                const response = await fetch(document.getElementById('form5').action, {
+                const response = await fetch(document.getElementById('form6').action, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data),
@@ -1729,7 +1787,7 @@ document.addEventListener('DOMContentLoaded', () => {
             a.click();
             a.remove();
             window.URL.revokeObjectURL(downloadUrl);
-            
+
         } catch (error) {
             console.error('Error:', error);
             alert(error.message || 'Failed to download the report.');

@@ -25,7 +25,7 @@
                         </div>
                         <% } %>
                             <div class="btn-container">
-                                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold <% if(id == 'readyToPickUp' ) { %> mx-2 <% }%>"
                                     id="removeBag" data-destination="<%= destination %>"
                                     data-preview="<%= previewDestination %>">−</button>
                                 <div class="tooltip-custom">
@@ -33,7 +33,17 @@
                                     <span class="tooltiptext">Remove bag from this section</span>
                                 </div>
                             </div>
+                            <div class="btn-container">
+                                <button type="button" class="btn btn-outline-warning btn-sm rounded-circle fw-bold <% if(id != 'readyToPickUp' ) { %> mx-2 <% }%>"
+                                    id="linenExchange" data-destination="<%= destination %>"
+                                    data-preview="<%= previewDestination %>"><i class="bi bi-recycle"></i></button>
+                                <div class="tooltip-custom">
+                                    <i class="bi bi-question-circle"></i>
+                                    <span class="tooltiptext">Linen Exchange Service</span>
+                                </div>
+                            </div>
                 </div>
+
         </h2>
         <div class="table-container">
             <table>

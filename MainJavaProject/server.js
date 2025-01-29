@@ -74,6 +74,16 @@ const updateBagsScanerSchema = Joi.object({
         .required()
 });
 
+const exchangeServiceSchema = Joi.object({
+    code: Joi.string().alphanum().required(),
+    destination: Joi.string()
+        .valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None', 'Linen Exchange service')
+        .required(),
+    prev_destination: Joi.string()
+        .valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None')
+        .required()
+});
+
 const updateBagsSchema = Joi.object({
     code: Joi.string().alphanum().required(),
     destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
@@ -374,7 +384,7 @@ const schemaNFCBikeRead = Joi.object({
 });
 
 const schemaGetBagsByStatus = Joi.object({
-    status: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
+    status: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None', '').required(),
 });
 
 const navItems = [];
@@ -4443,6 +4453,37 @@ class Server {
             }
         });
 
+        this.app.post('/changeEndToEndStatusConsole', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = exchangeServiceSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { code, destination, prev_destination } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                    client.query(
+                        `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;`,
+                        [code]
+                    );
+                
+                await client.query('COMMIT');
+                res.status(200).json({ message: "Bulk status change successful" });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(err); // Log the error
+                res.status(500).json({ message: "Internal server error" });
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.post('/checkScaningCode', async (req, res) => {
 
             const { error } = checkScaningCodeSchema.validate(req.body);
@@ -4685,25 +4726,39 @@ class Server {
 
                 await client.query('BEGIN');
 
-                result = await client.query(`
-                    SELECT
-                        l.id,
-                        l.code, 
-                        TO_CHAR(l.timein, 'YYYY-MM-DD HH24:MI') AS timein, 
-                        s.namesoldier, 
-                        CASE 
-                            WHEN l.status = 'Ready to pick up' AND l.timein < NOW() - INTERVAL '1 week' THEN TRUE
-                            ELSE FALSE
-                        END AS islate
-                    FROM 
-                        laundrybags l
-                    LEFT JOIN 
-                        soldier s ON s.laundry_bag_id = l.id
-                    WHERE 
-                        s.date_free IS NULL AND 
-                        l.status = $1
-                    ORDER BY 
-                        islate ASC;`, [status]);
+                if(status !== '')
+                    result = await client.query(`
+                        SELECT
+                            l.id,
+                            l.code, 
+                            TO_CHAR(l.timein, 'YYYY-MM-DD HH24:MI') AS timein, 
+                            s.namesoldier, 
+                            CASE 
+                                WHEN l.status = 'Ready to pick up' AND l.timein < NOW() - INTERVAL '1 week' THEN TRUE
+                                ELSE FALSE
+                            END AS islate
+                        FROM 
+                            laundrybags l
+                        LEFT JOIN 
+                            soldier s ON s.laundry_bag_id = l.id
+                        WHERE 
+                            s.date_accommodation IS NOT NULL AND
+                            s.date_free IS NULL AND 
+                            l.status = $1
+                        ORDER BY 
+                            islate ASC;`, [status]);
+                else
+                    result = await client.query(`
+                        SELECT
+                            l.id,
+                            l.code
+                        FROM 
+                            laundrybags l
+                        LEFT JOIN 
+                            soldier s ON s.laundry_bag_id = l.id
+                        WHERE 
+                            s.date_accommodation IS NOT NULL AND
+                            s.date_free IS NULL;`);
 
                 await client.query('COMMIT');
                 // Send the result rows back to the client

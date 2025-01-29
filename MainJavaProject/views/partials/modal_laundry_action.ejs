@@ -7,11 +7,9 @@
 
         <div class="mb-3 search-container" id="<%= searchId %>">
             <label for="<%= inputSearchId %>" class="form-label"><%= labelSearch %>:</label>
-            <div class="input-group">
                 <input type="text" id="<%= inputSearchId %>" class="form-control" placeholder="<%= labelSearch %>...">
                 <div class="invalid-feedback"></div>
                 <div class="valid-feedback"></div>
-            </div>
             <ul id="<%= dropDownSearchId %>" class="list-group"></ul> <!-- Custom dropdown for search -->
             <input type="hidden" id="<%= selectSearchId %>" value="">
             <!-- To store the selected soldier ID -->

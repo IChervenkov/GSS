@@ -481,7 +481,8 @@ body {
 
 #form2,
 #form3,
-#form4 {
+#form4,
+#form5 {
     margin-top: 5%;
 }
 
@@ -661,7 +662,8 @@ thead th input:focus {
 #editBagDropdown,
 #addBagDropDown,
 #moveBagDropDown,
-#removeBagDropDown {
+#removeBagDropDown,
+#exchangeBagDropDown {
     list-style-type: none;
     padding: 0;
     margin: 0;
@@ -679,7 +681,8 @@ thead th input:focus {
 #editBagDropdown li,
 #addBagDropDown li,
 #moveBagDropDown li,
-#removeBagDropDown li {
+#removeBagDropDown li,
+#exchangeBagDropDown li {
     padding: 10px;
     cursor: pointer;
 }
@@ -688,7 +691,8 @@ thead th input:focus {
 #editBagDropdown li:hover,
 #addBagDropDown li:hover,
 #moveBagDropDown li:hover,
-#removeBagDropDown li:hover {
+#removeBagDropDown li:hover,
+#exchangeBagDropDown li:hover {
     background-color: #218838;
     color: white;
 }
@@ -697,7 +701,8 @@ thead th input:focus {
 #editBagDropdown.list-group::-webkit-scrollbar,
 #addBagDropDown.list-group::-webkit-scrollbar,
 #moveBagDropDown.list-group::-webkit-scrollbar,
-#removeBagDropDown.list-group::-webkit-scrollbar {
+#removeBagDropDown.list-group::-webkit-scrollbar,
+#exchangeBagDropDown.list-group::-webkit-scrollbar {
     width: 10px;
 }
 
@@ -705,7 +710,8 @@ thead th input:focus {
 #editBagDropdown.list-group::-webkit-scrollbar-thumb,
 #addBagDropDown.list-group::-webkit-scrollbar-thumb,
 #moveBagDropDown.list-group::-webkit-scrollbar-thumb,
-#removeBagDropDown.list-group::-webkit-scrollbar-thumb {
+#removeBagDropDown.list-group::-webkit-scrollbar-thumb,
+#exchangeBagDropDown.list-group::-webkit-scrollbar-thumb {
     background-color: #28a745;
     border-radius: 4px;
 }
@@ -714,7 +720,8 @@ thead th input:focus {
 #editBagDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #addBagDropDown.list-group::-webkit-scrollbar-thumb:hover,
 #moveBagDropDown.list-group::-webkit-scrollbar-thumb:hover,
-#removeBagDropDown.list-group::-webkit-scrollbar-thumb:hover {
+#removeBagDropDown.list-group::-webkit-scrollbar-thumb:hover,
+#exchangeBagDropDown.list-group::-webkit-scrollbar-thumb:hover {
     background-color: #1e7e34;
 }
 
@@ -1149,4 +1156,8 @@ input[type="checkbox"] {
     opacity: 1;
     visibility: visible;
     transform: translate(-50%, 0);
+}
+
+.btn i {
+    pointer-events: none;
 }
