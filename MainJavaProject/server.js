@@ -850,7 +850,8 @@ class Server {
                 await client.query('BEGIN');
 
                 const result = await client.query(`
-                    SELECT s.id, namesoldier, k.namekey, k.id AS keyid
+                    SELECT s.id, namesoldier, k.namekey, k.id AS keyid, 
+                    (SELECT COUNT(*) FROM bikesoldier WHERE soldierid = s.id AND datefrom IS NOT NULL AND dateto IS NULL) AS count_get_bike
                     FROM soldier s
                     LEFT JOIN key k ON k.soldierid = s.id
                     WHERE date_accommodation IS NOT NULL AND date_free IS NULL`);

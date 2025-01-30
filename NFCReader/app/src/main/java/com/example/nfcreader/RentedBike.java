@@ -1,6 +1,7 @@
 package com.example.nfcreader;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
@@ -56,11 +57,12 @@ public class RentedBike extends AppCompatActivity {
     private Button submitButton;
     private String nfcContent = "";
     private Integer scanningIndex = 1;
-    private Map<BikeInfo, String> clientIdMap = new HashMap<>();
-    private Map<BikeInfo, String> keyIdMap = new HashMap<>();
-    private OkHttpClient client = new OkHttpClient();
+    private final Map<BikeInfo, String> clientIdMap = new HashMap<>();
+    private final Map<BikeInfo, String> keyIdMap = new HashMap<>();
+    private final Map<String, String> keyIdCountMap = new HashMap<>();
+    private final OkHttpClient client = new OkHttpClient();
     private AutoCompleteTextView clientAutoCompleteTextView;
-    private ArrayList<BikeInfo> ownerList = new ArrayList<>();
+    private final ArrayList<BikeInfo> ownerList = new ArrayList<>();
 
     @SuppressLint("MissingInflatedId")
     @Override
@@ -86,6 +88,17 @@ public class RentedBike extends AppCompatActivity {
 
         // Handle NFC intents
         handleIntent(getIntent());
+
+        clientAutoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> {
+            BikeInfo selectedBikeInfo = (BikeInfo) parent.getItemAtPosition(position);
+
+            // Fetch the ID from the map using the selected BikeInfo
+            String selectedClientKeyId = keyIdMap.get(selectedBikeInfo);
+            String selectClientCount = keyIdCountMap.get(selectedClientKeyId);
+
+            if (selectClientCount != null && Integer.parseInt(selectClientCount) > 0)
+                showPopup("Soldier Information", "Soldier: " + selectedBikeInfo + "\nNumber of bikes taken: " + selectClientCount);
+        });
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
@@ -192,6 +205,7 @@ public class RentedBike extends AppCompatActivity {
         ownerList.clear();
         clientIdMap.clear();
         keyIdMap.clear();
+        keyIdCountMap.clear();
 
         for (int i = 0; i < bikes.length(); i++) {
             JSONObject bike = bikes.getJSONObject(i);
@@ -199,12 +213,14 @@ public class RentedBike extends AppCompatActivity {
             String keyId = bike.getString("keyid");
             String bikeName = bike.getString("namesoldier");
             String soldierKey = bike.getString("namekey");
+            String countGetBikes = bike.getString("count_get_bike");
 
             BikeInfo bikeInfo = new BikeInfo(bikeName, soldierKey);
 
             ownerList.add(bikeInfo);
             clientIdMap.put(bikeInfo, bikeId);
             keyIdMap.put(bikeInfo, keyId);
+            keyIdCountMap.put(keyId, countGetBikes);
         }
 
         ArrayAdapter<BikeInfo> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
@@ -258,7 +274,12 @@ public class RentedBike extends AppCompatActivity {
                     return;
                 }
 
+                String selectedClientCount = keyIdCountMap.get(selectedClientId);
+
                 clientAutoCompleteTextView.setText(selectedClientName);
+
+                if (selectedClientCount != null && Integer.parseInt(selectedClientCount) > 0)
+                    showPopup("Soldier Information", "Soldier: " + selectedClientName + "\nNumber of bikes taken: " + selectedClientCount);
             }
 
             scanningIndex++;
@@ -266,6 +287,15 @@ public class RentedBike extends AppCompatActivity {
             // Call the server with the NFC data
             readBikeDataFromServer(nfcId);
         }
+    }
+
+    private void showPopup(String title, String message) {
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                .setCancelable(false)
+                .show();
     }
 
     private String bytesToHex(byte[] bytes) {

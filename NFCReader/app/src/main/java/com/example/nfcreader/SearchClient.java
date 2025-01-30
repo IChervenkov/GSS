@@ -1,5 +1,6 @@
 package com.example.nfcreader;
 
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
 import android.content.Intent;
@@ -41,6 +42,7 @@ public class SearchClient extends AppCompatActivity {
     private ArrayList<BikeInfo> ownerList = new ArrayList<>();
     private Map<BikeInfo, String> clientIdMap = new HashMap<>();
     private Map<BikeInfo, String> keyIdMap = new HashMap<>();
+    private final Map<String, String> keyIdCountMap = new HashMap<>();
     private AutoCompleteTextView clientAutoCompleteTextView;
     private NfcAdapter nfcAdapter;
 
@@ -69,9 +71,24 @@ public class SearchClient extends AppCompatActivity {
 
             // Fetch the ID from the map using the selected BikeInfo
             String selectedClientId = clientIdMap.get(selectedBikeInfo);
+            String selectedClientKeyId = keyIdMap.get(selectedBikeInfo);
+            String selectClientCount = keyIdCountMap.get(selectedClientKeyId);
+
+            if (selectClientCount != null && Integer.parseInt(selectClientCount) > 0) {
+                showPopup("Soldier Information", "Soldier: " + selectedBikeInfo + "\nNumber of bikes taken: " + selectClientCount);
+            }
 
             loadBikeData(selectedClientId);
         });
+    }
+
+    private void showPopup(String title, String message) {
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                .setCancelable(false)
+                .show();
     }
 
     private void fetchAvailableBikes() {
@@ -121,6 +138,7 @@ public class SearchClient extends AppCompatActivity {
         ownerList.clear();
         clientIdMap.clear();
         keyIdMap.clear();
+        keyIdCountMap.clear();
 
         for (int i = 0; i < bikes.length(); i++) {
             JSONObject bike = bikes.getJSONObject(i);
@@ -128,12 +146,14 @@ public class SearchClient extends AppCompatActivity {
             String keyId = bike.getString("keyid");
             String bikeName = bike.getString("namesoldier");
             String soldierKey = bike.getString("namekey");
+            String countGetBikes = bike.getString("count_get_bike");
 
             BikeInfo bikeInfo = new BikeInfo(bikeName, soldierKey);
 
             ownerList.add(bikeInfo);
             clientIdMap.put(bikeInfo, bikeId);
             keyIdMap.put(bikeInfo, keyId);
+            keyIdCountMap.put(keyId, countGetBikes);
         }
 
         ArrayAdapter<BikeInfo> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
@@ -287,10 +307,11 @@ public class SearchClient extends AppCompatActivity {
             String nfcId = bytesToHex(tagId);
 
                 String selectedClientName = null;
-                String selectedKeyId = nfcId;
+                BikeInfo selectedClientInfoId = null;
 
                 for (Map.Entry<BikeInfo, String> entry : keyIdMap.entrySet()) {
-                    if (entry.getValue().equals(selectedKeyId)) {
+                    if (entry.getValue().equals(nfcId)) {
+                        selectedClientInfoId = entry.getKey();
                         selectedClientName = entry.getKey().toString(); // Assuming BikeInfo's toString() returns the name
                         break;
                     }
@@ -303,17 +324,14 @@ public class SearchClient extends AppCompatActivity {
 
                 clientAutoCompleteTextView.setText(selectedClientName);
 
-            // Find the selected BikeInfo
-            BikeInfo selectedBikeInfo = null;
-            for (BikeInfo bike : ownerList) {
-                if (selectedClientName.equals(bike.toString())) {
-                    selectedBikeInfo = bike;
-                    break;
-                }
-            }
 
             // Get the ID of the selected bike
-            String selectedClientId = clientIdMap.get(selectedBikeInfo);
+            String selectedClientCount = keyIdCountMap.get(nfcId);
+            String selectedClientId = clientIdMap.get(selectedClientInfoId);
+
+            if (selectedClientCount != null && Integer.parseInt(selectedClientCount) > 0) {
+                showPopup("Soldier Information", "Soldier: " + selectedClientName + "\nNumber of bikes taken: " + selectedClientCount);
+            }
 
             // Call the server with the NFC data
             loadBikeData(selectedClientId);
