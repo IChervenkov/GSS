@@ -55,7 +55,9 @@ public class RentedBike extends AppCompatActivity {
     private TimePicker timePicker;
     private Button submitButton;
     private String nfcContent = "";
+    private Integer scanningIndex = 1;
     private Map<BikeInfo, String> clientIdMap = new HashMap<>();
+    private Map<BikeInfo, String> keyIdMap = new HashMap<>();
     private OkHttpClient client = new OkHttpClient();
     private AutoCompleteTextView clientAutoCompleteTextView;
     private ArrayList<BikeInfo> ownerList = new ArrayList<>();
@@ -189,10 +191,12 @@ public class RentedBike extends AppCompatActivity {
     private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
         ownerList.clear();
         clientIdMap.clear();
+        keyIdMap.clear();
 
         for (int i = 0; i < bikes.length(); i++) {
             JSONObject bike = bikes.getJSONObject(i);
             String bikeId = bike.getString("id");
+            String keyId = bike.getString("keyid");
             String bikeName = bike.getString("namesoldier");
             String soldierKey = bike.getString("namekey");
 
@@ -200,6 +204,7 @@ public class RentedBike extends AppCompatActivity {
 
             ownerList.add(bikeInfo);
             clientIdMap.put(bikeInfo, bikeId);
+            keyIdMap.put(bikeInfo, keyId);
         }
 
         ArrayAdapter<BikeInfo> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
@@ -234,7 +239,29 @@ public class RentedBike extends AppCompatActivity {
             // Get the NFC ID (UID)
             byte[] tagId = tag.getId();
             String nfcId = bytesToHex(tagId);
-            nfcContent = nfcId;
+
+            if(scanningIndex % 2 != 0)
+                nfcContent = nfcId;
+            else {
+                String selectedClientName = null;
+                String selectedClientId = nfcId;
+
+                for (Map.Entry<BikeInfo, String> entry : keyIdMap.entrySet()) {
+                    if (entry.getValue().equals(selectedClientId)) {
+                        selectedClientName = entry.getKey().toString(); // Assuming BikeInfo's toString() returns the name
+                        break;
+                    }
+                }
+
+                if (selectedClientName == null) {
+                    Toast.makeText(this, "Soldier not found!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                clientAutoCompleteTextView.setText(selectedClientName);
+            }
+
+            scanningIndex++;
 
             // Call the server with the NFC data
             readBikeDataFromServer(nfcId);

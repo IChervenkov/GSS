@@ -1,7 +1,12 @@
 package com.example.nfcreader;
 
 import android.app.Dialog;
+import android.app.PendingIntent;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Typeface;
+import android.nfc.NfcAdapter;
+import android.nfc.Tag;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -11,11 +16,7 @@ import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -39,7 +40,9 @@ public class SearchClient extends AppCompatActivity {
     private OkHttpClient client = new OkHttpClient();
     private ArrayList<BikeInfo> ownerList = new ArrayList<>();
     private Map<BikeInfo, String> clientIdMap = new HashMap<>();
+    private Map<BikeInfo, String> keyIdMap = new HashMap<>();
     private AutoCompleteTextView clientAutoCompleteTextView;
+    private NfcAdapter nfcAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,9 +50,19 @@ public class SearchClient extends AppCompatActivity {
         setContentView(R.layout.activity_search_client);
 
         clientAutoCompleteTextView = findViewById(R.id.clientAutoCompleteTextView);
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this);
+
+        if (nfcAdapter == null) {
+            Toast.makeText(this, "NFC is not available on this device.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
 
         // Fetch client from the server
         fetchAvailableBikes();
+
+        // Handle NFC intents
+        handleIntent(getIntent());
 
         clientAutoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> {
             BikeInfo selectedBikeInfo = (BikeInfo) parent.getItemAtPosition(position);
@@ -107,10 +120,12 @@ public class SearchClient extends AppCompatActivity {
     private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
         ownerList.clear();
         clientIdMap.clear();
+        keyIdMap.clear();
 
         for (int i = 0; i < bikes.length(); i++) {
             JSONObject bike = bikes.getJSONObject(i);
             String bikeId = bike.getString("id");
+            String keyId = bike.getString("keyid");
             String bikeName = bike.getString("namesoldier");
             String soldierKey = bike.getString("namekey");
 
@@ -118,6 +133,7 @@ public class SearchClient extends AppCompatActivity {
 
             ownerList.add(bikeInfo);
             clientIdMap.put(bikeInfo, bikeId);
+            keyIdMap.put(bikeInfo, keyId);
         }
 
         ArrayAdapter<BikeInfo> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
@@ -239,5 +255,76 @@ public class SearchClient extends AppCompatActivity {
         TableRow.LayoutParams params = new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, 100); // Height of the spacer
         spacer.setLayoutParams(params);
         return spacer;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        Intent intent = new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
+        IntentFilter[] intentFilters = new IntentFilter[]{};
+        nfcAdapter.enableForegroundDispatch(this, pendingIntent, intentFilters, null);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        nfcAdapter.disableForegroundDispatch(this);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleIntent(intent);
+    }
+
+    private void handleIntent(Intent intent) {
+        Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+        if (tag != null) {
+            // Get the NFC ID (UID)
+            byte[] tagId = tag.getId();
+            String nfcId = bytesToHex(tagId);
+
+                String selectedClientName = null;
+                String selectedKeyId = nfcId;
+
+                for (Map.Entry<BikeInfo, String> entry : keyIdMap.entrySet()) {
+                    if (entry.getValue().equals(selectedKeyId)) {
+                        selectedClientName = entry.getKey().toString(); // Assuming BikeInfo's toString() returns the name
+                        break;
+                    }
+                }
+
+                if (selectedClientName == null) {
+                    Toast.makeText(this, "Soldier not found!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                clientAutoCompleteTextView.setText(selectedClientName);
+
+            // Find the selected BikeInfo
+            BikeInfo selectedBikeInfo = null;
+            for (BikeInfo bike : ownerList) {
+                if (selectedClientName.equals(bike.toString())) {
+                    selectedBikeInfo = bike;
+                    break;
+                }
+            }
+
+            // Get the ID of the selected bike
+            String selectedClientId = clientIdMap.get(selectedBikeInfo);
+
+            // Call the server with the NFC data
+            loadBikeData(selectedClientId);
+        }
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02X", b));
+        }
+        return sb.toString();
     }
 }

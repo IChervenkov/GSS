@@ -146,7 +146,7 @@ const schemaNFCRent = Joi.object({
     nfcData: Joi.string().required(), // nfcData should be a string and is required
     date: Joi.date().iso().required(), // date should be a valid ISO date and is required
     time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), // time should be in HH:MM format and is required
-    selectClient: Joi.number().required() // selectClient should be a string and is required
+    selectClient: Joi.string().pattern(/^[a-zA-Z0-9]+$/).required() // selectClient should be a string and is required
 });
 
 const schemaNFCReturn = Joi.object({
@@ -850,7 +850,7 @@ class Server {
                 await client.query('BEGIN');
 
                 const result = await client.query(`
-                    SELECT s.id, namesoldier, k.namekey
+                    SELECT s.id, namesoldier, k.namekey, k.id AS keyid
                     FROM soldier s
                     LEFT JOIN key k ON k.soldierid = s.id
                     WHERE date_accommodation IS NOT NULL AND date_free IS NULL`);
