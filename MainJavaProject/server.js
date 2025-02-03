@@ -887,12 +887,12 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const count_result =  await client.query(
+                const count_result = await client.query(
                     `SELECT COUNT(*) FROM bikesoldier WHERE bikeid = $1 AND dateto IS NULL`,
                     [bikeId]
                 );
 
-                if(count_result.rows[0].count > 0) {
+                if (count_result.rows[0].count > 0) {
                     await client.query('ROLLBACK');
                     return res.status(403).json({ message: 'The bike is already rented.' });
                 }
@@ -1233,12 +1233,12 @@ class Server {
 
                 if (actionId === 'Rent') {
 
-                    const count_result =  await client.query(
+                    const count_result = await client.query(
                         `SELECT COUNT(*) FROM bikesoldier WHERE bikeid = $1 AND dateto IS NULL`,
                         [bikeId]
                     );
-    
-                    if(count_result.rows[0].count > 0) {
+
+                    if (count_result.rows[0].count > 0) {
                         await client.query('ROLLBACK');
                         return res.status(403).json({ message: 'The bike is already rented.' });
                     }
@@ -2791,23 +2791,73 @@ class Server {
                 worksheet1.addRow(headers1).eachCell((cell) => {
                     cell.font = { bold: true };
                     cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
                 });
 
                 const headers2 = ['Previous Room', 'New Room', 'Soldier', 'Date Relocation'];
                 worksheet2.addRow(headers2).eachCell((cell) => {
                     cell.font = { bold: true };
                     cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
                 });
 
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
 
-                result.forEach(({ roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag }) => {
-                    worksheet1.addRow([roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag]);
+                result.forEach(({ roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag }, index) => {
+                    const dataRow = worksheet1.addRow([roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag]);
+
+                    // Apply borders and alternating row color
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
                 });
 
-                result_nationality.forEach(({ oldRoom, newRoom, soldierName, dateRelock }) => {
-                    worksheet2.addRow([oldRoom, newRoom, soldierName, dateRelock]);
+                result_nationality.forEach(({ oldRoom, newRoom, soldierName, dateRelock }, index) => {
+                    const dataRow = worksheet2.addRow([oldRoom, newRoom, soldierName, dateRelock]);
+
+                    // Apply borders and alternating row color
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
                 });
 
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -4467,7 +4517,7 @@ class Server {
                     )
                 );
                 await Promise.all(insertPromises);
-                
+
                 await client.query('COMMIT');
                 res.status(200).json({ message: "Bulk status change successful" });
 
@@ -4494,11 +4544,11 @@ class Server {
             try {
                 await client.query('BEGIN');
 
-                    client.query(
-                        `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;`,
-                        [code]
-                    );
-                
+                client.query(
+                    `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;`,
+                    [code]
+                );
+
                 await client.query('COMMIT');
                 res.status(200).json({ message: "Bulk status change successful" });
 
@@ -4753,7 +4803,7 @@ class Server {
 
                 await client.query('BEGIN');
 
-                if(status !== '')
+                if (status !== '')
                     result = await client.query(`
                         SELECT
                             l.id,
@@ -4881,27 +4931,93 @@ class Server {
                 worksheet1.addRow(headers1).eachCell((cell) => {
                     cell.font = { bold: true };
                     cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
                 });
 
                 const headers2 = ['Nationality', 'Number of Bags'];
                 worksheet2.addRow(headers2).eachCell((cell) => {
                     cell.font = { bold: true };
                     cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
                 });
 
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
 
-                result.forEach(({ bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut }) => {
-                    worksheet1.addRow([bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut]).eachCell((cell) => {
+                result.forEach(({ bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut }, index) => {
+                    const row = worksheet1.addRow([bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut]);
+                    row.eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
                     });
+
+                    // Style each cell
+                    row.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+
+                    // Apply alternating row color
+                    if (index % 2 === 0) {
+                        row.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                    
+                    if (dateIn === dateOut) {
+                        row.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFFFFF00' } // Yellow color
+                            };
+                        });
+                    }
                 });
 
-                result_nationality.forEach(({ nationality, bagCount }) => {
-                    worksheet2.addRow([nationality, bagCount]).eachCell((cell) => {
+                result_nationality.forEach(({ nationality, bagCount }, index) => {
+                    const row = worksheet2.addRow([nationality, bagCount]);
+                    row.eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
                     });
+
+                    row.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+
+                    // Apply alternating row color
+                    if (index % 2 === 0) {
+                        row.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+
                 });
 
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -5542,10 +5658,10 @@ class Server {
                 return res.status(400).send({ message: error.details[0].message });
             }
 
-            const { assetId, 
-                assetName, 
-                assetType, 
-                assetLocation, 
+            const { assetId,
+                assetName,
+                assetType,
+                assetLocation,
                 assetSubLocation,
                 assetCategory,
                 assetQuantity,
@@ -5554,7 +5670,7 @@ class Server {
                 assetStatus,
                 assetExpandable,
                 assetDescription
-             } = req.body;
+            } = req.body;
 
             const client = await pool.connect();
 
@@ -5705,12 +5821,12 @@ class Server {
             if (!req.body.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { 
-                assetEps, 
-                assetCodeSearch, 
-                assetAddName, 
-                selectedAddTypeId, 
-                selectedAddLocationId, 
+            const {
+                assetEps,
+                assetCodeSearch,
+                assetAddName,
+                selectedAddTypeId,
+                selectedAddLocationId,
                 selectedAddSubLocationId,
                 assetAddCategorie,
                 assetQuantity,
@@ -5718,7 +5834,7 @@ class Server {
                 assetAddOwner,
                 assetStatus,
                 assetAddExpandable,
-                assetAddDescription} = req.body;
+                assetAddDescription } = req.body;
 
             const client = await pool.connect();
 

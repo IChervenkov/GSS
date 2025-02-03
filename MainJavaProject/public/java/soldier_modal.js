@@ -2039,7 +2039,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = downloadUrl;
-            a.download = 'report_laundry.xlsx';
+            a.download = 'report_accommodation.xlsx';
             document.body.appendChild(a);
             a.click();
             a.remove();
