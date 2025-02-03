@@ -1072,6 +1072,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
+        const submitButton = event.submitter;
+        submitButton.disabled = true; // Disable the submit button
+
         if (document.getElementById("longTermCheckbox").checked)
             document.getElementById("longTermCheckbox").value = true;
 
@@ -1122,6 +1125,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } finally {
             loadingIndicator.style.display = 'none';
+            submitButton.disabled = false; // Re-enable the submit button
         }
     });
 

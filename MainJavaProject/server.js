@@ -887,6 +887,16 @@ class Server {
 
                 await client.query('BEGIN');
 
+                const count_result =  await client.query(
+                    `SELECT COUNT(*) FROM bikesoldier WHERE bikeid = $1 AND dateto IS NULL`,
+                    [bikeId]
+                );
+
+                if(count_result.rows[0].count > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(403).json({ message: 'The bike is already rented.' });
+                }
+
                 // Update bike status and assign to client
 
                 const now = new Date();
@@ -1208,7 +1218,6 @@ class Server {
             const dateText = `${dateId} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
             const recDate = new Date(dateText);
 
-
             // Check if the constructed date is valid
             if (isNaN(recDate.getTime())) {
                 return res.status(402).json({ message: 'Invalid date format.' });
@@ -1223,6 +1232,16 @@ class Server {
                 const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1`, [bikeId]);
 
                 if (actionId === 'Rent') {
+
+                    const count_result =  await client.query(
+                        `SELECT COUNT(*) FROM bikesoldier WHERE bikeid = $1 AND dateto IS NULL`,
+                        [bikeId]
+                    );
+    
+                    if(count_result.rows[0].count > 0) {
+                        await client.query('ROLLBACK');
+                        return res.status(403).json({ message: 'The bike is already rented.' });
+                    }
 
                     // Update bike status and assign to client
 
@@ -1815,7 +1834,7 @@ class Server {
 
                 if (result_check_bike.rows.length === 0) {
                     await client.query('ROLLBACK');
-                    res.status(401).json();
+                    return res.status(401).json();
                 }
 
                 const result_bike = await client.query(`
