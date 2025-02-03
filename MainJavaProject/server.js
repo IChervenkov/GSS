@@ -1329,8 +1329,7 @@ class Server {
 
                 // Query for bike usage details
                 const result_soldior = await client.query(
-                    `SELECT 
-                        ROW_NUMBER() OVER (ORDER BY namebike) AS row_num, 
+                    `SELECT DISTINCT
                         b.namebike, 
                         s.namesoldier,
                         COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
@@ -1360,9 +1359,12 @@ class Server {
                 const result_bike_totals = await client.query(
                     `SELECT 
                         TO_CHAR(datefrom, 'YYYY-MM-DD') AS date, 
-                        COUNT(bikeid) AS total_bikes
-                    FROM bikesoldier
-                    WHERE datefrom BETWEEN $1 AND $2
+                        COUNT(*) AS total_bikes
+                    FROM (
+                        SELECT DISTINCT ON (bikeid, soldierid, datefrom, dateto) bikeid, datefrom
+                        FROM bikesoldier
+                        WHERE datefrom BETWEEN $1 AND $2
+                    ) subquery
                     GROUP BY TO_CHAR(datefrom, 'YYYY-MM-DD')
                     ORDER BY date;`,
                     [selectedDate1, selectedDate2]
@@ -1376,7 +1378,7 @@ class Server {
                 const worksheet1 = workbook.addWorksheet('Bike Usage Data');
 
                 // Add custom column titles for the first sheet
-                const headers1 = ['Row Number', 'Bike Name', 'Soldier Name', 'Date From', 'Date To', 'Duration', 'Status'];
+                const headers1 = ['Bike Name', 'Soldier Name', 'Date From', 'Date To', 'Duration', 'Status'];
                 const headerRow1 = worksheet1.addRow(headers1);
 
                 // Apply styling to the headers
@@ -1393,7 +1395,6 @@ class Server {
 
                 // Set column widths for sheet 1
                 worksheet1.columns = [
-                    { width: 12 }, // Row Number
                     { width: 20 }, // Bike Name
                     { width: 25 }, // Soldier Name
                     { width: 20 }, // Date From
@@ -1561,8 +1562,7 @@ class Server {
 
                     // Query for bike usage details
                     const result_soldior = await client.query(
-                        `SELECT
-                        ROW_NUMBER() OVER (ORDER BY namebike) AS row_num, 
+                        `SELECT DISTINCT
                         b.namebike, 
                         s.namesoldier, 
                         COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
@@ -1589,11 +1589,14 @@ class Server {
                     const result_bike_totals = await client.query(
                         `SELECT 
                         TO_CHAR(datefrom, 'YYYY-MM-DD') AS date, 
-                        COUNT(bikeid) AS total_bikes
-                    FROM bikesoldier
-                    WHERE datefrom BETWEEN $1 AND $2
+                        COUNT(*) AS total_bikes
+                    FROM (
+                        SELECT DISTINCT ON (bikeid, soldierid, datefrom, dateto) bikeid, datefrom
+                        FROM bikesoldier
+                        WHERE datefrom BETWEEN $1 AND $2
+                    ) subquery
                     GROUP BY TO_CHAR(datefrom, 'YYYY-MM-DD')
-                    ORDER BY date DESC;`,
+                    ORDER BY date;`,
                         [selectedDate1, selectedDate2]
                     );
                     const dateTotals = result_bike_totals.rows;
@@ -2131,8 +2134,10 @@ class Server {
                 await client.query('BEGIN');
 
                 const result_client = await client.query(`
-                SELECT namesoldier,
-                TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI') AS formatted_date_from, 
+                SELECT DISTINCT
+                namesoldier,
+                TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI') AS formatted_date_from,
+                datefrom,
                 COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS formatted_date_to
                 FROM bikesoldier bs
                 LEFT JOIN soldier s ON s.id = bs.soldierid
@@ -2176,8 +2181,10 @@ class Server {
                 await client.query('BEGIN');
 
                 const result_client = await client.query(`
-                SELECT namebike,
+                SELECT DISTINCT
+                namebike,
                 TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI') AS formatted_date_from,
+                datefrom,
                 COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS formatted_date_to
                 FROM bikesoldier bs
                 LEFT JOIN soldier s ON s.id = bs.soldierid
