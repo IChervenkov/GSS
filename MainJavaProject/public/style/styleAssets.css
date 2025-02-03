@@ -102,7 +102,8 @@ thead th input:focus {
     max-width: 60%;
 }
 
-#assetDescription #assetAddDescription {
+#assetDescription,
+#assetAddDescription {
     min-height: 50px;
     max-height: 250px;
     height: 250px;
