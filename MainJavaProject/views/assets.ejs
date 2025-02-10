@@ -112,6 +112,16 @@
                         </div>
                     </div>
 
+                    <div class="btn-container">
+                        <button id="reportButton" class="btn-add-type d-flex align-items-center justify-content-center">
+                            <i class="bi bi-file-earmark-text me-2"></i> <span>Asset archive</span>
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">View the asset archive.</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -287,8 +297,7 @@
 
             <div class="row">
                 <div class="col-md-4 mb-3">
-                    <label for="quantity" class="form-label">Assert quantity <span
-                            class="text-danger">*</span></label>
+                    <label for="quantity" class="form-label">Assert quantity <span class="text-danger">*</span></label>
                     <input type="number" id="quantity" class="form-control" placeholder="Asset quantity" min="1"
                         value="1">
                     <div class="invalid-feedback"></div>
@@ -304,10 +313,9 @@
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <label for="owner" class="form-label">Assert owner <span
-                            class="text-danger">*</span></label>
-                    <input type="text" id="owner" class="form-control" placeholder="Asset owner"
-                        pattern="^[a-zA-Z\s]+$" value="Global RTS">
+                    <label for="owner" class="form-label">Assert owner <span class="text-danger">*</span></label>
+                    <input type="text" id="owner" class="form-control" placeholder="Asset owner" pattern="^[a-zA-Z\s]+$"
+                        value="Global RTS">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
@@ -324,15 +332,14 @@
                 </div>
 
                 <div class="col-md-6 mb-3">
-                    <label for="expandable" class="form-label">Expandable <span
-                            class="text-danger">*</span></label>
+                    <label for="expandable" class="form-label">Expandable <span class="text-danger">*</span></label>
                     <select id="expandable" class="form-control">
                         <option value="Expandable">Expandable</option>
                         <option value="Non Expandable" selected>Non Expandable</option>
                     </select>
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
-                </div>  
+                </div>
             </div>
 
             <div class="row">
@@ -575,6 +582,15 @@
                         <input type="hidden" id="selectedAssetLocationId" name="assetLocationId" value="">
                     </div>
 
+                    <div class="mb-3">
+                        <label for="lostAssetQuantity" class="form-label">Assert quantity <span
+                                class="text-danger">*</span></label>
+                        <input type="number" id="lostAssetQuantity" class="form-control" placeholder="Asset quantity"
+                            min="1">
+                        <div class="invalid-feedback"></div>
+                        <div class="valid-feedback"></div>
+                    </div>
+
                     <button type="submit" class="modal-button">Save</button>
                 </form>
 
@@ -588,6 +604,8 @@
                                     Person</th>
                                 <th><input type="text" class="lost-item-search-input"
                                         placeholder="Search...">Description</th>
+                                <th><input type="text" class="lost-item-search-input" placeholder="Search...">Lost
+                                    Quantity</th>
                             </tr>
                         </thead>
                         <tbody id="lostItemsTableBody">
@@ -597,6 +615,141 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- The Modal for Reports -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content-multi-calendar">
+            <span class="close-btn">&times;</span>
+            <h3 class="header-modal-report">Archive - Select Date Range (From/To Date)
+            </h3>
+
+            <!-- Container for two side-by-side calendars -->
+            <div class="calendar-container">
+                <div class="calendar" id="calendar1">
+                    <header>
+                        <h3></h3>
+                        <nav>
+                            <button type="button" id="prev"></button>
+                            <button type="button" id="next"></button>
+                        </nav>
+                    </header>
+                    <section>
+                        <ul class="days">
+                            <li>Sun</li>
+                            <li>Mon</li>
+                            <li>Tue</li>
+                            <li>Wed</li>
+                            <li>Thu</li>
+                            <li>Fri</li>
+                            <li>Sat</li>
+                        </ul>
+                        <ul class="dates"></ul>
+                    </section>
+                </div>
+
+                <div class="calendar" id="calendar2">
+                    <header>
+                        <h3></h3>
+                        <nav>
+                            <button type="button" id="prev"></button>
+                            <button type="button" id="next"></button>
+                        </nav>
+                    </header>
+                    <section>
+                        <ul class="days">
+                            <li>Sun</li>
+                            <li>Mon</li>
+                            <li>Tue</li>
+                            <li>Wed</li>
+                            <li>Thu</li>
+                            <li>Fri</li>
+                            <li>Sat</li>
+                        </ul>
+                        <ul class="dates"></ul>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Buttons for confirming the selection -->
+            <div class="button-container">
+                <button id="confirmReportBtn" class="modal-button">View
+                    Archive</button>
+            </div>
+
+            <input name="selectedDate1" class="show-date" id="selectedDate1" value="">
+            <input name="selectedDate2" class="show-date" id="selectedDate2" value="">
+        </div>
+    </div>
+
+    <div id="reportViewModal" class="modal">
+        <form class="modal-content-report" action="/assets/report" method="GET" id="form6">
+            <span class="close-btn">&times;</span>
+            <h2>Archive View</h2>
+
+            <div class="table-container">
+                <table id="assetsTable">
+                    <thead>
+                        <tr>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">RFID</th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset code
+                            </th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset Name
+                            </th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset type
+                            </th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Building
+                            </th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Room</th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset
+                                category</th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset
+                                quantity</th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">MRAH</th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset owner
+                            </th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset status
+                            </th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset
+                                expandable</th>
+                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset
+                                description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-container">
+                <table id="assetDateTable">
+                    <thead>
+                        <tr>
+                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Date
+                            </th>
+                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                                Assets</th>
+                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                                New Assets</th>
+                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                                Update Assets</th>
+                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                                Remove Assets</th>
+                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                                Missing Assets</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Buttons for confirming the selection -->
+            <div class="button-container">
+                <button type="submit" id="confirmReportBtnReport" class="modal-button">Generate Report</button>
+            </div>
+
+        </form>
     </div>
 
     <!-- The Modal Message -->
@@ -614,5 +767,6 @@
 <script src="/java/autoSearch.js"></script>
 <script src="/java/pageNumber.js"></script>
 <script src="/java/assetsInventory.js"></script>
+<script src="/java/calendar.js"></script>
 
 </html>

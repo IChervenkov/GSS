@@ -70,4 +70,6 @@ document.addEventListener('DOMContentLoaded', function () {
     attachFilterEvents('assetTable', 'asset-search-input');
     attachFilterEvents('soldierTable', 'search-input-soldier');
     attachFilterEvents('bagsTable', 'laundry-search-input');
+    attachFilterEvents('assetsTable', 'search-input-view-assets');
+    attachFilterEvents('assetDateTable', 'search-input-view-assets-second');
 });

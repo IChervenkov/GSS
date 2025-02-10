@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const hpp = require('hpp');
+const moment = require('moment');
 
 // const RedisStore = require('connect-redis').default;
 // const redis = require('redis');
@@ -271,8 +272,14 @@ const schemaCheckAppCode = Joi.object({
 
 const schemaLostItems = Joi.object({
     itemName: Joi.string().alphanum().required(),
-    description: Joi.string().pattern(/^[a-zA-Z0-9\s]*$/).required(),
-    soldierId: Joi.string().alphanum().required()
+    description: Joi.string().allow('').pattern(/^[a-zA-Z0-9\s]*$/).required(),
+    soldierId: Joi.string().alphanum().required(),
+    lostQuantity: Joi.number().required()
+});
+
+const schemaRestorItems = Joi.object({
+    code: Joi.string().alphanum().required(),
+    lost_quantity: Joi.number().required()
 });
 
 const schemaAddAsset = Joi.object({
@@ -304,7 +311,7 @@ const schemaEditAsset = Joi.object({
     assetOwner: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
     assetStatus: Joi.number().integer().required(),
     assetExpandable: Joi.valid('Expandable', 'Non Expandable').required(),
-    assetDescription: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required()
+    assetDescription: Joi.string().allow('').pattern(/^[a-zA-Z0-9\s]*$/).required()
 });
 
 const schemaEditAssetDevice = Joi.object({
@@ -889,7 +896,7 @@ class Server {
 
                 const count_result = await client.query(
                     `SELECT COUNT(*) FROM bikesoldier WHERE bikeid = $1 AND dateto IS NULL`,
-                    [bikeId]
+                    [nfcData]
                 );
 
                 if (count_result.rows[0].count > 0) {
@@ -4544,7 +4551,7 @@ class Server {
             try {
                 await client.query('BEGIN');
 
-                client.query(
+                await client.query(
                     `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;`,
                     [code]
                 );
@@ -4980,7 +4987,7 @@ class Server {
                             };
                         });
                     }
-                    
+
                     if (dateIn === dateOut) {
                         row.eachCell((cell) => {
                             cell.fill = {
@@ -5261,24 +5268,21 @@ class Server {
                 const [resultAllAssets, resultKeys, resultLocations, resultAllLostItem] = await Promise.all([
                     client.query('SELECT * FROM assets'),
                     client.query(`
-                        SELECT id AS id, code AS name FROM assets
-                        UNION ALL
-                        SELECT id AS id, namekey AS name FROM key
-                        UNION ALL
-                        SELECT id AS id, code AS name FROM laundrybags
+                        SELECT id AS id, code AS name, quantity FROM assets;
                     `),
                     client.query(`
                         SELECT id, namesoldier AS name FROM soldier WHERE date_accommodation IS NOT NULL AND date_free IS NULL
                     `),
                     client.query(`
-                        SELECT nameitem, description, namesoldier FROM lostitem l
+                        SELECT nameitem, description, namesoldier, lost_quantity FROM lostitem l
                         LEFT JOIN soldier s ON s.id = l.soldier_id;`)
                 ]);
 
                 // Process data
                 const assets = resultKeys.rows.map(row => ({
                     id: row.id,
-                    code: row.name
+                    code: row.name,
+                    quantity: row.quantity
                 }));
 
                 const locations = resultLocations.rows.map(row => ({
@@ -5305,7 +5309,8 @@ class Server {
                 const allLostItem = resultAllLostItem.rows.map(row => ({
                     nameItem: row.nameitem,
                     description: row.description,
-                    soldierName: row.namesoldier
+                    soldierName: row.namesoldier,
+                    lostQuantity: row.lost_quantity
                 }));
 
                 // Commit transaction (optional here)
@@ -5448,7 +5453,7 @@ class Server {
                 if (numBuild) {
 
                     const result_get_room = await client.query(`
-                        SELECT r.id, nameroom, COUNT(a.id) AS count_assets
+                        SELECT r.id, nameroom, COALESCE(SUM(a.quantity::NUMERIC), 0) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
                         LEFT JOIN buildroom br ON br.roomid = r.id
@@ -5466,7 +5471,7 @@ class Server {
                 } else {
 
                     const result_get_room = await client.query(`
-                        SELECT r.id, nameroom, COUNT(a.id) AS count_assets
+                        SELECT r.id, nameroom, COALESCE(SUM(a.quantity::NUMERIC), 0) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
                         GROUP BY nameroom, r.id
@@ -5524,7 +5529,7 @@ class Server {
                 if (numBuild) {
 
                     const result_get_room = await client.query(`
-                        SELECT r.id, nameroom, COUNT(a.id) AS count_assets
+                        SELECT r.id, nameroom, COALESCE(SUM(a.quantity::NUMERIC), 0) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
                         LEFT JOIN buildroom br ON br.roomid = r.id
@@ -5539,7 +5544,7 @@ class Server {
                 } else {
 
                     const result_get_room = await client.query(`
-                        SELECT r.id, nameroom, COUNT(a.id) AS count_assets
+                        SELECT r.id, nameroom, COALESCE(SUM(a.quantity::NUMERIC), 0) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
                         GROUP BY nameroom, r.id
@@ -5677,6 +5682,9 @@ class Server {
             try {
                 await client.query('BEGIN');
 
+                const result_asset_quantity = await client.query(`SELECT quantity FROM assets WHERE id = $1;`, [assetId]);
+                const asset_quantity = result_asset_quantity.rows[0].quantity;
+
                 if (assetSubLocation !== '') {
                     await client.query(`UPDATE assets SET 
                         name_assets = $2, 
@@ -5690,7 +5698,7 @@ class Server {
                         status = $10,
                         expandable = $11,
                         description = $12 WHERE id = $1`,
-                        [assetId, assetName, assetType, assetLocation, assetSubLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription]
+                        [assetId, assetName, assetType, assetLocation, assetSubLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription ? assetDescription : null]
                     );
                 } else {
                     await client.query(`UPDATE assets SET 
@@ -5705,8 +5713,26 @@ class Server {
                         status = $9,
                         expandable = $10,
                         description = $11 WHERE id = $1`,
-                        [assetId, assetName, assetType, assetLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription]
+                        [assetId, assetName, assetType, assetLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription ? assetDescription : null]
                     );
+                }
+
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+
+                if (result_exist_date.rows.length > 0) {
+                    if (asset_quantity === assetQuantity)
+                        await client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity]);
+                    else if (asset_quantity > assetQuantity)
+                        await client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity - assetQuantity]);
+                    else
+                        await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity - asset_quantity]);
+                } else {
+                    if (asset_quantity === assetQuantity)
+                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1);`, [assetQuantity]);
+                    else if (asset_quantity > assetQuantity)
+                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity - assetQuantity]);
+                    else
+                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [assetQuantity - asset_quantity]);
                 }
 
                 await client.query('COMMIT');
@@ -5739,6 +5765,9 @@ class Server {
             try {
                 await client.query('BEGIN');
 
+                const result_asset_quantity = await client.query(`SELECT quantity FROM assets WHERE id = $1;`, [assetId]);
+                const asset_quantity = result_asset_quantity.rows[0].quantity;
+
                 if (oldCode === newCode) {
                     if (subLocation !== '') {
                         await client.query(`UPDATE assets SET 
@@ -5755,7 +5784,7 @@ class Server {
                             expandable = $12,
                             description = $13
                             WHERE id = $1`,
-                            [newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description]
+                            [newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description ? description : null]
                         );
                     } else {
                         await client.query(`UPDATE assets SET 
@@ -5772,30 +5801,45 @@ class Server {
                             expandable = $11,
                             description = $12
                              WHERE id = $1`,
-                            [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description]
+                            [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description ? description : null]
                         );
                     }
+
                 } else {
 
                     if (subLocation !== '') {
 
                         await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
-                            [newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description]
-                        );
-
-                        await client.query(`DELETE FROM assets WHERE id = $1`,
-                            [oldCode]
+                            [newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description ? description : null]
                         );
 
                     } else {
                         await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12);`,
-                            [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description]
-                        );
-
-                        await client.query(`DELETE FROM assets WHERE id = $1`,
-                            [oldCode]
+                            [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description ? description : null]
                         );
                     }
+
+                    await client.query(`DELETE FROM assets WHERE id = $1`,
+                        [oldCode]
+                    );
+                }
+
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+
+                if (result_exist_date.rows.length > 0) {
+                    if (asset_quantity === quantity)
+                        await client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [quantity]);
+                    else if (asset_quantity > quantity)
+                        await client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity - quantity]);
+                    else
+                        await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [quantity - asset_quantity]);
+                } else {
+                    if (asset_quantity === quantity)
+                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1);`, [quantity]);
+                    else if (asset_quantity > quantity)
+                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity - quantity]);
+                    else
+                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [quantity - asset_quantity]);
                 }
 
                 await client.query('COMMIT');
@@ -5850,14 +5894,20 @@ class Server {
 
                 if (selectedAddSubLocationId !== '') {
                     await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
-                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription]
+                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription ? assetAddDescription : null]
                     );
 
                 } else {
                     await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12);`,
-                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription]
+                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription ? assetAddDescription : null]
                     );
                 }
+
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+                if (result_exist_date.rows.length > 0)
+                    await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity]);
+                else
+                    await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [assetQuantity]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The asset was successfully added' });
@@ -5888,6 +5938,15 @@ class Server {
 
             try {
                 await client.query('BEGIN');
+
+                const result_quantity = await client.query(`SELECT quantity FROM assets WHERE id = $1`, [code]);
+                const asset_quantity = result_quantity.rows[0].quantity;
+
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+                if (result_exist_date.rows.length > 0)
+                    await client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity]);
+                else
+                    await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity]);
 
                 await client.query(`DELETE FROM assets WHERE id = $1`, [code]);
 
@@ -5992,6 +6051,13 @@ class Server {
             try {
                 await client.query('BEGIN');
 
+                const check_exist = await client.query(`SELECT * FROM assets WHERE type_id = $1;`, [assetTypeId]);
+
+                if (check_exist.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: 'This type is associated with an asset and cannot be deleted!' });
+                }
+
                 await client.query(`DELETE FROM assetstype WHERE id = $1`, [assetTypeId]);
 
                 await client.query('COMMIT');
@@ -6014,7 +6080,7 @@ class Server {
                 return res.status(400).send({ message: error.details[0].message });
             }
 
-            const { itemName, description, soldierId } = req.body;
+            const { itemName, description, soldierId, lostQuantity } = req.body;
 
             const client = await pool.connect();
 
@@ -6022,8 +6088,50 @@ class Server {
 
                 await client.query('BEGIN');
 
-                await client.query(`INSERT INTO lostitem VALUES (
-                    (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3);`, [itemName, description, soldierId]);
+                const result = await client.query(`SELECT * FROM assets WHERE code = $1;`, [itemName]);
+                const item_into = result.rows[0];
+
+                const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE nameitem = $1;`, [itemName]);
+
+                if (get_exist_lost_item.rows.length > 0)
+                    await client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2;`, [lostQuantity, itemName]);
+                else
+                    await client.query(`INSERT INTO lostitem VALUES (
+                        (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`,
+                        [
+                            itemName,
+                            description !== '' ? description : null,
+                            soldierId,
+                            lostQuantity,
+                            item_into.id,
+                            item_into.name_assets,
+                            item_into.type_id,
+                            item_into.location_room,
+                            item_into.location_key,
+                            item_into.categorie,
+                            item_into.mrah,
+                            item_into.asset_owner,
+                            item_into.status,
+                            item_into.expandable,
+                            item_into.description]);
+
+                const asset_quantity = result.rows[0].quantity;
+                const asset_id = result.rows[0].id;
+
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+
+                if (result.rows.length > 0) {
+                    if (result_exist_date.rows.length > 0)
+                        await client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lostQuantity]);
+                    else
+                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0);`, [lostQuantity]);
+
+                    if (asset_quantity - lostQuantity > 0)
+                        await client.query(`UPDATE assets SET quantity = quantity::NUMERIC - $1 WHERE id = $2`, [lostQuantity, asset_id]);
+                    else {
+                        await client.query(`DELETE FROM assets WHERE id = $1`, [asset_id]);
+                    }
+                }
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'Lost item added successfully' });
@@ -6037,6 +6145,203 @@ class Server {
                 client.release();
             }
 
+        });
+
+        this.app.post('/assets/restorLostAsset', this.isLoggedIn.bind(this), async (req, res) => {
+            const { error } = schemaRestorItems.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { code, lost_quantity } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const check_exist = await client.query(`SELECT * FROM assets WHERE code = $1;`, [code]);
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+                const result_restor_data = await client.query(`SELECT * FROM lostitem WHERE nameitem = $1;`, [code]);
+                const restor_data = result_restor_data.rows[0];
+
+                if (check_exist.rows.length > 0) {
+                    await client.query(`UPDATE assets SET quantity = quantity::NUMERIC + $1 WHERE id = $2;`, [lost_quantity, restor_data.item_id] );
+                    await client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id] );
+                    if (result_exist_date.rows.length > 0)
+                        await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lost_quantity]);
+                    else
+                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [lost_quantity]);
+                } else {
+                    await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`, [
+                        restor_data.item_id,
+                        restor_data.nameitem,
+                        restor_data.item_name,
+                        restor_data.item_type_id,
+                        restor_data.item_location_room,
+                        restor_data.item_location_key,
+                        restor_data.item_category,
+                        lost_quantity,
+                        restor_data.item_mrah,
+                        restor_data.item_owner,
+                        restor_data.item_status,
+                        restor_data.item_expandable,
+                        restor_data.item_description
+                    ]);
+                    await client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id] );
+
+                    if (result_exist_date.rows.length > 0)
+                        await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lost_quantity]);
+                    else
+                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [lost_quantity]);
+                }
+
+                await client.query(`DELETE FROM lostitem WHERE lost_quantity::NUMERIC = 0;`);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'Lost item restored successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to restor lost item' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/assets/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+            const { error } = schemaReport.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            let { selectedDate1, selectedDate2 } = req.body;
+
+            // Ensure the dates are formatted correctly
+            selectedDate1 = moment(selectedDate1).startOf('day').format('YYYY-MM-DD HH:mm:ss');
+            selectedDate2 = moment(selectedDate2).endOf('day').format('YYYY-MM-DD HH:mm:ss');
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                // Query for asset details
+                const result = await client.query(
+                    `SELECT 
+                        a.id, 
+                        code,
+                        name_assets,
+                        type_name AS type, 
+                        b.namebuilding AS location_building,
+                        r.nameroom AS location_room,
+                        categorie,
+                        quantity,
+                        mrah,
+                        asset_owner,
+                        status,
+                        expandable,
+                        description
+                    FROM assets a
+                    LEFT JOIN assetstype at ON a.type_id = at.id
+                    LEFT JOIN rooms r ON r.id = a.location_room
+                    LEFT JOIN buildroom br ON br.roomid = a.location_room
+                    LEFT JOIN buildings b ON b.id = br.buildid;`
+                );
+
+                // Query for asset count report
+                const result_count_asset = await client.query(
+                    `WITH date_series AS (
+                        SELECT generate_series(
+                            $1::DATE, 
+                            $2::DATE, 
+                            '1 day'
+                        )::DATE AS event_date
+                    ),
+                    asset_changes AS (
+                        SELECT 
+                            date_change::DATE AS event_date, 
+                            change_asset_quantity::NUMERIC AS total_added, 
+                            change_modificate_asset_quantity::NUMERIC AS total_modifain, 
+                            change_remove_asset_quantity::NUMERIC AS total_remove, 
+                            change_lost_asset_quantity::NUMERIC AS total_lost
+                        FROM asset_actions 
+                        WHERE date_change BETWEEN $1 AND $2 + INTERVAL '1 day'
+                    ),
+                    asset_after_changes AS (
+                        SELECT 
+                            change_asset_quantity::NUMERIC AS total_added, 
+                            change_modificate_asset_quantity::NUMERIC AS total_modifain, 
+                            change_remove_asset_quantity::NUMERIC AS total_remove, 
+                            change_lost_asset_quantity::NUMERIC AS total_lost
+                        FROM asset_actions 
+                        WHERE date_change > $2 + INTERVAL '1 day'
+                    ),
+                    initial_assets AS (
+                        SELECT SUM(quantity::NUMERIC) AS initial_asset_count FROM assets
+                    ),
+                    after_change_totals AS (
+                        SELECT COALESCE(SUM(total_added - total_remove - total_lost), 0) AS after_changes_total
+                        FROM asset_after_changes
+                    ),
+                    between_change_totals AS (
+                        SELECT COALESCE(SUM(total_added - total_remove - total_lost), 0) AS between_changes_total
+                        FROM asset_changes
+                    ),
+                    daily_assets AS (
+                        SELECT 
+                            ds.event_date,
+                            COALESCE(SUM(ac.total_added), 0) AS total_new_assets,
+                            COALESCE(SUM(ac.total_modifain), 0) AS total_updated_assets,
+                            COALESCE(SUM(ac.total_remove), 0) AS total_removed_assets,
+                            COALESCE(SUM(ac.total_lost), 0) AS total_missing_assets
+                        FROM date_series ds
+                        LEFT JOIN asset_changes ac ON ds.event_date = ac.event_date
+                        GROUP BY ds.event_date
+                    ),
+                    cumulative_assets AS (
+                        SELECT 
+                            da.event_date,
+                            SUM(total_new_assets - total_removed_assets - total_missing_assets) 
+                            OVER (ORDER BY da.event_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) 
+                            + ia.initial_asset_count 
+                            - bect.between_changes_total 
+                            - act.after_changes_total AS total_assets,
+                            total_new_assets,
+                            total_updated_assets,
+                            total_removed_assets,
+                            total_missing_assets
+                        FROM daily_assets da
+                        CROSS JOIN initial_assets ia
+                        CROSS JOIN between_change_totals bect
+                        CROSS JOIN after_change_totals act
+                    )
+                    SELECT 
+                        to_char(event_date, 'YYYY-MM-DD') AS event_date, 
+                        total_assets, 
+                        total_updated_assets, 
+                        total_new_assets, 
+                        total_removed_assets, 
+                        total_missing_assets
+                    FROM cumulative_assets
+                    ORDER BY event_date;`, [selectedDate1, selectedDate2]
+                );
+
+
+                await client.query('COMMIT');
+                res.status(200).json({ data: result.rows, data_asset_count: result_count_asset.rows });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(error);
+                res.status(500).json({ message: "Internal server error" });
+
+            } finally {
+                client.release();
+            }
         });
     }
 

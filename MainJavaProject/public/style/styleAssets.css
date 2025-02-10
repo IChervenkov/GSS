@@ -98,11 +98,22 @@ thead th input:focus {
 }
 
 #lostAssetsModal .modal-content {
+    margin-top: 0;
     margin-left: 20%;
     max-width: 60%;
 }
 
-#assetDescription,
+#lostAssetsModal table tbody tr:hover {
+  background-color: #f1f1f1;
+  cursor: pointer;
+}
+
+#assetDescription {
+    min-height: 50px;
+    max-height: 200px;
+    height: 200px;
+}
+
 #assetAddDescription {
     min-height: 50px;
     max-height: 250px;
@@ -322,6 +333,10 @@ td {
     content: " ↓";
 }
 
+table thead tr th label:hover {
+    cursor: pointer;
+}
+
 /* Modal styles */
 .modal {
     display: none;
@@ -402,15 +417,207 @@ td {
 }
 
 .modal-content.slide-in,
+.modal-content-multi-calendar.slide-in,
+.modal-content-report.slide-in,
 .modal-content-mess.slide-in {
     animation: slideIn 0.4s forwards;
     /* Slide in animation */
 }
 
 .modal-content.slide-out,
+.modal-content-multi-calendar.slide-out,
+.modal-content-report.slide-out,
 .modal-content-mess.slide-out {
     animation: slideOut 0.4s forwards;
     /* Slide out animation */
+}
+
+.header-modal-report {
+    margin-bottom: 25px;
+}
+
+/* Flexbox for side-by-side calendars */
+.calendar-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.calendar {
+    margin: auto;
+    width: 98%;
+    max-width: 380px;
+    padding: 1rem;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.calendar header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.calendar nav {
+    display: flex;
+    align-items: center;
+}
+
+.calendar ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    text-align: center;
+}
+
+.calendar ul li {
+    width: calc(100% / 7);
+    margin-top: 25px;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+    /* Indicate clickable items */
+}
+
+#prev,
+#next {
+    width: 20px;
+    height: 20px;
+    position: relative;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+#prev::before,
+#next::before {
+    content: "";
+    width: 50%;
+    height: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-style: solid;
+    border-width: 0.25em 0.25em 0 0;
+    border-color: #ccc;
+}
+
+#next::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+#prev::before {
+    transform: translate(-50%, -50%) rotate(-135deg);
+}
+
+#prev:hover::before,
+#next:hover::before {
+    border-color: #000;
+}
+
+.days {
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.dates li.inactive {
+    color: #ccc;
+}
+
+.dates li.selected {
+    color: #fff;
+    /* Text color for selected date */
+    border-radius: 50%;
+    /* Make it circular */
+    position: relative;
+    /* Ensure correct positioning */
+}
+
+.dates li.selected::before {
+    content: "";
+    width: 2rem;
+    height: 2rem;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #000;
+    border-radius: 50%;
+    z-index: -1;
+}
+
+.show-date {
+    display: none;
+}
+
+.modal-content-multi-calendar {
+    margin-top: 5%;
+    margin-left: 25%;
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    max-width: 50%;
+    /* Ensure it doesn't overflow on small screens */
+    border-radius: 10px;
+    text-align: center;
+    position: relative;
+    /* Positioning context for the close button */
+    transform: translateY(-200px);
+    /* Initial position for sliding */
+    opacity: 0;
+    /* Hidden initially */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    /* Slide and fade effect */
+}
+
+.modal-content-multi-calendar.show {
+    transform: translateY(0);
+    /* Slide into view */
+    opacity: 1;
+}
+
+.modal-content-report {
+    margin-left: 5%;
+    margin-right: 5%;
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 10px;
+    text-align: center;
+    position: relative;
+    transform: translateY(-200px);
+    /* Initial position for sliding */
+    opacity: 0;
+    /* Hidden initially */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    /* Slide and fade effect */
+}
+
+/* Custom Scrollbar */
+.modal-content-report .table-container {
+    height: 30vh;
+    /* Set height relative to viewport */
+    max-height: 30vh;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.disabled-select {
+    pointer-events: none;
+    /* Disable interactions */
+    opacity: 0.5;
+    /* Make it look disabled */
+    background-color: #f0f0f0;
+    /* Optional: Change background color */
+    color: #888;
+    /* Optional: Change text color */
+}
+
+.disabled-select:hover {
+    cursor: not-allowed;
 }
 
 .modal-image {

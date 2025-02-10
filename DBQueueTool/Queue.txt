@@ -150,5 +150,25 @@ CREATE TABLE lostItem (
 	nameItem TEXT,
 	description TEXT,
 	soldier_id TEXT,
+	lost_quantity TEXT,
+	item_id TEXT,
+	item_name TEXT,
+	item_type_id TEXT,
+	item_location_room TEXT,
+	item_location_key TEXT,
+	item_category TEXT,
+	item_mrah TEXT,
+	item_owner TEXT,
+	item_status TEXT,
+	item_expandable TEXT,
+	item_description TEXT,
 	FOREIGN KEY(soldier_id) REFERENCES soldier(id)
+);
+
+CREATE TABLE asset_actions (
+	date_change DATE,
+	change_asset_quantity TEXT,
+	change_remove_asset_quantity TEXT,
+	change_lost_asset_quantity TEXT,
+	change_modificate_asset_quantity TEXT
 );

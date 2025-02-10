@@ -18,12 +18,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const lostAssetsModal = document.getElementById('lostAssetsModal');
     const lostAssetsModalContent = lostAssetsModal.querySelector('.modal-content');
 
+    const assetArchiveModal = document.getElementById('reportModal');
+    const assetArchiveModalContent = assetArchiveModal.querySelector('.modal-content-multi-calendar');
+
+    const assetReportModal = document.getElementById('reportViewModal');
+    const assetReportModalContent = assetReportModal.querySelector('.modal-content-report');
+
     const modalMess = document.getElementById("myMessage");
     const modalMessContent = modalMess.querySelector('.modal-content-mess');
 
     const lostAssetSearchInput = document.getElementById('lostAssetName');
     const lostAssetSearchDropdown = document.getElementById('lostAssetNameDropdown');
     const selectedLostAssetId = document.getElementById('selectedLostAssetNameId');
+
+    const lostAssetQuantity = document.getElementById('lostAssetQuantity');
 
     const lostAssetLocationSearchInput = document.getElementById('assetLocation');
     const lostAssetLocationSearchDropdown = document.getElementById('assetLocationDropdown');
@@ -84,6 +92,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const lostItemDescription = document.getElementById('assetDescription');
 
+    const reportButton = document.getElementById('reportButton');
+
     // Track sort order and priority for each column
     let sortOrder = {
         nameroom: true, // true means ascending, false means descending
@@ -111,6 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var lostAssetsCode;
     var lostAssetsLocation;
     var allLostItems;
+    var oldEditAssetId = "";
 
     var allCheckedRow = [];
     var oldAssetNameKey;
@@ -212,8 +223,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     valA = a.nameroom.toLowerCase();
                     valB = b.nameroom.toLowerCase();
                 } else if (col === 'count_assets') {
-                    valA = a.count_assets;
-                    valB = b.count_assets;
+                    valA = parseInt(a.count_assets, 10);
+                    valB = parseInt(b.count_assets, 10);
                 }
 
                 // Compare values for the current column
@@ -270,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         sortPriorityAsset.unshift(column);
 
-        // Sort nameroomSetCount array using multiple columns based on sortPriority
+        // Sort nameAssetSetCount array using multiple columns based on sortPriority
         nameAssetSetCount.sort((a, b) => {
             for (let i = 0; i < sortPriorityAsset.length; i++) {
                 const col = sortPriorityAsset[i];
@@ -288,9 +299,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (col === 'location') {
                     valA = a.location.toLowerCase();
                     valB = b.location.toLowerCase();
-                }  else if (col === 'description') {
-                    valA = a.description.toLowerCase();
-                    valB = b.description.toLowerCase();
+                } else if (col === 'description') {
+                    valA = a.description ? a.description.toLowerCase() : 'No description';
+                    valB = a.description ? b.description.toLowerCase() : 'No description';
                 }
 
                 // Compare values for the current column
@@ -402,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function () {
             row.appendChild(locationCell);
 
             const descriptionCell = document.createElement("td");
-            descriptionCell.textContent = item.description;
+            descriptionCell.textContent = item.description ? item.description : 'No description';
             row.appendChild(descriptionCell);
 
             // Attach click event for each row
@@ -513,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function () {
             locationSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).location;
             selectedLocationId.value = assetLocation.find(item => item.nameroom === locationSearchInput.value) ? assetLocation.find(item => item.nameroom === locationSearchInput.value).roomid : '';
 
-            subLocationSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).namekey;
+            subLocationSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).namekey !== 'There is no associated key' ? nameAssetSetCount.find(item => item.id === selectedAssetId.value).namekey : '';
             selectedSubLocationId.value = nameAssetSetCount.find(item => item.namekey === subLocationSearchInput.value) ? nameAssetSetCount.find(item => item.namekey === subLocationSearchInput.value).keyid : '';
 
             assetCategory.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).categorie;
@@ -538,6 +549,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const li = document.createElement('li');
                 li.textContent = asset.code;
                 li.setAttribute('data-id', asset.id);
+                li.setAttribute('data-quantity', asset.quantity);
                 lostAssetSearchDropdown.appendChild(li);
             });
         } else {
@@ -553,8 +565,10 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             lostAssetSearchDropdown.style.display = 'none';
             selectedLostAssetId.value = '';
-
+            lostAssetQuantity.value = '';
+            lostAssetQuantity.removeAttribute('max');
             toggleInputValidity(lostAssetSearchInput, false);
+            toggleInputValidity(lostAssetQuantity, false);
         }
     });
 
@@ -563,10 +577,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedAsset = event.target;
         if (selectedAsset && selectedAsset.dataset.id) {
             lostAssetSearchInput.value = selectedAsset.textContent;
+            lostAssetQuantity.value = selectedAsset.getAttribute('data-quantity');
+            lostAssetQuantity.max = selectedAsset.getAttribute('data-quantity');
             selectedLostAssetId.value = selectedAsset.getAttribute('data-id');
             lostAssetSearchDropdown.style.display = 'none';
 
             toggleInputValidity(lostAssetSearchInput, true);
+            toggleInputValidity(lostAssetQuantity, true);
         }
     });
 
@@ -950,12 +967,20 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleInputValidity(assetEditQuantity, assetEditQuantity.value !== '' && assetEditQuantity.checkValidity());
     });
 
+    lostAssetQuantity.addEventListener('input', () => {
+        toggleInputValidity(lostAssetQuantity, lostAssetQuantity.value !== '' && lostAssetQuantity.checkValidity());
+    });
+
     assetMrah.addEventListener('input', () => {
         toggleInputValidity(assetMrah, assetMrah.value !== '' && assetMrah.checkValidity());
     });
 
     assetOwner.addEventListener('input', () => {
         toggleInputValidity(assetOwner, assetOwner.value !== '' && assetOwner.checkValidity());
+    });
+
+    assetEditStatus.addEventListener('input', () => {
+        toggleInputValidity(assetEditStatus, assetEditStatus.value !== '' && assetEditStatus.checkValidity());
     });
 
     assetExpandable.addEventListener('input', () => {
@@ -990,6 +1015,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
     assetQuantity.addEventListener('input', () => {
         toggleInputValidity(assetQuantity, assetQuantity.value !== '' && assetQuantity.checkValidity());
+
+        if (assetEps.value && !assetEps.classList.contains('disabled-select')) {
+            oldEditAssetId = assetEps.value;
+            assetEps.value = "";
+        }
+
+        if (!assetEps.value && assetQuantity.value > 1) {
+            assetEps.value = generateUUID();
+            assetEps.classList.add('disabled-select');
+            toggleInputValidity(assetEps, true);
+
+        } else if (assetQuantity.value <= 1) {
+            assetEps.value = oldEditAssetId;
+            assetEps.classList.remove('disabled-select');
+            toggleInputValidity(assetEps, assetEps.value !== '' && assetEps.checkValidity());
+        }
+
+        function generateUUID() {
+            return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
     });
 
     assetAddMrah.addEventListener('input', () => {
@@ -1075,8 +1123,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         addSubLocationSearchInput.disabled = true;
 
-
-
         // Ensure that any 'slide-out' class is removed if it was previously added
         assetsAddModalContent.classList.remove('slide-out');
     }
@@ -1126,6 +1172,8 @@ document.addEventListener('DOMContentLoaded', function () {
             assetAddOwner.value = 'Global RTS';
             assetStatus.value = '1';
             assetAddExpandable.value = 'Non Expandable';
+
+            assetEps.classList.remove('disabled-select');
 
             assetsAddModal.classList.remove('show');
             assetsAddModalContent.classList.remove('show');
@@ -1188,8 +1236,121 @@ document.addEventListener('DOMContentLoaded', function () {
             row.appendChild(soldierCell);
 
             const descriptionCell = document.createElement('td');
-            descriptionCell.textContent = item.description;
+            descriptionCell.textContent = item.description ? item.description : 'No description';
             row.appendChild(descriptionCell);
+
+            const lostQuantityCell = document.createElement('td');
+            lostQuantityCell.textContent = item.lostQuantity;
+            row.appendChild(lostQuantityCell);
+
+            row.addEventListener('click', function () {
+                const submitButton = document.createElement('button');
+                var isSubmit = false;
+                let hasError = false;
+                var responseData = {};
+
+                submitButton.textContent = 'Yes';
+                submitButton.classList.add('btn', 'btn-success');
+
+                const quantityInput = document.createElement('input');
+                quantityInput.type = 'number';
+                quantityInput.classList.add('form-control');
+                quantityInput.value = item.lostQuantity;
+                quantityInput.min = 1;
+                quantityInput.max = item.lostQuantity;
+                quantityInput.style.marginBottom = '10px';
+
+                quantityInput.addEventListener('input', function () {
+                    const isValid = quantityInput.value > 0 && quantityInput.value <= item.lostQuantity;
+                    toggleInputValidity(quantityInput, isValid);
+                });
+
+                submitButton.addEventListener('click', async () => {
+
+                    if (!quantityInput.value) {
+                        return;
+                    }
+
+                    hasError = false;
+                    isSubmit = true;
+
+                    loadingIndicator.style.display = 'flex';
+
+                    try {
+                        const data = {
+                            code: item.nameItem,
+                            lost_quantity: quantityInput.value
+                        };
+
+                        const response = await fetch('/assets/restorLostAsset', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        });
+
+                        if (!response.ok) {
+                            hasError = true;
+                        }
+
+                        responseData = await response.json();
+
+                        closeMessModal();
+
+                    } catch (error) {
+                        hasError = true;
+                    } finally {
+                        loadingIndicator.style.display = 'none';
+                    }
+                });
+
+                modalMessContent.appendChild(quantityInput);
+                modalMessContent.appendChild(submitButton);
+
+                // Wait for the modal to close, then check if the submit button was clicked
+                const observer = new MutationObserver(() => {
+                    if (!modalMess.classList.contains('show') && isSubmit) {
+                        observer.disconnect();
+
+                        if (modalMessContent.contains(submitButton)) {
+                            // Check if the button is still a child before removing
+                            modalMessContent.removeChild(submitButton);
+                        }
+                        
+                        if (modalMessContent.contains(quantityInput)) {
+                            // Check if the input is still a child before removing
+                            modalMessContent.removeChild(quantityInput);
+                        }
+                    }
+                });
+
+                observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+                // Close the warning modal and show appropriate messages based on the result
+                const closeWarningObserver = new MutationObserver(() => {
+                    if (!modalMess.classList.contains('show')) {
+                        closeWarningObserver.disconnect();
+
+                        if (isSubmit && !hasError) {
+                            closeLostAssetsModal();
+                            showMess('Info', 'The asset has been restored');
+                        } else if (isSubmit) {
+                            showMess('Error', responseData.message || 'An error occurred while restoring the asset');
+                        }
+
+                        if (modalMessContent.contains(quantityInput)) {
+                            // Check if the input is still a child before removing
+                            modalMessContent.removeChild(quantityInput);
+                        }
+                    }
+                });
+
+                closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+                // Show the warning modal
+                showMess('Warnning', 'Are you sure you want to restore this lost item?\nPlease enter the quantity of assets you want to restore.');
+            });
 
             lostItemsTable.appendChild(row);
         });
@@ -1208,7 +1369,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
 
-            document.querySelectorAll('#lostAssetName, #selectedLostAssetNameId, #assetLocation, #selectedAssetLocationId, #assetDescription').forEach((input) => {
+            document.querySelectorAll('#lostAssetName, #selectedLostAssetNameId, #assetLocation, #selectedAssetLocationId, #assetDescription, #lostAssetQuantity').forEach((input) => {
                 input.classList.remove('is-valid');
                 input.classList.remove('is-invalid');
 
@@ -1224,6 +1385,66 @@ document.addEventListener('DOMContentLoaded', function () {
 
             lostAssetsModal.classList.remove('show');
             lostAssetsModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openAssetArchiveModal() {
+        // Add the slide-in effect by adding the necessary classes
+        assetArchiveModal.classList.add('show');
+        assetArchiveModalContent.classList.add('show');
+        assetArchiveModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        assetArchiveModalContent.classList.remove('slide-out');
+    }
+
+    function closeAssetArchiveModal() {
+        // Add the slide-out effect
+        assetArchiveModalContent.classList.add('slide-out');
+        assetArchiveModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            const listItems = document.querySelectorAll('.dates li');
+            listItems.forEach(li => li.classList.remove('selected'));
+
+            document.getElementById('selectedDate1').value = '';
+            document.getElementById('selectedDate2').value = '';
+
+            assetArchiveModal.classList.remove('show');
+            assetArchiveModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openReportModal() {
+        // Add the slide-in effect by adding the necessary classes
+        assetReportModal.classList.add('show');
+        assetReportModalContent.classList.add('show');
+        assetReportModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        assetReportModalContent.classList.remove('slide-out');
+    }
+
+    function closeReportModal() {
+        // Add the slide-out effect
+        assetReportModalContent.classList.add('slide-out');
+        assetReportModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('.search-input-view-assets').forEach((input) => {
+                input.value = '';
+            });
+
+            document.querySelectorAll('.search-input-view-assets-second').forEach((input) => {
+                input.value = '';
+            });
+
+            assetReportModal.classList.remove('show');
+            assetReportModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
     }
 
@@ -1349,6 +1570,8 @@ document.addEventListener('DOMContentLoaded', function () {
             assetOwner.value = 'Global RTS';
             assetEditStatus.value = '1';
             assetExpandable.value = 'Non Expandable';
+
+            assetSearchInput.classList.remove('disabled-select');
 
             assetsEditModal.classList.remove('show');
             assetsEditModalContent.classList.remove('show');
@@ -1541,7 +1764,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[3].onclick = closeAddAssetsTypeModal;
     document.getElementsByClassName('close-btn')[4].onclick = closeRemoveAssetsTypeModal;
     document.getElementsByClassName('close-btn')[5].onclick = closeLostAssetsModal;
-    document.getElementsByClassName('close-btn')[6].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[6].onclick = closeAssetArchiveModal;
+    document.getElementsByClassName('close-btn')[7].onclick = closeReportModal;
+    document.getElementsByClassName('close-btn')[8].onclick = closeMessModal;
 
     // Close the modal if the user clicks outside of it
     window.onclick = function (event) {
@@ -1573,6 +1798,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case lostAssetsModal:
                 closeLostAssetsModal();
+                break;
+
+            case assetArchiveModal:
+                closeAssetArchiveModal();
+                break;
+
+            case assetReportModal:
+                closeReportModal();
                 break;
         }
     };
@@ -1652,6 +1885,102 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('btnLostAsset').addEventListener('click', () => {
         openLostAssetsModal();
+    });
+
+    document.getElementById('reportButton').addEventListener('click', () => {
+        openAssetArchiveModal();
+    });
+
+    async function fetchReport(selectDate1, selectDate2) {
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+
+            const response = await fetch(`/assets/viewReport`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ selectedDate1: selectDate1, selectedDate2: selectDate2 }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Error fetching the report:', error.details || 'Network response was not ok');
+                showMess('Error', error.message);
+                return;
+            }
+
+            const { data, data_asset_count } = await response.json();
+
+            // Clear existing rows from bike usage details table
+            const assetTableBody = document.getElementById('assetsTable').getElementsByTagName('tbody')[0];
+            const assetDateTableBody = document.getElementById('assetDateTable').getElementsByTagName('tbody')[0];
+
+            assetTableBody.innerHTML = '';
+            assetDateTableBody.innerHTML = '';
+
+            data.forEach(row => {
+                const newRow = assetTableBody.insertRow();
+                newRow.insertCell().textContent = row.id;
+                newRow.insertCell().textContent = row.code;
+                newRow.insertCell().textContent = row.name_assets;
+                newRow.insertCell().textContent = row.type;
+                newRow.insertCell().textContent = row.location_building;
+                newRow.insertCell().textContent = row.location_room;
+                newRow.insertCell().textContent = row.categorie;
+                newRow.insertCell().textContent = row.quantity;
+                newRow.insertCell().textContent = row.mrah;
+                newRow.insertCell().textContent = row.asset_owner;
+                newRow.insertCell().textContent = row.status;
+                newRow.insertCell().textContent = row.expandable;
+                newRow.insertCell().textContent = row.description ? row.description : 'No description';
+            });
+
+            data_asset_count.forEach(row => {
+                const newRow = assetDateTableBody.insertRow();
+                newRow.insertCell().textContent = row.event_date;
+                newRow.insertCell().textContent = row.total_assets;
+                newRow.insertCell().textContent = row.total_new_assets;
+                newRow.insertCell().textContent = row.total_updated_assets;
+                newRow.insertCell().textContent = row.total_removed_assets;
+                newRow.insertCell().textContent = row.total_missing_assets;
+            });
+
+        } catch (error) {
+            console.error('Error fetching the report:', error);
+
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
+    document.getElementById('confirmReportBtn').addEventListener('click', () => {
+
+        const selectDate1 = document.getElementById('selectedDate1').value;
+        const selectDate2 = document.getElementById('selectedDate2').value;
+        const today = new Date().toISOString().split('T')[0];
+
+        if (!selectDate1 || !selectDate2) {
+            showMess('Error', 'Both dates must be selected!');
+            return;
+        }
+
+        if (new Date(selectDate1) > new Date(selectDate2)) {
+            showMess('Error', 'Invalid time slot!');
+            return;
+        }
+
+        // if (new Date(selectDate1) > new Date(today) || new Date(selectDate2) > new Date(today)) {
+        //     showMess('Error', 'Dates must be less than or equal to today!');
+        //     return;
+        // }
+
+        closeAssetArchiveModal();
+
+        fetchReport(selectDate1, selectDate2);
+        openReportModal();
     });
 
     document.querySelector('.left-nav').addEventListener('click', function (event) {
@@ -1997,7 +2326,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { input: assetAddOwner, condition: assetAddOwner.value === '' || !assetAddOwner.checkValidity() },
             { input: assetStatus, condition: assetStatus.value === '' || !assetStatus.checkValidity() },
             { input: assetAddExpandable, condition: assetAddExpandable.value === '' || !assetAddExpandable.checkValidity() },
-            { input: assetAddDescription, condition: /^[a-zA-Z0-9\s]*$/.test(assetAddDescription.value) }
+            { input: assetAddDescription, condition: !/^[a-zA-Z0-9\s]*$/.test(assetAddDescription.value) }
         ];
 
         let isValid = true;
@@ -2316,7 +2645,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const inputsToCheck = [
             { input: lostAssetSearchInput, condition: lostAssetSearchInput.value === '' },
             { input: lostItemDescription, condition: !/^[a-zA-Z0-9\s]*$/.test(lostItemDescription.value) },
-            { input: lostAssetLocationSearchInput, condition: selectedLostAssetLocationId.value === '' }
+            { input: lostAssetLocationSearchInput, condition: selectedLostAssetLocationId.value === '' },
+            { input: lostAssetQuantity, condition: lostAssetQuantity.value === '' || !lostAssetQuantity.checkValidity() }
         ];
 
         let isValid = true;
@@ -2337,7 +2667,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = {
             itemName: lostAssetSearchInput.value,
             description: lostItemDescription.value,
-            soldierId: selectedLostAssetLocationId.value
+            soldierId: selectedLostAssetLocationId.value,
+            lostQuantity: lostAssetQuantity.value
         };
 
         const submitButton = document.createElement('button');
