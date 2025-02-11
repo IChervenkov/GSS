@@ -1189,3 +1189,7 @@ thead th input:focus {
     visibility: visible;
     transform: translate(-50%, 0);
 }
+
+#data-table thead tr th label:hover {
+    cursor: pointer;
+}

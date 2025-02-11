@@ -1,16 +1,20 @@
 document.addEventListener('DOMContentLoaded', function () {
-    function applyFilters(tableId, filterClass, pageNumberId, rowsPerPage = 50) {
-        const table = document.getElementById(tableId);
-        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-        const filters = document.querySelectorAll(`.${filterClass}`);
+    const tablePagination = {};
 
+    function applyFilters(tableId, filterClass, pageNumberId, rowsPerPage = 10) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+
+        const rows = Array.from(table.getElementsByTagName('tbody')[0].getElementsByTagName('tr'));
+        const filters = document.querySelectorAll(`.${filterClass}`);
         const headerCheckbox = table.querySelector('.header-checkbox');
+
         if (headerCheckbox) {
             headerCheckbox.checked = false;
             headerCheckbox.style.backgroundColor = '';
         }
 
-        let visibleRows = Array.from(rows); // Start with all rows visible
+        let visibleRows = [...rows];
 
         // Apply filters
         filters.forEach((input, columnIndex) => {
@@ -19,17 +23,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 visibleRows = visibleRows.filter((row) => {
                     const cells = row.getElementsByTagName('td');
 
-                    let effectiveColumnIndex;
-                    switch (tableId) {
-                        case 'assetTable':
-                        case 'soldierTable':
-                        case 'bagsTable':
-                            effectiveColumnIndex = columnIndex + 1;
-                            break;
-                        default:
-                            effectiveColumnIndex = columnIndex;
-                            break;
-                    }
+                    // Configurable column index adjustment
+                    const offsetTables = ['assetTable', 'soldierTable', 'bagsTable'];
+                    const effectiveColumnIndex = offsetTables.includes(tableId) ? columnIndex + 1 : columnIndex;
 
                     const cellToCheck = cells[effectiveColumnIndex];
                     return cellToCheck && cellToCheck.textContent.toLowerCase().includes(searchTerm);
@@ -38,28 +34,71 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // Hide all rows first
-        for (let i = 0; i < rows.length; i++) {
-            rows[i].style.display = 'none';
-        }
+        rows.forEach(row => row.style.display = 'none');
 
         // Apply pagination to filtered rows
-        firstUpdateTable(visibleRows, 0, 10, pageNumberId);
+        updateTable(visibleRows, 0, rowsPerPage, pageNumberId);
+
+        // Attach pagination controls once
+        attachPaginationControls('prevBtn', 'nextBtn', 'pageNumber');
+        attachPaginationControls('prevBtnDate', 'nextBtnDate', 'pageNumberDate');
     }
 
-    function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
-        for (let i = 0; i < rows.length; i++) {
-            rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
-        }
-    
-        let totalPages = Math.ceil(rows.length / rowsPerPage) || 1;
-        let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
-        
-        // Check if the page number element exists before modifying it
+    function updateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
+        rows.forEach((row, index) => {
+            row.style.display = index >= currentIndex && index < currentIndex + rowsPerPage ? "table-row" : "none";
+        });
+
+        const totalPages = Math.ceil(rows.length / rowsPerPage) || 1;
+        const currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
+
+        // Update page number display if element exists
         const pageNumberElement = document.getElementById(pageNumberId);
         if (pageNumberElement) {
             pageNumberElement.textContent = `${currentPage}/${totalPages}`;
         }
-    }    
+
+        // Store pagination data
+        tablePagination[pageNumberId] = { rows, currentIndex, rowsPerPage };
+    }
+
+    function attachPaginationControls(prevBtnId, nextBtnId, pageNumberId) {
+        const prevBtn = document.getElementById(prevBtnId);
+        const nextBtn = document.getElementById(nextBtnId);
+
+        if (!prevBtn || !nextBtn || !tablePagination[pageNumberId]) return;
+
+        // Remove previous event listeners to prevent duplication
+        prevBtn.replaceWith(prevBtn.cloneNode(true));
+        nextBtn.replaceWith(nextBtn.cloneNode(true));
+
+        const newPrevBtn = document.getElementById(prevBtnId);
+        const newNextBtn = document.getElementById(nextBtnId);
+
+        newPrevBtn.addEventListener("click", function () {
+            if (tablePagination[pageNumberId].currentIndex > 0) {
+                tablePagination[pageNumberId].currentIndex -= tablePagination[pageNumberId].rowsPerPage;
+                updateTable(
+                    tablePagination[pageNumberId].rows,
+                    tablePagination[pageNumberId].currentIndex,
+                    tablePagination[pageNumberId].rowsPerPage,
+                    pageNumberId
+                );
+            }
+        });
+
+        newNextBtn.addEventListener("click", function () {
+            if (tablePagination[pageNumberId].currentIndex + tablePagination[pageNumberId].rowsPerPage < tablePagination[pageNumberId].rows.length) {
+                tablePagination[pageNumberId].currentIndex += tablePagination[pageNumberId].rowsPerPage;
+                updateTable(
+                    tablePagination[pageNumberId].rows,
+                    tablePagination[pageNumberId].currentIndex,
+                    tablePagination[pageNumberId].rowsPerPage,
+                    pageNumberId
+                );
+            }
+        });
+    }
 
     function attachFilterEvents(tableId, filterClass, pageNumberId = '') {
         document.querySelectorAll(`.${filterClass}`).forEach((input) => {
