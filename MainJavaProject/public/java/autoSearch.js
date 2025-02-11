@@ -1,31 +1,24 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // General function to apply filters on a table
-    function applyFilters(tableId, filterClass) {
+    function applyFilters(tableId, filterClass, pageNumberId, rowsPerPage = 50) {
         const table = document.getElementById(tableId);
         const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
         const filters = document.querySelectorAll(`.${filterClass}`);
 
-
-        // Reset the header checkbox (if present)
         const headerCheckbox = table.querySelector('.header-checkbox');
         if (headerCheckbox) {
             headerCheckbox.checked = false;
             headerCheckbox.style.backgroundColor = '';
         }
 
-        // Show all rows initially
-        for (let i = 0; i < rows.length; i++) {
-            rows[i].style.display = '';
-        }
+        let visibleRows = Array.from(rows); // Start with all rows visible
 
-        // Apply filters column by column
+        // Apply filters
         filters.forEach((input, columnIndex) => {
             const searchTerm = input.value.trim().toLowerCase();
             if (searchTerm) {
-                for (let i = 0; i < rows.length; i++) {
-                    const cells = rows[i].getElementsByTagName('td');
+                visibleRows = visibleRows.filter((row) => {
+                    const cells = row.getElementsByTagName('td');
 
-                    // Skip the first column if tableId is 'assetTable'
                     let effectiveColumnIndex;
                     switch (tableId) {
                         case 'assetTable':
@@ -39,27 +32,44 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     const cellToCheck = cells[effectiveColumnIndex];
-                    if (cellToCheck) {
-                        const cellText = cellToCheck.textContent.toLowerCase();
-                        if (!cellText.includes(searchTerm)) {
-                            rows[i].style.display = 'none'; // Hide unmatched row
-                        }
-                    }
-                }
+                    return cellToCheck && cellToCheck.textContent.toLowerCase().includes(searchTerm);
+                });
             }
         });
+
+        // Hide all rows first
+        for (let i = 0; i < rows.length; i++) {
+            rows[i].style.display = 'none';
+        }
+
+        // Apply pagination to filtered rows
+        firstUpdateTable(visibleRows, 0, 10, pageNumberId);
     }
 
-    // Attach event listeners to inputs
-    function attachFilterEvents(tableId, filterClass) {
+    function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
+        for (let i = 0; i < rows.length; i++) {
+            rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
+        }
+    
+        let totalPages = Math.ceil(rows.length / rowsPerPage) || 1;
+        let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
+        
+        // Check if the page number element exists before modifying it
+        const pageNumberElement = document.getElementById(pageNumberId);
+        if (pageNumberElement) {
+            pageNumberElement.textContent = `${currentPage}/${totalPages}`;
+        }
+    }    
+
+    function attachFilterEvents(tableId, filterClass, pageNumberId = '') {
         document.querySelectorAll(`.${filterClass}`).forEach((input) => {
             input.addEventListener('input', () => {
-                applyFilters(tableId, filterClass);
+                applyFilters(tableId, filterClass, pageNumberId);
             });
         });
     }
 
-    // Apply for each table
+    // Attach filters with their respective page number IDs
     attachFilterEvents('soldierUsageTable', 'search-input-view');
     attachFilterEvents('soldierMoveTable', 'search-input-view-second');
     attachFilterEvents('bagsWashedTable', 'search-input-view-laundry');
@@ -70,6 +80,6 @@ document.addEventListener('DOMContentLoaded', function () {
     attachFilterEvents('assetTable', 'asset-search-input');
     attachFilterEvents('soldierTable', 'search-input-soldier');
     attachFilterEvents('bagsTable', 'laundry-search-input');
-    attachFilterEvents('assetsTable', 'search-input-view-assets');
-    attachFilterEvents('assetDateTable', 'search-input-view-assets-second');
+    attachFilterEvents('assetsTable', 'search-input-view-assets', 'pageNumber');
+    attachFilterEvents('assetDateTable', 'search-input-view-assets-second', 'pageNumberDate');
 });

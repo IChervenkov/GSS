@@ -2614,6 +2614,16 @@ class Server {
 
                 } else if (soldierId !== '' && countryId !== 'None') {
 
+                    const check_soldier_have_key = await client.query(`
+                        SELECT * FROM soldier WHERE id = $1 AND date_accommodation IS NOT NULL AND date_free IS NULL`,
+                        [soldierId]
+                    );
+
+                    if(check_soldier_have_key.rows.length > 0) {
+                        await client.query(`ROLLBACK`);
+                        return res.status(401).send({ message: `The soldier with number ${soldierId} already has a key. Please release the soldier first before accommodating again.` });
+                    }
+
                     await client.query(
                         "UPDATE key SET soldierid = NULL where soldierid = $1;",
                         [soldierId]
@@ -2664,7 +2674,7 @@ class Server {
 
                     const check_laundry_bag = await client.query(`SELECT status FROM laundrybags WHERE id = $1;`, [bagId]);
 
-                    if (check_laundry_bag.rows[0].status !== 'None') {
+                    if (bagId !== '' && check_laundry_bag.rows[0].status !== 'None') {
                         return res.status(401).json({ message: "The soldier has an laundry bag an laundry and cannot be released." });
                     }
 

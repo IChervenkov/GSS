@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const rowsPerPage = 50;
     let currentPage = 1;
-    let rows = document.querySelectorAll("#tableBody tr");
+    let rows = Array.from(document.querySelectorAll("#tableBody tr"));
 
     function displayTable(page) {
         const start = (page - 1) * rowsPerPage;
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function setupPagination() {
-        const pageCount = Math.ceil(rows.length / rowsPerPage);
+        const pageCount = Math.ceil(rows.length / rowsPerPage) || 1;
         const pagination = document.getElementById("pagination");
         pagination.innerHTML = "";
 
@@ -102,23 +102,47 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function refreshTableAndPagination() {
-        rows = document.querySelectorAll("#tableBody tr");
-        currentPage = 1;
+        rows = Array.from(document.querySelectorAll("#tableBody tr:not([style*='display: none'])")); // Get only visible rows after filtering
+        currentPage = 1; // Reset to the first page after filtering
         updatePagination();
     }
 
+    // Apply filters
+    function applyFilters(filterClass) {
+        let allRows = Array.from(document.querySelectorAll("#tableBody tr"));
+        let filters = document.querySelectorAll(`.${filterClass}`);
+
+        allRows.forEach(row => row.style.display = ""); // Reset display
+
+        filters.forEach((input, columnIndex) => {
+            const searchTerm = input.value.trim().toLowerCase();
+            if (searchTerm) {
+                allRows.forEach(row => {
+                    const cells = row.getElementsByTagName('td');
+                    const cellText = cells[columnIndex]?.textContent.toLowerCase() || "";
+                    if (!cellText.includes(searchTerm)) {
+                        row.style.display = "none";
+                    }
+                });
+            }
+        });
+
+        refreshTableAndPagination(); // Update pagination after filtering
+    }
+
+    // Attach filter event listeners
+    function attachFilterEvents(filterClass) {
+        document.querySelectorAll(`.${filterClass}`).forEach(input => {
+            input.addEventListener('input', () => applyFilters(filterClass));
+        });
+    }
+
+    attachFilterEvents('search-input');
+
     // MutationObserver to detect changes in the table body
     const tableBody = document.getElementById("tableBody");
-    const observer = new MutationObserver((mutationsList) => {
-        for (let mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                refreshTableAndPagination();
-                break;
-            }
-        }
-    });
+    const observer = new MutationObserver(() => refreshTableAndPagination());
 
-    // Start observing the table body for changes
     observer.observe(tableBody, { childList: true, subtree: false });
 
     // Initial setup

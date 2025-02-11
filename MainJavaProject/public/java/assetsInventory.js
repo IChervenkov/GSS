@@ -1317,7 +1317,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             // Check if the button is still a child before removing
                             modalMessContent.removeChild(submitButton);
                         }
-                        
+
                         if (modalMessContent.contains(quantityInput)) {
                             // Check if the input is still a child before removing
                             modalMessContent.removeChild(quantityInput);
@@ -1417,7 +1417,47 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId) {
+        const table = document.getElementById(tableId).getElementsByTagName("tbody")[0];
+        const rows = table.getElementsByTagName("tr");
+        const rowsPerPage = 10; // Number of rows visible at a time
+        let currentIndex = 0;
+        let totalPages = Math.ceil(rows.length / rowsPerPage);
+        const pageNumberDisplay = document.getElementById(pageNumberId);
+
+        function updateTable() {
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
+            }
+
+            totalPages = Math.ceil(rows.length / rowsPerPage) || 1; // Recalculate total pages (avoid division by zero)
+            let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
+            pageNumberDisplay.textContent = `${currentPage}/${totalPages}`;
+        }
+
+        document.getElementById(prevBtnId).addEventListener("click", function () {
+            if (currentIndex > 0) {
+                currentIndex -= rowsPerPage;
+                updateTable();
+            }
+        });
+
+        document.getElementById(nextBtnId).addEventListener("click", function () {
+            if (currentIndex + rowsPerPage < rows.length) {
+                currentIndex += rowsPerPage;
+                updateTable();
+            }
+        });
+
+        updateTable(); // Initialize table view
+    }
+
+    // Apply navigation to both tables
+    setupTableNavigation("assetsTable", "prevBtn", "nextBtn", "pageNumber");
+    setupTableNavigation("assetDateTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+
     function openReportModal() {
+
         // Add the slide-in effect by adding the necessary classes
         assetReportModal.classList.add('show');
         assetReportModalContent.classList.add('show');
@@ -1891,6 +1931,16 @@ document.addEventListener('DOMContentLoaded', function () {
         openAssetArchiveModal();
     });
 
+    function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
+        for (let i = 0; i < rows.length; i++) {
+            rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
+        }
+
+        let totalPages = Math.ceil(rows.length / rowsPerPage) || 1; // Recalculate total pages (avoid division by zero)
+        let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
+        document.getElementById(pageNumberId).textContent = `${currentPage}/${totalPages}`;
+    }
+
     async function fetchReport(selectDate1, selectDate2) {
 
         loadingIndicator.style.display = 'flex';
@@ -1947,6 +1997,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 newRow.insertCell().textContent = row.total_removed_assets;
                 newRow.insertCell().textContent = row.total_missing_assets;
             });
+
+            const rowsTable = assetTableBody.getElementsByTagName("tr");
+            const rowsTableDate = assetDateTableBody.getElementsByTagName("tr");
+
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
+            firstUpdateTable(rowsTableDate, 0, 10, 'pageNumberDate');
 
         } catch (error) {
             console.error('Error fetching the report:', error);
