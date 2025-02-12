@@ -685,7 +685,45 @@
     <div id="reportViewModal" class="modal">
         <form class="modal-content-report" action="/assets/report" method="GET" id="form6">
             <span class="close-btn">&times;</span>
-            <h2>Archive View</h2>
+            <h2 class="d-flex align-items-center justify-content-center w-100">
+                Archive View
+                <div class="button-group ms-3">
+                    <!-- Dropdown Button for Checkboxes -->
+                    <div class="custom-dropdown">
+                        <button type="button" class="dropdown-button d-flex align-items-center">
+                            <i class="bi bi-funnel"></i>
+                        </button>
+                        <div class="dropdown-content">
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-rfid-header" checked>
+                                RFID</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-code-header" checked>
+                                Asset code</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-name-header" checked>
+                                Asset name</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-type-header" checked>
+                                Asset type</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-building-header"
+                                    checked> Building</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-room-header" checked>
+                                Room</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-category-header"
+                                    checked> Asset category</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-quantity-header"
+                                    checked> Asset quantity</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-mrah-header" checked>
+                                MRAH</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-owner-header"
+                                    checked> Asset owner</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-status-header"
+                                    checked> Asset status</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-expandable-header"
+                                    checked> Asset expandable</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-description-header"
+                                    checked> Asset description</label>
+                        </div>
+                    </div>
+                </div>
+            </h2>
 
             <!-- Left and Right Navigation Buttons -->
             <div class="d-flex justify-content-end mt-2 mb-2">
@@ -698,29 +736,58 @@
                 <table id="assetsTable">
                     <thead>
                         <tr>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">RFID</th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset code
+                            <th class="asset-rfid-header">
+                                <input name="assetRfid" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>RFID</label>
                             </th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset Name
+                            <th class="asset-code-header">
+                                <input name="assetCode" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Asset code</label>
                             </th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset type
+                            <th class="asset-name-header">
+                                <input name="assetName" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Asset Name</label>
                             </th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Building
+                            <th class="asset-type-header">
+                                <input name="assetType" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Asset type</label>
                             </th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Room</th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset
-                                category</th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset
-                                quantity</th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">MRAH</th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset owner
+                            <th class="asset-building-header">
+                                <input name="assetBuilding" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Building</label>
                             </th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset status
+                            <th class="asset-room-header">
+                                <input name="assetRoom" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Room</label>
                             </th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset
-                                expandable</th>
-                            <th><input type="text" class="search-input-view-assets" placeholder="Search...">Asset
-                                description</th>
+                            <th class="asset-category-header">
+                                <input name="assetCategory" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Asset category</label>
+                            </th>
+                            <th class="asset-quantity-header">
+                                <input name="assetQuantity" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Asset quantity</label>
+                            </th>
+                            <th class="asset-mrah-header">
+                                <input name="assetMrah" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>MRAH</label>
+                            </th>
+                            <th class="asset-owner-header">
+                                <input name="assetOwner" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Asset owner</label>
+                            </th>
+                            <th class="asset-status-header">
+                                <input name="assetStatus" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Asset status</label>
+                            </th>
+                            <th class="asset-expandable-header">
+                                <input name="assetExpandable" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Asset expandable</label>
+                            </th>
+                            <th class="asset-description-header">
+                                <input name="assetDescription" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <label>Asset description</label>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -730,7 +797,7 @@
 
             <div class="d-flex justify-content-end mt-2 mb-2">
                 <button type="button" id="prevBtnDate"></button>
-                <span id="pageNumberDate"></span> 
+                <span id="pageNumberDate"></span>
                 <button type="button" id="nextBtnDate"></button>
             </div>
 
@@ -738,17 +805,17 @@
                 <table id="assetDateTable">
                     <thead>
                         <tr>
-                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Date
+                            <th><input name="date" type="text" class="search-input-view-assets-second" placeholder="Search...">Date
                             </th>
-                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                            <th><input name="totalAsset" type="text" class="search-input-view-assets-second" placeholder="Search...">Total
                                 Assets</th>
-                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                            <th><input name="totalNewAsset" type="text" class="search-input-view-assets-second" placeholder="Search...">Total
                                 New Assets</th>
-                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                            <th><input name="totalUpdateAsset" type="text" class="search-input-view-assets-second" placeholder="Search...">Total
                                 Update Assets</th>
-                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                            <th><input name="totalRemoveAsset" type="text" class="search-input-view-assets-second" placeholder="Search...">Total
                                 Remove Assets</th>
-                            <th><input type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                            <th><input name="totalMissingAsset" type="text" class="search-input-view-assets-second" placeholder="Search...">Total
                                 Missing Assets</th>
                         </tr>
                     </thead>

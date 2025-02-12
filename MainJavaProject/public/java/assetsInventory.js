@@ -1483,6 +1483,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.value = '';
             });
 
+            document.querySelectorAll('.column-toggle').forEach(function (checkbox) {
+                checkbox.checked = true;
+                var columnClass = checkbox.getAttribute('data-column');
+                document.querySelectorAll(`#assetsTable th.${columnClass}`).forEach(header => {
+                    header.style.display = '';
+                });
+                document.querySelectorAll(`#assetsTable td.${columnClass}`).forEach(td => {
+                    td.style.display = '';
+                });
+            });
+
             assetReportModal.classList.remove('show');
             assetReportModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
@@ -1973,19 +1984,59 @@ document.addEventListener('DOMContentLoaded', function () {
 
             data.forEach(row => {
                 const newRow = assetTableBody.insertRow();
-                newRow.insertCell().textContent = row.id;
-                newRow.insertCell().textContent = row.code;
-                newRow.insertCell().textContent = row.name_assets;
-                newRow.insertCell().textContent = row.type;
-                newRow.insertCell().textContent = row.location_building;
-                newRow.insertCell().textContent = row.location_room;
-                newRow.insertCell().textContent = row.categorie;
-                newRow.insertCell().textContent = row.quantity;
-                newRow.insertCell().textContent = row.mrah;
-                newRow.insertCell().textContent = row.asset_owner;
-                newRow.insertCell().textContent = row.status;
-                newRow.insertCell().textContent = row.expandable;
-                newRow.insertCell().textContent = row.description ? row.description : 'No description';
+                let cell;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-rfid-header');
+                cell.textContent = row.id;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-code-header');
+                cell.textContent = row.code;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-name-header');
+                cell.textContent = row.name_assets;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-type-header');
+                cell.textContent = row.type;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-building-header');
+                cell.textContent = row.location_building;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-room-header');
+                cell.textContent = row.location_room;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-category-header');
+                cell.textContent = row.categorie;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-quantity-header');
+                cell.textContent = row.quantity;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-mrah-header');
+                cell.textContent = row.mrah;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-owner-header');
+                cell.textContent = row.asset_owner;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-status-header');
+                cell.textContent = row.status;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-expandable-header');
+                cell.textContent = row.expandable;
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-description-header');
+                cell.textContent = row.description ? row.description : 'No description';
             });
 
             data_asset_count.forEach(row => {
@@ -2237,6 +2288,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('form5').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
+    document.getElementById('form6').addEventListener('keypress', function (event) {
         if (event.key === 'Enter') {
             event.preventDefault();
         }
@@ -2802,9 +2859,142 @@ document.addEventListener('DOMContentLoaded', function () {
         showMess('Warnning', 'Are you sure you want to report this lost asset?');
     };
 
+    document.getElementById('form6').onsubmit = async (event) => {
+
+        event.preventDefault();
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+            const table1 = document.getElementById("assetsTable");
+            const rows1 = Array.from(table1.querySelectorAll("tbody tr"));
+
+            const table2 = document.getElementById("assetDateTable");
+            const rows2 = Array.from(table2.querySelectorAll("tbody tr"));
+
+            const headers = Array.from(document.querySelectorAll("#assetsTable th"))
+                .filter(th => th.style.display !== 'none')
+                .map(th => th.querySelector('input').name);
+
+            const data = rows1.map(row => {
+                const cells = Array.from(row.querySelectorAll("td")).filter(cell => cell.style.display !== 'none');
+
+                return headers.reduce((obj, key, index) => {
+                    obj[key] = cells[index]?.innerText.trim() || "";
+                    return obj;
+                }, {});
+            });
+
+            console.log(headers);
+
+            const data_1 = rows2
+                // .filter(row => row.style.display !== 'none')
+                .map((row) => {
+                    const cells = Array.from(row.querySelectorAll("td")).filter(cell => cell.style.display !== 'none');
+                    return {
+                        date: cells[0]?.innerText.trim(),
+                        totalAsset: cells[1]?.innerText.trim(),
+                        totalNewAsset: cells[2]?.innerText.trim(),
+                        totalUpdateAsset: cells[3]?.innerText.trim(),
+                        totalRemoveAsset: cells[4]?.innerText.trim(),
+                        totalMissingAsset: cells[5]?.innerText.trim()
+                    };
+                });
+
+            // Collect filter values if the search inputs are visible
+            const filtersAssets = {};
+            document.querySelectorAll('.search-input-view-assets').forEach(input => {
+                if (input.style.display !== 'none') {
+                    filtersAssets[input.name || input.id] = input.value.trim();
+                }
+            });
+
+            // Collect filter values if the search inputs are visible
+            const filtersAssetsData = {};
+            document.querySelectorAll('.search-input-view-assets-second').forEach(input => {
+                if (input.style.display !== 'none') {
+                    filtersAssetsData[input.name || input.id] = input.value.trim();
+                }
+            });
+
+            const response = await fetch(document.getElementById('form6').action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ result: data, result_nationality: data_1, filtersAssets: filtersAssets, filtersAssetsData: filtersAssetsData })
+            });
+
+            if (!response.ok) throw new Error(await response.text());
+
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = 'report_assets.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message || 'Failed to download the report.');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
     lostItemDescription.addEventListener('input', function () {
         const regex = /^[a-zA-Z0-9\s]*$/;
         const isValid = regex.test(lostItemDescription.value);
         toggleInputValidity(lostItemDescription, isValid);
+    });
+
+    const filterToggleBtn = document.querySelector('.dropdown-button');
+    const filterOptions = document.querySelector('.dropdown-content');
+
+    let hideDropdownTimeout;
+
+    function showDropdown() {
+        clearTimeout(hideDropdownTimeout);
+        filterOptions.style.display = 'block';
+    }
+
+    function hideDropdown() {
+        hideDropdownTimeout = setTimeout(() => {
+            filterOptions.style.display = 'none';
+        }, 200); // Small delay to allow transition
+    }
+
+    filterToggleBtn.addEventListener('mouseenter', showDropdown);
+    filterToggleBtn.addEventListener('mouseleave', hideDropdown);
+    filterOptions.addEventListener('mouseenter', showDropdown);
+    filterOptions.addEventListener('mouseleave', hideDropdown);
+
+    document.querySelectorAll('.column-toggle').forEach(function (checkbox) {
+        checkbox.addEventListener('change', function (event) {
+            var columnClass = this.getAttribute('data-column');
+            const isChecked = event.target.checked;
+
+            // Count currently visible columns
+            const visibleColumns = Array.from(document.querySelectorAll('.column-toggle'))
+                .filter(cb => cb.checked);
+
+            // Prevent hiding the last visible column
+            if (!isChecked && visibleColumns.length <= 2) {
+                this.checked = true; // Re-check the checkbox
+                return;
+            }
+
+            // Toggle visibility of headers
+            document.querySelectorAll(`#assetsTable th.${columnClass}`).forEach(header => {
+                header.style.display = isChecked ? '' : 'none';
+            });
+
+            // Toggle visibility of table cells
+            document.querySelectorAll(`#assetsTable td.${columnClass}`).forEach(td => {
+                td.style.display = isChecked ? '' : 'none';
+            });
+        });
     });
 });

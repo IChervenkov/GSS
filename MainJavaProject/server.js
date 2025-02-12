@@ -394,6 +394,13 @@ const schemaGetBagsByStatus = Joi.object({
     status: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None', '').required(),
 });
 
+const schemaAssetReport = Joi.object({
+    result: Joi.array().items(Joi.object()).required(),
+    result_nationality: Joi.array().items(Joi.object()).required(),
+    filtersAssets: Joi.object().required(),
+    filtersAssetsData: Joi.object().required()
+});
+
 const navItems = [];
 
 const horizontalNavItems = [
@@ -2619,7 +2626,7 @@ class Server {
                         [soldierId]
                     );
 
-                    if(check_soldier_have_key.rows.length > 0) {
+                    if (check_soldier_have_key.rows.length > 0) {
                         await client.query(`ROLLBACK`);
                         return res.status(401).send({ message: `The soldier with number ${soldierId} already has a key. Please release the soldier first before accommodating again.` });
                     }
@@ -6177,8 +6184,8 @@ class Server {
                 const restor_data = result_restor_data.rows[0];
 
                 if (check_exist.rows.length > 0) {
-                    await client.query(`UPDATE assets SET quantity = quantity::NUMERIC + $1 WHERE id = $2;`, [lost_quantity, restor_data.item_id] );
-                    await client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id] );
+                    await client.query(`UPDATE assets SET quantity = quantity::NUMERIC + $1 WHERE id = $2;`, [lost_quantity, restor_data.item_id]);
+                    await client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id]);
                     if (result_exist_date.rows.length > 0)
                         await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lost_quantity]);
                     else
@@ -6199,7 +6206,7 @@ class Server {
                         restor_data.item_expandable,
                         restor_data.item_description
                     ]);
-                    await client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id] );
+                    await client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id]);
 
                     if (result_exist_date.rows.length > 0)
                         await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lost_quantity]);
@@ -6351,6 +6358,129 @@ class Server {
 
             } finally {
                 client.release();
+            }
+        });
+
+        this.app.post('/assets/report', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAssetReport.validate(req.body);
+            if (error) {
+                return res.status(400).send('Invalid input data.');
+            }
+
+            const { result, result_nationality, filtersAssets, filtersAssetsData } = req.body;
+
+            // Function to filter data based on inputs
+            const filterData = (data, filters) => {
+                return data.filter(item => {
+                    return Object.keys(filters).every(key => {
+                        if (!filters[key]) return true; // Skip empty filters
+                        return String(item[key] || '').toLowerCase().includes(filters[key].toLowerCase());
+                    });
+                });
+            };
+
+            try {
+
+                // Filter both datasets
+                const filteredAssets = filterData(result, filtersAssets);
+                const filteredAssetDates = filterData(result_nationality, filtersAssetsData);             
+
+                const workbook = new excelJS.Workbook();
+                const worksheet1 = workbook.addWorksheet('Assets Data');
+                const worksheet2 = workbook.addWorksheet('Assets Traceability');
+
+                // Dynamically create headers for worksheet1 (Assets Data) based on the first item of result
+                if (filteredAssets.length > 0) {
+                    const headers1 = Object.keys(filteredAssets[0]); // Get keys of the first object as headers
+                    worksheet1.addRow(headers1).eachCell((cell) => {
+                        cell.font = { bold: true };
+                        cell.alignment = { horizontal: 'center' };
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
+                }
+
+                // Dynamically create headers for worksheet2 (Assets Traceability) based on the first item of result_nationality
+                if (filteredAssetDates.length > 0) {
+                    const headers2 = Object.keys(filteredAssetDates[0]); // Get keys of the first object as headers
+                    worksheet2.addRow(headers2).eachCell((cell) => {
+                        cell.font = { bold: true };
+                        cell.alignment = { horizontal: 'center' };
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
+                }
+
+                // Add data to worksheet1 (Assets Data)
+                filteredAssets.forEach((data, index) => {
+                    const row = worksheet1.addRow(Object.values(data)); // Convert object values to array
+                    row.eachCell((cell) => {
+                        cell.alignment = { horizontal: 'center' };
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+
+                    if (index % 2 === 0) {
+                        row.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey for alternating rows
+                            };
+                        });
+                    }
+                });
+
+                // Add data to worksheet2 (Assets Traceability)
+                filteredAssetDates.forEach((data, index) => {
+                    const row = worksheet2.addRow(Object.values(data)); // Convert object values to array
+                    row.eachCell((cell) => {
+                        cell.alignment = { horizontal: 'center' };
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+
+                    if (index % 2 === 0) {
+                        row.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey for alternating rows
+                            };
+                        });
+                    }
+                });
+
+                // Set headers for download and send the file
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                res.setHeader('Content-Disposition', 'attachment; filename="report_laundry.xlsx"');
+
+                // Write the workbook to the response
+                await workbook.xlsx.write(res);
+                res.end();
+
+            } catch (error) {
+                console.error('Error generating the report:', error);
+                res.status(500).send('Failed to generate the report.');
             }
         });
     }

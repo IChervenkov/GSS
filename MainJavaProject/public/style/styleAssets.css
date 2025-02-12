@@ -333,7 +333,7 @@ td {
     content: " ↓";
 }
 
-table thead tr th label:hover {
+#data-table thead tr th label:hover {
     cursor: pointer;
 }
 
@@ -921,4 +921,62 @@ input[type="checkbox"] {
     to {
         transform: rotate(360deg);
     }
+}
+
+.custom-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-button {
+    background-color: #28a745; /* Vibrant blue for visibility */
+    color: white; /* Contrasting text color */
+    padding: 12px 18px; /* Larger padding for better click area */
+    font-size: 16px; /* Slightly larger font size */
+    border: none; /* Remove the border for a cleaner look */
+    border-radius: 8px; /* Add rounded corners */
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth transition for hover effect */
+}
+
+.dropdown-button:hover {
+    background-color: #218838; /* Darker blue for hover */
+    transform: scale(1.05); /* Slightly enlarge on hover */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadow for depth */
+}
+
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #ffffff; /* Bright white for contrast */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25); /* More pronounced shadow */
+    z-index: 2;
+    padding: 15px; /* Increased padding for better spacing */
+    border: 1px solid #28a745; /* Border color matches the button for cohesion */
+    border-radius: 8px; /* Rounded corners for a modern look */
+    min-width: 200px; /* Set a minimum width for consistency */
+}
+
+.dropdown-content label {
+    display: block;
+    padding: 8px 12px; /* Spacing around each label for clarity */
+    font-size: 14px;
+    color: #333; /* Darker text for better readability */
+    cursor: pointer; /* Pointer cursor for clickable labels */
+    border-radius: 4px; /* Slight rounding for each label */
+    transition: background-color 0.3s ease, color 0.3s ease; /* Smooth hover effect */
+}
+
+.dropdown-content label:hover {
+    background-color: #28a745; /* Highlight background */
+    color: #fff; /* Change text color to white */
+}
+
+.custom-dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.column-toggle:checked {
+    accent-color: #218838; /* Changes the checkbox color to green */
 }
