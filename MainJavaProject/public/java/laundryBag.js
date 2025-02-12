@@ -481,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Apply navigation to both tables
     setupTableNavigation("bagsWashedTable", "prevBtn", "nextBtn", "pageNumber");
-    // setupTableNavigation("assetDateTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+    setupTableNavigation("bagsWashedNationalityTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
 
     function openReportModal() {
 

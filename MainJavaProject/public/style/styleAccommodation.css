@@ -270,6 +270,10 @@ thead th input:focus {
     /* Ensure it's visible when showing */
 }
 
+#reportViewModal.modal {
+    padding-top: 25px;
+}
+
 .modal-content.slide-in,
 .modal-content-view.slide-in,
 .modal-content-mess.slide-in {
@@ -1192,4 +1196,48 @@ thead th input:focus {
 
 #data-table thead tr th label:hover {
     cursor: pointer;
+}
+
+#prevBtn,
+#nextBtn,
+#prevBtnDate,
+#nextBtnDate {
+    width: 20px;
+    height: 20px;
+    position: relative;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+#prevBtn::before,
+#nextBtn::before,
+#prevBtnDate::before,
+#nextBtnDate::before {
+    content: "";
+    width: 50%;
+    height: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-style: solid;
+    border-width: 0.25em 0.25em 0 0;
+    border-color: #ccc;
+}
+
+#nextBtn::before,
+#nextBtnDate::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+#prevBtn::before,
+#prevBtnDate::before {
+    transform: translate(-50%, -50%) rotate(-135deg);
+}
+
+#prevBtn:hover::before,
+#nextBtn:hover::before,
+#prevBtnDate:hover::before,
+#nextBtnDate:hover::before {
+    border-color: #000;
 }

@@ -363,9 +363,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({ keyId: keycode })
             })
-            .finally(() => {
-                loadingIndicator.style.display = 'none';
-            });
+                .finally(() => {
+                    loadingIndicator.style.display = 'none';
+                });
 
             const result = await response.json();
             typeBuild.value = result.type;
@@ -661,9 +661,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({ keyId: selectedSoldierMoveId.value })
             })
-            .finally(() => {
-                loadingIndicator.style.display = 'none';
-            });
+                .finally(() => {
+                    loadingIndicator.style.display = 'none';
+                });
 
             if (!responseSoldier.ok) {
                 throw new Error('Network response was not ok');
@@ -885,6 +885,45 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId) {
+        const table = document.getElementById(tableId).getElementsByTagName("tbody")[0];
+        const rows = table.getElementsByTagName("tr");
+        const rowsPerPage = 10; // Number of rows visible at a time
+        let currentIndex = 0;
+        let totalPages = Math.ceil(rows.length / rowsPerPage);
+        const pageNumberDisplay = document.getElementById(pageNumberId);
+
+        function updateTable() {
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
+            }
+
+            totalPages = Math.ceil(rows.length / rowsPerPage) || 1; // Recalculate total pages (avoid division by zero)
+            let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
+            pageNumberDisplay.textContent = `${currentPage}/${totalPages}`;
+        }
+
+        document.getElementById(prevBtnId).addEventListener("click", function () {
+            if (currentIndex > 0) {
+                currentIndex -= rowsPerPage;
+                updateTable();
+            }
+        });
+
+        document.getElementById(nextBtnId).addEventListener("click", function () {
+            if (currentIndex + rowsPerPage < rows.length) {
+                currentIndex += rowsPerPage;
+                updateTable();
+            }
+        });
+
+        updateTable(); // Initialize table view
+    }
+
+    // Apply navigation to both tables
+    setupTableNavigation("soldierUsageTable", "prevBtn", "nextBtn", "pageNumber");
+    setupTableNavigation("soldierMoveTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+
     function openViewModal() {
 
         // Add the slide-in effect by adding the necessary classes
@@ -988,10 +1027,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 headerCheckbox.addEventListener('change', (event) => {
                     headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
                     const isChecked = event.target.checked;
-                
+
                     // Get all visible rows
                     const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
-                
+
                     visibleRows.forEach(row => {
                         const checkbox = row.querySelector('.form-check-input');
                         if (checkbox) {
@@ -1004,13 +1043,13 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                         }
                     });
-                
+
                     // Ensure no duplicates in allCheckedRow
                     if (isChecked) {
                         allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
                             .map(code => ({ code }));
                     }
-                });                
+                });
 
                 // Append the header checkbox to the table header
                 const thead = tbody.parentElement.querySelector('thead');
@@ -1590,16 +1629,16 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelector('.left-nav').addEventListener('click', function (event) {
         // Get the closest button ancestor if the clicked element is a span
         let button = event.target.closest('button');
-    
+
         if (button && button.classList.contains('main-button')) {
             const id = button.id;
-    
+
             document.getElementById('room-number-header').classList.remove('ascending', 'descending');
             document.getElementById('room-status-header').classList.remove('ascending', 'descending');
             document.getElementById('count-free-beds-header').classList.remove('ascending', 'descending');
-    
+
             loadingIndicator.style.display = 'flex';
-    
+
             fetch(`/accommodation?isFirstTime=true&numBuild=${id}`, {
                 method: 'GET'
             })
@@ -1608,56 +1647,56 @@ document.addEventListener('DOMContentLoaded', function () {
                     nameroomSetCount = data.nameroomSetCount;
                     document.getElementById('previewTypeBuild').value = data.type;
                     document.getElementById('typeBuild').value = data.type;
-    
+
                     const headerTable = data.headerTable;
                     const tableHeader = document.querySelector('#keyModal .modal-content .table-container table thead tr');
                     tableHeader.innerHTML = '';
-    
+
                     headerTable.forEach(function (item) {
                         const th = document.createElement('th');
                         th.textContent = item.name;
                         tableHeader.appendChild(th);
                     });
-    
+
                     const titlePage = data.titlePage;
                     const countBeds = data.countFreeBeds;
-    
+
                     document.querySelector('.col-md-auto h3 div').textContent = titlePage;
                     if (countBeds) {
                         document.querySelector('.col-md-auto h3 .name-add').textContent = `(${countBeds} free beds)`;
                     } else {
                         document.querySelector('.col-md-auto h3 .name-add').textContent = '';
                     }
-    
+
                     const tbody = document.getElementById('tableBody');
                     tbody.innerHTML = '';
-    
+
                     nameroomSetCount.forEach(item => {
                         const row = document.createElement("tr");
                         row.classList.add('data-room');
-    
+
                         const nameroomCell = document.createElement("td");
                         nameroomCell.textContent = item.nameroom;
                         row.appendChild(nameroomCell);
-    
+
                         const statusCell = document.createElement("td");
                         if (item.countFreeBeds != 0) {
                             statusCell.classList.add('undefined-data');
                         }
                         statusCell.textContent = item.countFreeBeds != 0 ? 'Free' : 'Occupied';
                         row.appendChild(statusCell);
-    
+
                         const quantityCell = document.createElement("td");
                         quantityCell.textContent = item.countFreeBeds;
                         row.appendChild(quantityCell);
-    
+
                         row.addEventListener('click', function (event) {
                             const roomnumber = event.currentTarget.querySelector('td:nth-child(1)').textContent;
                             document.getElementById('numBuild').value = id;
-    
+
                             openModalKey(roomnumber);
                         });
-    
+
                         tbody.appendChild(row);
                     });
                 })
@@ -1666,7 +1705,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     loadingIndicator.style.display = 'none';
                 });
         }
-    });    
+    });
 
     function showGlobalMess(type, message) {
 
@@ -1778,6 +1817,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
+        for (let i = 0; i < rows.length; i++) {
+            rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
+        }
+
+        let totalPages = Math.ceil(rows.length / rowsPerPage) || 1; // Recalculate total pages (avoid division by zero)
+        let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
+        document.getElementById(pageNumberId).textContent = `${currentPage}/${totalPages}`;
+    }
+
     async function fetchReport() {
 
         loadingIndicator.style.display = 'flex';
@@ -1817,6 +1866,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 newRow.insertCell().textContent = row.name_soldier;
                 newRow.insertCell().textContent = row.datemove;
             });
+
+            const rowsTable = soldierUsageTableBody.getElementsByTagName("tr");
+            const rowsTableMove = soldierMoveTableBody.getElementsByTagName("tr");
+
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
+            firstUpdateTable(rowsTableMove, 0, 10, 'pageNumberDate');
 
         } catch (error) {
             console.error('Error fetching the report:', error);
@@ -2001,7 +2056,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const rows2 = Array.from(table2.querySelectorAll("tbody tr"));
 
             const data = rows1
-                .filter(row => row.style.display !== 'none')
                 .map((row) => {
                     const cells = row.querySelectorAll("td");
                     return {
@@ -2016,7 +2070,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }).filter(row => row.soldierName); // Exclude empty rows
 
             const data_1 = rows2
-                .filter(row => row.style.display !== 'none')
                 .map((row) => {
                     const cells = row.querySelectorAll("td");
                     return {
@@ -2027,10 +2080,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     };
                 }).filter(row => row.oldRoom); // Exclude empty rows
 
+            // Collect filter values if the search inputs are visible
+            const filtersSoldier = {};
+            document.querySelectorAll('.search-input-view').forEach(input => {
+                filtersSoldier[input.name || input.id] = input.value.trim();
+            });
+
+            // Collect filter values if the search inputs are visible
+            const filtersSoldierMove = {};
+            document.querySelectorAll('.search-input-view-second').forEach(input => {
+                filtersSoldierMove[input.name || input.id] = input.value.trim();
+            });
+
             const response = await fetch(document.getElementById('form2').action, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ result: data, result_nationality: data_1 })
+                body: JSON.stringify({ result: data, result_nationality: data_1, filtersSoldier: filtersSoldier, filtersSoldierMove: filtersSoldierMove })
             });
 
             if (!response.ok) throw new Error(await response.text());
@@ -2797,7 +2862,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
-                
+
             } finally {
                 loadingIndicator.style.display = 'none';
             }
@@ -3194,7 +3259,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 hasError = true;
-                
+
             } finally {
                 loadingIndicator.style.display = 'none';
             }

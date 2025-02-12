@@ -408,6 +408,13 @@ const schemaLaundryReport = Joi.object({
     filtersNationalBags: Joi.object().required()
 });
 
+const schemaAccommodationReport = Joi.object({
+    result: Joi.array().items(Joi.object()).required(),
+    result_nationality: Joi.array().items(Joi.object()).required(),
+    filtersSoldier: Joi.object().required(),
+    filtersSoldierMove: Joi.object().required()
+});
+
 const navItems = [];
 
 const horizontalNavItems = [
@@ -2806,13 +2813,28 @@ class Server {
 
         this.app.post("/accommodation/report", this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { result, result_nationality } = req.body;
-
-            if (!Array.isArray(result) || !Array.isArray(result_nationality)) {
+            const { error } = schemaAccommodationReport.validate(req.body);
+            if (error) {
                 return res.status(400).send('Invalid input data.');
             }
 
+            const { result, result_nationality, filtersSoldier, filtersSoldierMove } = req.body;
+
+            // Function to filter data based on inputs
+            const filterData = (data, filters) => {
+                return data.filter(item => {
+                    return Object.keys(filters).every(key => {
+                        if (!filters[key]) return true; // Skip empty filters
+                        return String(item[key] || '').toLowerCase().includes(filters[key].toLowerCase());
+                    });
+                });
+            };
+
             try {
+
+                // Filter both datasets
+                const filteredSoldier = filterData(result, filtersSoldier);
+                const filteredSoldierMove = filterData(result_nationality, filtersSoldierMove);
 
                 const workbook = new excelJS.Workbook();
                 const worksheet1 = workbook.addWorksheet('Information about soldiers');
@@ -2845,7 +2867,7 @@ class Server {
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
 
-                result.forEach(({ roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag }, index) => {
+                filteredSoldier.forEach(({ roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag }, index) => {
                     const dataRow = worksheet1.addRow([roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag]);
 
                     // Apply borders and alternating row color
@@ -2868,7 +2890,7 @@ class Server {
                     }
                 });
 
-                result_nationality.forEach(({ oldRoom, newRoom, soldierName, dateRelock }, index) => {
+                filteredSoldierMove.forEach(({ oldRoom, newRoom, soldierName, dateRelock }, index) => {
                     const dataRow = worksheet2.addRow([oldRoom, newRoom, soldierName, dateRelock]);
 
                     // Apply borders and alternating row color

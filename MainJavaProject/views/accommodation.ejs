@@ -372,22 +372,29 @@
             <span class="close-btn">&times;</span>
             <h2>Reports View</h2>
 
+            <!-- Left and Right Navigation Buttons -->
+            <div class="d-flex justify-content-end mt-2 mb-2">
+                <button type="button" id="prevBtn"></button>
+                <span id="pageNumber"></span>
+                <button type="button" id="nextBtn"></button>
+            </div>
+
             <div class="table-container">
                 <table id="soldierUsageTable">
                     <thead>
                         <tr>
-                            <th><input type="text" class="search-input-view" placeholder="Search...">Room Number
+                            <th><input name="roomNumber" type="text" class="search-input-view" placeholder="Search...">Room Number
                             </th>
-                            <th><input type="text" class="search-input-view" placeholder="Search...">Soldier Name
+                            <th><input name="soldierName" type="text" class="search-input-view" placeholder="Search...">Soldier Name
                             </th>
-                            <th><input type="text" class="search-input-view" placeholder="Search...">Country</th>
-                            <th><input type="text" class="search-input-view" placeholder="Search...">Accommodation
+                            <th><input name="country" type="text" class="search-input-view" placeholder="Search...">Country</th>
+                            <th><input name="dateIn" type="text" class="search-input-view" placeholder="Search...">Accommodation
                                 Date
                             </th>
-                            <th><input type="text" class="search-input-view" placeholder="Search...">Release Date
+                            <th><input name="dateOut" type="text" class="search-input-view" placeholder="Search...">Release Date
                             </th>
-                            <th><input type="text" class="search-input-view" placeholder="Search...">Meal card</th>
-                            <th><input type="text" class="search-input-view" placeholder="Search...">Laundry bag
+                            <th><input name="mealCard" type="text" class="search-input-view" placeholder="Search...">Meal card</th>
+                            <th><input name="laundryBag" type="text" class="search-input-view" placeholder="Search...">Laundry bag
                             </th>
                         </tr>
                     </thead>
@@ -396,16 +403,22 @@
                 </table>
             </div>
 
+            <div class="d-flex justify-content-end mt-2 mb-2">
+                <button type="button" id="prevBtnDate"></button>
+                <span id="pageNumberDate"></span>
+                <button type="button" id="nextBtnDate"></button>
+            </div> 
+
             <div class="table-container">
                 <table id="soldierMoveTable">
                     <thead>
                         <tr>
-                            <th><input type="text" class="search-input-view-second" placeholder="Search...">Previous
+                            <th><input name="oldRoom" type="text" class="search-input-view-second" placeholder="Search...">Previous
                                 Room</th>
-                            <th><input type="text" class="search-input-view-second" placeholder="Search...">New Room
+                            <th><input name="newRoom" type="text" class="search-input-view-second" placeholder="Search...">New Room
                             </th>
-                            <th><input type="text" class="search-input-view-second" placeholder="Search...">Soldier</th>
-                            <th><input type="text" class="search-input-view-second" placeholder="Search...">Date
+                            <th><input name="soldierName" type="text" class="search-input-view-second" placeholder="Search...">Soldier</th>
+                            <th><input name="dateRelock" type="text" class="search-input-view-second" placeholder="Search...">Date
                                 Relocation
                             </th>
                         </tr>
