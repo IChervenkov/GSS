@@ -291,23 +291,30 @@
                                 <span class="close-btn">&times;</span>
                                 <h2>Reports View</h2>
 
+                                <!-- Left and Right Navigation Buttons -->
+                                <div class="d-flex justify-content-end mt-2 mb-2">
+                                    <button type="button" id="prevBtn"></button>
+                                    <span id="pageNumber"></span>
+                                    <button type="button" id="nextBtn"></button>
+                                </div>
+
                                 <div class="table-container">
                                     <table id="bagsWashedTable">
                                         <thead>
                                             <tr>
-                                                <th><input type="text" class="search-input-view-laundry"
+                                                <th><input name="bagNumber" type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Bag number</th>
-                                                <th><input type="text" class="search-input-view-laundry"
+                                                <th><input name="soldierName" type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Soldier name</th>
-                                                <th><input type="text" class="search-input-view-laundry"
+                                                <th><input name="nationality" type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Nationality</th>
-                                                <th><input type="text" class="search-input-view-laundry"
+                                                <th><input name="bagType" type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Bag type</th>
-                                                <th><input type="text" class="search-input-view-laundry"
+                                                <th><input name="statusBag" type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Location</th>
-                                                <th><input type="text" class="search-input-view-laundry"
+                                                <th><input name="dateIn" type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Date of issue</th>
-                                                <th><input type="text" class="search-input-view-laundry"
+                                                <th><input name="dateOut" type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Collection date</th>
                                             </tr>
                                         </thead>
@@ -316,13 +323,19 @@
                                     </table>
                                 </div>
 
+                                <div class="d-flex justify-content-end mt-2 mb-2">
+                                    <button type="button" id="prevBtnDate"></button>
+                                    <span id="pageNumberDate"></span>
+                                    <button type="button" id="nextBtnDate"></button>
+                                </div>                    
+
                                 <div class="table-container">
                                     <table id="bagsWashedNationalityTable">
                                         <thead>
                                             <tr>
-                                                <th><input type="text" class="search-input-view-laundry-second"
+                                                <th><input name="nationality" type="text" class="search-input-view-laundry-second"
                                                         placeholder="Search...">Nationality</th>
-                                                <th><input type="text" class="search-input-view-laundry-second"
+                                                <th><input name="bagCount" type="text" class="search-input-view-laundry-second"
                                                         placeholder="Search...">Number of bags washed</th>
                                             </tr>
                                         </thead>

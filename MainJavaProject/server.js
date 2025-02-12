@@ -401,6 +401,13 @@ const schemaAssetReport = Joi.object({
     filtersAssetsData: Joi.object().required()
 });
 
+const schemaLaundryReport = Joi.object({
+    result: Joi.array().items(Joi.object()).required(),
+    result_nationality: Joi.array().items(Joi.object()).required(),
+    filtersBags: Joi.object().required(),
+    filtersNationalBags: Joi.object().required()
+});
+
 const navItems = [];
 
 const horizontalNavItems = [
@@ -4939,13 +4946,28 @@ class Server {
 
         this.app.post('/laundry/report', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { result, result_nationality } = req.body;
-
-            if (!Array.isArray(result) || !Array.isArray(result_nationality)) {
+            const { error } = schemaLaundryReport.validate(req.body);
+            if (error) {
                 return res.status(400).send('Invalid input data.');
             }
 
+            const { result, result_nationality, filtersBags, filtersNationalBags } = req.body;
+
+            // Function to filter data based on inputs
+            const filterData = (data, filters) => {
+                return data.filter(item => {
+                    return Object.keys(filters).every(key => {
+                        if (!filters[key]) return true; // Skip empty filters
+                        return String(item[key] || '').toLowerCase().includes(filters[key].toLowerCase());
+                    });
+                });
+            };
+
             try {
+
+                // Filter both datasets
+                const filteredLaundry = filterData(result, filtersBags);
+                const filteredLaundryNational = filterData(result_nationality, filtersNationalBags);
 
                 const workbook = new excelJS.Workbook();
                 const worksheet1 = workbook.addWorksheet('Washed Bags');
@@ -4978,7 +5000,7 @@ class Server {
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
 
-                result.forEach(({ bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut }, index) => {
+                filteredLaundry.forEach(({ bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut }, index) => {
                     const row = worksheet1.addRow([bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut]);
                     row.eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
@@ -5016,7 +5038,7 @@ class Server {
                     }
                 });
 
-                result_nationality.forEach(({ nationality, bagCount }, index) => {
+                filteredLaundryNational.forEach(({ nationality, bagCount }, index) => {
                     const row = worksheet2.addRow([nationality, bagCount]);
                     row.eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
@@ -6384,7 +6406,7 @@ class Server {
 
                 // Filter both datasets
                 const filteredAssets = filterData(result, filtersAssets);
-                const filteredAssetDates = filterData(result_nationality, filtersAssetsData);             
+                const filteredAssetDates = filterData(result_nationality, filtersAssetsData);
 
                 const workbook = new excelJS.Workbook();
                 const worksheet1 = workbook.addWorksheet('Assets Data');

@@ -111,8 +111,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Attach filters with their respective page number IDs
     attachFilterEvents('soldierUsageTable', 'search-input-view');
     attachFilterEvents('soldierMoveTable', 'search-input-view-second');
-    attachFilterEvents('bagsWashedTable', 'search-input-view-laundry');
-    attachFilterEvents('bagsWashedNationalityTable', 'search-input-view-laundry-second');
+    attachFilterEvents('bagsWashedTable', 'search-input-view-laundry', 'pageNumber');
+    attachFilterEvents('bagsWashedNationalityTable', 'search-input-view-laundry-second', 'pageNumberDate');
     attachFilterEvents('data-table', 'search-input');
     attachFilterEvents('bikeUsageTable', 'search-input-view-bike');
     attachFilterEvents('bikeTotalsTable', 'search-input-view-total-bike');

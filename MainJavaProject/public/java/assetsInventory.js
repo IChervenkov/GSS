@@ -2885,8 +2885,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }, {});
             });
 
-            console.log(headers);
-
             const data_1 = rows2
                 // .filter(row => row.style.display !== 'none')
                 .map((row) => {
