@@ -3170,10 +3170,11 @@ class Server {
                     const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [row.soldierId]);
                     if (result.rows.length > 0) {
                         errors.push({ type: 'DuplicateInDB', soldierId: row.soldierId, message: `Soldier '${row.soldierName}' already exists.` });
+                        return;
                     }
 
-                    if (!/^[0-9]+ [A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/.test(row.soldierName)) {
-                        errors.push({ type: 'InvalidFormat', message: `Soldier name '${row.soldierName}' have invalid format\n. All name must by in format: 'soldierNumber soldierName'.` });
+                    if (!new RegExp(`^${row.soldierId} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$`).test(row.soldierName)) {
+                        errors.push({ type: 'InvalidFormat', message: `Soldier name '${row.soldierName}' has an invalid format. All names must be in the format: 'soldierNumber soldierName'.` });
                         return;
                     }
 

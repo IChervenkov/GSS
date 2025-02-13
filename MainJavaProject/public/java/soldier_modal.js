@@ -958,7 +958,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () {
 
             window.location.reload();
-            
+
             modalRep.classList.remove('show');
             modalRepContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
@@ -2181,7 +2181,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
-                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB') {
+                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat') {
                             closeAddMultiSoldierModal();
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {
@@ -2290,7 +2290,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (soldierName.value === "") {
+        const soldierNamePattern = new RegExp(`^${soldierId.value} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
+        if (soldierName.value === "" || !soldierNamePattern.test(soldierName.value)) {
             toggleInputValidity(soldierName, false);
             return;
         }
@@ -2379,15 +2380,33 @@ document.addEventListener('DOMContentLoaded', function () {
         showGlobalMess('Warning', 'Are you sure you want to add this soldier?');
     };
 
-    document.querySelectorAll('#soldier-number, #soldier-name, #soldier-country').forEach((input) => {
+    document.querySelectorAll('#soldier-number, #soldier-country').forEach((input) => {
         input.addEventListener('input', function () {
             toggleInputValidity(input, input.value !== "" && input.checkValidity());
         });
     });
 
-    document.querySelectorAll('#edit-soldier-number, #edit-soldier-name, #edit-soldier-country').forEach((input) => {
+    document.querySelectorAll('#soldier-name').forEach((input) => {
+        input.addEventListener('input', function () {
+            const soldierId = document.getElementById('soldier-number').value;
+            console.log(soldierId);
+            const soldierNamePattern = new RegExp(`^${soldierId} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
+            toggleInputValidity(input, input.value !== "" && soldierNamePattern.test(input.value));
+        });
+    });
+
+    document.querySelectorAll('#edit-soldier-number, #edit-soldier-country').forEach((input) => {
         input.addEventListener('input', function () {
             toggleInputValidity(input, input.value !== "" && input.checkValidity());
+        });
+    });
+
+    document.querySelectorAll('#edit-soldier-name').forEach((input) => {
+
+        input.addEventListener('input', function () {
+            const soldierId = document.getElementById('edit-soldier-number').value;
+            const soldierNamePattern = new RegExp(`^${soldierId.value} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
+            toggleInputValidity(input, input.value !== "" && soldierNamePattern.test(input.value));
         });
     });
 
@@ -3116,7 +3135,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (editSoldierName.value === "") {
+        const soldierNamePattern = new RegExp(`^${editSoldierId.value} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
+        if (editSoldierName.value === "" || soldierNamePattern.test(editSoldierName.value)) {
             toggleInputValidity(editSoldierName, false);
             return;
         }
