@@ -510,6 +510,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.value = '';
             });
 
+            window.location.reload();
+
             reportViewModal.classList.remove('show');
             reportViewModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)

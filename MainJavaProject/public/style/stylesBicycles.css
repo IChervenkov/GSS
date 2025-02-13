@@ -79,7 +79,11 @@ h3 {
 }
 
 #prev,
-#next {
+#next,
+#prevBtn,
+#nextBtn,
+#prevBtnDate,
+#nextBtnDate {
   width: 20px;
   height: 20px;
   position: relative;
@@ -89,7 +93,11 @@ h3 {
 }
 
 #prev::before,
-#next::before {
+#next::before,
+#prevBtn::before,
+#nextBtn::before,
+#prevBtnDate::before,
+#nextBtnDate::before {
   content: "";
   width: 50%;
   height: 50%;
@@ -101,16 +109,24 @@ h3 {
   border-color: #ccc;
 }
 
-#next::before {
+#next::before,
+#nextBtn::before,
+#nextBtnDate::before {
   transform: translate(-50%, -50%) rotate(45deg);
 }
 
-#prev::before {
+#prev::before,
+#prevBtn::before,
+#prevBtnDate::before {
   transform: translate(-50%, -50%) rotate(-135deg);
 }
 
 #prev:hover::before,
-#next:hover::before {
+#next:hover::before,
+#prevBtn:hover::before,
+#nextBtn:hover::before,
+#prevBtnDate:hover::before,
+#nextBtnDate:hover::before {
   border-color: #000;
 }
 

@@ -1494,6 +1494,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
 
+            window.location.reload();
+
             assetReportModal.classList.remove('show');
             assetReportModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)

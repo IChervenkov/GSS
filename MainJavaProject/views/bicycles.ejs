@@ -174,35 +174,40 @@
             style="pointer-events: none;">Total Bike: <%= totalBike %></label>
 
           <div class="btn-container">
-            <label id="rentedBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Rented: <%= rentedBike %></label>
+            <label id="rentedBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Rented: <%= rentedBike %>
+            </label>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
               <span class="tooltiptext">Number and list <br> of rented bikes</span>
             </div>
           </div>
           <div class="btn-container">
-            <label id="availableBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Available: <%= availableBike %></label>
+            <label id="availableBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Available: <%=
+                availableBike %></label>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
               <span class="tooltiptext">Number and list <br> of available bikes</span>
             </div>
           </div>
           <div class="btn-container">
-            <label id="repairBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Repair: <%= repairBike %></label>
+            <label id="repairBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Repair: <%= repairBike %>
+            </label>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
               <span class="tooltiptext">Number and list <br> of bikes under repair</span>
             </div>
           </div>
           <div class="btn-container">
-            <label id="lateBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Late: <%= lateBike %></label>
+            <label id="lateBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Late: <%= lateBike %>
+            </label>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
               <span class="tooltiptext">Number and list <br> of late bikes</span>
             </div>
           </div>
           <div class="btn-container">
-            <label id="longTermBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Long Term: <%= longTermBike %></label>
+            <label id="longTermBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Long Term: <%=
+                longTermBike %></label>
             <div class="tooltip-custom">
               <i class="bi bi-question-circle"></i>
               <span class="tooltiptext">Number and list <br> of long-term bikes</span>
@@ -432,15 +437,22 @@
       <span class="close">&times;</span>
       <h3 class="header-modal-report">Reports View</h3>
 
+      <!-- Left and Right Navigation Buttons -->
+      <div class="d-flex justify-content-end mt-2 mb-2">
+        <button type="button" id="prevBtn"></button>
+        <span id="pageNumber"></span>
+        <button type="button" id="nextBtn"></button>
+      </div>
+
       <div class="table-container">
         <table id="bikeUsageTable">
           <thead>
             <tr>
-              <th><input type="text" class="search-input-view-bike" placeholder="Search...">Bike Name</th>
-              <th><input type="text" class="search-input-view-bike" placeholder="Search...">Soldier Name</th>
-              <th><input type="text" class="search-input-view-bike" placeholder="Search...">Date From</th>
-              <th><input type="text" class="search-input-view-bike" placeholder="Search...">Date To</th>
-              <th><input type="text" class="search-input-view-bike" placeholder="Search...">Duration</th>
+              <th><input name="namebike" type="text" class="search-input-view-bike" placeholder="Search...">Bike Name</th>
+              <th><input name="namesoldier" type="text" class="search-input-view-bike" placeholder="Search...">Soldier Name</th>
+              <th><input name="date_from" type="text" class="search-input-view-bike" placeholder="Search...">Date From</th>
+              <th><input name="date_to" type="text" class="search-input-view-bike" placeholder="Search...">Date To</th>
+              <th><input name="duration" type="text" class="search-input-view-bike" placeholder="Search...">Duration</th>
             </tr>
           </thead>
           <tbody>
@@ -448,16 +460,22 @@
         </table>
       </div>
 
+      <div class="d-flex justify-content-end mt-2 mb-2">
+        <button type="button" id="prevBtnDate"></button>
+        <span id="pageNumberDate"></span>
+        <button type="button" id="nextBtnDate"></button>
+      </div>
+
       <div class="table-container">
         <table id="bikeTotalsTable">
           <thead>
             <tr>
               <th>
-                <div class="header-cell"><input type="text" class="search-input-view-total-bike"
+                <div class="header-cell"><input name="date" type="text" class="search-input-view-total-bike"
                     placeholder="Search..."><span>Date</span></div>
               </th>
               <th>
-                <div class="header-cell"><input type="text" class="search-input-view-total-bike"
+                <div class="header-cell"><input name="total_bikes" type="text" class="search-input-view-total-bike"
                     placeholder="Search..."><span>Total Bikes Used</span></div>
               </th>
             </tr>

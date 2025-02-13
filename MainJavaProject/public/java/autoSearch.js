@@ -114,8 +114,8 @@ document.addEventListener('DOMContentLoaded', function () {
     attachFilterEvents('bagsWashedTable', 'search-input-view-laundry', 'pageNumber');
     attachFilterEvents('bagsWashedNationalityTable', 'search-input-view-laundry-second', 'pageNumberDate');
     attachFilterEvents('data-table', 'search-input');
-    attachFilterEvents('bikeUsageTable', 'search-input-view-bike');
-    attachFilterEvents('bikeTotalsTable', 'search-input-view-total-bike');
+    attachFilterEvents('bikeUsageTable', 'search-input-view-bike', 'pageNumber');
+    attachFilterEvents('bikeTotalsTable', 'search-input-view-total-bike', 'pageNumberDate');
     attachFilterEvents('assetTable', 'asset-search-input');
     attachFilterEvents('soldierTable', 'search-input-soldier');
     attachFilterEvents('bagsTable', 'laundry-search-input');

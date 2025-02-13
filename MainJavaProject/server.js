@@ -171,6 +171,13 @@ const schemaReport = Joi.object({
     selectedDate2: Joi.date().iso().allow('None')
 });
 
+const schemaReportBike = Joi.object({
+    selectedDate1: Joi.date().iso().allow('None'),
+    selectedDate2: Joi.date().iso().allow('None'),
+    filtersBike: Joi.object().required(),
+    filtersBikeDate: Joi.object().required()
+});
+
 const schemaAddBike = Joi.object({
     bikeAddId: Joi.string().alphanum().required(),
     bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required()
@@ -1339,14 +1346,24 @@ class Server {
 
         this.app.post("/bicycles/report", this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemaReport.validate(req.body);
+            const { error } = schemaReportBike.validate(req.body);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            let { selectedDate1, selectedDate2 } = req.body;
+            let { selectedDate1, selectedDate2, filtersBike, filtersBikeDate } = req.body;
 
             const client = await pool.connect();
+
+            // Function to filter data based on inputs
+            const filterData = (data, filters) => {
+                return data.filter(item => {
+                    return Object.keys(filters).every(key => {
+                        if (!filters[key]) return true; // Skip empty filters
+                        return String(item[key] || '').toLowerCase().includes(filters[key].toLowerCase());
+                    });
+                });
+            };
 
             try {
 
@@ -1399,6 +1416,10 @@ class Server {
                 );
                 const dateTotals = result_bike_totals.rows;
 
+                // Filter both datasets
+                const filteredSoldier = filterData(data, filtersBike);
+                const filteredSoldierMove = filterData(dateTotals, filtersBikeDate);
+
                 // Create a new Excel workbook
                 const workbook = new excelJS.Workbook();
 
@@ -1432,7 +1453,7 @@ class Server {
                 ];
 
                 // Add data rows to the first sheet with alternating row color styling
-                data.forEach((row, index) => {
+                filteredSoldier.forEach((row, index) => {
                     const dataRow = worksheet1.addRow(Object.values(row));
 
                     // Check if the status is "Late" and add a ⚠️ icon
@@ -1489,7 +1510,7 @@ class Server {
 
                 let totalBikesUsed = 0;
 
-                dateTotals.forEach((row, index) => {
+                filteredSoldierMove.forEach((row, index) => {
                     const dataRow = worksheet2.addRow([row.date, row.total_bikes]);
                     totalBikesUsed += parseInt(row.total_bikes, 10);
 

@@ -197,6 +197,45 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId) {
+        const table = document.getElementById(tableId).getElementsByTagName("tbody")[0];
+        const rows = table.getElementsByTagName("tr");
+        const rowsPerPage = 10; // Number of rows visible at a time
+        let currentIndex = 0;
+        let totalPages = Math.ceil(rows.length / rowsPerPage);
+        const pageNumberDisplay = document.getElementById(pageNumberId);
+
+        function updateTable() {
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
+            }
+
+            totalPages = Math.ceil(rows.length / rowsPerPage) || 1; // Recalculate total pages (avoid division by zero)
+            let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
+            pageNumberDisplay.textContent = `${currentPage}/${totalPages}`;
+        }
+
+        document.getElementById(prevBtnId).addEventListener("click", function () {
+            if (currentIndex > 0) {
+                currentIndex -= rowsPerPage;
+                updateTable();
+            }
+        });
+
+        document.getElementById(nextBtnId).addEventListener("click", function () {
+            if (currentIndex + rowsPerPage < rows.length) {
+                currentIndex += rowsPerPage;
+                updateTable();
+            }
+        });
+
+        updateTable(); // Initialize table view
+    }
+
+    // Apply navigation to both tables
+    setupTableNavigation("bikeUsageTable", "prevBtn", "nextBtn", "pageNumber");
+    setupTableNavigation("bikeTotalsTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+
     function openModal(modal, modalContent) {
 
         // Add the slide-in effect by adding the necessary classes
@@ -225,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const icon = document.getElementById("mess-icon-rep");
 
-            if (modal === modalMessRep && icon.src.includes('information')) {
+            if ((modal === modalMessRep && icon.src.includes('information')) || modal === modalViewRep) {
                 // Refresh the page after the modal is closed
                 window.location.reload();
             }
@@ -1013,6 +1052,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
+        for (let i = 0; i < rows.length; i++) {
+            rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
+        }
+
+        let totalPages = Math.ceil(rows.length / rowsPerPage) || 1; // Recalculate total pages (avoid division by zero)
+        let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
+        document.getElementById(pageNumberId).textContent = `${currentPage}/${totalPages}`;
+    }
+
     async function fetchReport() {
 
         loadingIndicator.style.display = 'flex';
@@ -1059,6 +1108,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 newRow.insertCell().textContent = row.date;
                 newRow.insertCell().textContent = row.total_bikes;
             });
+
+            const rowsTable = bikeUsageTableBody.getElementsByTagName("tr");
+            const rowsTableDate = bikeTotalsTableBody.getElementsByTagName("tr");
+
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
+            firstUpdateTable(rowsTableDate, 0, 10, 'pageNumberDate');
 
         } catch (error) {
             console.error('Error fetching the report:', error);
@@ -1126,6 +1181,54 @@ document.addEventListener('DOMContentLoaded', function () {
         } finally {
             loadingIndicator.style.display = 'none';
             submitButton.disabled = false; // Re-enable the submit button
+        }
+    });
+
+    document.getElementById('form2').addEventListener('submit', async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        const selectDate1 = document.getElementById('selectedDate1').value;
+        const selectDate2 = document.getElementById('selectedDate2').value;
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+            // Collect filter values if the search inputs are visible
+            const filtersBike = {};
+            document.querySelectorAll('.search-input-view-bike').forEach(input => {
+                filtersBike[input.name || input.id] = input.value.trim();
+            });
+
+            // Collect filter values if the search inputs are visible
+            const filtersBikeDate = {};
+            document.querySelectorAll('.search-input-view-total-bike').forEach(input => {
+                filtersBikeDate[input.name || input.id] = input.value.trim();
+            });
+
+            const response = await fetch(document.getElementById('form2').action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ selectedDate1: selectDate1, selectedDate2: selectDate2, filtersBike: filtersBike, filtersBikeDate: filtersBikeDate })
+            });
+
+            if (!response.ok) throw new Error(await response.text());
+
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = 'report_accommodation.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message || 'Failed to download the report.');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     });
 

@@ -956,6 +956,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
+
+            window.location.reload();
+            
             modalRep.classList.remove('show');
             modalRepContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
