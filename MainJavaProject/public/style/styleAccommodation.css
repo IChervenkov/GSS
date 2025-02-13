@@ -379,6 +379,10 @@ thead th input:focus {
     margin-bottom: 30px;
 }
 
+#soldierListModal.modal h2 {
+    margin-bottom: 0;
+}
+
 .modal-labal-info {
     margin-bottom: 20px;
 }
@@ -1201,7 +1205,9 @@ thead th input:focus {
 #prevBtn,
 #nextBtn,
 #prevBtnDate,
-#nextBtnDate {
+#nextBtnDate,
+#prevBtnSecond,
+#nextBtnSecond {
     width: 20px;
     height: 20px;
     position: relative;
@@ -1213,7 +1219,9 @@ thead th input:focus {
 #prevBtn::before,
 #nextBtn::before,
 #prevBtnDate::before,
-#nextBtnDate::before {
+#nextBtnDate::before,
+#prevBtnSecond::before,
+#nextBtnSecond::before {
     content: "";
     width: 50%;
     height: 50%;
@@ -1226,18 +1234,22 @@ thead th input:focus {
 }
 
 #nextBtn::before,
-#nextBtnDate::before {
+#nextBtnDate::before,
+#nextBtnSecond::before {
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
 #prevBtn::before,
-#prevBtnDate::before {
+#prevBtnDate::before,
+#prevBtnSecond::before {
     transform: translate(-50%, -50%) rotate(-135deg);
 }
 
 #prevBtn:hover::before,
 #nextBtn:hover::before,
 #prevBtnDate:hover::before,
-#nextBtnDate:hover::before {
+#nextBtnDate:hover::before,
+#prevBtnSecond:hover:before,
+#nextBtnSecond:hover:before {
     border-color: #000;
 }

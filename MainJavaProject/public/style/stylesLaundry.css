@@ -344,7 +344,9 @@ body {
 #prevBtn,
 #nextBtn,
 #prevBtnDate,
-#nextBtnDate {
+#nextBtnDate,
+#prevBtnSecond,
+#nextBtnSecond {
     width: 20px;
     height: 20px;
     position: relative;
@@ -358,7 +360,9 @@ body {
 #prevBtn::before,
 #nextBtn::before,
 #prevBtnDate::before,
-#nextBtnDate::before {
+#nextBtnDate::before,
+#prevBtnSecond::before,
+#nextBtnSecond::before {
     content: "";
     width: 50%;
     height: 50%;
@@ -372,13 +376,15 @@ body {
 
 #next::before,
 #nextBtn::before,
-#nextBtnDate::before {
+#nextBtnDate::before,
+#nextBtnSecond::before {
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
 #prev::before,
 #prevBtn::before,
-#prevBtnDate::before {
+#prevBtnDate::before,
+#prevBtnSecond::before {
     transform: translate(-50%, -50%) rotate(-135deg);
 }
 
@@ -387,7 +393,9 @@ body {
 #prevBtn:hover::before,
 #nextBtn:hover::before,
 #prevBtnDate:hover::before,
-#nextBtnDate:hover::before {
+#nextBtnDate:hover::before,
+#prevBtnSecond:hover::before,
+#nextBtnSecond:hover::before {
     border-color: #000;
 }
 
@@ -670,7 +678,6 @@ thead th input:focus {
 .modal-content h2 {
     display: flex;
     align-items: center;
-    margin-bottom: 4%;
 }
 
 /* Styling for the custom dropdown */

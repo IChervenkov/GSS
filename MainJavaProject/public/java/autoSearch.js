@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Attach pagination controls once
         attachPaginationControls('prevBtn', 'nextBtn', 'pageNumber');
         attachPaginationControls('prevBtnDate', 'nextBtnDate', 'pageNumberDate');
+        attachPaginationControls('prevBtnSecond', 'nextBtnSecond', 'pageNumberSecond');
     }
 
     function updateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
@@ -116,9 +117,9 @@ document.addEventListener('DOMContentLoaded', function () {
     attachFilterEvents('data-table', 'search-input');
     attachFilterEvents('bikeUsageTable', 'search-input-view-bike', 'pageNumber');
     attachFilterEvents('bikeTotalsTable', 'search-input-view-total-bike', 'pageNumberDate');
-    attachFilterEvents('assetTable', 'asset-search-input');
-    attachFilterEvents('soldierTable', 'search-input-soldier');
-    attachFilterEvents('bagsTable', 'laundry-search-input');
+    attachFilterEvents('assetTable', 'asset-search-input', 'pageNumberSecond');
+    attachFilterEvents('soldierTable', 'search-input-soldier', 'pageNumberSecond');
+    attachFilterEvents('bagsTable', 'laundry-search-input', 'pageNumberSecond');
     attachFilterEvents('assetsTable', 'search-input-view-assets', 'pageNumber');
     attachFilterEvents('assetDateTable', 'search-input-view-assets-second', 'pageNumberDate');
 });

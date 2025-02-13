@@ -482,6 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Apply navigation to both tables
     setupTableNavigation("bagsWashedTable", "prevBtn", "nextBtn", "pageNumber");
     setupTableNavigation("bagsWashedNationalityTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+    setupTableNavigation("bagsTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
 
     function openReportModal() {
 
@@ -737,6 +738,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             tbody.appendChild(row);
         });
+
+        const rowsTable = tbody.getElementsByTagName("tr");
+        firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
     }
 
     function closeListBagModal() {
@@ -750,6 +754,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.laundry-search-input').forEach((input) => {
                 input.value = '';
             });
+
+            window.location.reload();
 
             listBagModal.classList.remove('show');
             listBagModalContent.classList.remove('show');

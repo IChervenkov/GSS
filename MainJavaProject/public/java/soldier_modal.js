@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered soldiers in the dropdown
     function filterSoldiers(query) {
         soldierSearchDropdown.innerHTML = '';
-        const filteredSoldier = soldiers.filter(soldier => soldier.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredSoldier = soldiers.filter(soldier => ((soldier.date_accommodation === '' && soldier.date_free === '') || (soldier.date_accommodation !== '' && soldier.date_free !== '')) && soldier.name.toLowerCase().includes(query.toLowerCase()));
 
         if (filteredSoldier.length > 0) {
             soldierSearchDropdown.style.display = 'block';
@@ -923,6 +923,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Apply navigation to both tables
     setupTableNavigation("soldierUsageTable", "prevBtn", "nextBtn", "pageNumber");
     setupTableNavigation("soldierMoveTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+    setupTableNavigation("soldierTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
 
     function openViewModal() {
 
@@ -1016,6 +1017,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 soldierListData = soldierListData.filter(item => item.id !== '4');
 
                 const tbody = document.getElementById('tableBodyModal');
+                const assetTableBody = document.getElementById('soldierTable').getElementsByTagName('tbody')[0];
                 tbody.innerHTML = '';
 
                 allCheckedRow = []; // Reset the global array
@@ -1120,6 +1122,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Append row to the table body
                     tbody.appendChild(row);
                 });
+
+                const rowsTable = assetTableBody.getElementsByTagName("tr");
+                firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
             })
             .catch(error => console.error("Error fetching keys:", error))
             .finally(() => {
@@ -1146,6 +1151,8 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.search-input-soldier').forEach((input) => {
                 input.value = '';
             });
+
+            window.location.reload();
 
             modalListSoldier.classList.remove('show');
             modalListSoldierContent.classList.remove('show');

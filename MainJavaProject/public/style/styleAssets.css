@@ -485,7 +485,9 @@ td {
 #next,
 #nextBtn,
 #prevBtnDate,
-#nextBtnDate {
+#nextBtnDate,
+#prevBtnSecond,
+#nextBtnSecond {
     width: 20px;
     height: 20px;
     position: relative;
@@ -499,7 +501,9 @@ td {
 #next::before,
 #nextBtn::before,
 #prevBtnDate::before,
-#nextBtnDate::before {
+#nextBtnDate::before,
+#prevBtnSecond::before,
+#nextBtnSecond::before {
     content: "";
     width: 50%;
     height: 50%;
@@ -513,13 +517,15 @@ td {
 
 #next::before,
 #nextBtn::before,
-#nextBtnDate::before {
+#nextBtnDate::before,
+#nextBtnSecond::before {
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
 #prev::before,
 #prevBtn::before,
-#prevBtnDate::before {
+#prevBtnDate::before,
+#prevBtnSecond::before {
     transform: translate(-50%, -50%) rotate(-135deg);
 }
 
@@ -528,7 +534,9 @@ td {
 #next:hover::before,
 #nextBtn:hover::before,
 #prevBtnDate:hover::before,
-#nextBtnDate:hover::before {
+#nextBtnDate:hover::before,
+#prevBtnSecond:hover::before,
+#nextBtnSecond:hover::before {
     border-color: #000;
 }
 

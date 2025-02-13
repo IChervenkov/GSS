@@ -362,6 +362,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const headerCell = document.createElement('th');
+        const assetTableBody = document.getElementById('assetTable').getElementsByTagName('tbody')[0];
         headerCell.appendChild(headerCheckbox);
         headerRow.insertBefore(headerCell, headerRow.firstChild);
 
@@ -430,6 +431,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Update column headers with sort indicators
         updateSortIndicatorsAssets(column);
+
+        const rowsTable = assetTableBody.getElementsByTagName("tr");
+        firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
     }
 
     // Function to update sort indicators on column headers
@@ -1455,6 +1459,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Apply navigation to both tables
     setupTableNavigation("assetsTable", "prevBtn", "nextBtn", "pageNumber");
     setupTableNavigation("assetDateTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+    setupTableNavigation("assetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
 
     function openReportModal() {
 
@@ -1645,6 +1650,7 @@ document.addEventListener('DOMContentLoaded', function () {
         assetsModalContent.classList.add('slide-in');
 
         loadingIndicator.style.display = 'flex';
+        const assetTableBody = document.getElementById('assetTable').getElementsByTagName('tbody')[0];
 
         fetch(`/assets/getSortedAssets?numRoom=${rowId}`, {
             method: 'POST'
@@ -1769,6 +1775,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Append row to the table body
                     tbody.appendChild(row);
                 });
+
+                const rowsTable = assetTableBody.getElementsByTagName("tr");
+                firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
             })
             .catch(error => console.error("Error fetching keys:", error))
             .finally(() => {
@@ -1805,6 +1814,8 @@ document.addEventListener('DOMContentLoaded', function () {
             Object.keys(headers).forEach(column => {
                 headers[column].classList.remove('ascending', 'descending');
             });
+
+            window.location.reload();
 
             assetsModal.classList.remove('show');
             assetsModalContent.classList.remove('show');
