@@ -2714,9 +2714,10 @@ class Server {
                         [keyCodeId]
                     );
 
-                    const check_laundry_bag = await client.query(`SELECT status FROM laundrybags WHERE id = $1;`, [bagId]);
+                    const get_bag_id = await client.query(`SELECT laundry_bag_id AS bagid FROM soldier WHERE id = $1`, [res_query.rows[0].soldierid]);
+                    const check_laundry_bag = await client.query(`SELECT status FROM laundrybags WHERE id = $1;`, [get_bag_id.rows[0].bagid]);
 
-                    if (bagId !== '' && check_laundry_bag.rows[0].status !== 'None') {
+                    if (check_laundry_bag.rows[0].status !== 'None') {
                         return res.status(401).json({ message: "The soldier has an laundry bag an laundry and cannot be released." });
                     }
 
