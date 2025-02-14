@@ -2656,13 +2656,27 @@ class Server {
 
                 } else if (soldierId !== '' && countryId !== 'None') {
 
+                    const get_bag_soldier = await client.query(`
+                        SELECT l.status l.id FROM laundrybags l 
+                        LEFT JOIN soldier s ON l.id = s.laundry_bag_id
+                        WHERE s.id = $1 AND s.date_accommodation IS NOT NULL AND s.date_free IS NULL;`, [soldierId]);
+
+                    if (get_bag_soldier.rows.length > 0 && get_bag_soldier.rows[0].id !== bagId) {
+
+                        const check_laundry_bag_2 = await client.query(`SELECT status FROM laundrybags WHERE id = $1;`, [bagId]);
+
+                        if (get_bag_soldier.rows[0].status !== 'None' || (check_laundry_bag_2.rows.length > 0 && check_laundry_bag_2.rows[0].status !== 'None')) {
+                            return res.status(401).json({ message: "The soldier has an laundry bag an laundry and cannot change bag code." });
+                        }
+                    }
+
                     await client.query(
-                        "UPDATE key SET soldierid = NULL where soldierid = $1;",
+                        "UPDATE key SET soldierid = NULL WHERE soldierid = $1;",
                         [soldierId]
                     );
 
                     await client.query(
-                        "UPDATE key SET soldierid = $1 where id = $2;",
+                        "UPDATE key SET soldierid = $1 WHERE id = $2;",
                         [soldierId, keyCodeId]
                     );
 
@@ -2674,7 +2688,7 @@ class Server {
 
                     if (result_accommodation_soldier.rows.length === 0) {
                         await client.query(
-                            "UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3, used_room = $4 where id = $1;",
+                            "UPDATE soldier SET date_accommodation = CURRENT_DATE, date_free = NULL, meal_card = $2, laundry_bag_id = $3, used_room = $4 where id = $1;",
                             [soldierId, mealCardId, bagId === '' ? null : bagId, keyCodeId]
                         );
                     } else {
@@ -2707,7 +2721,7 @@ class Server {
                     const get_bag_id = await client.query(`SELECT laundry_bag_id AS bagid FROM soldier WHERE id = $1`, [res_query.rows[0].soldierid]);
                     const check_laundry_bag = await client.query(`SELECT status FROM laundrybags WHERE id = $1;`, [get_bag_id.rows[0].bagid]);
 
-                    if (check_laundry_bag.rows[0].status !== 'None') {
+                    if (check_laundry_bag.rows.length > 0 && check_laundry_bag.rows[0].status !== 'None') {
                         return res.status(401).json({ message: "The soldier has an laundry bag an laundry and cannot be released." });
                     }
 
@@ -4935,36 +4949,55 @@ class Server {
                 selectedDate2 += " 23:59";
 
                 const result = await client.query(`
+                    WITH latest_soldier AS (
+                        SELECT DISTINCT ON (s.laundry_bag_id) 
+                            s.laundry_bag_id,
+                            s.namesoldier,
+                            s.country
+                        FROM soldier s
+                        WHERE s.laundry_bag_id IS NOT NULL
+                        ORDER BY s.laundry_bag_id, 
+                                (s.date_free IS NULL) DESC, 
+                                s.date_free DESC
+                    )
                     SELECT 
                         l.code,
                         l.type,
                         CASE 
-                            WHEN status = 'None' THEN 'In the soldier'
+                            WHEN l.status = 'None' THEN 'In the soldier'
                             ELSE l.status
                         END AS status,
-                        s.namesoldier, 
-                        s.country,
+                        ls.namesoldier, 
+                        ls.country,
                         TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH:MI') AS date_drop_off, 
                         CASE 
-                            WHEN status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
+                            WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
                             ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH:MI')
                         END AS date_ready_to_pick_up
                     FROM laundrybags l
                     JOIN laundryreport lr ON lr.bag_id = l.id
-                    JOIN soldier s ON l.id = s.laundry_bag_id
-                    WHERE lr.date_drop_off BETWEEN $1 AND $2 
-                    AND s.date_free IS NULL;`, [selectedDate1, selectedDate2]);
+                    JOIN latest_soldier ls ON l.id = ls.laundry_bag_id
+                    WHERE lr.date_drop_off BETWEEN $1 AND $2;`, [selectedDate1, selectedDate2]);
 
                 const result_nationality = await client.query(`
+                    WITH latest_soldier AS (
+                        SELECT DISTINCT ON (s.laundry_bag_id) 
+                            s.laundry_bag_id,
+                            s.country
+                        FROM soldier s
+                        WHERE s.laundry_bag_id IS NOT NULL
+                        ORDER BY s.laundry_bag_id, 
+                                (s.date_free IS NULL) DESC, 
+                                s.date_free DESC
+                    )
                     SELECT 
                         COUNT(*) AS total_count_bags,
-                        s.country
+                        ls.country
                     FROM laundrybags l
                     JOIN laundryreport lr ON lr.bag_id = l.id
-                    JOIN soldier s ON l.id = s.laundry_bag_id
+                    JOIN latest_soldier ls ON l.id = ls.laundry_bag_id
                     WHERE lr.date_drop_off BETWEEN $1 AND $2
-                        AND s.date_free IS NULL
-                    GROUP BY country;`, [selectedDate1, selectedDate2]);
+                    GROUP BY ls.country;`, [selectedDate1, selectedDate2]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ data: result.rows, data_nationality: result_nationality.rows });
