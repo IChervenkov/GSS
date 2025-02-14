@@ -743,55 +743,68 @@
                     <thead>
                         <tr>
                             <th class="asset-rfid-header">
-                                <input name="assetRfid" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetRfid" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>RFID</label>
                             </th>
                             <th class="asset-code-header">
-                                <input name="assetCode" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetCode" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Asset code</label>
                             </th>
                             <th class="asset-name-header">
-                                <input name="assetName" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetName" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Asset Name</label>
                             </th>
                             <th class="asset-type-header">
-                                <input name="assetType" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetType" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Asset type</label>
                             </th>
                             <th class="asset-building-header">
-                                <input name="assetBuilding" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetBuilding" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Building</label>
                             </th>
                             <th class="asset-room-header">
-                                <input name="assetRoom" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetRoom" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Room</label>
                             </th>
                             <th class="asset-category-header">
-                                <input name="assetCategory" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetCategory" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Asset category</label>
                             </th>
                             <th class="asset-quantity-header">
-                                <input name="assetQuantity" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetQuantity" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Asset quantity</label>
                             </th>
                             <th class="asset-mrah-header">
-                                <input name="assetMrah" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetMrah" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>MRAH</label>
                             </th>
                             <th class="asset-owner-header">
-                                <input name="assetOwner" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetOwner" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Asset owner</label>
                             </th>
                             <th class="asset-status-header">
-                                <input name="assetStatus" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetStatus" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Asset status</label>
                             </th>
                             <th class="asset-expandable-header">
-                                <input name="assetExpandable" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetExpandable" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Asset expandable</label>
                             </th>
                             <th class="asset-description-header">
-                                <input name="assetDescription" type="text" class="search-input-view-assets" placeholder="Search...">
+                                <input name="assetDescription" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
                                 <label>Asset description</label>
                             </th>
                         </tr>
@@ -811,17 +824,23 @@
                 <table id="assetDateTable">
                     <thead>
                         <tr>
-                            <th><input name="date" type="text" class="search-input-view-assets-second" placeholder="Search...">Date
+                            <th><input name="date" type="text" class="search-input-view-assets-second"
+                                    placeholder="Search...">Date
                             </th>
-                            <th><input name="totalAsset" type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                            <th><input name="totalAsset" type="text" class="search-input-view-assets-second"
+                                    placeholder="Search...">Total
                                 Assets</th>
-                            <th><input name="totalNewAsset" type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                            <th><input name="totalNewAsset" type="text" class="search-input-view-assets-second"
+                                    placeholder="Search...">Total
                                 New Assets</th>
-                            <th><input name="totalUpdateAsset" type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                            <th><input name="totalUpdateAsset" type="text" class="search-input-view-assets-second"
+                                    placeholder="Search...">Total
                                 Update Assets</th>
-                            <th><input name="totalRemoveAsset" type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                            <th><input name="totalRemoveAsset" type="text" class="search-input-view-assets-second"
+                                    placeholder="Search...">Total
                                 Remove Assets</th>
-                            <th><input name="totalMissingAsset" type="text" class="search-input-view-assets-second" placeholder="Search...">Total
+                            <th><input name="totalMissingAsset" type="text" class="search-input-view-assets-second"
+                                    placeholder="Search...">Total
                                 Missing Assets</th>
                         </tr>
                     </thead>
@@ -848,11 +867,31 @@
         </div>
     </div>
 
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex align-items-center">
+                <!-- Info Icon -->
+                <i class="bi bi-info-circle-fill toast-icon"></i>
+
+                <!-- Toast Message -->
+                <div class="toast-body flex-grow-1" id="toast-message">
+                    <!-- Message will be inserted here -->
+                </div>
+
+                <!-- Close Button -->
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 <script src="/java/autoSearch.js"></script>
 <script src="/java/pageNumber.js"></script>
 <script src="/java/assetsInventory.js"></script>
 <script src="/java/calendar.js"></script>
+<script src="/java/showPinMessage.js"></script>
 
 </html>

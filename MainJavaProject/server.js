@@ -927,6 +927,8 @@ class Server {
                     [nfcData]
                 );
 
+                const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1;`, [nfcData]);
+
                 if (count_result.rows[0].count > 0) {
                     await client.query('ROLLBACK');
                     return res.status(403).json({ message: 'The bike is already rented.' });
@@ -952,22 +954,21 @@ class Server {
                     newStatus = 'Rented';
                 }
 
-                await client.query(
-                    "UPDATE bicycles SET status = $1 WHERE id = $2",
-                    [newStatus, nfcData]
-                );
-
-                await client.query(
-                    `INSERT INTO bikesoldier(id, bikeid, soldierid, datefrom) VALUES (
-                    (SELECT COALESCE(MAX(id), 0) + 1 FROM bikesoldier), $1, $2, $3);`,
-                    [nfcData, selectClient, recDate]
-                );
-
-                const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1;`, [nfcData]);
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
-                    [`Rented Bike with name ${bikeResult.rows[0].namebike}`]);
+                await Promise.all([
+                    client.query(
+                        "UPDATE bicycles SET status = $1 WHERE id = $2",
+                        [newStatus, nfcData]
+                    ),
+                    client.query(
+                        `INSERT INTO bikesoldier(id, bikeid, soldierid, datefrom) VALUES (
+                        (SELECT COALESCE(MAX(id), 0) + 1 FROM bikesoldier), $1, $2, $3);`,
+                        [nfcData, selectClient, recDate]
+                    ),
+                    client.query(
+                        `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
+                        [`Rented Bike with name ${bikeResult.rows[0].namebike}`]
+                    )
+                ]);
 
                 await client.query('COMMIT');
                 res.status(200).send('Data rent received successfully');
@@ -1000,21 +1001,22 @@ class Server {
 
                 await client.query('BEGIN');
 
-                await client.query(
-                    "UPDATE bicycles SET status = 'Available' WHERE id = $1",
-                    [nfcData]
-                );
-
-                await client.query(
-                    "UPDATE bikesoldier SET dateto = $1 WHERE bikeid = $2 AND dateto IS NULL",
-                    [recDate, nfcData]
-                );
-
                 const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1;`, [nfcData]);
 
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
-                    [`Return Bike with name ${bikeResult.rows[0].namebike}`]);
+                await Promise.all([
+                    client.query(
+                        "UPDATE bicycles SET status = 'Available' WHERE id = $1",
+                        [nfcData]
+                    ),
+                    client.query(
+                        "UPDATE bikesoldier SET dateto = $1 WHERE bikeid = $2 AND dateto IS NULL",
+                        [recDate, nfcData]
+                    ),
+                    client.query(
+                        `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
+                        [`Return Bike with name ${bikeResult.rows[0].namebike}`]
+                    )
+                ]);
 
                 await client.query('COMMIT');
                 res.status(200).send('Data return received successfully');
@@ -1044,34 +1046,36 @@ class Server {
                 await client.query('BEGIN');
 
                 if (oldBikeId === newBikeId) {
-                    await client.query(
-                        "UPDATE bicycles SET namebike = $1 WHERE id = $2",
-                        [bikeName, oldBikeId]);
-
-                    // Query the database for the user
-                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
-                        [`Edit Bike name with code ${oldBikeId}`]);
+                    await Promise.all([
+                        client.query(
+                            "UPDATE bicycles SET namebike = $1 WHERE id = $2",
+                            [bikeName, oldBikeId]
+                        ),
+                        client.query(
+                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
+                            [`Edit Bike name with code ${oldBikeId}`]
+                        )
+                    ]);
 
                 } else {
-
-                    await client.query(
-                        "INSERT INTO bicycles VALUES ($1, $2, 'Available');",
-                        [newBikeId, bikeName]
-                    );
-
-                    await client.query(
-                        "UPDATE bikesoldier SET bikeid = $1 WHERE bikeid = $2",
-                        [newBikeId, oldBikeId]
-                    );
-
-                    await client.query(
-                        "DELETE FROM bicycles WHERE id = $1",
-                        [oldBikeId]
-                    );
-
-                    // Query the database for the user
-                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
-                        [`Edit Bike with name ${bikeName}, replace old NFC ${oldBikeId} with new NFC ${newBikeId}`]);
+                    await Promise.all([
+                        client.query(
+                            "INSERT INTO bicycles VALUES ($1, $2, 'Available');",
+                            [newBikeId, bikeName]
+                        ),
+                        client.query(
+                            "UPDATE bikesoldier SET bikeid = $1 WHERE bikeid = $2",
+                            [newBikeId, oldBikeId]
+                        ),
+                        client.query(
+                            "DELETE FROM bicycles WHERE id = $1",
+                            [oldBikeId]
+                        ),
+                        client.query(
+                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
+                            [`Edit Bike with name ${bikeName}, replace old NFC ${oldBikeId} with new NFC ${newBikeId}`]
+                        )
+                    ]);
                 }
 
                 await client.query('COMMIT');
@@ -1151,8 +1155,8 @@ class Server {
             SET status = 'Late'
             FROM bike_times
             WHERE bicycles.id = bike_times.bike_id 
-                AND bike_times.hours_passed > 24
-                AND bike_times.status = 'Rented';`);
+            AND bike_times.hours_passed > 24
+            AND bike_times.status = 'Rented';`);
 
                 // Query the database for the user
                 const result_bike = await client.query(
@@ -1166,7 +1170,6 @@ class Server {
                 LEFT JOIN soldier s ON lb.soldierId = s.id
                 ORDER BY CASE WHEN b.status = 'Late' THEN 0 WHEN b.status = 'Repair' THEN 1 WHEN b.status = 'Rented' THEN 2 WHEN b.status = 'Available' THEN 3 ELSE 4 END, b.status;`
                 );
-
 
                 result_bike.rows.forEach(element => {
                     data.push({
@@ -1296,20 +1299,19 @@ class Server {
                         newStatus = 'Rented';
                     }
 
-                    await client.query(
-                        "UPDATE bicycles SET status = $1 WHERE id = $2",
-                        [newStatus, bikeId]
-                    );
-
-                    await client.query(
-                        `INSERT INTO bikesoldier(id, bikeid, soldierid, datefrom) VALUES (
-                        (SELECT COALESCE(MAX(id), 0) + 1 FROM bikesoldier), $1, $2, $3);`,
-                        [bikeId, clientId, recDate]
-                    );
-
-                    // Query the database for the user
-                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                        [req.session.username, `Rented Bike with name ${bikeResult.rows[0].namebike}`]);
+                    await Promise.all([
+                        client.query(
+                            "UPDATE bicycles SET status = $1 WHERE id = $2",
+                            [newStatus, bikeId]
+                        ),
+                        client.query(
+                            `INSERT INTO bikesoldier(id, bikeid, soldierid, datefrom) VALUES (
+                            (SELECT COALESCE(MAX(id), 0) + 1 FROM bikesoldier), $1, $2, $3);`,
+                            [bikeId, clientId, recDate]
+                        ),
+                        client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                            [req.session.username, `Rented Bike with name ${bikeResult.rows[0].namebike}`])
+                    ]);
 
                     await client.query('COMMIT');
                     res.status(200).json({ message: 'The bike has been rented successfully' });
@@ -1317,19 +1319,18 @@ class Server {
                 } else {
                     // Update bike status and clear client assignment
 
-                    await client.query(
-                        "UPDATE bicycles SET status = 'Available' WHERE id = $1",
-                        [bikeId]
-                    );
-
-                    await client.query(
-                        "UPDATE bikesoldier SET dateto = $1 WHERE bikeid = $2 AND dateto IS NULL",
-                        [recDate, bikeId]
-                    );
-
-                    // Query the database for the user
-                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                        [req.session.username, `Return Bike with name ${bikeResult.rows[0].namebike}`]);
+                    await Promise.all([
+                        client.query(
+                            "UPDATE bicycles SET status = 'Available' WHERE id = $1",
+                            [bikeId]
+                        ),
+                        client.query(
+                            "UPDATE bikesoldier SET dateto = $1 WHERE bikeid = $2 AND dateto IS NULL",
+                            [recDate, bikeId]
+                        ),
+                        client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                            [req.session.username, `Return Bike with name ${bikeResult.rows[0].namebike}`])
+                    ]);
 
                     await client.query('COMMIT');
                     res.status(200).json({ message: 'The bike has been return successfully' });
@@ -1373,8 +1374,9 @@ class Server {
                 await client.query('BEGIN');
 
                 // Query for bike usage details
-                const result_soldior = await client.query(
-                    `SELECT DISTINCT
+                const [result_soldior, result_bike_totals] = await Promise.all([
+                    client.query(
+                        `SELECT DISTINCT
                         b.namebike, 
                         s.namesoldier,
                         COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
@@ -1390,30 +1392,30 @@ class Server {
                         CASE
                             WHEN dateto IS NOT NULL AND (dateto - datefrom) > INTERVAL '24 hours' THEN 'Late'
                             ELSE 'On time'
-                        END AS status
-                    FROM bikesoldier bs 
-                    LEFT JOIN soldier s ON bs.soldierid = s.id 
-                    LEFT JOIN bicycles b ON bs.bikeid = b.id
-                    WHERE datefrom BETWEEN $1 AND $2
-                    ORDER BY date_from;`,
-                    [selectedDate1, selectedDate2]
-                );
+                            END AS status
+                        FROM bikesoldier bs 
+                        LEFT JOIN soldier s ON bs.soldierid = s.id 
+                        LEFT JOIN bicycles b ON bs.bikeid = b.id
+                        WHERE datefrom BETWEEN $1 AND $2
+                        ORDER BY date_from;`,
+                        [selectedDate1, selectedDate2]
+                    ),
+                    client.query(
+                        `SELECT 
+                            TO_CHAR(datefrom, 'YYYY-MM-DD') AS date, 
+                            COUNT(*) AS total_bikes
+                        FROM (
+                            SELECT DISTINCT ON (bikeid, soldierid, datefrom, dateto) bikeid, datefrom
+                            FROM bikesoldier
+                            WHERE datefrom BETWEEN $1 AND $2
+                        ) subquery
+                        GROUP BY TO_CHAR(datefrom, 'YYYY-MM-DD')
+                        ORDER BY date;`,
+                        [selectedDate1, selectedDate2]
+                    )
+                ]);
 
                 const data = result_soldior.rows;
-
-                const result_bike_totals = await client.query(
-                    `SELECT 
-                        TO_CHAR(datefrom, 'YYYY-MM-DD') AS date, 
-                        COUNT(*) AS total_bikes
-                    FROM (
-                        SELECT DISTINCT ON (bikeid, soldierid, datefrom, dateto) bikeid, datefrom
-                        FROM bikesoldier
-                        WHERE datefrom BETWEEN $1 AND $2
-                    ) subquery
-                    GROUP BY TO_CHAR(datefrom, 'YYYY-MM-DD')
-                    ORDER BY date;`,
-                    [selectedDate1, selectedDate2]
-                );
                 const dateTotals = result_bike_totals.rows;
 
                 // Filter both datasets
@@ -1609,45 +1611,45 @@ class Server {
                     selectedDate1 += " 00:00";
                     selectedDate2 += " 23:59";
 
-                    // Query for bike usage details
-                    const result_soldior = await client.query(
-                        `SELECT DISTINCT
-                        b.namebike, 
-                        s.namesoldier, 
-                        COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
-                        COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_to, 
-                        CASE 
-                            WHEN dateto IS NOT NULL THEN CONCAT(
-                                EXTRACT(DAY FROM (dateto - datefrom)), ' days, ',
-                                EXTRACT(HOUR FROM (dateto - datefrom)), ' hours and ',
-                                EXTRACT(MINUTE FROM (dateto - datefrom)), ' minutes'
-                            )
-                            ELSE 'Still in use'
-                        END AS duration
-                    FROM bikesoldier bs 
-                    LEFT JOIN soldier s ON bs.soldierid = s.id 
-                    LEFT JOIN bicycles b ON bs.bikeid = b.id
-                    WHERE datefrom BETWEEN $1 AND $2
-                    ORDER BY date_from DESC;`,
-                        [selectedDate1, selectedDate2]
-                    );
+                    // Query for bike usage details and total bike usage per day in the date range
+                    const [result_soldior, result_bike_totals] = await Promise.all([
+                        client.query(
+                            `SELECT DISTINCT
+                                b.namebike, 
+                                s.namesoldier, 
+                                COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
+                                COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_to, 
+                                CASE 
+                                WHEN dateto IS NOT NULL THEN CONCAT(
+                                    EXTRACT(DAY FROM (dateto - datefrom)), ' days, ',
+                                    EXTRACT(HOUR FROM (dateto - datefrom)), ' hours and ',
+                                    EXTRACT(MINUTE FROM (dateto - datefrom)), ' minutes'
+                                )
+                                ELSE 'Still in use'
+                                END AS duration
+                            FROM bikesoldier bs 
+                            LEFT JOIN soldier s ON bs.soldierid = s.id 
+                            LEFT JOIN bicycles b ON bs.bikeid = b.id
+                            WHERE datefrom BETWEEN $1 AND $2
+                            ORDER BY date_from DESC;`,
+                            [selectedDate1, selectedDate2]
+                        ),
+                        client.query(
+                            `SELECT 
+                                TO_CHAR(datefrom, 'YYYY-MM-DD') AS date, 
+                                COUNT(*) AS total_bikes
+                            FROM (
+                                SELECT DISTINCT ON (bikeid, soldierid, datefrom, dateto) bikeid, datefrom
+                                FROM bikesoldier
+                                WHERE datefrom BETWEEN $1 AND $2
+                            ) subquery
+                            GROUP BY TO_CHAR(datefrom, 'YYYY-MM-DD')
+                            ORDER BY date;`,
+                            [selectedDate1, selectedDate2]
+                        )
+                    ]);
 
                     const data = result_soldior.rows;
-
-                    // Query for total bike usage per day in the date range
-                    const result_bike_totals = await client.query(
-                        `SELECT 
-                        TO_CHAR(datefrom, 'YYYY-MM-DD') AS date, 
-                        COUNT(*) AS total_bikes
-                    FROM (
-                        SELECT DISTINCT ON (bikeid, soldierid, datefrom, dateto) bikeid, datefrom
-                        FROM bikesoldier
-                        WHERE datefrom BETWEEN $1 AND $2
-                    ) subquery
-                    GROUP BY TO_CHAR(datefrom, 'YYYY-MM-DD')
-                    ORDER BY date;`,
-                        [selectedDate1, selectedDate2]
-                    );
                     const dateTotals = result_bike_totals.rows;
 
                     await client.query('COMMIT');
@@ -1692,10 +1694,7 @@ class Server {
                 // Query the database for the user
                 await client.query(
                     `INSERT INTO usermonitoring (user_id, location)
-                     VALUES (
-                       COALESCE((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = 'PhoneUser')),
-                       $2
-                     )`,
+                    VALUES ( COALESCE((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = 'PhoneUser')), $2)`,
                     [req.session.username, `Add Bike with name ${bikeName}`]
                 );
 
@@ -1727,17 +1726,17 @@ class Server {
 
                 const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1`, [bikeRemoveId]);
 
-                // Query the database for the user
-                await client.query(
-                    `INSERT INTO usermonitoring (user_id, location)
-                     VALUES (
-                       COALESCE((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = 'PhoneUser')),
-                       $2
-                     )`,
-                    [req.session.username, `Remove Bike with number ${bikeResult.rows[0].namebike}`]
-                );
-
-                await client.query(`DELETE FROM bicycles WHERE id = $1;`, [bikeRemoveId]);
+                await Promise.all([
+                    client.query(
+                        `INSERT INTO usermonitoring (user_id, location)
+                        VALUES (
+                            COALESCE((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = 'PhoneUser')),
+                            $2
+                        )`,
+                        [req.session.username, `Remove Bike with number ${bikeResult.rows[0].namebike}`]
+                    ),
+                    client.query(`DELETE FROM bicycles WHERE id = $1;`, [bikeRemoveId])
+                ]);
 
                 await client.query('COMMIT');
                 return res.status(200).json({ message: 'Bike remove successfully.' });
@@ -1803,7 +1802,7 @@ class Server {
                 const worksheet = workbook.Sheets[sheetName];
                 const data = XLSX.utils.sheet_to_json(worksheet);
 
-                // Create a Set to track unique soldier IDs within the data array
+                // Create a Set to track unique bike IDs within the data array
                 const uniqueBikeId = new Set();
 
                 await Promise.all(data.map(async (row) => {
@@ -1825,14 +1824,14 @@ class Server {
                         return;
                     }
 
-                    // Add soldier ID to the Set after checking
+                    // Add bike ID to the Set after checking
                     uniqueBikeId.add(row.id);
 
                     // Inside the backend function, when checking for duplicates
                     const result = await client.query("SELECT * FROM bicycles WHERE id = $1;", [row.id]);
 
                     if (result.rows.length > 0) {
-                        errors.push({ type: 'CheckExist', message: `Bicycles with number '${row.id}' is alredy exists.` });
+                        errors.push({ type: 'CheckExist', message: `Bicycles with number '${row.id}' already exists.` });
                         return;
                     }
 
@@ -1882,17 +1881,18 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result_check_bike = await client.query(`SELECT * FROM bicycles WHERE id = $1;`, [bikeId]);
+                const [result_check_bike, result_bike] = await Promise.all([
+                    client.query(`SELECT * FROM bicycles WHERE id = $1;`, [bikeId]),
+                    client.query(`
+                        SELECT status, datefrom FROM bicycles b
+                        LEFT JOIN bikesoldier bs ON bs.bikeid = b.id
+                        WHERE b.id = $1 and b.status <> 'Available' AND dateto IS NULL;`, [bikeId])
+                ]);
 
                 if (result_check_bike.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.status(401).json();
                 }
-
-                const result_bike = await client.query(`
-                SELECT status, datefrom FROM bicycles b
-                LEFT JOIN bikesoldier bs ON bs.bikeid = b.id
-                WHERE b.id = $1 and b.status <> 'Available' AND dateto IS NULL;`, [bikeId]);
 
                 if (result_bike.rows.length > 0) {
                     const statusRes = result_bike.rows[0].status ? result_bike.rows[0].status : 'Available';
@@ -1928,7 +1928,7 @@ class Server {
                 const result_client = await client.query(`
                     SELECT s.id, namesoldier, country, namekey, l.id as etc, l.code, s.meal_card, s.date_free, s.date_accommodation
                     FROM soldier s
-					LEFT JOIN key k ON k.soldierid = s.id
+                    LEFT JOIN key k ON k.soldierid = s.id
                     LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id;`);
 
                 result_client.rows.forEach(element => {
@@ -1973,11 +1973,10 @@ class Server {
 
                 await client.query('BEGIN');
 
-                await client.query(`
-                    UPDATE bicycles SET status = $1 WHERE id = $2;`, [status, bikeId]);
-
-                await client.query(`
-                    UPDATE bikesoldier SET soldierid = $1, datefrom = $2 WHERE bikeid = $3 AND dateto IS NULL;`, [soldierId, dateFrom, bikeId]);
+                await Promise.all([
+                    client.query(`UPDATE bicycles SET status = $1 WHERE id = $2;`, [status, bikeId]),
+                    client.query(`UPDATE bikesoldier SET soldierid = $1, datefrom = $2 WHERE bikeid = $3 AND dateto IS NULL;`, [soldierId, dateFrom, bikeId])
+                ]);
 
                 await client.query('COMMIT');
                 return res.status(200).json({ message: 'Bike data edited successfully.' });
@@ -2193,8 +2192,7 @@ class Server {
                 LEFT JOIN bicycles b ON b.id = bs.bikeid
                 WHERE bikeid = $1
                 ORDER BY datefrom DESC
-				LIMIT 2;`, [selectBike]);
-
+                LIMIT 2;`, [selectBike]);
 
                 result_client.rows.forEach(element => {
                     allBikeInfo.push({ namesoldier: element.namesoldier, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
@@ -2450,26 +2448,27 @@ class Server {
                 JOIN assets a ON a.location_key = k.id
                 WHERE nameroom NOT LIKE '__/D_' AND nameroom NOT LIKE '__/_/E_';`);
 
-                for (const row of resultBuild.rows) {
+                await Promise.all(resultBuild.rows.map(async (row) => {
                     try {
-                        const countFreeBedsResult = await client.query(`
-                        SELECT COUNT(*) AS freebeds
-                        FROM rooms r
-                        LEFT JOIN roomskey rk ON r.id = rk.roomid
-                        LEFT JOIN key k ON k.id = rk.keyid
-                        LEFT JOIN soldier s ON s.id = k.soldierid
-                        LEFT JOIN buildroom br ON br.roomid = r.id
-                        JOIN assets a ON a.location_key = k.id
-                        WHERE s.namesoldier IS NULL 
-                        AND br.buildid = $1
-                        AND r.nameroom LIKE '__/___';`, [row.id]);
-
-                        const selectBuildType = await client.query(`SELECT type FROM buildings WHERE id = $1;`, [row.id]);
+                        const [countFreeBedsResult, selectBuildTypeResult] = await Promise.all([
+                            client.query(`
+                                SELECT COUNT(*) AS freebeds
+                                FROM rooms r
+                                LEFT JOIN roomskey rk ON r.id = rk.roomid
+                                LEFT JOIN key k ON k.id = rk.keyid
+                                LEFT JOIN soldier s ON s.id = k.soldierid
+                                LEFT JOIN buildroom br ON br.roomid = r.id
+                                JOIN assets a ON a.location_key = k.id
+                                WHERE s.namesoldier IS NULL 
+                                AND br.buildid = $1
+                                AND r.nameroom LIKE '__/___';`, [row.id]),
+                            client.query(`SELECT type FROM buildings WHERE id = $1;`, [row.id])
+                        ]);
 
                         const countFreeBeds = countFreeBedsResult.rows[0].freebeds;
                         totalFreeBeds += Number(countFreeBeds);
 
-                        if (selectBuildType.rows[0].type === 'Accommodation') {
+                        if (selectBuildTypeResult.rows[0].type === 'Accommodation') {
                             navBuild.push({ id: row.id, name: `${row.namebuilding}`, nameAdd: `(${countFreeBeds} free beds)`, numBuild: row.id });
 
                         } else {
@@ -2480,7 +2479,7 @@ class Server {
                         await client.query('ROLLBACK');
                         console.error(`Error fetching data for building ${row.id}:`, error);
                     }
-                }
+                }));
 
                 var totalOccupiedBeds = counttotalBeds.rows[0].totalbed - totalFreeBeds;
 
@@ -2657,7 +2656,7 @@ class Server {
                 } else if (soldierId !== '' && countryId !== 'None') {
 
                     const get_bag_soldier = await client.query(`
-                        SELECT l.status l.id FROM laundrybags l 
+                        SELECT l.status, l.id FROM laundrybags l 
                         LEFT JOIN soldier s ON l.id = s.laundry_bag_id
                         WHERE s.id = $1 AND s.date_accommodation IS NOT NULL AND s.date_free IS NULL;`, [soldierId]);
 
@@ -2670,17 +2669,11 @@ class Server {
                         }
                     }
 
-                    await client.query(
-                        "UPDATE key SET soldierid = NULL WHERE soldierid = $1;",
-                        [soldierId]
-                    );
-
-                    await client.query(
-                        "UPDATE key SET soldierid = $1 WHERE id = $2;",
-                        [soldierId, keyCodeId]
-                    );
-
-                    await client.query(`UPDATE soldier SET date_free = NULL, date_accommodation = NULL WHERE date_free IS NOT NULL AND id = $1;`, [soldierId]);
+                    await Promise.all([
+                        client.query("UPDATE key SET soldierid = NULL WHERE soldierid = $1;", [soldierId]),
+                        client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldierId, keyCodeId]),
+                        client.query("UPDATE soldier SET date_free = NULL, date_accommodation = NULL WHERE date_free IS NOT NULL AND id = $1;", [soldierId])
+                    ]);
 
                     const result_accommodation_soldier = await client.query(`SELECT * FROM soldier WHERE date_accommodation IS NOT NULL AND id = $1`,
                         [soldierId]
@@ -2718,31 +2711,26 @@ class Server {
                         [keyCodeId]
                     );
 
-                    const get_bag_id = await client.query(`SELECT laundry_bag_id AS bagid FROM soldier WHERE id = $1`, [res_query.rows[0].soldierid]);
-                    const check_laundry_bag = await client.query(`SELECT status FROM laundrybags WHERE id = $1;`, [get_bag_id.rows[0].bagid]);
+                    const [check_laundry_bag, check_bike] = await Promise.all([
+                        client.query(`SELECT status FROM laundrybags WHERE id = $1;`, [res_query.rows[0].soldierid]),
+                        client.query(`
+                            SELECT * FROM soldier s
+                            LEFT JOIN bikesoldier bs ON s.id = bs.soldierid
+                            WHERE s.id = $1 AND datefrom IS NOT NULL AND dateto IS NULL;`, [res_query.rows[0].soldierid])
+                    ]);
 
                     if (check_laundry_bag.rows.length > 0 && check_laundry_bag.rows[0].status !== 'None') {
                         return res.status(401).json({ message: "The soldier has an laundry bag an laundry and cannot be released." });
                     }
 
-                    const check_bike = await client.query(`
-                        SELECT * FROM soldier s
-                        LEFT JOIN bikesoldier bs ON s.id = bs.soldierid
-                        WHERE s.id = $1 AND datefrom IS NOT NULL AND dateto IS NULL;`, [res_query.rows[0].soldierid]);
-
                     if (check_bike.rows.length > 0) {
                         return res.status(402).json({ message: "The soldier has an active bike rental and cannot be released." });
                     }
 
-                    await client.query(
-                        "UPDATE key SET soldierid = NULL where id = $1;",
-                        [keyCodeId]
-                    );
-
-                    await client.query(
-                        "UPDATE soldier SET date_free = CURRENT_DATE where id = $1;",
-                        [res_query.rows[0].soldierid]
-                    );
+                    await Promise.all([
+                        client.query("UPDATE key SET soldierid = NULL where id = $1;", [keyCodeId]),
+                        client.query("UPDATE soldier SET date_free = CURRENT_DATE where id = $1;", [res_query.rows[0].soldierid])
+                    ]);
 
                     // Query the database for the user
                     await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -2781,46 +2769,45 @@ class Server {
                 await client.query('BEGIN');
 
                 // Query for bike usage details
-                const result_soldior = await client.query(`
+                const [result_soldior, result_move] = await Promise.all([
+                    client.query(`
                     SELECT 
-						r.nameroom,
+                        r.nameroom,
                         namesoldier, 
                         country, 
                         TO_CHAR(date_accommodation, 'Mon DD, YYYY') AS date_accommodation, 
                         TO_CHAR(date_free, 'Mon DD, YYYY') AS date_free,
                         meal_card,
-						code
+                        code
                     FROM 
                         soldier s
                     LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
-					LEFT JOIN roomskey rk ON rk.keyid = s.used_room
-					LEFT JOIN rooms r ON r.id = rk.roomid
-                    WHERE 
-                        country <> 'None';`);
-
-                // Query for bike usage details
-                const result_move = await client.query(`
-                    SELECT 
-                        current_rooms.nameroom AS current_room,
-                        previous_rooms.nameroom AS previous_room,
-                        soldier_name.namesoldier AS name_soldier,
-                        TO_CHAR(ms.datemove, 'YYYY-MM-DD') AS datemove
-                    FROM 
-                        movesoldier ms
-                    JOIN 
-                        key k_current ON ms.idnewkey = k_current.id
-                    JOIN 
-                        roomskey rk_current ON k_current.id = rk_current.keyid
-                    JOIN 
-                        rooms current_rooms ON current_rooms.id = rk_current.roomid
-                    JOIN 
-                        key k_previous ON ms.idpreviewkey = k_previous.id
-                    JOIN 
-                        roomskey rk_previous ON k_previous.id = rk_previous.keyid
-                    JOIN 
-                        rooms previous_rooms ON previous_rooms.id = rk_previous.roomid
-                    JOIN 
-                        soldier soldier_name ON soldier_name.id = ms.idsoldier;`);
+                    LEFT JOIN roomskey rk ON rk.keyid = s.used_room
+                    LEFT JOIN rooms r ON r.id = rk.roomid
+                    WHERE country <> 'None';`),
+                    client.query(`
+                        SELECT 
+                            current_rooms.nameroom AS current_room,
+                            previous_rooms.nameroom AS previous_room,
+                            soldier_name.namesoldier AS name_soldier,
+                            TO_CHAR(ms.datemove, 'YYYY-MM-DD') AS datemove
+                        FROM 
+                            movesoldier ms
+                        JOIN 
+                            key k_current ON ms.idnewkey = k_current.id
+                        JOIN 
+                            roomskey rk_current ON k_current.id = rk_current.keyid
+                        JOIN 
+                            rooms current_rooms ON current_rooms.id = rk_current.roomid
+                        JOIN 
+                            key k_previous ON ms.idpreviewkey = k_previous.id
+                        JOIN 
+                            roomskey rk_previous ON k_previous.id = rk_previous.keyid
+                        JOIN 
+                            rooms previous_rooms ON previous_rooms.id = rk_previous.roomid
+                        JOIN 
+                            soldier soldier_name ON soldier_name.id = ms.idsoldier;`)
+                ]);
 
                 const data = result_soldior.rows;
                 const data_move = result_move.rows;
@@ -2893,7 +2880,7 @@ class Server {
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
 
-                filteredSoldier.forEach(({ roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag }, index) => {
+                await Promise.all(filteredSoldier.map(async ({ roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag }, index) => {
                     const dataRow = worksheet1.addRow([roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag]);
 
                     // Apply borders and alternating row color
@@ -2914,9 +2901,9 @@ class Server {
                             };
                         });
                     }
-                });
+                }));
 
-                filteredSoldierMove.forEach(({ oldRoom, newRoom, soldierName, dateRelock }, index) => {
+                await Promise.all(filteredSoldierMove.map(async ({ oldRoom, newRoom, soldierName, dateRelock }, index) => {
                     const dataRow = worksheet2.addRow([oldRoom, newRoom, soldierName, dateRelock]);
 
                     // Apply borders and alternating row color
@@ -2937,7 +2924,7 @@ class Server {
                             };
                         });
                     }
-                });
+                }));
 
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                 res.setHeader('Content-Disposition', 'attachment; filename="report_accommodation.xlsx"');
@@ -2966,17 +2953,18 @@ class Server {
                 await client.query('BEGIN');
 
                 if (soldMoveId) {
-                    await client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]);
-                    await client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyId, keyMoveId, soldMoveId]);
-
-                    await client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldId, keyMoveId]);
-                    await client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldMoveId, keyId]);
-
+                    await Promise.all([
+                        client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]),
+                        client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyId, keyMoveId, soldMoveId]),
+                        client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldId, keyMoveId]),
+                        client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldMoveId, keyId])
+                    ]);
                 } else {
-                    await client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]);
-
-                    await client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldId, keyMoveId]);
-                    await client.query("UPDATE key SET soldierid = NULL WHERE id = $1;", [keyId]);
+                    await Promise.all([
+                        client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]),
+                        client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldId, keyMoveId]),
+                        client.query("UPDATE key SET soldierid = NULL WHERE id = $1;", [keyId])
+                    ]);
                 }
 
                 // Query the database for the user
@@ -3025,11 +3013,10 @@ class Server {
                     return res.status(401).json({ message: `Soldier name '${soldierName}' should not end with a space.` });
                 }
 
-                await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [soldierId, soldierName, soldierCountry]);
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Add soldier ${soldierName}`]);
+                await Promise.all([
+                    client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [soldierId, soldierName, soldierCountry]),
+                    client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)", [req.session.username, `Add soldier ${soldierName}`])
+                ]);
 
                 await client.query('COMMIT');
                 return res.status(200).json({ message: 'Data saved successfully' });
@@ -3057,11 +3044,13 @@ class Server {
 
                 await client.query('BEGIN');
 
-                await client.query("DELETE FROM movesoldier WHERE idsoldier = $1;", [code]);
-                await client.query("DELETE FROM key WHERE soldierid = $1;", [code]);
-                await client.query("DELETE FROM fitness WHERE soldierid = $1", [code]);
-                await client.query("DELETE FROM bikesoldier WHERE soldierid = $1", [code]);
-                await client.query("DELETE FROM soldier WHERE id = $1;", [code]);
+                await Promise.all([
+                    client.query("DELETE FROM movesoldier WHERE idsoldier = $1;", [code]),
+                    client.query("DELETE FROM key WHERE soldierid = $1;", [code]),
+                    client.query("DELETE FROM fitness WHERE soldierid = $1", [code]),
+                    client.query("DELETE FROM bikesoldier WHERE soldierid = $1", [code]),
+                    client.query("DELETE FROM soldier WHERE id = $1;", [code])
+                ]);
 
                 // Query the database for the user
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -3105,19 +3094,22 @@ class Server {
                     return res.status(401).json({ message: `Soldier name '${soldierName}' should not end with a space.` });
                 }
 
-                if (soldierId === soldierNewId)
+                if (soldierId === soldierNewId) {
                     await client.query("UPDATE soldier SET namesoldier = $1, country = $2 WHERE id = $3;", [soldierName, soldierCountry, soldierId]);
-                else {
+                } else {
                     const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [soldierId]);
                     const respons = result.rows[0];
 
                     await client.query("INSERT INTO soldier VALUES ($1, $2, $3, $4, $5, $6, $7, $8);", [soldierNewId, soldierName, soldierCountry, respons.date_accommodation || null, respons.date_free || null, respons.meal_card || null, respons.laundry_bag_id || null, respons.used_room || null]);
-                    await client.query("UPDATE movesoldier SET idsoldier = $1 WHERE idsoldier = $2;", [soldierNewId, soldierId]);
-                    await client.query("UPDATE key SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
-                    await client.query("UPDATE fitness SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
-                    await client.query("UPDATE bikesoldier SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]);
-                    await client.query("UPDATE lostitem SET soldier_id = $1 WHERE soldier_id = $2;", [soldierNewId, soldierId]);
-                    await client.query("DELETE FROM soldier WHERE id = $1;", [soldierId]);
+
+                    await Promise.all([
+                        client.query("UPDATE movesoldier SET idsoldier = $1 WHERE idsoldier = $2;", [soldierNewId, soldierId]),
+                        client.query("UPDATE key SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]),
+                        client.query("UPDATE fitness SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]),
+                        client.query("UPDATE bikesoldier SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]),
+                        client.query("UPDATE lostitem SET soldier_id = $1 WHERE soldier_id = $2;", [soldierNewId, soldierId]),
+                        client.query("DELETE FROM soldier WHERE id = $1;", [soldierId])
+                    ]);
                 }
 
                 // Query the database for the user
@@ -3239,10 +3231,9 @@ class Server {
 
             // Set column widths for sheet 1
             worksheet.columns = [
-                { width: 12 }, // Row Number
-                { width: 20 }, // Bike Name
-                { width: 25 }, // Soldier Name
-                { width: 20 } // Time Range
+                { width: 12 }, // Soldier ID
+                { width: 20 }, // Soldier Name
+                { width: 25 }, // Soldier Country
             ];
 
             // Set the response headers for file download
@@ -3275,7 +3266,7 @@ class Server {
                 JOIN assets a ON a.location_key = k.id
                 WHERE nameroom NOT LIKE '%/E_' AND SUBSTRING(nameroom, POSITION('/E' IN nameroom) + 2, 1) BETWEEN '0' AND '9'
                 AND nameroom NOT LIKE '%/D_' AND SUBSTRING(nameroom, POSITION('/D' IN nameroom) + 2, 1) BETWEEN '0' AND '9'
-				AND namesoldier IS NULL AND k.id IS NOT NULL AND b.type = 'Accommodation'
+                AND namesoldier IS NULL AND k.id IS NOT NULL AND b.type = 'Accommodation'
                 ORDER BY nameroom, namekey;`);
 
                 const data = result.rows;
@@ -3364,10 +3355,10 @@ class Server {
                     uniqueSoldierIds.add(row.soldierid);
 
                     // Inside the backend function, when checking for duplicates
-                    const result = await client.query("SELECT * FROM soldier WHERE id = $1 AND date_accommodation IS NOT NULL AND date_free IS NULL;",
-                        [row.soldierid]);
-
-                    const result_exist = await client.query("SELECT * FROM soldier WHERE id = $1;", [row.soldierid]);
+                    const [result, result_exist] = await Promise.all([
+                        client.query("SELECT * FROM soldier WHERE id = $1 AND date_accommodation IS NOT NULL AND date_free IS NULL;", [row.soldierid]),
+                        client.query("SELECT * FROM soldier WHERE id = $1;", [row.soldierid])
+                    ]);
 
                     if (result.rows.length > 0) {
                         // Duplicate soldierId found
@@ -3412,15 +3403,10 @@ class Server {
                         ? bagSet.find(code => code.code === row.laundrybag)?.id
                         : null;
 
-                    await client.query(
-                        "UPDATE key SET soldierid = $1 WHERE id = $2;",
-                        [row.soldierid, row.keynumber]
-                    );
-
-                    await client.query(
-                        "UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3, used_room = $4 WHERE id = $1;",
-                        [row.soldierid, mealCardValue, laundryBagValue, row.keynumber]
-                    );
+                    await Promise.all([
+                        client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [row.soldierid, row.keynumber]),
+                        client.query("UPDATE soldier SET date_accommodation = CURRENT_DATE, meal_card = $2, laundry_bag_id = $3, used_room = $4 WHERE id = $1;", [row.soldierid, mealCardValue, laundryBagValue, row.keynumber])
+                    ]);
 
                 }));
 
@@ -3465,8 +3451,7 @@ class Server {
                     LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
                     LEFT JOIN roomskey rk ON rk.keyid = k.id
                     LEFT JOIN buildroom br ON br.roomid = rk.roomid
-                    WHERE s.id IS NOT NULL AND s.country <> 'None' AND br.buildid = $1;
-                `, [buildId]);
+                    WHERE s.id IS NOT NULL AND s.country <> 'None' AND br.buildid = $1;`, [buildId]);
 
                 if (res_query.rows.length === 0) {
                     await client.query('ROLLBACK');
@@ -3496,8 +3481,8 @@ class Server {
 
                 await client.query(`
                     INSERT INTO usermonitoring (user_id, location)
-                    VALUES ((SELECT id FROM users WHERE username = $1), $2);
-                `, [req.session.username, 'Release all soldier']);
+                    VALUES ((SELECT id FROM users WHERE username = $1), $2);`,
+                    [req.session.username, 'Release all soldier']);
 
                 await client.query('COMMIT');
                 return res.status(200).json({ message: "All rooms are vacated." });
@@ -3535,13 +3520,15 @@ class Server {
                     return res.status(401).json({ message: 'This destination already exists!' });
                 }
 
-                await client.query(
-                    `INSERT INTO buildings VALUES ($1, $2, $3);`, [buildId, buildName, buildType]
-                );
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Add destination ${buildName}`]);
+                await Promise.all([
+                    client.query(
+                        `INSERT INTO buildings VALUES ($1, $2, $3);`, [buildId, buildName, buildType]
+                    ),
+                    client.query(
+                        "INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Add destination ${buildName}`]
+                    )
+                ]);
 
                 await client.query('COMMIT');
                 return res.status(200).json({ message: 'Add destination is successfully' });
@@ -3571,11 +3558,11 @@ class Server {
 
                 await client.query('BEGIN');
 
-                await client.query("DELETE FROM buildings WHERE id = $1;", [buildId]);
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Remove destination ${buildId}`]);
+                await Promise.all([
+                    client.query("DELETE FROM buildings WHERE id = $1;", [buildId]),
+                    client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Remove destination ${buildId}`])
+                ]);
 
                 await client.query('COMMIT');
                 return res.status(200).send();
@@ -3615,12 +3602,12 @@ class Server {
                     return res.status(401).json({ message: 'This room already exists!' });
                 }
 
-                await client.query("INSERT INTO rooms VALUES ($1, $2)", [roomId, roomName]);
-                await client.query("INSERT INTO buildroom VALUES ($1, $2)", [buildingName, roomId]);
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Add room ${roomName} to ${buildingName}`]);
+                await Promise.all([
+                    client.query("INSERT INTO rooms VALUES ($1, $2)", [roomId, roomName]),
+                    client.query("INSERT INTO buildroom VALUES ($1, $2)", [buildingName, roomId]),
+                    client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Add room ${roomName} to ${buildingName}`])
+                ]);
 
                 await client.query('COMMIT');
                 return res.status(200).send({ message: `The room ${roomName} was added into building ${buildingName}.` });
@@ -3650,19 +3637,16 @@ class Server {
 
                 await client.query('BEGIN');
 
-                var result;
+                let result;
 
                 if (numBuild) {
-
                     result = await client.query(`
                     SELECT r.* 
                     FROM rooms r
                     LEFT JOIN buildroom br ON br.roomid = r.id
                     WHERE br.buildid = $1
                     AND nameroom NOT SIMILAR TO '%/(E|D)[0-9]%';`, [numBuild]);
-
                 } else {
-
                     result = await client.query(`
                         SELECT r.* 
                         FROM rooms r
@@ -3705,7 +3689,7 @@ class Server {
 
                 await client.query('BEGIN');
 
-                var result;
+                let result;
 
                 if (numBuild === 'D') {
 
@@ -3732,8 +3716,8 @@ class Server {
                     result = await client.query(`
                     SELECT k.*
                     FROM key k
-					LEFT JOIN roomskey rk ON rk.keyid = k.id
-					LEFT JOIN rooms r ON r.id = rk.roomid
+                    LEFT JOIN roomskey rk ON rk.keyid = k.id
+                    LEFT JOIN rooms r ON r.id = rk.roomid
                     WHERE r.id = $1
                     AND r.nameroom NOT SIMILAR TO '%/(E|D)[0-9]%';`, [numRoom]);
                 }
@@ -3770,14 +3754,14 @@ class Server {
                     SELECT k.id, k.namekey, s.namesoldier, s.country, s.meal_card, l.code, r.nameroom, r.id AS roomid FROM key k
                     LEFT JOIN soldier s ON s.id = k.soldierid
                     LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id
-					LEFT JOIN roomskey rk ON rk.keyid = k.id
-					LEFT JOIN rooms r ON rk.roomid = r.id
-					JOIN assets a ON a.location_key = k.id;`);
+                    LEFT JOIN roomskey rk ON rk.keyid = k.id
+                    LEFT JOIN rooms r ON rk.roomid = r.id
+                    JOIN assets a ON a.location_key = k.id;`);
 
                 const result_key_data = result.rows;
                 let total_res = [];
 
-                result_key_data.forEach(row => {
+                await Promise.all(result_key_data.map(async (row) => {
                     total_res.push({
                         id: row.id,
                         name: row.namekey,
@@ -3788,7 +3772,7 @@ class Server {
                         roomid: row.roomid,
                         nameroom: row.nameroom
                     });
-                });
+                }));
 
                 await client.query('COMMIT');
                 return res.status(200).send(total_res);
@@ -3818,12 +3802,12 @@ class Server {
 
                 await client.query('BEGIN');
 
-                await client.query(`DELETE FROM buildroom WHERE roomid = $1;`, [roomId]);
-                await client.query(`DELETE FROM rooms WHERE id = $1;`, [roomId]);
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Remove room ${roomId}`]);
+                await Promise.all([
+                    client.query(`DELETE FROM buildroom WHERE roomid = $1;`, [roomId]),
+                    client.query(`DELETE FROM rooms WHERE id = $1;`, [roomId]),
+                    client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Remove room ${roomId}`])
+                ]);
 
                 await client.query('COMMIT');
                 return res.status(200).send({ message: `The room was removed successfully.` });
@@ -3861,12 +3845,12 @@ class Server {
                     return res.status(401).json({ message: 'This key already exists!' });
                 }
 
-                await client.query("INSERT INTO key VALUES ($1, $2)", [keyId, keyName]);
-                await client.query("INSERT INTO roomskey VALUES ($1, $2)", [selectedRoomForKey, keyId]);
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Add key ${keyName} to room ${selectedRoomForKey}`]);
+                await Promise.all([
+                    client.query("INSERT INTO key VALUES ($1, $2)", [keyId, keyName]),
+                    client.query("INSERT INTO roomskey VALUES ($1, $2)", [selectedRoomForKey, keyId]),
+                    client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Add key ${keyName} to room ${selectedRoomForKey}`])
+                ]);
 
                 await client.query('COMMIT');
                 return res.status(200).send({ message: `The key ${keyName} was added into this building.` });
@@ -3902,38 +3886,39 @@ class Server {
                 }
 
                 await client.query(`
-                    INSERT INTO key VALUES (
-                        $1, 
-                        (SELECT namekey FROM key WHERE id = $2), 
-                        (SELECT soldierid FROM key WHERE id = $2));`, [newKeyId, oldKeyId]);
+                INSERT INTO key VALUES (
+                $1, 
+                (SELECT namekey FROM key WHERE id = $2), 
+                (SELECT soldierid FROM key WHERE id = $2));`, [newKeyId, oldKeyId]);
 
                 // Update key IDs in relevant tables
-                await client.query(`
-                    UPDATE roomskey
-                    SET keyid = $1
-                    WHERE keyid = $2;`, [newKeyId, oldKeyId]);
+                await Promise.all([
+                    client.query(`
+                        UPDATE roomskey
+                        SET keyid = $1
+                        WHERE keyid = $2;`, [newKeyId, oldKeyId]),
 
-                await client.query(`
-                    UPDATE movesoldier
-                    SET 
-                        idnewkey = CASE WHEN idnewkey = $2 THEN $1 ELSE idnewkey END,
-                        idpreviewkey = CASE WHEN idpreviewkey = $2 THEN $1 ELSE idpreviewkey END; `, [newKeyId, oldKeyId]);
+                    client.query(`
+                        UPDATE movesoldier
+                        SET 
+                            idnewkey = CASE WHEN idnewkey = $2 THEN $1 ELSE idnewkey END,
+                            idpreviewkey = CASE WHEN idpreviewkey = $2 THEN $1 ELSE idpreviewkey END; `, [newKeyId, oldKeyId]),
 
-                await client.query(`
-                    UPDATE assets
-                    SET 
-                        location_key = CASE WHEN location_key = $2 THEN $1 ELSE location_key END;`, [newKeyId, oldKeyId]);
+                    client.query(`
+                        UPDATE assets
+                        SET 
+                            location_key = CASE WHEN location_key = $2 THEN $1 ELSE location_key END;`, [newKeyId, oldKeyId])
+                ]);
 
-                await client.query(`DELETE FROM key WHERE id = $1;`, [oldKeyId])
+                await client.query(`DELETE FROM key WHERE id = $1;`, [oldKeyId]);
 
                 // Log user action
                 await client.query(`
                     INSERT INTO usermonitoring (user_id, location) 
                     VALUES (
                         (SELECT id FROM users WHERE username = $1),
-                        $2
-                    )
-                `, [req.session.username, `Replace key ${oldKeyId} with ${newKeyId}`]);
+                            $2
+                        )`, [req.session.username, `Replace key ${oldKeyId} with ${newKeyId}`]);
 
                 await client.query('COMMIT');
                 return res.status(200).send({ message: `The key was replaced successfully.` });
@@ -3952,11 +3937,9 @@ class Server {
     defineRoutesFitnes() {
 
         this.app.post('/sendClientData', async (req, res) => {
-            // Validate the request body using Joi
             const { error } = clientDataSchema.validate(req.body);
 
             if (error) {
-                // If validation fails, return 400 with the error message
                 return res.status(400).json({ message: error.details[0].message });
             }
 
@@ -3969,21 +3952,16 @@ class Server {
             const client = await pool.connect();
 
             try {
-
                 await client.query('BEGIN');
 
-                // Save data to the database and get the inserted id
                 const query = 'INSERT INTO fitness (id, soldierid) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM fitness), $1) RETURNING id';
                 const values = [userId];
                 const result = await client.query(query, values);
 
-                // Extract the inserted id
                 const soldierId = result.rows[0].id;
 
-                // Save the soldierId in the session
                 req.session.soldierid = soldierId;
 
-                // Respond with a success message
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'Client saved successfully', soldierId });
 
@@ -3998,11 +3976,9 @@ class Server {
         });
 
         this.app.post('/sendEmojiData', async (req, res) => {
-            // Validate the request body using Joi
             const { error } = emojiDataSchema.validate(req.body);
 
             if (error) {
-                // If validation fails, return 400 with the error message
                 return res.status(400).json({ message: error.details[0].message });
             }
 
@@ -4012,7 +3988,6 @@ class Server {
                 return res.status(400).json({ message: 'Emoji is required.' });
             }
 
-            // Check if soldierId exists in the session
             const soldierId = req.session.soldierid;
 
             if (!soldierId) {
@@ -4022,15 +3997,12 @@ class Server {
             const client = await pool.connect();
 
             try {
-
                 await client.query('BEGIN');
 
-                // Update the fitness table with the emoji
                 const query = 'UPDATE fitness SET emoji = $2 WHERE id = $1';
                 const values = [soldierId, emoji];
                 await client.query(query, values);
 
-                // Respond with a success message
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'Emoji saved successfully' });
 
@@ -4045,44 +4017,44 @@ class Server {
         });
 
         this.app.get('/fitness', this.isLoggedIn.bind(this), async (req, res) => {
-
-            // Get a client from the pool
             const client = await pool.connect();
 
             try {
-
                 await client.query('BEGIN');
 
-                const data_emoji = await client.query(`
-                    SELECT 
-                        CASE
-                            WHEN AVG(CASE
-                                WHEN f.emoji = '😞' THEN 1
-                                WHEN f.emoji = '😐' THEN 2
-                                WHEN f.emoji = '😁' THEN 3
-                                ELSE NULL
-                            END) <= 1.5 THEN '😞'
-                            WHEN AVG(CASE
-                                WHEN f.emoji = '😞' THEN 1
-                                WHEN f.emoji = '😐' THEN 2
-                                WHEN f.emoji = '😁' THEN 3
-                                ELSE NULL
-                            END) <= 2.5 THEN '😐'
-                            ELSE '😁'
-                        END AS average_emoji,
-                        f.created_at::date AS created_date,
-                        COUNT(f.soldierid) AS soldier_count
-                    FROM fitness f
-                    LEFT JOIN soldier s ON f.soldierid = s.id
-                    GROUP BY s.namesoldier, created_date
-                    ORDER BY created_date;`);
-
-                const result_percent_emoji = await client.query(`
-                    SELECT 
-                        COUNT(CASE WHEN f.emoji = '😞' THEN 1 END) AS percent_sad,
-                        COUNT(CASE WHEN f.emoji = '😐' THEN 1 END) AS percent_neutral,
-                        COUNT(CASE WHEN f.emoji = '😁' THEN 1 END) AS percent_very_happy
-                    FROM fitness f`);
+                const [data_emoji, result_percent_emoji] = await Promise.all([
+                    client.query(`
+                        SELECT 
+                            CASE
+                                WHEN AVG(CASE
+                                    WHEN f.emoji = '😞' THEN 1
+                                    WHEN f.emoji = '😐' THEN 2
+                                    WHEN f.emoji = '😁' THEN 3
+                                    ELSE NULL
+                                END) <= 1.5 THEN '😞'
+                                WHEN AVG(CASE
+                                    WHEN f.emoji = '😞' THEN 1
+                                    WHEN f.emoji = '😐' THEN 2
+                                    WHEN f.emoji = '😁' THEN 3
+                                    ELSE NULL
+                                END) <= 2.5 THEN '😐'
+                                ELSE '😁'
+                            END AS average_emoji,
+                            f.created_at::date AS created_date,
+                            COUNT(f.soldierid) AS soldier_count
+                        FROM fitness f
+                        LEFT JOIN soldier s ON f.soldierid = s.id
+                        GROUP BY s.namesoldier, created_date
+                        ORDER BY created_date;
+                    `),
+                    client.query(`
+                        SELECT 
+                            COUNT(CASE WHEN f.emoji = '😞' THEN 1 END) AS percent_sad,
+                            COUNT(CASE WHEN f.emoji = '😐' THEN 1 END) AS percent_neutral,
+                            COUNT(CASE WHEN f.emoji = '😁' THEN 1 END) AS percent_very_happy
+                        FROM fitness f
+                    `)
+                ]);
 
                 const data = data_emoji.rows;
                 const dataPerEmj = result_percent_emoji.rows[0];
@@ -4105,8 +4077,8 @@ class Server {
 
             } catch (error) {
                 await client.query('ROLLBACK');
-                console.error('Error inserting data:', error);
-                res.status(500).json({ message: 'Error saving emoji data to the database' });
+                console.error('Error fetching data:', error);
+                res.status(500).json({ message: 'Error fetching data from the database' });
 
             } finally {
                 client.release();
@@ -4114,56 +4086,53 @@ class Server {
         });
 
         this.app.post('/getAllEmoji', this.isLoggedIn.bind(this), async (req, res) => {
-
             const { error } = getAllEmojiSchema.validate(req.body);
 
             if (error) {
-                // If validation fails, return 400 with the error message
                 return res.status(400).json({ message: error.details[0].message });
             }
 
             const { date1, date2 } = req.body;
-
-            // Get a client from the pool
             const client = await pool.connect();
 
             try {
-
                 await client.query('BEGIN');
 
-                // Query for emoji data based on the date range
-                const data_emoji = await client.query(`
-                SELECT 
-                    CASE
-                            WHEN AVG(CASE
-                                WHEN f.emoji = '😞' THEN 1
-                                WHEN f.emoji = '😐' THEN 2
-                                WHEN f.emoji = '😁' THEN 3
-                                ELSE NULL
-                            END) <= 1.5 THEN '😞'
-                            WHEN AVG(CASE
-                                WHEN f.emoji = '😞' THEN 1
-                                WHEN f.emoji = '😐' THEN 2
-                                WHEN f.emoji = '😁' THEN 3
-                                ELSE NULL
-                            END) <= 2.5 THEN '😐'
-                            ELSE '😁'
-                    END AS average_emoji,
-                    f.created_at::date AS created_date,
-                    COUNT(f.soldierid) AS soldier_count
-                FROM fitness f
-                LEFT JOIN soldier s ON f.soldierid = s.id
-                WHERE f.created_at::date BETWEEN $1 AND $2
-                GROUP BY s.namesoldier, created_date
-                ORDER BY created_date;`, [date1, date2]);
-
-                const data_emoji_total = await client.query(`
-                    SELECT 
-                        COUNT(CASE WHEN f.emoji = '😞' THEN 1 END) AS percent_sad,
-                        COUNT(CASE WHEN f.emoji = '😐' THEN 1 END) AS percent_neutral,
-                        COUNT(CASE WHEN f.emoji = '😁' THEN 1 END) AS percent_very_happy
-                    FROM fitness f
-                    WHERE f.created_at::date BETWEEN $1 AND $2`, [date1, date2]);
+                const [data_emoji, data_emoji_total] = await Promise.all([
+                    client.query(`
+                        SELECT 
+                            CASE
+                                WHEN AVG(CASE
+                                    WHEN f.emoji = '😞' THEN 1
+                                    WHEN f.emoji = '😐' THEN 2
+                                    WHEN f.emoji = '😁' THEN 3
+                                    ELSE NULL
+                                END) <= 1.5 THEN '😞'
+                                WHEN AVG(CASE
+                                    WHEN f.emoji = '😞' THEN 1
+                                    WHEN f.emoji = '😐' THEN 2
+                                    WHEN f.emoji = '😁' THEN 3
+                                    ELSE NULL
+                                END) <= 2.5 THEN '😐'
+                                ELSE '😁'
+                            END AS average_emoji,
+                            f.created_at::date AS created_date,
+                            COUNT(f.soldierid) AS soldier_count
+                        FROM fitness f
+                        LEFT JOIN soldier s ON f.soldierid = s.id
+                        WHERE f.created_at::date BETWEEN $1 AND $2
+                        GROUP BY s.namesoldier, created_date
+                        ORDER BY created_date;
+                    `, [date1, date2]),
+                    client.query(`
+                        SELECT 
+                            COUNT(CASE WHEN f.emoji = '😞' THEN 1 END) AS percent_sad,
+                            COUNT(CASE WHEN f.emoji = '😐' THEN 1 END) AS percent_neutral,
+                            COUNT(CASE WHEN f.emoji = '😁' THEN 1 END) AS percent_very_happy
+                        FROM fitness f
+                        WHERE f.created_at::date BETWEEN $1 AND $2
+                    `, [date1, date2])
+                ]);
 
                 const total_data = data_emoji_total.rows[0];
                 const data = data_emoji.rows;
@@ -4175,6 +4144,7 @@ class Server {
                 await client.query('ROLLBACK');
                 console.error('Error fetching emoji data:', error);
                 res.status(500).json({ message: 'Error fetching emoji data from the database' });
+
             } finally {
                 client.release();
             }
@@ -4184,11 +4154,9 @@ class Server {
             try {
                 const { data } = req.body;
 
-                // Create a new Excel workbook
                 const workbook = new excelJS.Workbook();
                 const worksheet = workbook.addWorksheet('Gym Usage Data');
 
-                // Define headers
                 const headers = ['Date', 'Average Emoji Rating', 'Number of Visits'];
                 worksheet.addRow(headers).eachCell((cell) => {
                     cell.font = { bold: true, size: 12 };
@@ -4201,22 +4169,19 @@ class Server {
                     };
                 });
 
-                // Set column widths
                 worksheet.columns = [
-                    { width: 20 }, // Date
-                    { width: 20 }, // Average Emoji Rating
-                    { width: 20 }, // Number of Visits
+                    { width: 20 },
+                    { width: 20 },
+                    { width: 20 },
                 ];
 
-                // Populate data rows
                 data.forEach((row, index) => {
-                    const formattedDate = row[0]; // Use the sent date from front-end
-                    const averageEmoji = row[1]; // Use the sent average rating
-                    const soldierCount = row[2]; // Use the sent number of visits
+                    const formattedDate = row[0];
+                    const averageEmoji = row[1];
+                    const soldierCount = row[2];
 
                     const dataRow = worksheet.addRow([formattedDate, averageEmoji, soldierCount]);
 
-                    // Style each cell
                     dataRow.eachCell((cell) => {
                         cell.border = {
                             top: { style: 'thin' },
@@ -4226,23 +4191,20 @@ class Server {
                         };
                     });
 
-                    // Apply alternating row color
                     if (index % 2 === 0) {
                         dataRow.eachCell((cell) => {
                             cell.fill = {
                                 type: 'pattern',
                                 pattern: 'solid',
-                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                                fgColor: { argb: 'FFDDDDDD' },
                             };
                         });
                     }
                 });
 
-                // Set headers for file download
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                 res.setHeader('Content-Disposition', 'attachment; filename="report_gym.xlsx"');
 
-                // Write the Excel file to the response
                 await workbook.xlsx.write(res);
                 res.end();
 
@@ -4351,7 +4313,7 @@ class Server {
                     overallTotalMountFormatted += parseInt(sum);  // Or use parseInt(sum)
                 });
 
-                for (const [status, column] of Object.entries(statusMapping)) {
+                await Promise.all(Object.entries(statusMapping).map(async ([status, column]) => {
                     const query = `
                         SELECT ${column} as value
                         FROM laundrybags
@@ -4375,7 +4337,7 @@ class Server {
                     } catch (error) {
                         console.error(`Error executing query for status "${status}":`, error);
                     }
-                }
+                }));
 
                 const overallAverageTimeInSeconds = count > 0 ? Math.floor(totalAvgTimeInSeconds / count) : 0;
                 const overallAverageFormatted = formatTime(overallAverageTimeInSeconds);
@@ -4472,7 +4434,8 @@ class Server {
 
                 if (prev_destination === 'None') {
                     const codesPlaceholder = codes.map((_, i) => `$${i + 1}`).join(', ');
-                    const insertPromises = codes.map((code, index) =>
+
+                    const insertPromises = codes.map((code) =>
                         client.query(
                             `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, NULL) ON CONFLICT DO NOTHING;`,
                             [code]
@@ -4590,7 +4553,7 @@ class Server {
             try {
                 await client.query('BEGIN');
 
-                const insertPromises = codes.map((code, index) =>
+                const insertPromises = codes.map((code) =>
                     client.query(
                         `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;`,
                         [code]
@@ -4603,7 +4566,7 @@ class Server {
 
             } catch (error) {
                 await client.query('ROLLBACK');
-                console.error(err); // Log the error
+                console.error(error); // Log the error
                 res.status(500).json({ message: "Internal server error" });
             } finally {
                 client.release();
@@ -4624,17 +4587,19 @@ class Server {
             try {
                 await client.query('BEGIN');
 
-                await client.query(
-                    `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;`,
-                    [code]
-                );
+                await Promise.all([
+                    client.query(
+                        `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;`,
+                        [code]
+                    )
+                ]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: "Bulk status change successful" });
 
             } catch (error) {
                 await client.query('ROLLBACK');
-                console.error(err); // Log the error
+                console.error(error); // Log the error
                 res.status(500).json({ message: "Internal server error" });
             } finally {
                 client.release();
@@ -4655,11 +4620,17 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result = await client.query(`
+                const [result, resultCount] = await Promise.all([
+                    client.query(`
                         SELECT l.code, s.namesoldier, l.status, l.laundrycount
                         FROM laundrybags l
                         JOIN soldier s ON s.laundry_bag_id = l.id
-                        WHERE s.date_free IS NULL AND l.id = $1;`, [code]);
+                        WHERE s.date_free IS NULL AND l.id = $1;`, [code]),
+                    client.query(`
+                        SELECT COUNT(*) AS count
+                        FROM laundryreport
+                        WHERE bag_id = $1 AND date_drop_off > NOW() - INTERVAL '30 minutes';`, [code])
+                ]);
 
                 if (result.rows.length === 0) {
                     await client.query('ROLLBACK');
@@ -4681,14 +4652,9 @@ class Server {
                     return res.status(401).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${status}, not ${prev_stat}.` });
                 }
 
-                const resultCount = await client.query(`
-                        SELECT COUNT(*) AS count
-                            FROM laundryreport
-                            WHERE bag_id = $1 AND date_drop_off > NOW() - INTERVAL '30 minutes';`, [code]);
-
                 if (destination === 'Linen Exchange service' && parseInt(resultCount.rows[0].count) > 0) {
                     await client.query('ROLLBACK');
-                    return res.status(401).json({ message: `The bag with number ${code} is already scaned with use Linen Exchange service` });
+                    return res.status(401).json({ message: `The bag with number ${code} is already scanned with use Linen Exchange service` });
                 }
 
                 await client.query('COMMIT');
@@ -4719,10 +4685,10 @@ class Server {
                 await client.query('BEGIN');
 
                 const result = await client.query(`
-                        SELECT *
-                        FROM laundrybags l
-                        JOIN soldier s ON s.laundry_bag_id = l.id
-                        WHERE s.date_free IS NULL AND l.status = $1;`, [prev_destination]);
+                    SELECT *
+                    FROM laundrybags l
+                    JOIN soldier s ON s.laundry_bag_id = l.id
+                    WHERE s.date_free IS NULL AND l.status = $1;`, [prev_destination]);
 
                 const bag = result.rows;
 
@@ -4754,7 +4720,6 @@ class Server {
             const client = await pool.connect();
 
             try {
-
                 await client.query('BEGIN');
 
                 const result = await client.query(`
@@ -4775,28 +4740,32 @@ class Server {
 
                 const bag = result.rows[0];
 
+                const queries = [];
+
                 if (destination === 'Ready to pick up') {
-                    await client.query(`
-                        UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_TIMESTAMP WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]);
+                    queries.push(client.query(`
+                        UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_TIMESTAMP WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]));
                 }
 
-                if (destination === 'None')
-                    await client.query(`
-                        UPDATE laundrybags SET status = $1 WHERE id = $2;`, [destination, code]);
+                if (destination === 'None') {
+                    queries.push(client.query(`
+                        UPDATE laundrybags SET status = $1 WHERE id = $2;`, [destination, code]));
+                }
 
                 if (prev_destination === 'None') {
+                    queries.push(client.query(`
+                        INSERT INTO laundryreport VALUES ($1, CURRENT_TIMESTAMP, NULL);`, [code]));
 
-                    await client.query(`INSERT INTO laundryreport VALUES ($1, CURRENT_TIMESTAMP, NULL);`, [code]);
+                    queries.push(client.query(`
+                        UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
+                        avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]));
 
-                    await client.query(`UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
-                        avg_laundry_duration = 0, avg_ready_to_pick_up_duration = 0, avg_transportation_drop_off_duration = 0 WHERE id = $1;`, [code]);
-
-                    await client.query(`
-                        UPDATE laundrybags SET laundrycount = laundrycount + 1 WHERE id = $1;`, [code]);
+                    queries.push(client.query(`
+                        UPDATE laundrybags SET laundrycount = laundrycount + 1 WHERE id = $1;`, [code]));
 
                 } else if (destination === 'None') {
-
-                    await client.query(`UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP WHERE id = $1;`, [code]);
+                    queries.push(client.query(`
+                        UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP WHERE id = $1;`, [code]));
 
                     const avgTimeResult = await client.query(`
                         SELECT AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds
@@ -4807,20 +4776,22 @@ class Server {
                     if (avgTimeRow) {
                         const columnName = statusMapping[prev_destination.toLowerCase().trim()];
                         if (columnName) {
-                            await client.query(`
+                            queries.push(client.query(`
                                 UPDATE laundrybags
                                 SET ${columnName} = $1
-                                WHERE status = $2;`, [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination]);
+                                WHERE status = $2;`, [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination]));
                         }
                     }
                 }
 
-                await client.query(`
-                    UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP WHERE id = $2;`, [destination, code]);
+                queries.push(client.query(`
+                    UPDATE laundrybags SET status = $1, timein = CURRENT_TIMESTAMP WHERE id = $2;`, [destination, code]));
 
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Change bag ${code} status from ${prev_destination} to ${destination}`]);
+                queries.push(client.query(`
+                    INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)`,
+                    [req.session.username, `Change bag ${code} status from ${prev_destination} to ${destination}`]));
+
+                await Promise.all(queries);
 
                 await client.query('COMMIT');
                 res.status(200).json({ code: bag.code, soldierId: bag.id, message: "The status of the bag has been changed" });
@@ -4851,7 +4822,7 @@ class Server {
 
                 if (result.rows.length > 0) {
                     await client.query('ROLLBACK');
-                    return res.status(400).json({ message: "Latte bags!" });
+                    return res.status(400).json({ message: "Late bags!" });
                 }
 
                 await client.query('COMMIT');
@@ -4883,7 +4854,7 @@ class Server {
 
                 await client.query('BEGIN');
 
-                if (status !== '')
+                if (status !== '') {
                     result = await client.query(`
                         SELECT
                             l.id,
@@ -4903,8 +4874,8 @@ class Server {
                             s.date_free IS NULL AND 
                             l.status = $1
                         ORDER BY 
-                            islate ASC;`, [status]);
-                else
+                        islate ASC;`, [status]);
+                } else {
                     result = await client.query(`
                         SELECT
                             l.id,
@@ -4916,6 +4887,7 @@ class Server {
                         WHERE 
                             s.date_accommodation IS NOT NULL AND
                             s.date_free IS NULL;`);
+                }
 
                 await client.query('COMMIT');
                 // Send the result rows back to the client
@@ -4948,56 +4920,57 @@ class Server {
                 selectedDate1 += " 00:00";
                 selectedDate2 += " 23:59";
 
-                const result = await client.query(`
-                    WITH latest_soldier AS (
-                        SELECT DISTINCT ON (s.laundry_bag_id) 
+                const [result, result_nationality] = await Promise.all([
+                    client.query(`
+                        WITH latest_soldier AS (
+                            SELECT DISTINCT ON (s.laundry_bag_id) 
                             s.laundry_bag_id,
                             s.namesoldier,
                             s.country
-                        FROM soldier s
-                        WHERE s.laundry_bag_id IS NOT NULL
-                        ORDER BY s.laundry_bag_id, 
+                            FROM soldier s
+                            WHERE s.laundry_bag_id IS NOT NULL
+                            ORDER BY s.laundry_bag_id, 
                                 (s.date_free IS NULL) DESC, 
                                 s.date_free DESC
-                    )
-                    SELECT 
-                        l.code,
-                        l.type,
-                        CASE 
+                        )
+                        SELECT 
+                            l.code,
+                            l.type,
+                            CASE 
                             WHEN l.status = 'None' THEN 'In the soldier'
                             ELSE l.status
-                        END AS status,
-                        ls.namesoldier, 
-                        ls.country,
-                        TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH:MI') AS date_drop_off, 
-                        CASE 
+                            END AS status,
+                            ls.namesoldier, 
+                            ls.country,
+                            TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH:MI') AS date_drop_off, 
+                            CASE 
                             WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
                             ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH:MI')
-                        END AS date_ready_to_pick_up
-                    FROM laundrybags l
-                    JOIN laundryreport lr ON lr.bag_id = l.id
-                    JOIN latest_soldier ls ON l.id = ls.laundry_bag_id
-                    WHERE lr.date_drop_off BETWEEN $1 AND $2;`, [selectedDate1, selectedDate2]);
-
-                const result_nationality = await client.query(`
-                    WITH latest_soldier AS (
-                        SELECT DISTINCT ON (s.laundry_bag_id) 
+                            END AS date_ready_to_pick_up
+                        FROM laundrybags l
+                        JOIN laundryreport lr ON lr.bag_id = l.id
+                        JOIN latest_soldier ls ON l.id = ls.laundry_bag_id
+                        WHERE lr.date_drop_off BETWEEN $1 AND $2;`, [selectedDate1, selectedDate2]),
+                    client.query(`
+                        WITH latest_soldier AS (
+                            SELECT DISTINCT ON (s.laundry_bag_id) 
                             s.laundry_bag_id,
                             s.country
-                        FROM soldier s
-                        WHERE s.laundry_bag_id IS NOT NULL
-                        ORDER BY s.laundry_bag_id, 
+                            FROM soldier s
+                            WHERE s.laundry_bag_id IS NOT NULL
+                            ORDER BY s.laundry_bag_id, 
                                 (s.date_free IS NULL) DESC, 
                                 s.date_free DESC
-                    )
-                    SELECT 
-                        COUNT(*) AS total_count_bags,
-                        ls.country
-                    FROM laundrybags l
-                    JOIN laundryreport lr ON lr.bag_id = l.id
-                    JOIN latest_soldier ls ON l.id = ls.laundry_bag_id
-                    WHERE lr.date_drop_off BETWEEN $1 AND $2
-                    GROUP BY ls.country;`, [selectedDate1, selectedDate2]);
+                        )
+                        SELECT 
+                            COUNT(*) AS total_count_bags,
+                            ls.country
+                        FROM laundrybags l
+                        JOIN laundryreport lr ON lr.bag_id = l.id
+                        JOIN latest_soldier ls ON l.id = ls.laundry_bag_id
+                        WHERE lr.date_drop_off BETWEEN $1 AND $2
+                        GROUP BY ls.country;`, [selectedDate1, selectedDate2])
+                ]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ data: result.rows, data_nationality: result_nationality.rows });
@@ -5068,7 +5041,7 @@ class Server {
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
 
-                filteredLaundry.forEach(({ bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut }, index) => {
+                await Promise.all(filteredLaundry.map(async ({ bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut }, index) => {
                     const row = worksheet1.addRow([bagNumber, soldierName, nationality, bagType, statusBag, dateIn, dateOut]);
                     row.eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
@@ -5104,9 +5077,9 @@ class Server {
                             };
                         });
                     }
-                });
+                }));
 
-                filteredLaundryNational.forEach(({ nationality, bagCount }, index) => {
+                await Promise.all(filteredLaundryNational.map(async ({ nationality, bagCount }, index) => {
                     const row = worksheet2.addRow([nationality, bagCount]);
                     row.eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
@@ -5132,7 +5105,7 @@ class Server {
                         });
                     }
 
-                });
+                }));
 
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                 res.setHeader('Content-Disposition', 'attachment; filename="report_laundry.xlsx"');
@@ -5178,8 +5151,10 @@ class Server {
                 const username = req.session.username ? req.session.username : "PhoneUser";
 
                 // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [username, `Add bag with code ${code}`]);
+                await Promise.all([
+                    client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [username, `Add bag with code ${code}`])
+                ]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'Bag added successfully' });
@@ -5222,12 +5197,12 @@ class Server {
                     return res.status(401).json({ message: 'This bag is set to the soldier!' });
                 }
 
-                await client.query(`DELETE FROM laundryreport WHERE bag_id = $1`, [code]);
-                await client.query(`DELETE FROM laundrybags WHERE id = $1`, [code]);
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Remove bag with code ${bagCode}`]);
+                await Promise.all([
+                    client.query(`DELETE FROM laundryreport WHERE bag_id = $1`, [code]),
+                    client.query(`DELETE FROM laundrybags WHERE id = $1`, [code]),
+                    client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Remove bag with code ${bagCode}`])
+                ]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The bag was successfully removed' });
@@ -5260,19 +5235,19 @@ class Server {
                 const result = await client.query(`SELECT code FROM laundrybags WHERE id = $1;`, [bagId]);
                 const bagCode = result.rows[0].code;
 
-                await client.query(`UPDATE laundrybags SET type = $1, maxcountlandry = $2 WHERE id = $3;`, [bagType, maxWash, bagId]);
-
-                // Query the database for the user
-                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Edit bag with code ${bagCode} set type ${bagType} and max washed ${maxWash}`]);
+                await Promise.all([
+                    client.query(`UPDATE laundrybags SET type = $1, maxcountlandry = $2 WHERE id = $3;`, [bagType, maxWash, bagId]),
+                    client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Edit bag with code ${bagCode} set type ${bagType} and max washed ${maxWash}`])
+                ]);
 
                 await client.query('COMMIT');
-                res.status(200).json({ message: 'The bag was successfully removed' });
+                res.status(200).json({ message: 'The bag was successfully updated' });
 
             } catch (error) {
                 await client.query('ROLLBACK');
-                console.error('Error generating Excel report:', error);
-                res.status(500).json({ message: 'Failed to generate report.' });
+                console.error('Error updating bag:', error);
+                res.status(500).json({ message: 'Failed to update bag.' });
 
             } finally {
                 client.release();
@@ -5330,9 +5305,11 @@ class Server {
                         response.laundrycount || 0,
                         maxcount]);
 
-                    await client.query(`UPDATE soldier SET laundry_bag_id = $1 WHERE laundry_bag_id = $2`, [newCode, oldCode]);
-                    await client.query(`UPDATE laundryreport SET bag_id = $1 WHERE bag_id = $2`, [newCode, oldCode]);
-                    await client.query(`DELETE FROM laundrybags WHERE id = $1`, [oldCode]);
+                    await Promise.all([
+                        client.query(`UPDATE soldier SET laundry_bag_id = $1 WHERE laundry_bag_id = $2`, [newCode, oldCode]),
+                        client.query(`UPDATE laundryreport SET bag_id = $1 WHERE bag_id = $2`, [newCode, oldCode]),
+                        client.query(`DELETE FROM laundrybags WHERE id = $1`, [oldCode])
+                    ]);
 
                     // Query the database for the user
                     await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
@@ -5375,11 +5352,9 @@ class Server {
                 const [resultAllAssets, resultKeys, resultLocations, resultAllLostItem] = await Promise.all([
                     client.query('SELECT * FROM assets'),
                     client.query(`
-                        SELECT id AS id, code AS name, quantity FROM assets;
-                    `),
+                        SELECT id AS id, code AS name, quantity FROM assets;`),
                     client.query(`
-                        SELECT id, namesoldier AS name FROM soldier WHERE date_accommodation IS NOT NULL AND date_free IS NULL
-                    `),
+                        SELECT id, namesoldier AS name FROM soldier WHERE date_accommodation IS NOT NULL AND date_free IS NULL;`),
                     client.query(`
                         SELECT nameitem, description, namesoldier, lost_quantity FROM lostitem l
                         LEFT JOIN soldier s ON s.id = l.soldier_id;`)
@@ -5461,14 +5436,14 @@ class Server {
                 const result = await client.query(`
                     SELECT k.id, k.namekey, r.nameroom, r.id AS roomid 
                     FROM key k
-					LEFT JOIN roomskey rk ON rk.keyid = k.id
-					LEFT JOIN rooms r ON rk.roomid = r.id
+                    LEFT JOIN roomskey rk ON rk.keyid = k.id
+                    LEFT JOIN rooms r ON rk.roomid = r.id
                     LEFT JOIN assets a ON a.location_key = k.id;`);
 
                 const result_key_data = result.rows;
                 let total_res = [];
 
-                result_key_data.forEach(row => {
+                await Promise.all(result_key_data.map(async (row) => {
                     total_res.push({
                         id: row.id,
                         name: row.namekey,
@@ -5479,7 +5454,7 @@ class Server {
                         roomid: row.roomid,
                         nameroom: row.nameroom
                     });
-                });
+                }));
 
                 await client.query('COMMIT');
                 return res.status(200).send(total_res);
@@ -5505,15 +5480,15 @@ class Server {
                 const result = await client.query(`
                     SELECT k.id, k.namekey, r.nameroom, r.id AS roomid 
                     FROM key k
-					LEFT JOIN roomskey rk ON rk.keyid = k.id
-					LEFT JOIN rooms r ON rk.roomid = r.id
+                    LEFT JOIN roomskey rk ON rk.keyid = k.id
+                    LEFT JOIN rooms r ON rk.roomid = r.id
                     LEFT JOIN assets a ON a.location_key = k.id
-					WHERE a.location_key IS NULL `);
+                    WHERE a.location_key IS NULL `);
 
                 const result_key_data = result.rows;
                 let total_res = [];
 
-                result_key_data.forEach(row => {
+                await Promise.all(result_key_data.map(async (row) => {
                     total_res.push({
                         id: row.id,
                         name: row.namekey,
@@ -5524,7 +5499,7 @@ class Server {
                         roomid: row.roomid,
                         nameroom: row.nameroom
                     });
-                });
+                }));
 
                 await client.query('COMMIT');
                 return res.status(200).send(total_res);
@@ -5568,12 +5543,11 @@ class Server {
                         GROUP BY nameroom, r.id
                         ORDER BY nameroom;`, [numBuild]);
 
-                    for (const row of result_get_room.rows) {
-                        inventory.push({ id: row.id, name: row.nameroom, quantity: row.count_assets });
-                    }
-
-                    await client.query('COMMIT');
-                    return res.status(200).json(inventory);
+                    inventory = result_get_room.rows.map(row => ({
+                        id: row.id,
+                        name: row.nameroom,
+                        quantity: row.count_assets
+                    }));
 
                 } else {
 
@@ -5584,16 +5558,19 @@ class Server {
                         GROUP BY nameroom, r.id
                         ORDER BY nameroom;`);
 
-                    for (const row of result_get_room.rows) {
-                        inventory.push({ id: row.id, name: row.nameroom, quantity: row.count_assets });
-                    }
+                    inventory = result_get_room.rows.map(row => ({
+                        id: row.id,
+                        name: row.nameroom,
+                        quantity: row.count_assets
+                    }));
                 }
 
                 const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings`);
 
-                for (const row of resultBuild.rows) {
-                    navBuild.push({ name: row.namebuilding, id: row.id });
-                }
+                navBuild = resultBuild.rows.map(row => ({
+                    name: row.namebuilding,
+                    id: row.id
+                }));
 
                 await client.query('COMMIT');
 
@@ -5633,9 +5610,10 @@ class Server {
 
                 await client.query('BEGIN');
 
-                if (numBuild) {
+                let result_get_room;
 
-                    const result_get_room = await client.query(`
+                if (numBuild) {
+                    result_get_room = await client.query(`
                         SELECT r.id, nameroom, COALESCE(SUM(a.quantity::NUMERIC), 0) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
@@ -5643,24 +5621,18 @@ class Server {
                         WHERE br.buildid = $1
                         GROUP BY nameroom, r.id
                         ORDER BY nameroom;`, [numBuild]);
-
-                    for (const row of result_get_room.rows) {
-                        nameroomSetCount.push({ id: row.id, nameroom: row.nameroom, count_assets: row.count_assets });
-                    }
-
                 } else {
-
-                    const result_get_room = await client.query(`
+                    result_get_room = await client.query(`
                         SELECT r.id, nameroom, COALESCE(SUM(a.quantity::NUMERIC), 0) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
                         GROUP BY nameroom, r.id
                         ORDER BY nameroom;`);
-
-                    for (const row of result_get_room.rows) {
-                        nameroomSetCount.push({ id: row.id, nameroom: row.nameroom, count_assets: row.count_assets });
-                    }
                 }
+
+                await Promise.all(result_get_room.rows.map(async (row) => {
+                    nameroomSetCount.push({ id: row.id, nameroom: row.nameroom, count_assets: row.count_assets });
+                }));
 
                 await client.query('COMMIT');
                 res.status(200).json(nameroomSetCount);
@@ -5699,7 +5671,7 @@ class Server {
                     LEFT JOIN key k ON k.id = a.location_key
                     WHERE location_room = $1;`, [numRoom]);
 
-                for (const row of result_get_room.rows) {
+                await Promise.all(result_get_room.rows.map(async (row) => {
                     nameAssetSetCount.push({
                         id: row.id,
                         code: row.code,
@@ -5716,7 +5688,7 @@ class Server {
                         expandable: row.expandable,
                         description: row.description
                     });
-                }
+                }));
 
                 await client.query('COMMIT');
                 res.status(200).json(nameAssetSetCount);
@@ -5746,7 +5718,9 @@ class Server {
             try {
                 await client.query('BEGIN');
 
-                const result = await client.query('SELECT id, type_name AS name FROM assetstype;');
+                const [result] = await Promise.all([
+                    client.query('SELECT id, type_name AS name FROM assetstype;')
+                ]);
 
                 const assetType = result.rows;
 
@@ -5826,21 +5800,30 @@ class Server {
 
                 const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
 
+                const queries = [];
+
                 if (result_exist_date.rows.length > 0) {
                     if (asset_quantity === assetQuantity)
-                        await client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity]);
+                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity]));
+
                     else if (asset_quantity > assetQuantity)
-                        await client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity - assetQuantity]);
+                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity - assetQuantity]));
+
                     else
-                        await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity - asset_quantity]);
+                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity - asset_quantity]));
+
                 } else {
                     if (asset_quantity === assetQuantity)
-                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1);`, [assetQuantity]);
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1);`, [assetQuantity]));
+
                     else if (asset_quantity > assetQuantity)
-                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity - assetQuantity]);
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity - assetQuantity]));
+
                     else
-                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [assetQuantity - asset_quantity]);
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [assetQuantity - asset_quantity]));
                 }
+
+                await Promise.all(queries);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The asset was successfully update' });
@@ -5872,7 +5855,7 @@ class Server {
             try {
                 await client.query('BEGIN');
 
-                const result_asset_quantity = await client.query(`SELECT quantity FROM assets WHERE id = $1;`, [assetId]);
+                const result_asset_quantity = await client.query(`SELECT quantity FROM assets WHERE id = $1;`, [oldCode]);
                 const asset_quantity = result_asset_quantity.rows[0].quantity;
 
                 if (oldCode === newCode) {
@@ -5907,7 +5890,7 @@ class Server {
                             status = $10,
                             expandable = $11,
                             description = $12
-                             WHERE id = $1`,
+                            WHERE id = $1`,
                             [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description ? description : null]
                         );
                     }
@@ -5933,21 +5916,30 @@ class Server {
 
                 const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
 
+                const queries = [];
+
                 if (result_exist_date.rows.length > 0) {
                     if (asset_quantity === quantity)
-                        await client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [quantity]);
+                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [quantity]));
+
                     else if (asset_quantity > quantity)
-                        await client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity - quantity]);
+                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity - quantity]));
+
                     else
-                        await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [quantity - asset_quantity]);
+                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [quantity - asset_quantity]));
+
                 } else {
                     if (asset_quantity === quantity)
-                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1);`, [quantity]);
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1);`, [quantity]));
+
                     else if (asset_quantity > quantity)
-                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity - quantity]);
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity - quantity]));
+
                     else
-                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [quantity - asset_quantity]);
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [quantity - asset_quantity]));
                 }
+
+                await Promise.all(queries);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The asset was successfully update' });
@@ -5999,22 +5991,28 @@ class Server {
                     return res.status(401).json({ message: 'This asset already exists!' });
                 }
 
+                const queries = [];
+
                 if (selectedAddSubLocationId !== '') {
-                    await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
+                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
                         [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription ? assetAddDescription : null]
-                    );
+                    ));
 
                 } else {
-                    await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12);`,
+                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12);`,
                         [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription ? assetAddDescription : null]
-                    );
+                    ));
                 }
 
                 const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
-                if (result_exist_date.rows.length > 0)
-                    await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity]);
-                else
-                    await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [assetQuantity]);
+                if (result_exist_date.rows.length > 0) {
+                    queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity]));
+
+                } else {
+                    queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [assetQuantity]));
+                }
+
+                await Promise.all(queries);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The asset was successfully added' });
@@ -6050,12 +6048,17 @@ class Server {
                 const asset_quantity = result_quantity.rows[0].quantity;
 
                 const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
-                if (result_exist_date.rows.length > 0)
-                    await client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity]);
-                else
-                    await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity]);
+                const queries = [];
 
-                await client.query(`DELETE FROM assets WHERE id = $1`, [code]);
+                if (result_exist_date.rows.length > 0) {
+                    queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity]));
+                } else {
+                    queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity]));
+                }
+
+                queries.push(client.query(`DELETE FROM assets WHERE id = $1`, [code]));
+
+                await Promise.all(queries);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The asset was successfully removed' });
@@ -6129,7 +6132,9 @@ class Server {
                     return res.status(401).json({ message: 'This type already exists!' });
                 }
 
-                await client.query(`INSERT INTO assetstype VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM assetstype), $1);`, [assetType]);
+                await Promise.all([
+                    client.query(`INSERT INTO assetstype VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM assetstype), $1);`, [assetType])
+                ]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The asset type was successfully added' });
@@ -6165,7 +6170,9 @@ class Server {
                     return res.status(401).json({ message: 'This type is associated with an asset and cannot be deleted!' });
                 }
 
-                await client.query(`DELETE FROM assetstype WHERE id = $1`, [assetTypeId]);
+                await Promise.all([
+                    client.query(`DELETE FROM assetstype WHERE id = $1`, [assetTypeId])
+                ]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The asset type was successfully removed' });
@@ -6200,10 +6207,12 @@ class Server {
 
                 const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE nameitem = $1;`, [itemName]);
 
-                if (get_exist_lost_item.rows.length > 0)
-                    await client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2;`, [lostQuantity, itemName]);
-                else
-                    await client.query(`INSERT INTO lostitem VALUES (
+                const queries = [];
+
+                if (get_exist_lost_item.rows.length > 0) {
+                    queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2;`, [lostQuantity, itemName]));
+                } else {
+                    queries.push(client.query(`INSERT INTO lostitem VALUES (
                         (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`,
                         [
                             itemName,
@@ -6220,7 +6229,9 @@ class Server {
                             item_into.asset_owner,
                             item_into.status,
                             item_into.expandable,
-                            item_into.description]);
+                            item_into.description
+                        ]));
+                }
 
                 const asset_quantity = result.rows[0].quantity;
                 const asset_id = result.rows[0].id;
@@ -6228,17 +6239,20 @@ class Server {
                 const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
 
                 if (result.rows.length > 0) {
-                    if (result_exist_date.rows.length > 0)
-                        await client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lostQuantity]);
-                    else
-                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0);`, [lostQuantity]);
+                    if (result_exist_date.rows.length > 0) {
+                        queries.push(client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lostQuantity]));
+                    } else {
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0);`, [lostQuantity]));
+                    }
 
-                    if (asset_quantity - lostQuantity > 0)
-                        await client.query(`UPDATE assets SET quantity = quantity::NUMERIC - $1 WHERE id = $2`, [lostQuantity, asset_id]);
-                    else {
-                        await client.query(`DELETE FROM assets WHERE id = $1`, [asset_id]);
+                    if (asset_quantity - lostQuantity > 0) {
+                        queries.push(client.query(`UPDATE assets SET quantity = quantity::NUMERIC - $1 WHERE id = $2`, [lostQuantity, asset_id]));
+                    } else {
+                        queries.push(client.query(`DELETE FROM assets WHERE id = $1`, [asset_id]));
                     }
                 }
+
+                await Promise.all(queries);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'Lost item added successfully' });
@@ -6265,43 +6279,46 @@ class Server {
             const client = await pool.connect();
 
             try {
-
                 await client.query('BEGIN');
 
-                const check_exist = await client.query(`SELECT * FROM assets WHERE code = $1;`, [code]);
-                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
-                const result_restor_data = await client.query(`SELECT * FROM lostitem WHERE nameitem = $1;`, [code]);
+                const [check_exist, result_exist_date, result_restor_data] = await Promise.all([
+                    client.query(`SELECT * FROM assets WHERE code = $1;`, [code]),
+                    client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`),
+                    client.query(`SELECT * FROM lostitem WHERE nameitem = $1;`, [code])
+                ]);
+
                 const restor_data = result_restor_data.rows[0];
 
                 if (check_exist.rows.length > 0) {
-                    await client.query(`UPDATE assets SET quantity = quantity::NUMERIC + $1 WHERE id = $2;`, [lost_quantity, restor_data.item_id]);
-                    await client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id]);
-                    if (result_exist_date.rows.length > 0)
-                        await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lost_quantity]);
-                    else
-                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [lost_quantity]);
-                } else {
-                    await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`, [
-                        restor_data.item_id,
-                        restor_data.nameitem,
-                        restor_data.item_name,
-                        restor_data.item_type_id,
-                        restor_data.item_location_room,
-                        restor_data.item_location_key,
-                        restor_data.item_category,
-                        lost_quantity,
-                        restor_data.item_mrah,
-                        restor_data.item_owner,
-                        restor_data.item_status,
-                        restor_data.item_expandable,
-                        restor_data.item_description
+                    await Promise.all([
+                        client.query(`UPDATE assets SET quantity = quantity::NUMERIC + $1 WHERE id = $2;`, [lost_quantity, restor_data.item_id]),
+                        client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id]),
+                        result_exist_date.rows.length > 0
+                            ? client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lost_quantity])
+                            : client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [lost_quantity])
                     ]);
-                    await client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id]);
-
-                    if (result_exist_date.rows.length > 0)
-                        await client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lost_quantity]);
-                    else
-                        await client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [lost_quantity]);
+                } else {
+                    await Promise.all([
+                        client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`, [
+                            restor_data.item_id,
+                            restor_data.nameitem,
+                            restor_data.item_name,
+                            restor_data.item_type_id,
+                            restor_data.item_location_room,
+                            restor_data.item_location_key,
+                            restor_data.item_category,
+                            lost_quantity,
+                            restor_data.item_mrah,
+                            restor_data.item_owner,
+                            restor_data.item_status,
+                            restor_data.item_expandable,
+                            restor_data.item_description
+                        ]),
+                        client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id]),
+                        result_exist_date.rows.length > 0
+                            ? client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lost_quantity])
+                            : client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [lost_quantity])
+                    ]);
                 }
 
                 await client.query(`DELETE FROM lostitem WHERE lost_quantity::NUMERIC = 0;`);
@@ -6312,7 +6329,7 @@ class Server {
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Server error:', error);
-                res.status(500).json({ message: 'Failed to restor lost item' });
+                res.status(500).json({ message: 'Failed to restore lost item' });
 
             } finally {
                 client.release();
@@ -6337,80 +6354,79 @@ class Server {
                 await client.query('BEGIN');
 
                 // Query for asset details
-                const result = await client.query(
-                    `SELECT 
-                        a.id, 
-                        code,
-                        name_assets,
-                        type_name AS type, 
-                        b.namebuilding AS location_building,
-                        r.nameroom AS location_room,
-                        categorie,
-                        quantity,
-                        mrah,
-                        asset_owner,
-                        status,
-                        expandable,
-                        description
-                    FROM assets a
-                    LEFT JOIN assetstype at ON a.type_id = at.id
-                    LEFT JOIN rooms r ON r.id = a.location_room
-                    LEFT JOIN buildroom br ON br.roomid = a.location_room
-                    LEFT JOIN buildings b ON b.id = br.buildid;`
-                );
-
-                // Query for asset count report
-                const result_count_asset = await client.query(
-                    `WITH date_series AS (
-                        SELECT generate_series(
+                const [result, result_count_asset] = await Promise.all([
+                    client.query(
+                        `SELECT 
+                            a.id, 
+                            code,
+                            name_assets,
+                            type_name AS type, 
+                            b.namebuilding AS location_building,
+                            r.nameroom AS location_room,
+                            categorie,
+                            quantity,
+                            mrah,
+                            asset_owner,
+                            status,
+                            expandable,
+                            description
+                        FROM assets a
+                        LEFT JOIN assetstype at ON a.type_id = at.id
+                        LEFT JOIN rooms r ON r.id = a.location_room
+                        LEFT JOIN buildroom br ON br.roomid = a.location_room
+                        LEFT JOIN buildings b ON b.id = br.buildid;`
+                    ),
+                    client.query(
+                        `WITH date_series AS (
+                            SELECT generate_series(
                             $1::DATE, 
                             $2::DATE, 
                             '1 day'
-                        )::DATE AS event_date
-                    ),
-                    asset_changes AS (
-                        SELECT 
+                            )::DATE AS event_date
+                        ),
+                        asset_changes AS (
+                            SELECT 
                             date_change::DATE AS event_date, 
                             change_asset_quantity::NUMERIC AS total_added, 
                             change_modificate_asset_quantity::NUMERIC AS total_modifain, 
                             change_remove_asset_quantity::NUMERIC AS total_remove, 
                             change_lost_asset_quantity::NUMERIC AS total_lost
-                        FROM asset_actions 
-                        WHERE date_change BETWEEN $1 AND $2 + INTERVAL '1 day'
-                    ),
-                    asset_after_changes AS (
-                        SELECT 
+                            FROM asset_actions 
+                            WHERE date_change BETWEEN $1 AND $2 + INTERVAL '1 day'
+                        ),
+                        asset_after_changes AS (
+                            SELECT 
                             change_asset_quantity::NUMERIC AS total_added, 
                             change_modificate_asset_quantity::NUMERIC AS total_modifain, 
                             change_remove_asset_quantity::NUMERIC AS total_remove, 
                             change_lost_asset_quantity::NUMERIC AS total_lost
-                        FROM asset_actions 
-                        WHERE date_change > $2 + INTERVAL '1 day'
-                    ),
-                    initial_assets AS (
-                        SELECT SUM(quantity::NUMERIC) AS initial_asset_count FROM assets
-                    ),
-                    after_change_totals AS (
-                        SELECT COALESCE(SUM(total_added - total_remove - total_lost), 0) AS after_changes_total
-                        FROM asset_after_changes
-                    ),
-                    between_change_totals AS (
-                        SELECT COALESCE(SUM(total_added - total_remove - total_lost), 0) AS between_changes_total
-                        FROM asset_changes
-                    ),
-                    daily_assets AS (
-                        SELECT 
+                            FROM asset_actions 
+                            WHERE date_change > $2 + INTERVAL '1 day'
+                        ),
+                        initial_assets AS (
+                            SELECT SUM(quantity::NUMERIC) AS initial_asset_count FROM assets
+                        ),
+                        after_change_totals AS (
+                            SELECT COALESCE(SUM(total_added - total_remove - total_lost), 0) AS after_changes_total
+                            FROM asset_after_changes
+                        ),
+                        between_change_totals AS (
+                            SELECT COALESCE(SUM(total_added - total_remove - total_lost), 0) AS between_changes_total
+                            FROM asset_changes
+                        ),
+                        daily_assets AS (
+                            SELECT 
                             ds.event_date,
                             COALESCE(SUM(ac.total_added), 0) AS total_new_assets,
                             COALESCE(SUM(ac.total_modifain), 0) AS total_updated_assets,
                             COALESCE(SUM(ac.total_remove), 0) AS total_removed_assets,
                             COALESCE(SUM(ac.total_lost), 0) AS total_missing_assets
-                        FROM date_series ds
-                        LEFT JOIN asset_changes ac ON ds.event_date = ac.event_date
-                        GROUP BY ds.event_date
-                    ),
-                    cumulative_assets AS (
-                        SELECT 
+                            FROM date_series ds
+                            LEFT JOIN asset_changes ac ON ds.event_date = ac.event_date
+                            GROUP BY ds.event_date
+                        ),
+                        cumulative_assets AS (
+                            SELECT 
                             da.event_date,
                             SUM(total_new_assets - total_removed_assets - total_missing_assets) 
                             OVER (ORDER BY da.event_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) 
@@ -6421,22 +6437,22 @@ class Server {
                             total_updated_assets,
                             total_removed_assets,
                             total_missing_assets
-                        FROM daily_assets da
-                        CROSS JOIN initial_assets ia
-                        CROSS JOIN between_change_totals bect
-                        CROSS JOIN after_change_totals act
+                            FROM daily_assets da
+                            CROSS JOIN initial_assets ia
+                            CROSS JOIN between_change_totals bect
+                            CROSS JOIN after_change_totals act
+                        )
+                        SELECT 
+                            to_char(event_date, 'YYYY-MM-DD') AS event_date, 
+                            total_assets, 
+                            total_updated_assets, 
+                            total_new_assets, 
+                            total_removed_assets, 
+                            total_missing_assets
+                        FROM cumulative_assets
+                        ORDER BY event_date;`, [selectedDate1, selectedDate2]
                     )
-                    SELECT 
-                        to_char(event_date, 'YYYY-MM-DD') AS event_date, 
-                        total_assets, 
-                        total_updated_assets, 
-                        total_new_assets, 
-                        total_removed_assets, 
-                        total_missing_assets
-                    FROM cumulative_assets
-                    ORDER BY event_date;`, [selectedDate1, selectedDate2]
-                );
-
+                ]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ data: result.rows, data_asset_count: result_count_asset.rows });
@@ -6513,7 +6529,7 @@ class Server {
                 }
 
                 // Add data to worksheet1 (Assets Data)
-                filteredAssets.forEach((data, index) => {
+                await Promise.all(filteredAssets.map(async (data, index) => {
                     const row = worksheet1.addRow(Object.values(data)); // Convert object values to array
                     row.eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
@@ -6534,10 +6550,10 @@ class Server {
                             };
                         });
                     }
-                });
+                }));
 
                 // Add data to worksheet2 (Assets Traceability)
-                filteredAssetDates.forEach((data, index) => {
+                await Promise.all(filteredAssetDates.map(async (data, index) => {
                     const row = worksheet2.addRow(Object.values(data)); // Convert object values to array
                     row.eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
@@ -6558,7 +6574,7 @@ class Server {
                             };
                         });
                     }
-                });
+                }));
 
                 // Set headers for download and send the file
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

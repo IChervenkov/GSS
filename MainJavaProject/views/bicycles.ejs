@@ -448,11 +448,15 @@
         <table id="bikeUsageTable">
           <thead>
             <tr>
-              <th><input name="namebike" type="text" class="search-input-view-bike" placeholder="Search...">Bike Name</th>
-              <th><input name="namesoldier" type="text" class="search-input-view-bike" placeholder="Search...">Soldier Name</th>
-              <th><input name="date_from" type="text" class="search-input-view-bike" placeholder="Search...">Date From</th>
+              <th><input name="namebike" type="text" class="search-input-view-bike" placeholder="Search...">Bike Name
+              </th>
+              <th><input name="namesoldier" type="text" class="search-input-view-bike" placeholder="Search...">Soldier
+                Name</th>
+              <th><input name="date_from" type="text" class="search-input-view-bike" placeholder="Search...">Date From
+              </th>
               <th><input name="date_to" type="text" class="search-input-view-bike" placeholder="Search...">Date To</th>
-              <th><input name="duration" type="text" class="search-input-view-bike" placeholder="Search...">Duration</th>
+              <th><input name="duration" type="text" class="search-input-view-bike" placeholder="Search...">Duration
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -871,9 +875,23 @@
   </div>
 
   <% if(username !='guest' ) { %>
-    <div id="pinned-message" class="pinned-message" style="display: none;">
-      <p id="pinned-message-text"></p>
-      <button id="close-pinned-message">✖</button>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+      <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
+        aria-live="assertive" aria-atomic="true">
+        <div class="d-flex align-items-center">
+          <!-- Info Icon -->
+          <i class="bi bi-info-circle-fill toast-icon"></i>
+
+          <!-- Toast Message -->
+          <div class="toast-body flex-grow-1" id="toast-message">
+            <!-- Message will be inserted here -->
+          </div>
+
+          <!-- Close Button -->
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
+            aria-label="Close"></button>
+        </div>
+      </div>
     </div>
     <% } %>
 

@@ -20,28 +20,30 @@
     <div class="horizontal-nav">
         <button class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
         <ul id="nav-links">
-            <% horizontalNavItems.forEach(item => { %>
+            <% horizontalNavItems.forEach(item=> { %>
                 <li>
                     <a href="<%= item.href %>">
-                        <% if (item.name.toLowerCase() === 'bicycles') { %>
+                        <% if (item.name.toLowerCase()==='bicycles' ) { %>
                             <i class="bi bi-bicycle"></i>
-                        <% } else if (item.name.toLowerCase() === 'main page') { %>
-                            <i class="bi bi-house-door"></i>
-                        <% } else if (item.name.toLowerCase() === 'assets') { %>
-                            <i class="bi bi-box"></i>
-                        <% } else if (item.name.toLowerCase() === 'laundry') { %>
-                            <i class="bi bi-water"></i>
-                        <% } else if (item.name.toLowerCase() === 'gym') { %>
-                            <i class="bi bi-activity"></i>
-                        <% } else if (item.name.toLowerCase() === 'accommodation and keys') { %>
-                            <i class="bi bi-key"></i>
-                        <% } else if (item.name.toLowerCase() === 'logout') { %>
-                            <i class="bi bi-box-arrow-right"></i>
-                        <% } %>
-                        <span><%= item.name %></span>
+                            <% } else if (item.name.toLowerCase()==='main page' ) { %>
+                                <i class="bi bi-house-door"></i>
+                                <% } else if (item.name.toLowerCase()==='assets' ) { %>
+                                    <i class="bi bi-box"></i>
+                                    <% } else if (item.name.toLowerCase()==='laundry' ) { %>
+                                        <i class="bi bi-water"></i>
+                                        <% } else if (item.name.toLowerCase()==='gym' ) { %>
+                                            <i class="bi bi-activity"></i>
+                                            <% } else if (item.name.toLowerCase()==='accommodation and keys' ) { %>
+                                                <i class="bi bi-key"></i>
+                                                <% } else if (item.name.toLowerCase()==='logout' ) { %>
+                                                    <i class="bi bi-box-arrow-right"></i>
+                                                    <% } %>
+                                                        <span>
+                                                            <%= item.name %>
+                                                        </span>
                     </a>
                 </li>
-            <% }); %>
+                <% }); %>
         </ul>
     </div>
 
@@ -107,9 +109,24 @@
     </div>
 
     <% if(username !='guest' ) { %>
-        <div id="pinned-message" class="pinned-message" style="display: none;">
-            <p id="pinned-message-text"></p>
-            <button id="close-pinned-message">✖</button>
+        <!-- Toast Container -->
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
+                aria-live="assertive" aria-atomic="true">
+                <div class="d-flex align-items-center">
+                    <!-- Info Icon -->
+                    <i class="bi bi-info-circle-fill toast-icon"></i>
+
+                    <!-- Toast Message -->
+                    <div class="toast-body flex-grow-1" id="toast-message">
+                        <!-- Message will be inserted here -->
+                    </div>
+
+                    <!-- Close Button -->
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
+                        aria-label="Close"></button>
+                </div>
+            </div>
         </div>
         <% } %>
 

@@ -988,3 +988,38 @@ input[type="checkbox"] {
 .column-toggle:checked {
     accent-color: #218838; /* Changes the checkbox color to green */
 }
+
+/* Toast Styling */
+.custom-toast {
+    background-color: #28a745 !important; /* Bootstrap success green */
+    color: white;
+    border-radius: 8px;
+    padding: 12px 15px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+
+    /* Hide by default */
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+    display: none;
+}
+
+/* Show Animation */
+.custom-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+    display: block;
+}
+
+/* Hide Animation */
+.custom-toast.hide {
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+/* Info Icon Styling */
+.toast-icon {
+    font-size: 20px;
+    margin-right: 10px;
+    color: white;
+}

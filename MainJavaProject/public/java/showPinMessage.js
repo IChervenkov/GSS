@@ -1,46 +1,46 @@
 document.addEventListener('DOMContentLoaded', () => {
     const notificationSound = new Audio('/audio/notification.wav'); // Path to your .wav file
+    const toastElement = document.getElementById('liveToast');
+    const toastMessage = document.getElementById('toast-message');
+    const closeToastButton = document.getElementById('close-toast');
 
-    // Function to show the pinned message with animation
-    function showPinnedMessage(message) {
-        const pinnedMessage = document.getElementById('pinned-message');
-        if (pinnedMessage.style.display === 'block') return;
+    // Function to show toast with animation
+    function showToast(message) {
+        toastMessage.textContent = message;
 
-        const pinnedMessageText = document.getElementById('pinned-message-text');
-        pinnedMessageText.textContent = message;
-
-        pinnedMessage.classList.remove('hide');
-        pinnedMessage.classList.add('show');
-        pinnedMessage.style.display = 'block';
-
-        // Play sound
-        notificationSound.play().catch((error) => {
-            console.error('Error playing sound:', error);
-        });
-
-        setTimeout(hidePinnedMessage, 6000);
-    }
-
-    // Function to hide the pinned message with animation
-    function hidePinnedMessage() {
-        const pinnedMessage = document.getElementById('pinned-message');
-        pinnedMessage.classList.remove('show');
-        pinnedMessage.classList.add('hide');
+        toastElement.classList.remove('hide');
+        toastElement.style.display = 'block';
 
         setTimeout(() => {
-            pinnedMessage.style.display = 'none';
-        }, 500);
+            toastElement.classList.add('show');
+        }, 10); // Small delay for transition effect
+
+        // Play sound
+        notificationSound.play().catch(error => console.error('Error playing sound:', error));
+
+        // Auto-hide after 6 seconds
+        setTimeout(hideToast, 6000);
     }
 
-    // Event listener for the close button
-    document.getElementById('close-pinned-message').addEventListener('click', hidePinnedMessage);
+    // Function to hide toast with animation
+    function hideToast() {
+        toastElement.classList.remove('show');
+        toastElement.classList.add('hide');
+
+        setTimeout(() => {
+            toastElement.style.display = 'none';
+        }, 500); // Wait for transition to finish
+    }
+
+    // Event listener for close button
+    closeToastButton.addEventListener('click', hideToast);
 
     // Fetch late bags data after 2 seconds
     setTimeout(async () => {
         try {
             const response = await fetch('/checkLateBags', { method: 'GET' });
             if (!response.ok) {
-                showPinnedMessage('Bags that have passed the collection time have been detected.');
+                showToast('Bags that have passed the collection time have been detected.');
             }
         } catch (error) {
             console.error('Error fetching late bags:', error);

@@ -383,18 +383,25 @@
                 <table id="soldierUsageTable">
                     <thead>
                         <tr>
-                            <th><input name="roomNumber" type="text" class="search-input-view" placeholder="Search...">Room Number
+                            <th><input name="roomNumber" type="text" class="search-input-view"
+                                    placeholder="Search...">Room Number
                             </th>
-                            <th><input name="soldierName" type="text" class="search-input-view" placeholder="Search...">Soldier Name
+                            <th><input name="soldierName" type="text" class="search-input-view"
+                                    placeholder="Search...">Soldier Name
                             </th>
-                            <th><input name="country" type="text" class="search-input-view" placeholder="Search...">Country</th>
-                            <th><input name="dateIn" type="text" class="search-input-view" placeholder="Search...">Accommodation
+                            <th><input name="country" type="text" class="search-input-view"
+                                    placeholder="Search...">Country</th>
+                            <th><input name="dateIn" type="text" class="search-input-view"
+                                    placeholder="Search...">Accommodation
                                 Date
                             </th>
-                            <th><input name="dateOut" type="text" class="search-input-view" placeholder="Search...">Release Date
+                            <th><input name="dateOut" type="text" class="search-input-view"
+                                    placeholder="Search...">Release Date
                             </th>
-                            <th><input name="mealCard" type="text" class="search-input-view" placeholder="Search...">Meal card</th>
-                            <th><input name="laundryBag" type="text" class="search-input-view" placeholder="Search...">Laundry bag
+                            <th><input name="mealCard" type="text" class="search-input-view"
+                                    placeholder="Search...">Meal card</th>
+                            <th><input name="laundryBag" type="text" class="search-input-view"
+                                    placeholder="Search...">Laundry bag
                             </th>
                         </tr>
                     </thead>
@@ -407,18 +414,22 @@
                 <button type="button" id="prevBtnDate"></button>
                 <span id="pageNumberDate"></span>
                 <button type="button" id="nextBtnDate"></button>
-            </div> 
+            </div>
 
             <div class="table-container">
                 <table id="soldierMoveTable">
                     <thead>
                         <tr>
-                            <th><input name="oldRoom" type="text" class="search-input-view-second" placeholder="Search...">Previous
+                            <th><input name="oldRoom" type="text" class="search-input-view-second"
+                                    placeholder="Search...">Previous
                                 Room</th>
-                            <th><input name="newRoom" type="text" class="search-input-view-second" placeholder="Search...">New Room
+                            <th><input name="newRoom" type="text" class="search-input-view-second"
+                                    placeholder="Search...">New Room
                             </th>
-                            <th><input name="soldierName" type="text" class="search-input-view-second" placeholder="Search...">Soldier</th>
-                            <th><input name="dateRelock" type="text" class="search-input-view-second" placeholder="Search...">Date
+                            <th><input name="soldierName" type="text" class="search-input-view-second"
+                                    placeholder="Search...">Soldier</th>
+                            <th><input name="dateRelock" type="text" class="search-input-view-second"
+                                    placeholder="Search...">Date
                                 Relocation
                             </th>
                         </tr>
@@ -941,9 +952,23 @@
         </div>
     </div>
 
-    <div id="pinned-message" class="pinned-message" style="z-index: 1050;">
-        <p id="pinned-message-text"></p>
-        <button id="close-pinned-message">✖</button>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex align-items-center">
+                <!-- Info Icon -->
+                <i class="bi bi-info-circle-fill toast-icon"></i>
+
+                <!-- Toast Message -->
+                <div class="toast-body flex-grow-1" id="toast-message">
+                    <!-- Message will be inserted here -->
+                </div>
+
+                <!-- Close Button -->
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
     </div>
 
 </body>

@@ -281,9 +281,23 @@
                     <%- include('partials/modal_laundry', { id: 'readyToPickUp' , title: 'Ready to pick up' ,
                         headerTable, destination: 'None' , previewDestination: 'Ready to pick up' }) %>
 
-                        <div id="pinned-message" class="pinned-message" style="display: none;">
-                            <p id="pinned-message-text"></p>
-                            <button id="close-pinned-message">✖</button>
+                        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+                            <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast"
+                                role="alert" aria-live="assertive" aria-atomic="true">
+                                <div class="d-flex align-items-center">
+                                    <!-- Info Icon -->
+                                    <i class="bi bi-info-circle-fill toast-icon"></i>
+
+                                    <!-- Toast Message -->
+                                    <div class="toast-body flex-grow-1" id="toast-message">
+                                        <!-- Message will be inserted here -->
+                                    </div>
+
+                                    <!-- Close Button -->
+                                    <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
+                                        aria-label="Close"></button>
+                                </div>
+                            </div>
                         </div>
 
                         <div id="reportViewModal" class="modal">
@@ -302,15 +316,19 @@
                                     <table id="bagsWashedTable">
                                         <thead>
                                             <tr>
-                                                <th><input name="bagNumber" type="text" class="search-input-view-laundry"
-                                                        placeholder="Search...">Bag number</th>
-                                                <th><input name="soldierName" type="text" class="search-input-view-laundry"
+                                                <th><input name="bagNumber" type="text"
+                                                        class="search-input-view-laundry" placeholder="Search...">Bag
+                                                    number</th>
+                                                <th><input name="soldierName" type="text"
+                                                        class="search-input-view-laundry"
                                                         placeholder="Search...">Soldier name</th>
-                                                <th><input name="nationality" type="text" class="search-input-view-laundry"
+                                                <th><input name="nationality" type="text"
+                                                        class="search-input-view-laundry"
                                                         placeholder="Search...">Nationality</th>
                                                 <th><input name="bagType" type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Bag type</th>
-                                                <th><input name="statusBag" type="text" class="search-input-view-laundry"
+                                                <th><input name="statusBag" type="text"
+                                                        class="search-input-view-laundry"
                                                         placeholder="Search...">Location</th>
                                                 <th><input name="dateIn" type="text" class="search-input-view-laundry"
                                                         placeholder="Search...">Date of issue</th>
@@ -327,15 +345,17 @@
                                     <button type="button" id="prevBtnDate"></button>
                                     <span id="pageNumberDate"></span>
                                     <button type="button" id="nextBtnDate"></button>
-                                </div>                    
+                                </div>
 
                                 <div class="table-container">
                                     <table id="bagsWashedNationalityTable">
                                         <thead>
                                             <tr>
-                                                <th><input name="nationality" type="text" class="search-input-view-laundry-second"
+                                                <th><input name="nationality" type="text"
+                                                        class="search-input-view-laundry-second"
                                                         placeholder="Search...">Nationality</th>
-                                                <th><input name="bagCount" type="text" class="search-input-view-laundry-second"
+                                                <th><input name="bagCount" type="text"
+                                                        class="search-input-view-laundry-second"
                                                         placeholder="Search...">Number of bags washed</th>
                                             </tr>
                                         </thead>

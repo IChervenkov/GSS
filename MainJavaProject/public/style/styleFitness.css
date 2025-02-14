@@ -508,43 +508,39 @@ input[type="checkbox"]:checked::after {
     }
 }
 
-/* Style for pinned message */
-.pinned-message {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background-color: #f8d7da;
-    color: #721c24;
-    padding: 10px;
-    text-align: center;
-    font-weight: bold;
-    z-index: 1000;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-    transform: translateY(-100%);
-    /* Start hidden */
-    transition: transform 0.5s ease-in-out;
-    /* Fallback for smooth animation */
+/* Toast Styling */
+.custom-toast {
+    background-color: #28a745 !important; /* Bootstrap success green */
+    color: white;
+    border-radius: 8px;
+    padding: 12px 15px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+
+    /* Hide by default */
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+    display: none;
 }
 
-/* Show animation */
-.pinned-message.show {
-    animation: slideDown 0.5s forwards;
+/* Show Animation */
+.custom-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+    display: block;
 }
 
-/* Hide animation */
-.pinned-message.hide {
-    animation: slideUp 0.5s forwards;
+/* Hide Animation */
+.custom-toast.hide {
+    opacity: 0;
+    transform: translateY(30px);
 }
 
-/* Close button */
-.pinned-message button {
-    background: none;
-    border: none;
-    font-size: 16px;
-    margin-left: 10px;
-    cursor: pointer;
-    color: #721c24;
+/* Info Icon Styling */
+.toast-icon {
+    font-size: 20px;
+    margin-right: 10px;
+    color: white;
 }
 
 /* Menu button (hamburger icon) */
