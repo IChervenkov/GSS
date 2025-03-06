@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
             total_percent_very_happy.textContent = `Total Very Happy (😁): ${percent_very_happy}`;
 
         } else {
+            loadingIndicator.style.display = 'none';
             return;
         }
 

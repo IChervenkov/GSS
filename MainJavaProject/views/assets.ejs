@@ -20,6 +20,7 @@
 
     <!-- Horizontal Navigation Bar -->
     <div class="horizontal-nav">
+        <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
         <ul id="nav-links">
             <% horizontalNavItems.forEach(item=> { %>
                 <li>
@@ -54,6 +55,10 @@
 
     <div class="main-content">
 
+        <button type="button" id="menu-toggle-left" class="menu-toggle-left" aria-label="Toggle sidebar navigation">
+            <span id="arrow">&#9651;</span> Setting parameters
+        </button>
+
         <div class="left-nav">
             <ul>
                 <% navItems.forEach(function(item) { %>
@@ -82,39 +87,42 @@
                 </div>
 
                 <div class="virtual-warehouse-labels">
-                    <div class="btn-container">
-                        <button type="button" id="btnAddTypeAsset" class="btn-add-type">
-                            <i class="bi bi-plus-circle"></i> Add Type
-                        </button>
-                        <div class="tooltip-custom">
-                            <i class="bi bi-question-circle"></i>
-                            <span class="tooltiptext">Add a new type of asset to the list.</span>
-                        </div>
+                    <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
+                            <button type="button" id="btnAddTypeAsset"
+                                class="btn-add-type <% if(username == 'NSPA') { %> disabled-button <% } %>">
+                                <i class="bi bi-plus-circle"></i> Add Type
+                            </button>
+                            <div class="tooltip-custom">
+                                <i class="bi bi-question-circle"></i>
+                                <span class="tooltiptext">Add a new type of asset to the list.</span>
+                            </div>
+                    </div>
+
+                    <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
+                            <button type="button" id="btnRemoveTypeAsset"
+                                class="btn-add-type <% if(username == 'NSPA') { %> disabled-button <% } %>">
+                                <i class="bi bi-dash-circle"></i> Remove Type
+                            </button>
+                            <div class="tooltip-custom">
+                                <i class="bi bi-question-circle"></i>
+                                <span class="tooltiptext">Remove a type of asset from the list.</span>
+                            </div>
+                    </div>
+
+                    <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
+                            <button type="button" id="btnLostAsset"
+                                class="btn-add-type <% if(username == 'NSPA') { %> disabled-button <% } %>">
+                                <i class="bi bi-exclamation-circle"></i> Lost Asset
+                            </button>
+                            <div class="tooltip-custom">
+                                <i class="bi bi-question-circle"></i>
+                                <span class="tooltiptext">Report a lost asset.</span>
+                            </div>
                     </div>
 
                     <div class="btn-container">
-                        <button type="button" id="btnRemoveTypeAsset" class="btn-add-type">
-                            <i class="bi bi-dash-circle"></i> Remove Type
-                        </button>
-                        <div class="tooltip-custom">
-                            <i class="bi bi-question-circle"></i>
-                            <span class="tooltiptext">Remove a type of asset from the list.</span>
-                        </div>
-                    </div>
-
-                    <div class="btn-container">
-                        <button type="button" id="btnLostAsset" class="btn-add-type">
-                            <i class="bi bi-exclamation-circle"></i> Lost Asset
-                        </button>
-                        <div class="tooltip-custom">
-                            <i class="bi bi-question-circle"></i>
-                            <span class="tooltiptext">Report a lost asset.</span>
-                        </div>
-                    </div>
-
-                    <div class="btn-container">
-                        <button id="reportButton" class="btn-add-type d-flex align-items-center justify-content-center">
-                            <i class="bi bi-file-earmark-text me-2"></i> <span>Asset archive</span>
+                        <button id="reportButton" class="btn-add-type">
+                            <i class="bi bi-file-earmark-text"></i> <span>Asset archive</span>
                         </button>
                         <div class="tooltip-custom">
                             <i class="bi bi-question-circle"></i>
@@ -173,25 +181,27 @@
             <span class="close-btn">&times;</span>
 
             <h2>List of Assets
-                <div class="btn-container">
-                    <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addAsset"><i
-                            class="bi bi-plus"></i></button>
-                    <div class="tooltip-custom">
-                        <i class="bi bi-question-circle"></i>
-                        <span class="tooltiptext">Add a new asset to the list.</span>
-                    </div>
+                <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
+                        <button type="button"
+                            class="btn btn-outline-success btn-sm rounded-circle fw-bold <% if(username == 'NSPA') { %> disabled-button <% } %>"
+                            id="addAsset"><i class="bi bi-plus"></i></button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Add a new asset to the list.</span>
+                        </div>
                 </div>
-                <div class="btn-container">
-                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
-                        id="removeAsset"><i class="bi bi-dash"></i></button>
-                    <div class="tooltip-custom">
-                        <i class="bi bi-question-circle"></i>
-                        <span class="tooltiptext">Remove an asset from the list.</span>
-                    </div>
+                <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
+                        <button type="button"
+                            class="btn btn-outline-danger btn-sm rounded-circle fw-bold <% if(username == 'NSPA') { %> disabled-button <% } %>"
+                            id="removeAsset"><i class="bi bi-dash"></i></button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Remove an asset from the list.</span>
+                        </div>
                 </div>
             </h2>
 
-            <div class="d-flex justify-content-end mt-2 mb-2">
+            <div class="d-flex justify-content-end">
                 <button type="button" id="prevBtnSecond"></button>
                 <span id="pageNumberSecond"></span>
                 <button type="button" id="nextBtnSecond"></button>
@@ -242,7 +252,7 @@
 
             <div class="row">
                 <div class="col-md-4 mb-3 search-container" id="search-assert-container">
-                    <label for="assetSearch" class="form-label">Assert code <span class="text-danger">*</span></label>
+                    <label for="assetSearch" class="form-label">Asset code <span class="text-danger">*</span></label>
                     <input type="text" id="assetSearch" class="form-control" placeholder="Asset code">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
@@ -252,13 +262,13 @@
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <label for="assetName" class="form-label">Assert name <span class="text-danger">*</span></label>
+                    <label for="assetName" class="form-label">Asset name <span class="text-danger">*</span></label>
                     <input type="text" id="assetName" class="form-control" placeholder="Asset name"
                         pattern="^[a-zA-Z0-9\s]+$">
                 </div>
 
                 <div class="col-md-4 mb-3 search-container" id="search-type-container">
-                    <label for="typeSearch" class="form-label">Assert type <span class="text-danger">*</span></label>
+                    <label for="typeSearch" class="form-label">Asset type <span class="text-danger">*</span></label>
                     <input type="text" id="typeSearch" class="form-control" placeholder="Asset type">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
@@ -270,7 +280,7 @@
 
             <div class="row">
                 <div class="col-md-4 mb-3 search-container" id="search-location-container">
-                    <label for="locationSearch" class="form-label">Assert location <span
+                    <label for="locationSearch" class="form-label">Asset location <span
                             class="text-danger">*</span></label>
                     <input type="text" id="locationSearch" class="form-control" placeholder="Asset location">
                     <div class="invalid-feedback"></div>
@@ -303,7 +313,7 @@
 
             <div class="row">
                 <div class="col-md-4 mb-3">
-                    <label for="quantity" class="form-label">Assert quantity <span class="text-danger">*</span></label>
+                    <label for="quantity" class="form-label">Asset quantity <span class="text-danger">*</span></label>
                     <input type="number" id="quantity" class="form-control" placeholder="Asset quantity" min="1"
                         value="1">
                     <div class="invalid-feedback"></div>
@@ -319,7 +329,7 @@
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <label for="owner" class="form-label">Assert owner <span class="text-danger">*</span></label>
+                    <label for="owner" class="form-label">Asset owner <span class="text-danger">*</span></label>
                     <input type="text" id="owner" class="form-control" placeholder="Asset owner" pattern="^[a-zA-Z\s]+$"
                         value="Global RTS">
                     <div class="invalid-feedback"></div>
@@ -356,10 +366,12 @@
                 </div>
             </div>
 
-            <button type="submit" class="modal-button" id="edit-button">
-                <i class="bi bi-pencil-square"></i> Edit
-            </button>
-
+            <div <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
+                    <button type="submit" class="modal-button <% if(username == 'NSPA') { %> disabled-button <% } %>"
+                        id="edit-button">
+                        <i class="bi bi-pencil-square"></i> Edit
+                    </button>
+            </div>
 
         </form>
     </div>
@@ -380,7 +392,7 @@
                 </div>
 
                 <div class="col-md-4 mb-3" id="assert-code-container">
-                    <label for="assetCodeSearch" class="form-label">Assert code <span
+                    <label for="assetCodeSearch" class="form-label">Asset code <span
                             class="text-danger">*</span></label>
                     <input type="text" id="assetCodeSearch" class="form-control" placeholder="Asset code"
                         pattern="^[a-zA-Z0-9]+$">
@@ -389,7 +401,7 @@
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <label for="assetAddName" class="form-label">Assert name <span class="text-danger">*</span></label>
+                    <label for="assetAddName" class="form-label">Asset name <span class="text-danger">*</span></label>
                     <input type="text" id="assetAddName" class="form-control" placeholder="Asset name"
                         pattern="^[a-zA-Z0-9\s]+$">
                     <div class="invalid-feedback"></div>
@@ -400,7 +412,7 @@
             <div class="row">
 
                 <div class="col-md-4 mb-3 search-container" id="search-add-type-container">
-                    <label for="addTypeSearch" class="form-label">Assert type <span class="text-danger">*</span></label>
+                    <label for="addTypeSearch" class="form-label">Asset type <span class="text-danger">*</span></label>
                     <input type="text" id="addTypeSearch" class="form-control" placeholder="Asset type">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
@@ -409,7 +421,7 @@
                 </div>
 
                 <div class="col-md-4 mb-3 search-container" id="search-add-location-container">
-                    <label for="addLocationSearch" class="form-label">Assert location <span
+                    <label for="addLocationSearch" class="form-label">Asset location <span
                             class="text-danger">*</span></label>
                     <input type="text" id="addLocationSearch" class="form-control" placeholder="Asset location">
                     <div class="invalid-feedback"></div>
@@ -439,7 +451,7 @@
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <label for="assetQuantity" class="form-label">Assert quantity <span
+                    <label for="assetQuantity" class="form-label">Asset quantity <span
                             class="text-danger">*</span></label>
                     <input type="number" id="assetQuantity" class="form-control" placeholder="Asset quantity" min="1"
                         value="1">
@@ -459,7 +471,7 @@
             <div class="row">
 
                 <div class="col-md-4 mb-3">
-                    <label for="assetAddOwner" class="form-label">Assert owner <span
+                    <label for="assetAddOwner" class="form-label">Asset owner <span
                             class="text-danger">*</span></label>
                     <input type="text" id="assetAddOwner" class="form-control" placeholder="Asset owner"
                         pattern="^[a-zA-Z\s]+$" value="Global RTS">
@@ -551,7 +563,13 @@
         <div class="modal-content">
             <span class="close-btn">&times;</span>
 
-            <h2 class="mb-4">Lost Asset</h2>
+            <h2>Lost Asset</h2>
+
+            <div class="d-flex justify-content-end mt-2 mb-2">
+                <button type="button" id="prevBtnTherd"></button>
+                <span id="pageNumberTherd"></span>
+                <button type="button" id="nextBtnTherd"></button>
+            </div>
 
             <div class="modal-body">
 
@@ -589,7 +607,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="lostAssetQuantity" class="form-label">Assert quantity <span
+                        <label for="lostAssetQuantity" class="form-label">Asset quantity <span
                                 class="text-danger">*</span></label>
                         <input type="number" id="lostAssetQuantity" class="form-control" placeholder="Asset quantity"
                             min="1">
@@ -867,6 +885,7 @@
         </div>
     </div>
 
+    <% if(username !='NSPA' ) { %>
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
             aria-live="assertive" aria-atomic="true">
@@ -885,6 +904,7 @@
             </div>
         </div>
     </div>
+    <% } %>
 
 </body>
 
@@ -892,6 +912,10 @@
 <script src="/java/pageNumber.js"></script>
 <script src="/java/assetsInventory.js"></script>
 <script src="/java/calendar.js"></script>
-<script src="/java/showPinMessage.js"></script>
+<script src="/java/phoneMenu.js"></script>
+
+<% if(username !='NSPA' ) { %>
+    <script src="/java/showPinMessage.js"></script>
+<% } %>
 
 </html>

@@ -261,21 +261,27 @@
             <span class="close-btn">&times;</span>
 
             <h2>List of Keys
-                <div class="btn-container">
-                    <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addKey"><i
-                            class="bi bi-plus"></i></button>
-                    <div class="tooltip-custom">
-                        <i class="bi bi-question-circle"></i>
-                        <span class="tooltiptext">Add key</span>
-                    </div>
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='admin' && username
+                    !='helpDeskElena' ) { %>
+                    style="cursor: not-allowed" <% } %>>
+                        <button type="button"
+                            class="btn btn-outline-success btn-sm rounded-circle fw-bold <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            id="addKey"><i class="bi bi-plus"></i></button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Add key</span>
+                        </div>
                 </div>
-                <div class="btn-container">
-                    <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold"
-                        id="removeKey"><i class="bi bi-arrow-repeat"></i></button>
-                    <div class="tooltip-custom">
-                        <i class="bi bi-question-circle"></i>
-                        <span class="tooltiptext">Reload keys</span>
-                    </div>
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='admin' && username
+                    !='helpDeskElena' ) { %>
+                    style="cursor: not-allowed" <% } %>>
+                        <button type="button"
+                            class="btn btn-outline-primary btn-sm rounded-circle fw-bold <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            id="removeKey"><i class="bi bi-arrow-repeat"></i></button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Reload keys</span>
+                        </div>
                 </div>
             </h2>
 
@@ -302,7 +308,7 @@
         <!-- Modal Structure -->
 
         <div id="roomModal" class="modal">
-            <div class="modal-content">
+            <div class="modal-content mt-0">
                 <span class="close-btn">&times;</span>
 
                 <h2>Room Information</h2>
@@ -350,21 +356,112 @@
 
                 <input type="hidden" id="isAccommodation" value="false">
 
-                <button type="submit" class="modal-button" id="save-button">
-                    <i class="bi bi-save"></i> Save
-                </button>
-                <div class="btn-container">
-                    <button type="button" class="modal-button" id="move-button">
-                        <i class="bi bi-arrows-move"></i> Move Soldier
-                    </button>
-                    <div class="tooltip-custom">
-                        <i class="bi bi-question-circle"></i>
-                        <span class="tooltiptext">Move soldier to another room</span>
-                    </div>
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='admin' && username
+                    !='helpDeskElena' ) { %>
+                    style="cursor: not-allowed" <% } %>>
+                        <button type="submit"
+                            class="modal-button <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            id="save-button">
+                            <i class="bi bi-save"></i> Save
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Save soldier to the room</span>
+                        </div>
+                </div>
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='admin' && username
+                    !='helpDeskElena' ) { %>
+                    style="cursor: not-allowed" <% } %>>
+                        <button type="button"
+                            class="modal-button <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            id="move-button">
+                            <i class="bi bi-arrows-move"></i> Move Soldier
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Move soldier to another room</span>
+                        </div>
+                </div>
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='admin' && username
+                    !='helpDeskElena' ) { %>
+                    style="cursor: not-allowed" <% } %>>
+                        <button type="button"
+                            class="modal-button <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            id="addtional-item-button">
+                            <i class="bi bi-plus-circle"></i> Add Additional Item
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Add additional items or bags to the soldier</span>
+                        </div>
                 </div>
             </div>
         </div>
     </form>
+
+    <div id="reportModal" class="modal">
+        <div class="modal-content-multi-calendar">
+            <span class="close-btn">&times;</span>
+            <h3 class="header-modal-report mb-3">Archive - Select Date Range (From/To Date)
+            </h3>
+
+            <!-- Container for two side-by-side calendars -->
+            <div class="calendar-container">
+                <div class="calendar" id="calendar1">
+                    <header>
+                        <h3></h3>
+                        <nav>
+                            <button type="button" id="prev"></button>
+                            <button type="button" id="next"></button>
+                        </nav>
+                    </header>
+                    <section>
+                        <ul class="days">
+                            <li>Sun</li>
+                            <li>Mon</li>
+                            <li>Tue</li>
+                            <li>Wed</li>
+                            <li>Thu</li>
+                            <li>Fri</li>
+                            <li>Sat</li>
+                        </ul>
+                        <ul class="dates"></ul>
+                    </section>
+                </div>
+
+                <div class="calendar" id="calendar2">
+                    <header>
+                        <h3></h3>
+                        <nav>
+                            <button type="button" id="prev"></button>
+                            <button type="button" id="next"></button>
+                        </nav>
+                    </header>
+                    <section>
+                        <ul class="days">
+                            <li>Sun</li>
+                            <li>Mon</li>
+                            <li>Tue</li>
+                            <li>Wed</li>
+                            <li>Thu</li>
+                            <li>Fri</li>
+                            <li>Sat</li>
+                        </ul>
+                        <ul class="dates"></ul>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Buttons for confirming the selection -->
+            <div class="button-container">
+                <button id="confirmReportBtn" class="modal-button">View
+                    Report</button>
+            </div>
+
+            <input name="selectedDate1" class="show-date" id="selectedDate1" value="">
+            <input name="selectedDate2" class="show-date" id="selectedDate2" value="">
+        </div>
+    </div>
 
     <!-- The Modal for Reports View -->
     <div id="reportViewModal" class="modal">
@@ -422,9 +519,9 @@
                         <tr>
                             <th><input name="oldRoom" type="text" class="search-input-view-second"
                                     placeholder="Search...">Previous
-                                Room</th>
+                                Key</th>
                             <th><input name="newRoom" type="text" class="search-input-view-second"
-                                    placeholder="Search...">New Room
+                                    placeholder="Search...">New Key
                             </th>
                             <th><input name="soldierName" type="text" class="search-input-view-second"
                                     placeholder="Search...">Soldier</th>
@@ -887,8 +984,7 @@
 
             <div class="mb-3">
                 <label for="key-name" class="form-label">Key Name <span class="text-danger">*</span></label>
-                <input type="text" id="key-name" name="keyName" class="form-control" pattern="^[^\/]+\/[^\/]+\/.+$"
-                    placeholder="Key Name">
+                <input type="text" id="key-name" name="keyName" class="form-control" placeholder="Key Name">
 
                 <div class="invalid-feedback">
                     Please enter a valid key name (format: build number/room number/key number)
@@ -942,6 +1038,94 @@
         </form>
     </div>
 
+    <div id="additionalItemModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2 class="mb-0">Additional items</h2>
+
+            <div class="d-flex justify-content-end">
+                <button type="button" id="prevBtnTherd"></button>
+                <span id="pageNumberTherd"></span>
+                <button type="button" id="nextBtnTherd"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <button type="button" id="toggleFormButton" class="modal-button"><i class="bi bi-plus-circle me-1"></i>Add Item</button>
+
+                <form class="form-section" method="POST" action="/accommodation/addAdditionalItems" id="form12">    
+                    <div class="mb-3 search-container">
+                        <label class="form-label" for="additionalItemSoldierCode">Soldier code <span
+                                class="text-danger">*</span></label>
+                        <input type="text" id="additionalItemSoldierCode" name="additionalItemSoldierCode"
+                            class="form-control" placeholder="Soldier code" aria-label="Soldier code">
+                        <div class="invalid-feedback"></div>
+                        <div class="valid-feedback"></div>
+                        <ul id="additionalItemSoldierDropdown" class="list-group"></ul>
+                        <!-- Custom dropdown for search -->
+                        <input type="hidden" id="selectedAdditionalItemSoldierId" name="additionalItemSoldierId"
+                            value="">
+                    </div>
+
+                    <div class="mb-3 form-group">
+                        <label class="form-label" for="additionalItemDescription">Description <span
+                                class="text-danger">*</span></label>
+                        <textarea id="additionalItemDescription" name="additionalItemDescription" class="form-control"
+                            rows="5" placeholder="Description..."></textarea>
+                        <div class="invalid-feedback"></div>
+                        <div class="valid-feedback"></div>
+                    </div>
+
+                    <div class="mb-3 search-container">
+                        <label class="form-label" for="additionalBagCode">Bag code</span></label>
+                        <input type="text" id="additionalBagCode" name="additionalBagCode" class="form-control"
+                            placeholder="Bag code">
+                        <div class="invalid-feedback"></div>
+                        <div class="valid-feedback"></div>
+                        <ul id="additionalBagCodeDropdown" class="list-group"></ul>
+                        <!-- Custom dropdown for search -->
+                        <input type="hidden" id="selectedAdditionalBagId" name="selectedAdditionalBagId" value="">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="additionalItemQuantity" class="form-label">Item quantity <span
+                                class="text-danger">*</span></label>
+                        <input type="number" id="additionalItemQuantity" class="form-control"
+                            placeholder="Item quantity" min="1">
+                        <div class="invalid-feedback"></div>
+                        <div class="valid-feedback"></div>
+                    </div>
+
+                    <button type="submit" class="modal-button">Save</button>
+                </form>
+
+                <div class="table-section">
+                    <table id="additonalItemTable">
+                        <thead>
+                            <tr>
+                                <th><input type="text" class="additional-item-search-input"
+                                        placeholder="Search...">Soldier
+                                    name
+                                </th>
+                                <th><input type="text" class="additional-item-search-input"
+                                        placeholder="Search...">Description</th>
+                                <th><input type="text" class="additional-item-search-input" placeholder="Search...">Bag
+                                    code
+                                </th>
+                                <th><input type="text" class="additional-item-search-input" placeholder="Search...">Item
+                                    quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="additionalItemTableBody">
+                            <!-- Lost items will be dynamically added here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- The Modal Message -->
     <div id="myGlobalMessage" class="modal">
         <div class="modal-content-mess">
@@ -952,6 +1136,7 @@
         </div>
     </div>
 
+    <% if(username !='NSPA' ) { %>
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
             aria-live="assertive" aria-atomic="true">
@@ -970,13 +1155,18 @@
             </div>
         </div>
     </div>
+    <% } %>
 
 </body>
 
 <script src="/java/autoSearch.js"></script>
 <script src="/java/soldier_modal.js"></script>
 <script src="/java/pageNumber.js"></script>
-<script src="/java/showPinMessage.js"></script>
 <script src="/java/phoneMenu.js"></script>
+<script src="/java/calendar.js"></script>
+
+<% if(username !='NSPA' ) { %>
+    <script src="/java/showPinMessage.js"></script>
+<% } %>
 
 </html>

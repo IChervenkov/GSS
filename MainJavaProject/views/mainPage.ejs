@@ -10,6 +10,8 @@
     <link rel="icon" href="/icon/logoPage.png">
     <link rel="stylesheet" href="/style/stylesMain.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
 
 </head>
@@ -65,50 +67,898 @@
                         <% }); %>
                 </ul>
             </div>
-            <% }; %>
+            <% } %>
 
                 <!-- Main Content Area -->
                 <div class="content">
 
                     <!-- Data Visualization Table -->
-                    <div class="visualization">
+                    <div class="visualization mb-5 mt-3">
                         <h3>
                             <%= startMessage %>
                         </h3>
+                    </div>
 
-                        <% if(headerTable) { %>
-                            <div class="table-container">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <% headerTable.forEach(function(item) { %>
-                                                <th>
-                                                    <%= item.name %>
-                                                </th>
-                                                <% }); %>
-                                        </tr>
-                                    </thead>
-                                    <% if (data) { %>
-                                        <tbody>
-                                            <% data.forEach(function(item) { %>
-                                                <tr>
-                                                    <td>
-                                                        <%= item.name %>
-                                                    </td>
-                                                </tr>
-                                                <% }); %>
+                    <!-- Guide Navigation -->
+                    <nav id="navbar-guide" class="navbar navbar-light bg-light px-3 rounded-top">
+                        <label class="navbar-brand">System Guide</label>
+                        <ul class="nav nav-pills">
+                            <li class="nav-item">
+                                <a class="nav-link" href="#mainPage">Main Page</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#assets">Assets</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#laundry">Laundry</a>
+                            </li>
+                            <!-- <li class="nav-item">
+                                <a class="nav-link" href="#gym">Gym</a>
+                            </li> -->
+                            <li class="nav-item">
+                                <a class="nav-link" href="#accommodationKeys">Accommodation and Keys</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#bicycles">Bicycles</a>
+                            </li>
+                        </ul>
+                    </nav>
 
-                                        </tbody>
-                                </table>
-                            </div>
-                            <% } } else { %>
-                                <p>This system was created and provided for the needs of Global RTS employees.</p>
-                                <% }; %>
+                    <!-- Guide Content -->
+                    <div class="scrollspy-example rounded-bottom" id="scrollableDiv">
+                        <h4 class="mb-2" id="mainPage"><i class="bi bi-house-door"></i><span class="ms-2">Main
+                                Page</span></h4>
+
+                        <p>The System Guide section on the main page provides a summarized overview of each system
+                            functionality.</p>
+
+                        <h4 class="mt-4 mb-2" id="assets"><i class="bi bi-box"></i><span class="ms-2">Assets</span></h4>
+                        <p>The asset management system allows users to manage asset types and statuses efficiently.</p>
+
+                        <p>On the left side of the screen, a list of all buildings is displayed. Clicking on a building
+                            updates the main table to show information related to the selected building.</p>
+
+                        <p>The main table presents all available rooms and the number of assets within those rooms
+                            across
+                            all buildings in the respective camp. Users can view details for a specific building by
+                            selecting it from the list or by entering keywords in the <i>Search...</i> field.</p>
+
+                        <p>In addition to keyword searches, users can sort data by columns. To sort a column, click on
+                            its
+                            title (located below the search field). Columns can be sorted in ascending or descending
+                            order.</p>
+
+                        <p><b class="text-danger">NOTE</b>: Sorting must be applied before filtering. The system allows
+                            users to sort data
+                            by one
+                            or
+                            multiple columns first, and then apply filters. However, filtering before sorting is not
+                            supported.</p>
+
+                        <p>When selecting a row from the table, a window appears displaying partial information about
+                            the assets in the selected room. This new table can also be sorted and filtered. Selecting a
+                            specific asset provides full details and allows the asset to be edited.</p>
+
+                        <p>Additional functions in this window:</p>
+
+                        <ul>
+                            <li><b>Add asset</b>: To add an asset, click the add button <i
+                                    class="bi bi-plus-circle ms-1 me-1"></i> at
+                                the
+                                top of the window and enter the required details (fields marked with * are
+                                mandatory):</li>
+
+                            <ul class="mb-3 mt-3">
+                                <li>Asset EPC code: A unique identification code for the asset (RFID sticker
+                                    code).
+                                </li>
+                                <li>Assert code: The last five digits of the asset's identification code.
+                                </li>
+                                <li>Assert name: The name of the asset.</li>
+                                <li>Assert type: The category of the asset, selected from predefined options
+                                    (explained later in this section).</li>
+                                <li>Assert location: The room where the asset is located.</li>
+                                <li>Associated key: If the asset type is "Bed," this field may be filled to
+                                    associate a key with the bed. Only assets of this type can be linked to keys.
+                                </li>
+                                <li>Asset categories: The classification of the asset.</li>
+                                <li>Assert quantity: The number of assets. If the quantity is greater than
+                                    one, the
+                                    system automatically assigns a unique service EPC code.</li>
+                                <li>MRAH: The materially responsible person for the asset.</li>
+                                <li>Assert owner: The owner of the asset.</li>
+                                <li>Status: Indicates the asset's condition:
+                                    <ul class="mb-2 mt-2">
+                                        <li>1 - New/Good condition</li>
+                                        <li>2 - Used Serviceable </li>
+                                        <li>3 - Un Serviceable/BER_Beyond economical repair</li>
+                                    </ul>
+                                </li>
+                                <li>Expandable: Specifies whether the asset is:
+                                    <ul class="mb-2 mt-2">
+                                        <li>Expendable - Consumed upon use and not recorded as returnable inventory.
+                                        </li>
+                                        <li>Non-Expendable - Retains its original identity throughout its usage
+                                            period.</li>
+                                    </ul>
+                                </li>
+                                <li>Asset description: Additional details about the asset, if necessary.</li>
+                            </ul>
+                            <li><b>Remove an asset</b>: To remove an asset, select the assets to be deleted and
+                                click the
+                                remove button <i class="bi bi-dash-circle ms-1 me-1"></i> next to the add button.
+                            </li>
+                        </ul>
+
+                        <p><i class="bi bi-plus-circle"><span class="ms-1">Add Type</span></i> button opens a window
+                            where you can
+                            enter the name of a new asset type.</p>
+                        <p><i class="bi bi-dash-circle"><span class="ms-1">Remove Type</span></i> button opens a window
+                            where you
+                            can select and confirm the asset type you want to remove. An asset type can only be removed
+                            if no assets are currently registered under it.</p>
+
+                        <p><i class="bi bi-exclamation-circle"><span class="ms-1">Lost Asset</span></i> button opens a
+                            window where
+                            lost assets can be registered. The window is divided into two sections:</p>
+
+                        <ol>
+                            <li>Form Fields:</li>
+
+                            <ul class="mb-3 mt-3">
+                                <li>Item Code: Enter and select the code of the lost asset.</li>
+                                <li>Description (Optional): A field to provide additional details about the lost
+                                    asset.
+                                </li>
+                                <li>Last Known Person: Enter and select the last person who noticed the asset.
+                                </li>
+                                <li>Asset Quantity: Displays the number of lost assets. This field is
+                                    automatically
+                                    populated and restricted based on the selected asset code.</li>
+                            </ul>
+
+                            <li>Lost Asset Table:</li>
+
+                            <ul class="mb-3 mt-3">
+                                <li>Displays information about all lost assets.</li>
+                                <li>Filtering options are available for refining search results.</li>
+                                <li>If a lost asset is found, the user must select the corresponding row and specify the
+                                    recovered quantity. The quantity field is automatically populated and limited by
+                                    default.</li>
+                            </ul>
+                        </ol>
+
+                        <p><i class="bi bi-file-earmark-text"><span class="ms-1">Asset Archive</span></i> button
+                            opens a window
+                            with two date selectors</p>
+
+                        <ul>
+                            <li>Start Date (Left): Defines the beginning of the time interval.</li>
+                            <li>End Date (Right): Defines the end of the time interval.</li>
+                        </ul>
+
+                        <p>Using these date selectors, the user can specify a time range to view asset changes. After
+                            selecting the dates, a report is generated containing two tables:</p>
+
+                        <ol>
+                            <li>Current Asset Overview: Displays complete information about all assets currently in the
+                                system.</li>
+                            <li>Asset Changes Summary: Shows asset changes within the selected date range,
+                                including:
+                            </li>
+                            <ul class="mb-3 mt-3">
+                                <li>Total Assets</li>
+                                <li>Total New Assets</li>
+                                <li>Total Update Assets</li>
+                                <li>Total Remove Assets</li>
+                                <li>Total Missing Assets</li>
+                            </ul>
+                        </ol>
+
+                        <p>Filters can be applied to refine the displayed data, and unnecessary information can be
+                            removed using the <i class="bi bi-funnel"></i> button. If the user desires, clicking
+                            the <i>Generate Report</i> button exports and downloads an Excel file containing the
+                            filtered data.
+                        </p>
+
+                        <h4 class="mt-4 mb-2" id="laundry"><i class="bi bi-water"></i><span class="ms-2">Laundry</span>
+                        </h4>
+
+                        <p>This section displays bags at different stages of the washing process. Each stage contains a
+                            list of bags currently in that stage. To view the list, users can click on any button
+                            corresponding to a specific stage.</p>
+
+                        <p>Additionally, the system provides:</p>
+                        <ul>
+                            <li>The total number of bags in each stage.</li>
+                            <li>A breakdown of the number of individual bag types within that stage.</li>
+                        </ul>
+
+                        <p>When viewing a list, users can perform the following actions:</p>
+
+                        <ul class="mb-3 mt-3">
+                            <li><b>Add a Bag</b>: Click the <i class="bi bi-plus-circle ms-1 me-1"></i> button and
+                                enter/select the bag number. Only bags that are not
+                                yet in the wash cycle can be added.</li>
+                            <li><b>Move a Bag</b>: Select one or more bags, then click the <i
+                                    class="bi bi-arrow-right-circle ms-1 me-1"></i> button. Bags can only be moved
+                                forward if they are in the previous stage. This option is available in all stages except
+                                "Ready to Pick Up."</li>
+                            <li><b>Remove a Bag</b>: Select one or more bags from the current stage and click the <i
+                                    class="bi bi-dash-circle ms-1 me-1"></i>
+                                button.</li>
+                            <li><b>Linen Exchange Service</b>: The Linen Exchange Service button allows users to mark
+                                any
+                                bag-whether in the wash cycle or not-as having completed the Linen Exchange process by
+                                click the <i class="bi bi-recycle ms-1 me-1"></i> button
+                                and entering and selecting its number.</li>
+                        </ul>
+
+                        <p><i class="bi bi-file-earmark-text"><span class="ms-1">Report</span></i> button opens a window
+                            with two date selectors:</p>
+
+                        <ul>
+                            <li>Start Date (Left): Specifies the beginning of the time interval.</li>
+                            <li>End Date (Right): Specifies the end of the time interval.</li>
+                        </ul>
+
+                        <p>Using these date selectors, the user can define a time range to view information about all
+                            bags washed within that period.</p>
+
+                        <p>After selecting the dates, a report is generated containing two tables:</p>
+
+                        <ol>
+                            <li>Washed Bags Information: Displays details for each washed bag, including:</li>
+                            <ul class="mb-3 mt-3">
+                                <li>Bag number</li>
+                                <li>Soldier name</li>
+                                <li>Nationality</li>
+                                <li>Bag type</li>
+                                <li>Location</li>
+                                <li>Date of issue</li>
+                                <li>Collection date</li>
+                            </ul>
+                            <li>Data by Nationality: Summarizes the number of washed bags categorized by nationality
+                                within the selected period.</li>
+                        </ol>
+
+                        <p><i class="bi bi-list"><span class="ms-1">List of Bags</span></i> button displays a list of
+                            all bags who is not washed in the system, along with the following
+                            information:</p>
+                        <ul>
+                            <li>Bag code</li>
+                            <li>Bag type</li>
+                            <li>Maximum number of washes: Indicates how many times a given bag can be washed per month.
+                            </li>
+                        </ul>
+
+                        <p>The system allows filtering by each of these three features.</p>
+                        <p>Additional functionalities for this window:</p>
+                        <ul>
+                            <li><b>Add Bag</b>: <i class="bi bi-plus-circle ms-1 me-1"></i> button allows users to
+                                add a
+                                new bag
+                                to the
+                                system. The following mandatory fields must be filled in:</li>
+                            <ul>
+                                <li>EPC code: A unique identifier corresponding to the bag's RFID tag.</li>
+                                <li>Bag code: A four-digit code for the bag.</li>
+                                <li>Bag type: The type of the bag.</li>
+                                <li>Maximum number of washes: The maximum number of washes allowed per month for the
+                                    bag.</li>
+                            </ul>
+
+                            <li class="mt-3 mb-3"><b>Remove Bag</b>: <i class="bi bi-dash-circle ms-1 me-1"></i> button
+                                allows users
+                                to
+                                remove a bag from
+                                the system. To do so, select the bag or bags to be removed, then click the button.
+                            </li>
+                            <p><b class="text-danger">NOTE</b>: The system allows bags to be removed only if they are
+                                not
+                                owned by anyone. When a bag is deleted, its report history is also automatically
+                                removed.</p>
+
+                            <li><b>Edit a Bag</b>:
+                                To edit a bag, select it from the list. A window will appear displaying all editable
+                                information. The system allows only the bag type and maximum number of washes to be
+                                changed. Other details can be updated through the RFID reader application.
+
+                                For convenience, another bag can be entered and selected. When a different bag is
+                                chosen, all the information in the data fields will be updated to reflect the
+                                selected bag's details.</li>
+                        </ul>
+
+                        <!-- <h4 class="mt-4 mb-2" id="gym"><i class="bi bi-activity"></i><span class="ms-2">Gym (Inactive
+                                part)</span></h4>
+
+                        <p>This section of the system displays gym attendance and user satisfaction ratings regarding
+                            cleaning. The main table presents the following information:</p>
+                        <ul>
+                            <li>Date: The date when the rating was given.</li>
+                            <li>Average Rating: The average rating for that particular date.</li>
+                            <li>Number of Visits: The total number of visitors on that date.</li>
+                        </ul>
+
+                        <p>In the upper right corner, a breakdown of the total number of ratings ever given is shown.
+                        </p>
+
+                        <p>On the left side of the screen, two calendars allow the user to set the start and end dates
+                        for
+                        the time interval to display data relative to the selected dates. If only the start date is set,
+                        information from that date to the present day will be displayed. After setting the interval, the
+                        user can apply <i class="bi bi-funnel"><span class="ms-1">Filtering</span></i>.</p>
+
+                        <p>Additionally, in the upper right corner, the user can generate and download an Excel file
+                            containing the data shown in the main table for the selected time period.</p> -->
+
+                        <h4 class="mt-4 mb-2" id="accommodationKeys"><i class="bi bi-key"></i><span
+                                class="ms-2">Accommodation & Keys</span></h4>
+
+                        <p>The Accommodation & Keys section manages the allocation of soldiers to accommodations and
+                            tracks the status of keys associated with rooms. The system provides the following
+                            functionalities:</p>
+                        <ol>
+                            <li class="mb-2">
+                                <p>Managing Destinations, Rooms and Keys</p>
+                                <ul>
+                                    <li>
+                                        <p><b>Adding a Destination (Building)</b>: To add a new building
+                                            (destination), click the <i class="bi bi-plus-circle ms-1"><span
+                                                    class="ms-2">Add Destination</span></i>
+                                            button and fill in the required details (fields marked with * are
+                                            mandatory):</p>
+                                        <ul class="mb-3">
+                                            <li>Building Number: Enter the building number, which can only contain
+                                                uppercase
+                                                letters, lowercase letters, and numbers.</li>
+                                            <li>Building Name: The name must follow the format: "Building " followed by
+                                                the
+                                                building number.</li>
+                                            <li>Building Type: Determines the purpose of the building:
+                                                <ul class="mb-2 mt-2">
+                                                    <li>Accommodation: Buildings of this type can accommodate and
+                                                        release
+                                                        people.</li>
+                                                    <li>Other Types: These buildings allow only key distribution and
+                                                        return.
+                                                    </li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </li>
+
+                                    <li>
+                                        <p><b>Removing a Destination</b>: To remove a building, hover over its name in
+                                            the
+                                            list on the left and click the remove button. A building can only be removed
+                                            if
+                                            no rooms have been created in it.</p>
+                                    </li>
+
+                                    <li>
+                                        <p><b>Adding a Room</b>: To add a room to a building, hover over the building
+                                            name
+                                            in the list on the left and click the button that appears. Then, fill in the
+                                            required details: </p>
+                                        <ul class="mb-3">
+                                            <li>Room Number: Must contain only uppercase letters, lowercase letters, and
+                                                numbers.</li>
+                                            <li>Room Name: Must follow the format: "Building number/Room number"</li>
+                                        </ul>
+                                    </li>
+
+                                    <li>
+                                        <p><b>Removing a Room</b>: To remove a room, hover over the building name in the
+                                            list on the left and click the button that appears. Then, enter the required
+                                            details:</p>
+
+                                        <ul class="mb-3">
+                                            <li>Room Name: Enter and select the room to be removed. A room can only be
+                                                removed if no keys have been created for it.</li>
+                                        </ul>
+                                    </li>
+
+                                    <li>
+                                        <p><b>Adding a Key</b>: To add a new key select the room where the key will be
+                                            added, click the <i class="bi bi-plus-circle ms-1 me-1"></i> button and
+                                            enter the required details:</p>
+
+                                        <ul class="mb-3">
+                                            <li>Key Number: Must contain only uppercase letters, lowercase letters, and
+                                                numbers.</li>
+                                            <li>Key Name: Must follow the format: "Building number/Room number/Key
+                                                number".</li>
+                                        </ul>
+                                    </li>
+
+                                    <li>
+                                        <p><b>Changing a Key</b>: To change an existing key select the room where the
+                                            key is located, click the <i class="bi bi-arrow-repeat ms-1 me-1"></i>
+                                            button, enter
+                                            and select the old key number and enter the new key number.</p>
+                                    </li>
+                                </ul>
+                            </li>
+
+                            <li class="mb-3">
+                                <p>Viewing Accommodation Status</p>
+
+                                <ul>
+                                    <li>The system displays the total number of free beds and occupied beds.</li>
+                                    <li>A search field allows users to quickly find specific soldiers or accommodations.
+                                        The
+                                        user can search by key number and code, soldier number and name, bag code or
+                                        meal
+                                        card number.
+                                        <p>When a soldier or key is selected from the list, the system displays the
+                                            following information:</p>
+                                        <ul>
+                                            <li>Key number</li>
+                                            <li>Key Code</li>
+                                            <li>Soldier Name</li>
+                                            <li>Laundry Bag</li>
+                                            <li>Meal card</li>
+                                            <li>Nationality</li>
+                                        </ul>
+
+                                    </li>
+                                </ul>
+                            </li>
+
+                            <li>
+                                <p>Assigning Soldiers to Rooms</p>
+
+                                <p>The assignment of soldiers to rooms occurs in two stages:</p>
+
+                                <ol>
+                                    <li>
+                                        <p>Entering Soldiers into the System</p>
+
+                                        <p>Before a soldier can be assigned to a room, they must first be entered into
+                                            the
+                                            system. There are two ways to do this:</p>
+                                        <ul>
+                                            <li>Single Entry:</li>
+                                            <p class="mt-3">Using the <i class="bi bi-person"><span class="ms-1">List of
+                                                        Soldiers</span></i>
+                                                button, you can access a
+                                                complete list of all soldiers in the system, including their number,
+                                                name,
+                                                and
+                                                nationality. This window provides the following functionalities:</p>
+
+                                            <ul>
+                                                <li><b>Editing Soldier Information</b>: You can update a soldier's
+                                                    details
+                                                    by
+                                                    selecting them from the list.</li>
+                                                <li><b>Removing a Soldier</b>: A soldier can be permanently deleted from
+                                                    the
+                                                    system by
+                                                    highlighting their entry and selecting the delete button <i
+                                                        class="bi bi-dash-circle ms-1 me-1"></i> (this action does
+                                                    not release them but removes them entirely).
+
+                                                    <p class="mt-2"><b class="text-danger">NOTE</b>: Only released
+                                                        soldiers
+                                                        can
+                                                        be removed.</p>
+                                                </li>
+                                                <li><b>Adding a Soldier</b>: To add a new soldier select the <i
+                                                        class="bi bi-plus-circle ms-1 me-1"></i>,
+                                                    enter the required information and select the <i
+                                                        class="bi bi-person-plus"><span class="ms-1">Add
+                                                            Soldier</span></i>
+                                                    button (fields marked with * are mandatory).</li>
+                                            </ul>
+                                            <li class="mt-3">Another method is Multiple Entry, which allows batch
+                                                additions:
+                                            </li>
+                                            <ul class="mt-3">
+                                                <li>Select the <i class="bi bi-people"><span class="ms-1">Add Multiple
+                                                            Soldiers</span></i> button.</li>
+                                                <li>Download the provided template by use <i
+                                                        class="bi bi-download ms-1 me-1"></i> (an
+                                                    Excel file with three columns: Number,
+                                                    Name, and Nationality - <span class="text-danger fw-bold">do not
+                                                        modify
+                                                        the
+                                                        column headers</span>).</li>
+                                                <li>Fill in the template and upload it using the <i>Choose File</i>
+                                                    option.
+                                                </li>
+
+                                                <p class="mt-3"><span class="text-danger fw-bold">NOTE</span>: During
+                                                    the
+                                                    upload
+                                                    process, the system will validate the data to check
+                                                    for duplicates, existing soldiers, and other errors. If issues
+                                                    arise,
+                                                    correct the data in the template. If problems persist, contact the
+                                                    system
+                                                    administrator.</p>
+                                            </ul>
+                                        </ul>
+                                    </li>
+
+                                    <li>
+                                        <p>Accommodation of Soldiers</p>
+
+                                        <p>The system allows soldier accommodation in two ways:</p>
+
+                                        <ol>
+                                            <li>
+                                                <p>Single Accommodation</p>
+                                                <ul>
+                                                    <li>From the main table, select the room where the soldier will be
+                                                        accommodated
+                                                        <ul class="mt-3 mb-3">
+                                                            <li>The table allows sorting data in ascending or descending
+                                                                order by clicking on a column title.</li>
+                                                            <li>You can also filter data by entering specific text.</li>
+                                                        </ul>
+                                                    </li>
+
+                                                    <li>Once a room is selected, a list of available keys is displayed.
+                                                        Select the key that the soldier will own.
+                                                    </li>
+
+                                                    <li>After key selection, a form appears (identical to the search
+                                                        field in the View Accommodation Status section).
+                                                    </li>
+
+                                                    <li>Fill in all required details (fields marked with * are
+                                                        mandatory).
+                                                    </li>
+                                                </ul>
+                                            </li>
+
+                                            <li class="mt-3">
+                                                <p>Multiple Accommodation</p>
+
+                                                <ul class="mb-3">
+                                                    <li>Click the <i class="bi bi-person-fill ms-1"><span
+                                                                class="ms-1">Accommodation of Soldiers</span></i>
+                                                        button.</li>
+
+                                                    <li>Download the provided Excel template (five columns: Key Name,
+                                                        Key Number, Soldier Number, Meal Card, and Bag Number) by use
+                                                        <i class="bi bi-download ms-1 me-1"></i> button.
+
+                                                        <ul class="mb-3 mt-3">
+                                                            <li><b class="text-danger">Do not modify the column
+                                                                    headers.</b></li>
+                                                            <li>The first two columns (Key Name and Key Number) are
+                                                                pre-filled and should not be changed.</li>
+                                                        </ul>
+                                                    </li>
+
+                                                    <li>Fill in the template by entering the Soldier Number, Meal Card
+                                                        Number, and Bag Number in their respective columns,
+                                                        corresponding to the key assigned to each soldier.</li>
+                                                    <li>Upload the completed file using the <i>Choose File</i> option.
+                                                    </li>
+                                                </ul>
+
+                                                <p>During upload, the system will validate the data, checking for
+                                                    duplicates, invalid bag codes, and other errors.
+                                                    If errors are found, correct them in the template and re-upload.
+                                                    If issues persist, contact the system administrator.</p>
+                                            </li>
+                                        </ol>
+
+                                        <p><b class="text-danger">NOTE</b>:</p>
+                                        <ul class="mb-3">
+                                            <li>These accommodation processes apply only to
+                                                buildings of the "Accommodation" type.
+                                                For other building types, only key distribution and return are allowed.
+                                                This process follows a similar single occupancy method, where only the
+                                                key
+                                                holder's name is recorded.</li>
+
+                                            <li>It is possible to reaccommodation a soldier by following the steps for
+                                                accommodation a soldier</li>
+                                        </ul>
+                                    </li>
+                                </ol>
+
+                            </li>
+
+                            <li>
+                                <p>Room Release</p>
+
+                                <p>The system allows room release in two ways:</p>
+                                <ol class="mb-3">
+                                    <li>Single Room Release: Find the soldier residing in the room using the main search
+                                        bar, or searching through the room and key lists. Once the soldier is found,
+                                        remove their name from the "Soldier Name" field to release the room.
+                                    </li>
+
+                                    <li class="mt-3">
+                                        Entire Building Release: To release an entire building, click the <i
+                                            class="bi bi-building"><span class="ms-1">Release Building</span></i> button
+                                        at the top of the screen. Read the warnings carefully and follow the on-screen
+                                        instructions. This process is irreversible, so ensure that the correct building
+                                        is selected before proceeding.
+                                    </li>
+                                </ol>
+
+                                <p><b class="text-danger">NOTE</b>: A soldier (or multiple soldiers) can only be
+                                    released if:</p>
+                                <ul>
+                                    <li>they have returned all rented bicycles,</li>
+                                    <li>their bags are not in laundry</li>
+                                    <li>and they have returned all additional items they borrowed. </li>
+                                </ul>
+                            </li>
+
+                            <li class="mt-3">
+                                <p>Moving (Exchanging) Soldiers</p>
+
+                                <p>Soldiers can be moved or exchanged using the Move Soldier feature. Click the <i
+                                        class="bi bi-arrows-move"><span class="ms-1">Move Soldier</span></i> button in
+                                    the soldier placement window, this window can be accessed from the main search bar
+                                    or the room list. A new window will appear displaying the selected key and the
+                                    soldier currently assigned to it. You need to choose the new key from the available
+                                    options:
+                                </p>
+
+                                <ul>
+                                    <li>If the key is free, a ✅ icon will be displayed, allowing the soldier to be
+                                        moved.</li>
+                                    <li>If the key is occupied, a 🚫 icon will be displayed, giving you the option to:
+                                        <ul class="mb-3 mt-3">
+                                            <li>Swap the soldiers between the two keys.</li>
+                                            <li>Change the key assigned to the selected soldier.</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+
+                                <p><b class="text-danger">NOTE</b>: Every soldier movement is recorded in the system
+                                    report and any modifications to a soldier's details (e.g., name, number,
+                                    nationality, room, bag, or meal card) are also logged.</p>
+                            </li>
+
+                            <li class="mb-3">
+                                <p>Adding an Additional Item</p>
+
+                                <p>The system allows soldiers to receive additional items and extra laundry bags. Click
+                                    the <i class="bi bi-plus-circle"><span class="ms-1">Add Additional Item</span></i>
+                                    button, located below the <i class="bi bi-arrows-move"><span class="ms-1">Move
+                                            Soldier</span></i> button. A window will open, divided into two sections:
+                                </p>
+
+                                <ol>
+                                    <li>Adding an Item (Left Side of the Screen): This section contains a form where you
+                                        must enter:
+                                        <ul class="mb-3 mt-3">
+                                            <li>Soldier Name (automatically selected from the previous window)</li>
+                                            <li>Item Description (brief details of the item being given)</li>
+                                            <li>Bag Number (optional; leave empty if not assigning a bag)</li>
+                                            <li>Quantity of Items (if a bag is selected, this is automatically set to 1
+                                                and cannot be changed)</li>
+                                        </ul>
+                                    </li>
+
+                                    <li>Viewing and Returning Additional Items (Right Side of the Screen): This section
+                                        displays a searchable table containing details of all assigned additional items,
+                                        including: Recipient (Soldier Name), Item Description, Bag Code (if there is
+                                        given) and Quantity Assigned. Items can be returned by selecting them from the
+                                        list. You can return one or multiple items, depending on the specified quantity.
+                                    </li>
+                                </ol>
+
+                            </li>
+
+                            <li>
+                                <p>Generating a Report: To generate a report, follow these steps:</p>
+                                <ol>
+                                    <li>Click the <i class="bi bi-file-earmark-text"><span
+                                                class="ms-1">Reports</span></i> button at the top of the main screen.
+                                    <li>
+                                        Select the start date and end date to define the time interval for the report.
+                                    </li>
+                                    <li>A window will appear displaying two tables (with column filtering options):
+                                        <ul class="mb-3 mt-3">
+                                            <li>Table 1: Contains details of every soldier who has ever existed in the
+                                                system.</li>
+                                            <li>Table 2: Displays all soldier movements within the selected time
+                                                interval.</li>
+                                        </ul>
+                                    </li>
+                                    <li>If needed, the system can generate and download a report as an Excel file,
+                                        containing the user-selected information.
+                                    </li>
+                            </li>
+                        </ol>
+                        </li>
+
+                        </ol>
+
+                        <h4 class="mt-4 mb-2" id="bicycles"><i class="bi bi-bicycle"></i><span
+                                class="ms-2">Bicycles</span></h4>
+
+                        <p>The Bicycles section manages the rented and returning of bicycles while tracking their
+                            status. The system provides the following functionalities:</p>
+
+                        <ol>
+                            <li>Managing add, edit and remove bicycles
+                                <ul class="mt-3 mb-3">
+                                    <li><b>Adding Bicycles</b>: To add a bicycle, click the <i
+                                            class="bi bi-plus-circle ms-1 me-1"></i> button at the top of the main
+                                        screen
+                                        and
+                                        fill in the
+                                        relay fields:
+
+                                        <ul class="mb-3 mt-3">
+                                            <li>Bicycle Number: A unique NFC identifier obtained by scanning the
+                                                bicycle's
+                                                sticker with any mobile device. It can contain only uppercase letters,
+                                                lowercase
+                                                letters, and numbers.
+                                            </li>
+
+                                            <li>Bike Name: Must follow the format "bike number/bike model". Note that
+                                                the
+                                                bike
+                                                number does not match the number you enter; instead, use the number
+                                                assigned
+                                                to
+                                                the bike itself.
+                                            </li>
+                                        </ul>
+                                    </li>
+
+                                    <li>
+                                        <p><b>Removing a Bicycle (Discarding)</b>: To remove a bicycle from the system,
+                                            click
+                                            the
+                                            <i class="bi bi-dash-circle ms-1 me-1"></i>
+                                            button next to the Add Bicycle button. Then, select the bicycle you want to
+                                            remove.
+                                        </p>
+
+                                        <p><b class="text-danger">NOTE</b>: Removing a bicycle will permanently delete
+                                            all
+                                            associated information, as if
+                                            the bicycle never existed in the system.</p>
+                                    </li>
+
+                                    <li>
+                                        <p><b>Editing a Rented Bicycle</b>: Bicycles that are not available can be
+                                            edited directly from the main table, which displays:</p>
+
+                                        <ul class="mb-3 mt-3">
+                                            <li>Bicycle Name</li>
+                                            <li>Bicycle Status</li>
+
+                                            <ul class="mb-3 mt-3">
+                                                <li>Available (<img src="/icon/available.png"
+                                                        class="img-fluid ms-1 me-1" width="24">)</li>
+                                                <li>Rented (<img src="/icon/unavailable.png" class="img-fluid ms-1 me-1"
+                                                        width="24">)</li>
+                                                <li>Repair (<img src="/icon/repire.png" class="img-fluid ms-1 me-1"
+                                                        width="24">)</li>
+                                                <li>Late Return (<img src="/icon/timeout.png"
+                                                        class="img-fluid ms-1 me-1" width="24">)</li>
+                                                <li>Long-Term (<img src="/icon/long-term.png"
+                                                        class="img-fluid ms-1 me-1" width="24">)</li>
+                                            </ul>
+
+                                            <li>Lessor</li>
+                                            <li>Rental Date</li>
+                                        </ul>
+
+                                        <p>To edit a bicycle, select the rented bicycle from the table. The following
+                                            fields can be modified: Bicycle Status, Lessor or Rental Date</p>
+                                    </li>
+                                </ul>
+                            </li>
+
+                            <li>
+                                <p>Viewing Bicycle status</p>
+                                <p>The top section of the screen displays an overview of bicycle statuses, including:
+                                <ul>
+                                    <li>Total Bicycles</li>
+                                    <li>Rented Bicycles</li>
+                                    <li>Available Bicycles</li>
+                                    <li>Bicycles Under Repair</li>
+                                    <li>Late Returns</li>
+                                    <li>Long-Term Rentals</li>
+                                </ul>
+
+                                </p>
+
+                                <p>Selecting any of these categories will show a list of all bicycles that fall under
+                                    the chosen status.</p>
+
+                                <p>Additionally, on the left side of the screen, you can search for a specific bicycle
+                                    or a soldier. Upon selection, pressing the <i class="fas fa-search ms-1 me-1"></i>
+                                    button will display details
+                                    about the current renter and the previous lessor of the bicycle.</p>
+                            </li>
+
+                            <li>
+                                <p>Rented Bike</p>
+                                <p>To rent a bike:</p>
+
+                                <ol class="mt-3 mb-3">
+                                    <li>Select the bike name and the soldier who will rent it from the fields on the
+                                        left side of the screen</li>
+                                    <li>Choose the rental date from the calendar below the input fields</li>
+                                    <li>Click the <i class="bi bi-bag ms-1 me-1"><span class="ms-1">Rent</span></i>
+                                        button.</li>
+                                </ol>
+
+                                <p>The system will display your selection so far. You will then need to specify the hour
+                                    and minutes for the rental time.</p>
+
+                                <p><b class="text-danger">NOTE</b>:</p>
+                                <ul class="mt-1 mb-3">
+                                    <li>To set the current time as the rental date and time, select the Rent Now
+                                        checkbox.</li>
+                                    <li>If you want the bike to be considered as rented for a long term, select the Long
+                                        Term checkbox.</li>
+                                </ul>
+
+                            </li>
+
+                            <li>
+                                <p>Returning a Bike</p>
+                                <p>To return a rented bike:</p>
+
+                                <ol>
+                                    <li>Select the bike name that was rented from the field on the left side of the
+                                        screen.</li>
+                                    <li>Choose the return date from the calendar below the input fields.</li>
+                                    <li>Click the <i class="bi bi-arrow-return-left ms-1 me-1"><span
+                                                class="ms-1">Return</span></i> button.</li>
+                                </ol>
+
+                                <p>The system will display your selections. You will then need to specify the hour and
+                                    minutes for the return time.</p>
+
+                                <p><b class="text-danger">NOTE</b>: To set the current time as the return date and time,
+                                    select the Return Now checkbox.</p>
+                            </li>
+
+                            <li>
+                                <p>Generating a Report</p>
+                                <p>To generate a report, follow these steps:</p>
+
+                                <ol class="mt-3 mb-3">
+                                    <li>Click the <i class="bi bi-file-earmark-text ms-1 me-1"><span
+                                                class="ms-1">Reports</span></i> button at the top of the main screen.
+                                    </li>
+                                    <li>Select a start date and end date to define the time range for the report.</li>
+                                    <li>A window will appear displaying two tables with column filtering options:
+                                        <ul class="mb-3 mt-3">
+                                            <li>Table 1: Contains details of each bike rented during the selected
+                                                period.</li>
+                                            <li>Table 2: Displays the number of bikes rented per day within the selected
+                                                period (if at least one bike was rented that day).</li>
+                                        </ul>
+                                    </li>
+                                    <li>If needed, the system can generate and download a report as an Excel file
+                                        containing the selected data.</li>
+                                </ol>
+
+                                <p><b class="text-danger">NOTE</b>: The downloaded file includes two additional columns:
+                                </p>
+                                <ul class="mt-2 mb-3">
+                                    <li>Bike Status</li>
+                                    <li>Overdue Status (if a bike is overdue, a symbol is displayed ⚠️ in the last column).</li>
+                                </ul>
+                            </li>
+
+                        </ol>
                     </div>
                 </div>
     </div>
 
-    <% if(username !='guest' ) { %>
+    <% if(username !='NSPA' ) { %>
         <!-- Toast Container -->
         <div class="toast-container position-fixed bottom-0 end-0 p-3">
             <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
@@ -132,8 +982,9 @@
 
 </body>
 
+<script src="/java/guideNavBar.js"></script>
 <script src="/java/phoneMenu.js"></script>
-<% if(username !='guest' ) { %>
+<% if(username !='NSPA' ) { %>
     <script src="/java/showPinMessage.js"></script>
     <% } %>
 

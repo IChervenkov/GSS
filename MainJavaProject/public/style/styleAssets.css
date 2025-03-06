@@ -104,8 +104,8 @@ thead th input:focus {
 }
 
 #lostAssetsModal table tbody tr:hover {
-  background-color: #f1f1f1;
-  cursor: pointer;
+    background-color: #f1f1f1;
+    cursor: pointer;
 }
 
 #assetDescription {
@@ -436,6 +436,12 @@ td {
     margin-bottom: 25px;
 }
 
+.disabled-button {
+    pointer-events: none;
+    opacity: 0.5;
+    position: relative;
+}
+
 /* Flexbox for side-by-side calendars */
 .calendar-container {
     display: flex;
@@ -487,7 +493,9 @@ td {
 #prevBtnDate,
 #nextBtnDate,
 #prevBtnSecond,
-#nextBtnSecond {
+#nextBtnSecond,
+#prevBtnTherd,
+#nextBtnTherd {
     width: 20px;
     height: 20px;
     position: relative;
@@ -503,7 +511,9 @@ td {
 #prevBtnDate::before,
 #nextBtnDate::before,
 #prevBtnSecond::before,
-#nextBtnSecond::before {
+#nextBtnSecond::before,
+#prevBtnTherd::before,
+#nextBtnTherd::before {
     content: "";
     width: 50%;
     height: 50%;
@@ -518,14 +528,16 @@ td {
 #next::before,
 #nextBtn::before,
 #nextBtnDate::before,
-#nextBtnSecond::before {
+#nextBtnSecond::before,
+#nextBtnTherd::before {
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
 #prev::before,
 #prevBtn::before,
 #prevBtnDate::before,
-#prevBtnSecond::before {
+#prevBtnSecond::before,
+#prevBtnTherd::before {
     transform: translate(-50%, -50%) rotate(-135deg);
 }
 
@@ -536,7 +548,9 @@ td {
 #prevBtnDate:hover::before,
 #nextBtnDate:hover::before,
 #prevBtnSecond:hover::before,
-#nextBtnSecond:hover::before {
+#nextBtnSecond:hover::before,
+#prevBtnTherd:hover::before,
+#nextBtnTherd:hover::before {
     border-color: #000;
 }
 
@@ -764,6 +778,7 @@ input[type="checkbox"] {
     display: flex;
     gap: 10px;
     /* Adjust the spacing between the labels as needed */
+    margin-left: auto;
 }
 
 .modal-button {
@@ -784,7 +799,7 @@ input[type="checkbox"] {
 }
 
 .btn-add-type {
-
+    width: 100%;
     padding: 5px 10px 5px 10px;
     border: none;
     border-radius: 5px;
@@ -795,7 +810,7 @@ input[type="checkbox"] {
     transition: background-color 0.3s ease;
 }
 
-.btn-type-soldier:hover {
+.btn-add-type:hover {
     background-color: #218838;
 }
 
@@ -937,48 +952,71 @@ input[type="checkbox"] {
 }
 
 .dropdown-button {
-    background-color: #28a745; /* Vibrant blue for visibility */
-    color: white; /* Contrasting text color */
-    padding: 12px 18px; /* Larger padding for better click area */
-    font-size: 16px; /* Slightly larger font size */
-    border: none; /* Remove the border for a cleaner look */
-    border-radius: 8px; /* Add rounded corners */
+    background-color: #28a745;
+    /* Vibrant blue for visibility */
+    color: white;
+    /* Contrasting text color */
+    padding: 12px 18px;
+    /* Larger padding for better click area */
+    font-size: 16px;
+    /* Slightly larger font size */
+    border: none;
+    /* Remove the border for a cleaner look */
+    border-radius: 8px;
+    /* Add rounded corners */
     cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth transition for hover effect */
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    /* Smooth transition for hover effect */
 }
 
 .dropdown-button:hover {
-    background-color: #218838; /* Darker blue for hover */
-    transform: scale(1.05); /* Slightly enlarge on hover */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadow for depth */
+    background-color: #218838;
+    /* Darker blue for hover */
+    transform: scale(1.05);
+    /* Slightly enlarge on hover */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    /* Add shadow for depth */
 }
 
 
 .dropdown-content {
     display: none;
     position: absolute;
-    background-color: #ffffff; /* Bright white for contrast */
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25); /* More pronounced shadow */
+    background-color: #ffffff;
+    /* Bright white for contrast */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+    /* More pronounced shadow */
     z-index: 2;
-    padding: 15px; /* Increased padding for better spacing */
-    border: 1px solid #28a745; /* Border color matches the button for cohesion */
-    border-radius: 8px; /* Rounded corners for a modern look */
-    min-width: 200px; /* Set a minimum width for consistency */
+    padding: 15px;
+    /* Increased padding for better spacing */
+    border: 1px solid #28a745;
+    /* Border color matches the button for cohesion */
+    border-radius: 8px;
+    /* Rounded corners for a modern look */
+    min-width: 200px;
+    /* Set a minimum width for consistency */
 }
 
 .dropdown-content label {
     display: block;
-    padding: 8px 12px; /* Spacing around each label for clarity */
+    padding: 8px 12px;
+    /* Spacing around each label for clarity */
     font-size: 14px;
-    color: #333; /* Darker text for better readability */
-    cursor: pointer; /* Pointer cursor for clickable labels */
-    border-radius: 4px; /* Slight rounding for each label */
-    transition: background-color 0.3s ease, color 0.3s ease; /* Smooth hover effect */
+    color: #333;
+    /* Darker text for better readability */
+    cursor: pointer;
+    /* Pointer cursor for clickable labels */
+    border-radius: 4px;
+    /* Slight rounding for each label */
+    transition: background-color 0.3s ease, color 0.3s ease;
+    /* Smooth hover effect */
 }
 
 .dropdown-content label:hover {
-    background-color: #28a745; /* Highlight background */
-    color: #fff; /* Change text color to white */
+    background-color: #28a745;
+    /* Highlight background */
+    color: #fff;
+    /* Change text color to white */
 }
 
 .custom-dropdown:hover .dropdown-content {
@@ -986,12 +1024,14 @@ input[type="checkbox"] {
 }
 
 .column-toggle:checked {
-    accent-color: #218838; /* Changes the checkbox color to green */
+    accent-color: #218838;
+    /* Changes the checkbox color to green */
 }
 
 /* Toast Styling */
 .custom-toast {
-    background-color: #28a745 !important; /* Bootstrap success green */
+    background-color: #28a745 !important;
+    /* Bootstrap success green */
     color: white;
     border-radius: 8px;
     padding: 12px 15px;
@@ -1022,4 +1062,375 @@ input[type="checkbox"] {
     font-size: 20px;
     margin-right: 10px;
     color: white;
+}
+
+/* Menu button (hamburger icon) */
+.menu-toggle {
+    display: none;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    font-size: 1.5em;
+    padding: 10px;
+    cursor: pointer;
+}
+
+/* Menu button (hamburger icon) */
+.menu-toggle-left {
+    display: none;
+    width: 100%;
+    text-align: left;
+    color: black;
+    background-color: #e9f5e9c4;
+    font-size: 1.5em;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+/* Media Queries for mobile responsiveness */
+@media screen and (max-width: 768px) {
+
+    #search-all-key-container.search-container {
+        margin: 0px;
+        margin-bottom: 10px;
+    }
+
+    .col-md-auto {
+        height: 100%;
+    }
+
+    .download-btn {
+        display: block;
+        /* Show on mobile */
+        flex: 1;
+        padding: 5px 10px 5px 10px;
+        border: none;
+        border-radius: 5px;
+        background-color: #28a745;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        width: 100%;
+        text-align: center;
+        margin-top: 10px;
+    }
+
+    .modal-content-mess {
+        max-width: 100%;
+        margin-left: 50px;
+        margin-right: 50px;
+    }
+
+    .modal-content {
+        width: 100%;
+        max-width: 350px;
+        margin-left: 5%;
+    }
+
+    .button-container-report {
+        display: flex;
+        flex-direction: column;
+        /* Stack buttons vertically */
+        align-items: center;
+        /* Center buttons horizontally (optional) */
+    }
+
+    .visualization-header h3 {
+        margin-bottom: 15px;
+        text-align: center;
+    }
+
+    .virtual-warehouse-labels {
+        display: grid;
+        grid-template-columns: repeat(1, auto);
+        gap: 10px;
+        text-align: center;
+        width: 100%;
+    }
+
+    .virtual-warehouse-labels label {
+        padding: 10px;
+        font-size: 14px;
+    }
+
+    .visualization-header .row .col-md-auto h3 div {
+        margin-bottom: 20px;
+    }
+
+    .modal-content-view {
+        width: 350px;
+        max-width: 350px;
+        margin-left: 30px;
+    }
+
+    /* Adjust header and labels */
+    .visualization-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+        display: block;
+    }
+
+    /* Adjust buttons */
+    .button-container-report {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        margin-top: 15px;
+        width: 100%;
+    }
+
+    .btn-add-soldier,
+    .btn-free-soldier,
+    .btn-report {
+        font-size: 14px;
+        padding: 10px;
+        width: 100%;
+    }
+
+    .btn-add-soldier.disabled-button {
+        background-color: #ddd;
+        cursor: not-allowed;
+    }
+
+    .modal-content-total-info {
+        max-width: 400px;
+        margin-top: 100px;
+        margin-left: 10px;
+        margin-right: 10px;
+        padding: 30px;
+    }
+
+    .horizontal-nav ul {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        background-color: #28a745;
+    }
+
+    .horizontal-nav ul li {
+        margin: 10px 0;
+        text-align: center;
+    }
+
+    .menu-toggle {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 15px;
+    }
+
+    .horizontal-nav ul.active {
+        display: flex;
+    }
+
+    /* Stack content and sidebar vertically */
+    .main-content {
+        flex-direction: column;
+    }
+
+    /* Adjust font size and padding for better readability */
+    .top-nav,
+    .horizontal-nav ul li a {
+        font-size: 1.2em;
+        padding: 8px 10px;
+    }
+
+    .left-nav {
+        display: none;
+        width: auto;
+        background-color: #f4f4f4;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        transform: translateX(-100%);
+        height: 84%;
+        width: 100%;
+        z-index: 1000;
+        position: fixed;
+        top: 1;
+        left: 0;
+        overflow-y: auto;
+    }
+
+    body.no-scroll {
+        overflow: hidden;
+        /* Disable scrolling on the main page */
+    }
+
+    /* Add an active class to show the left-nav */
+    .left-nav.active {
+        display: block;
+        margin-top: 60px;
+        transform: translateX(0);
+    }
+
+    .left-nav ul.active {
+        display: flex;
+    }
+
+    .button-group {
+        opacity: 1;
+    }
+
+    .menu-toggle-left {
+        display: block;
+    }
+
+    .menu-toggle-left:focus {
+        outline: none;
+    }
+
+    /* Reduce padding in the content area for smaller screens */
+    .content {
+        padding: 10px;
+        padding-top: 30px;
+    }
+
+    /* Adjust table layout for smaller screens */
+    table,
+    th,
+    td {
+        font-size: 0.9em;
+        padding: 6px;
+    }
+
+    .table-container {
+        max-height: 600px;
+        height: 600px;
+    }
+
+    .pagination {
+        padding-bottom: 16px;
+    }
+
+    #additionalItemModal .modal-content {
+        width: 100%;
+        max-width: 350px;
+        margin: 10px auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #additionalItemModal h2 {
+        font-size: 20px;
+        text-align: center;
+    }
+
+    #additionalItemModal .modal-body {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    #additionalItemModal form {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #additionalItemModal .form-control {
+        font-size: 14px;
+        padding: 8px;
+    }
+
+    #additionalItemModal .modal-button {
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+    }
+
+    #additionalItemModal .table-section {
+        width: 100%;
+        overflow-x: auto;
+        margin-top: 15px;
+    }
+
+    #additionalItemModal table {
+        width: 100%;
+        font-size: 12px;
+    }
+
+    #additionalItemModal th,
+    #additionalItemModal td {
+        padding: 6px;
+        white-space: nowrap;
+    }
+
+    #additionalItemModal .search-container {
+        margin-bottom: 10px;
+    }
+
+    #additionalItemModal .d-flex {
+        justify-content: center;
+        gap: 10px;
+    }
+
+    #additionalItemModal .close-btn {
+        font-size: 22px;
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        cursor: pointer;
+    }
+
+    #toggleFormButton.modal-button {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        margin-bottom: 10px;
+        background-color: #28a745;
+        /* Green button */
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    /* Ensure the form stays hidden initially */
+    #form12.form-section {
+        display: none;
+        width: 100%;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .modal-content-multi-calendar {
+        max-width: 95%;
+        padding: 15px;
+        margin-left: 10px;
+    }
+
+    .calendar-container {
+        flex-direction: column;
+        /* Stack calendars vertically on small screens */
+        align-items: center;
+    }
+
+    .calendar {
+        width: 90%;
+        /* Take almost full width on small screens */
+    }
+
+    .calendar h3 {
+        display: block;
+    }
+
+    .calendar th,
+    .calendar td {
+        padding: 5px;
+        font-size: 12px;
+        /* Smaller text size for small screens */
+    }
+    
+    .dropdown-content {
+        right: 0;
+    }
 }

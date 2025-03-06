@@ -13,7 +13,7 @@ CREATE TABLE Soldier (
 	meal_card TEXT,
 	laundry_bag_id TEXT,
 	used_room TEXT,
-	FOREIGN KEY(laundry_bag_id) REFERENCES laundryBags(id)
+	FOREIGN KEY(laundry_bag_id) REFERENCES laundrybags(id)
 );
 
 CREATE TABLE bicycles (
@@ -28,6 +28,7 @@ CREATE TABLE bikeSoldier(
 	soldierId TEXT,
 	datefrom TIMESTAMP,
 	dateto TIMESTAMP,
+	status_bike TEXT,
 	FOREIGN KEY(bikeId) REFERENCES bicycles(id),
 	FOREIGN KEY(soldierId) REFERENCES soldier(id)
 );
@@ -87,7 +88,9 @@ CREATE TABLE laundryBags (
 	avg_ready_to_pick_up_duration BIGINT DEFAULT 0,
 	avg_transportation_drop_off_duration BIGINT DEFAULT 0,
 	laundrycount BIGINT DEFAULT 0,
-	maxcountlandry INTEGER DEFAULT 1
+	maxcountlandry INTEGER DEFAULT 1,
+	soldier_id TEXT,
+	FOREIGN KEY (soldier_id) REFERENCES soldier(id);
 );
 
 CREATE TABLE fitnes (
@@ -171,4 +174,14 @@ CREATE TABLE asset_actions (
 	change_remove_asset_quantity TEXT,
 	change_lost_asset_quantity TEXT,
 	change_modificate_asset_quantity TEXT
+);
+
+CREATE TABLE additionalItem (
+	id TEXT NOT NULL PRIMARY KEY,
+	soldier_id TEXT,
+	description TEXT,
+	bag_id TEXT,
+	quantity TEXT,
+	FOREIGN KEY(soldier_id) REFERENCES soldier(id),
+	FOREIGN KEY(bag_id) REFERENCES laundrybags(id)
 );

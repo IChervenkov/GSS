@@ -434,6 +434,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const rowsTable = assetTableBody.getElementsByTagName("tr");
         firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
+
+        setupTableNavigation("assetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
     }
 
     // Function to update sort indicators on column headers
@@ -919,7 +921,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered soldiers in the dropdown
     function filterRemoveType(query) {
         removeAssetTypeDropdown.innerHTML = '';
-        const filteredType = assetType.filter(type => type.name !== 'Bed' && type.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredType = assetType.filter(type => type.id !== 1 && type.name.toLowerCase().includes(query.toLowerCase()));
 
         if (filteredType.length > 0) {
             removeAssetTypeDropdown.style.display = 'block';
@@ -1359,6 +1361,11 @@ document.addEventListener('DOMContentLoaded', function () {
             lostItemsTable.appendChild(row);
         });
 
+        const rowsTable = lostItemsTable.getElementsByTagName("tr");
+        firstUpdateTable(rowsTable, 0, 10, 'pageNumberTherd');
+
+        setupTableNavigation("lostItemsTable", "prevBtnTherd", "nextBtnTherd", "pageNumberTherd");
+
         lostAssetsModal.classList.add('show');
         lostAssetsModalContent.classList.add('show');
         lostAssetsModalContent.classList.add('slide-in');
@@ -1439,27 +1446,22 @@ document.addEventListener('DOMContentLoaded', function () {
             pageNumberDisplay.textContent = `${currentPage}/${totalPages}`;
         }
 
-        document.getElementById(prevBtnId).addEventListener("click", function () {
+        document.getElementById(prevBtnId).onclick = function () {
             if (currentIndex > 0) {
                 currentIndex -= rowsPerPage;
                 updateTable();
             }
-        });
+        };
 
-        document.getElementById(nextBtnId).addEventListener("click", function () {
+        document.getElementById(nextBtnId).onclick = function () {
             if (currentIndex + rowsPerPage < rows.length) {
                 currentIndex += rowsPerPage;
                 updateTable();
             }
-        });
+        };
 
         updateTable(); // Initialize table view
     }
-
-    // Apply navigation to both tables
-    setupTableNavigation("assetsTable", "prevBtn", "nextBtn", "pageNumber");
-    setupTableNavigation("assetDateTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
-    setupTableNavigation("assetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
 
     function openReportModal() {
 
@@ -1498,8 +1500,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     td.style.display = '';
                 });
             });
-
-            window.location.reload();
 
             assetReportModal.classList.remove('show');
             assetReportModalContent.classList.remove('show');
@@ -1778,6 +1778,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const rowsTable = assetTableBody.getElementsByTagName("tr");
                 firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
+
+                setupTableNavigation("assetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
             })
             .catch(error => console.error("Error fetching keys:", error))
             .finally(() => {
@@ -1814,8 +1816,6 @@ document.addEventListener('DOMContentLoaded', function () {
             Object.keys(headers).forEach(column => {
                 headers[column].classList.remove('ascending', 'descending');
             });
-
-            window.location.reload();
 
             assetsModal.classList.remove('show');
             assetsModalContent.classList.remove('show');
@@ -2068,6 +2068,9 @@ document.addEventListener('DOMContentLoaded', function () {
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
             firstUpdateTable(rowsTableDate, 0, 10, 'pageNumberDate');
 
+            setupTableNavigation("assetsTable", "prevBtn", "nextBtn", "pageNumber");
+            setupTableNavigation("assetDateTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+
         } catch (error) {
             console.error('Error fetching the report:', error);
 
@@ -2124,15 +2127,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     // Parse the JSON string into an array of objects
                     nameroomSetCount = data;
-                })
-                .catch(error => console.error("Error fetching room:", error));
-
-            fetch(`/assets?numBuild=${id}`, {
-                method: 'GET'
-            })
-                .then(response => response.json())
-                .then(data => {
-                    // Parse the JSON string into an array of objects
                     updateData = data;
 
                     // Update the table with the fetched data
@@ -2146,12 +2140,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         // Room number cell
                         const nameroomCell = document.createElement("td");
-                        nameroomCell.textContent = item.name;
+                        nameroomCell.textContent = item.nameroom;
                         row.appendChild(nameroomCell);
 
                         // Room status cell
                         const quantityCell = document.createElement("td");
-                        quantityCell.textContent = item.quantity;
+                        quantityCell.textContent = item.count_assets;
                         row.appendChild(quantityCell);
 
                         // Attach click event for each row

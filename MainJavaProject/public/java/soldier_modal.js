@@ -12,6 +12,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalRep = document.getElementById('reportViewModal');
     const modalRepContent = modalRep.querySelector('.modal-content-view');
 
+    const modalViewRep = document.getElementById('reportModal');
+    const modalViewRepContent = modalViewRep.querySelector('.modal-content-multi-calendar');
+
+    const additionalItemModal = document.getElementById('additionalItemModal');
+    const additionalItemModalContent = additionalItemModal.querySelector('.modal-content');
+
     const modalUploadMultiSoldier = document.getElementById('accommodattionModal');
     const modalUploadMultiSoldierContent = modalUploadMultiSoldier.querySelector('.modal-content');
 
@@ -52,11 +58,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const saveButton = document.getElementById('save-button');
     const moveButton = document.getElementById('move-button');
+    const additionalItemButtoon = document.getElementById('addtional-item-button');
     const typeBuild = document.getElementById('typeBuild');
 
     const soldierSearchInput = document.getElementById('soldierSearch');
     const soldierSearchDropdown = document.getElementById('soldierDropdown');
     const selectedSoldierId = document.getElementById('selectedSoldierId');
+
+    const additionalItemSoldierSearchInput = document.getElementById('additionalItemSoldierCode');
+    const additionalItemSoldierSearchDropdown = document.getElementById('additionalItemSoldierDropdown');
+    const additionalItemSelectedSoldierId = document.getElementById('selectedAdditionalItemSoldierId');
 
     const selectKeyInput = document.getElementById('keySearch');
     const selectKeyDropdown = document.getElementById('keyDropdown');
@@ -74,6 +85,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const bagSearchDropdown = document.getElementById('bagDropdown');
     const selectedBagId = document.getElementById('selectedBagId');
 
+    const additionBagsSearchInput = document.getElementById('additionalBagCode');
+    const additionBagsSearchDropdown = document.getElementById('additionalBagCodeDropdown');
+    const selectedAdditionBagsId = document.getElementById('selectedAdditionalBagId');
+
+    const additionalItemDescription = document.getElementById('additionalItemDescription');
+    const additionalItemQuantity = document.getElementById('additionalItemQuantity');
     const mealCard = document.getElementById('meal-card-value');
 
     const soldierSearchMoveInput = document.getElementById('soldierSearchMove');
@@ -120,6 +137,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let allKeys = [];
     let allBuilds = [];
     let allCheckedRow = [];
+    let moveList = [];
+    let allAdditionalItems = [];
 
     var isWarning = false;
 
@@ -398,6 +417,67 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Function to fetch soldier from the server
+    async function fetchAllAdditionalItem() {
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+            const responseBike = await fetch(`/accommodation/getAllAdditionalItem`);
+            if (!responseBike.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            allAdditionalItems = await responseBike.json();
+
+        } catch (error) {
+            console.error('There was a problem with the fetch operation:', error);
+
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
+    // Show filtered soldiers in the dropdown
+    function filterAdditionalItemSoldiers(query) {
+        additionalItemSoldierSearchDropdown.innerHTML = '';
+        const filteredSoldier = soldiers.filter(soldier => (soldier.date_accommodation !== '' && soldier.date_free === '') && soldier.name.toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredSoldier.length > 0) {
+            additionalItemSoldierSearchDropdown.style.display = 'block';
+            filteredSoldier.forEach(soldier => {
+                const li = document.createElement('li');
+                li.textContent = soldier.name;
+                li.setAttribute('data-id', soldier.id);
+                additionalItemSoldierSearchDropdown.appendChild(li);
+            });
+        } else {
+            additionalItemSoldierSearchDropdown.style.display = 'none';
+        }
+    }
+
+    additionalItemSoldierSearchInput.addEventListener('input', function () {
+        const query = additionalItemSoldierSearchInput.value;
+        if (query.length > 0) {
+            filterAdditionalItemSoldiers(query);
+        } else {
+            additionalItemSoldierSearchDropdown.style.display = 'none';
+            additionalItemSelectedSoldierId.value = '';
+            toggleInputValidity(additionalItemSoldierSearchInput, false);
+        }
+    });
+
+    // Handle bike selection
+    additionalItemSoldierSearchDropdown.addEventListener('click', function (event) {
+        const selectedSoldier = event.target;
+        if (selectedSoldier && selectedSoldier.dataset.id) {
+            additionalItemSoldierSearchInput.value = selectedSoldier.textContent;
+            additionalItemSelectedSoldierId.value = selectedSoldier.getAttribute('data-id');
+            toggleInputValidity(additionalItemSoldierSearchInput, true);
+            additionalItemSoldierSearchDropdown.style.display = 'none';
+        }
+    });
+
     // Show filtered soldiers in the dropdown
     function filterSoldiers(query) {
         soldierSearchDropdown.innerHTML = '';
@@ -527,6 +607,53 @@ document.addEventListener('DOMContentLoaded', function () {
             bagSearchInput.value = selectBag.textContent;
             selectedBagId.value = selectBag.getAttribute('data-id');
             bagSearchDropdown.style.display = 'none';
+        }
+    });
+
+    // Show filtered soldiers in the dropdown
+    function filterAdditoinalBags(query) {
+        additionBagsSearchDropdown.innerHTML = '';
+        const filteredBag = bags.filter(bag => bag.name.toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredBag.length > 0) {
+            additionBagsSearchDropdown.style.display = 'block';
+            filteredBag.forEach(bag => {
+                const li = document.createElement('li');
+                li.textContent = bag.name;
+                li.setAttribute('data-id', bag.id);
+                additionBagsSearchDropdown.appendChild(li);
+            });
+        } else {
+            additionBagsSearchDropdown.style.display = 'none';
+        }
+    }
+
+    // Handle input change
+    additionBagsSearchInput.addEventListener('input', function () {
+        const query = additionBagsSearchInput.value;
+        if (query.length > 0) {
+            filterAdditoinalBags(query);
+        } else {
+            additionBagsSearchDropdown.style.display = 'none';
+            selectedAdditionBagsId.value = '';
+            additionalItemQuantity.value = '';
+            additionalItemQuantity.removeAttribute('max');
+            toggleInputValidity(additionBagsSearchInput, false);
+            toggleInputValidity(additionalItemQuantity, false);
+        }
+    });
+
+    // Handle bike selection
+    additionBagsSearchDropdown.addEventListener('click', function (event) {
+        const selectBag = event.target;
+        if (selectBag && selectBag.dataset.id) {
+            additionBagsSearchInput.value = selectBag.textContent;
+            selectedAdditionBagsId.value = selectBag.getAttribute('data-id');
+            additionalItemQuantity.value = 1;
+            additionalItemQuantity.setAttribute('max', 1);
+            additionBagsSearchDropdown.style.display = 'none';
+            toggleInputValidity(additionBagsSearchInput, true);
+            toggleInputValidity(additionalItemQuantity, true);
         }
     });
 
@@ -675,17 +802,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Hide dropdown if clicked outside
-    window.addEventListener('click', function (event) {
-        if (!soldierSearchDropdown.contains(event.target) && event.target !== soldierSearchInput) {
-            soldierSearchDropdown.style.display = 'none';
-        }
-
-        if (!soldierSearchMoveDropdown.contains(event.target) && event.target !== soldierSearchInput) {
-            soldierSearchMoveDropdown.style.display = 'none';
-        }
-    });
-
     // Fetch the soldier when the script loads
     fetchItem();
 
@@ -702,6 +818,8 @@ document.addEventListener('DOMContentLoaded', function () {
     fetchAllKey();
 
     fetchBuilding();
+
+    fetchAllAdditionalItem();
 
     function openModal(keynum, soldierName, country, keycode, maleCard, laundryBag) {
 
@@ -753,6 +871,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function handleOtherInputs() {
             moveButton.style.display = 'none';
+            additionalItemButtoon.style.display = 'none';
             saveButton.style.display = 'block';
         }
 
@@ -769,6 +888,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             }
         }
+
+        additionalItemButtoon.setAttribute('soldier-id', selectedSoldierId.value);
 
         // Add the slide-in effect by adding the necessary classes
         modal.classList.add('show');
@@ -903,27 +1024,231 @@ document.addEventListener('DOMContentLoaded', function () {
             pageNumberDisplay.textContent = `${currentPage}/${totalPages}`;
         }
 
-        document.getElementById(prevBtnId).addEventListener("click", function () {
+        document.getElementById(prevBtnId).onclick = function () {
             if (currentIndex > 0) {
                 currentIndex -= rowsPerPage;
                 updateTable();
             }
-        });
+        };
 
-        document.getElementById(nextBtnId).addEventListener("click", function () {
+        document.getElementById(nextBtnId).onclick = function () {
             if (currentIndex + rowsPerPage < rows.length) {
                 currentIndex += rowsPerPage;
                 updateTable();
             }
-        });
+        };
 
         updateTable(); // Initialize table view
     }
 
-    // Apply navigation to both tables
-    setupTableNavigation("soldierUsageTable", "prevBtn", "nextBtn", "pageNumber");
-    setupTableNavigation("soldierMoveTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
-    setupTableNavigation("soldierTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
+    function openAdditionalItemModal() {
+        additionalItemModal.classList.add('show');
+        additionalItemModalContent.classList.add('show');
+        additionalItemModalContent.classList.add('slide-in');
+
+        const soldierId = additionalItemButtoon.getAttribute('soldier-id');
+        additionalItemSoldierSearchInput.value = soldiers.filter(soldier => soldier.id === soldierId)[0].name;
+        additionalItemSelectedSoldierId.value = soldierId;
+
+        const tableBody = document.getElementById("additionalItemTableBody");
+        tableBody.innerHTML = "";
+
+        allAdditionalItems.forEach(item => {
+            const row = document.createElement("tr");
+
+            const soldierCell = document.createElement("td");
+            soldierCell.textContent = item.soldierName;
+            row.appendChild(soldierCell);
+
+            const descriptionCell = document.createElement("td");
+            descriptionCell.textContent = item.description;
+            row.appendChild(descriptionCell);
+
+            const codeCell = document.createElement("td");
+            codeCell.textContent = item.code || "N/A";
+            row.appendChild(codeCell);
+
+            const quantityCell = document.createElement("td");
+            quantityCell.textContent = item.quantity;
+            row.appendChild(quantityCell);
+
+            row.addEventListener('click', function () {
+                const submitButton = document.createElement('button');
+                var isSubmit = false;
+                let hasError = false;
+                var responseData = {};
+
+                submitButton.textContent = 'Yes';
+                submitButton.classList.add('btn', 'btn-success');
+
+                const quantityInput = document.createElement('input');
+                quantityInput.type = 'number';
+                quantityInput.classList.add('form-control');
+                quantityInput.value = item.quantity;
+                quantityInput.min = 1;
+                quantityInput.max = item.quantity;
+                quantityInput.style.marginBottom = '10px';
+
+                quantityInput.addEventListener('input', function () {
+                    const isValid = quantityInput.value > 0 && quantityInput.value <= item.quantity;
+                    toggleInputValidity(quantityInput, isValid);
+                });
+
+                submitButton.addEventListener('click', async () => {
+
+                    if (!quantityInput.value) {
+                        return;
+                    }
+
+                    hasError = false;
+                    isSubmit = true;
+
+                    loadingIndicator.style.display = 'flex';
+
+                    try {
+                        const data = {
+                            id: item.id,
+                            quantity: quantityInput.value
+                        };
+
+                        const response = await fetch('/accommodation/returnAddtionalItem', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        });
+
+                        if (!response.ok) {
+                            hasError = true;
+                        }
+
+                        responseData = await response.json();
+
+                        closeGlobalMessModal();
+
+                    } catch (error) {
+                        hasError = true;
+                    } finally {
+                        loadingIndicator.style.display = 'none';
+                    }
+                });
+
+                modalGlobalMessContent.appendChild(quantityInput);
+                modalGlobalMessContent.appendChild(submitButton);
+
+                // Wait for the modal to close, then check if the submit button was clicked
+                const observer = new MutationObserver(() => {
+                    if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                        observer.disconnect();
+
+                        if (modalGlobalMessContent.contains(submitButton)) {
+                            // Check if the button is still a child before removing
+                            modalGlobalMessContent.removeChild(submitButton);
+                        }
+
+                        if (modalGlobalMessContent.contains(quantityInput)) {
+                            // Check if the input is still a child before removing
+                            modalGlobalMessContent.removeChild(quantityInput);
+                        }
+                    }
+                });
+
+                observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+                // Close the warning modal and show appropriate messages based on the result
+                const closeWarningObserver = new MutationObserver(() => {
+                    if (!modalGlobalMess.classList.contains('show')) {
+                        closeWarningObserver.disconnect();
+
+                        if (isSubmit && !hasError) {
+                            closeAdditionalItemModal();
+                            showGlobalMess('Info', 'The item has been returned or reduced successfully');
+                        } else if (isSubmit) {
+                            showGlobalMess('Error', responseData.message || 'An error occurred while restoring or reducing the item');
+                        }
+
+                        if (modalGlobalMessContent.contains(quantityInput)) {
+                            // Check if the input is still a child before removing
+                            modalGlobalMessContent.removeChild(quantityInput);
+                        }
+                    }
+                });
+
+                closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+                // Show the warning modal
+                showGlobalMess('Warning', 'Are you sure you want to return this additional item?\nPlease enter the quantity of items who you want to return.');
+            });
+
+            tableBody.appendChild(row);
+
+        });
+
+        const rowsTable = tableBody.getElementsByTagName("tr");
+        firstUpdateTable(rowsTable, 0, 10, 'pageNumberTherd');
+
+        setupTableNavigation("additonalItemTable", "prevBtnTherd", "nextBtnTherd", "pageNumberTherd");
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        additionalItemModalContent.classList.remove('slide-out');
+    }
+
+    function closeAdditionalItemModal() {
+        // Add the slide-out effect
+        additionalItemModalContent.classList.add('slide-out');
+        additionalItemModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('.additional-item-search-input').forEach((input) => {
+                input.value = '';
+            });
+
+            document.querySelectorAll('#additionalItemModal .form-control').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+            });
+
+            additionalItemSelectedSoldierId.value = '';
+            selectedAdditionBagsId.value = '';
+
+            additionalItemModal.classList.remove('show');
+            additionalItemModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openViewReportModal() {
+        modalViewRep.classList.add('show');
+        modalViewRepContent.classList.add('show');
+        modalViewRepContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalViewRepContent.classList.remove('slide-out');
+    }
+
+    function closeViewReportModal() {
+        // Add the slide-out effect
+        modalViewRepContent.classList.add('slide-out');
+        modalViewRepContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            const listItems = document.querySelectorAll('.dates li');
+            listItems.forEach(li => li.classList.remove('selected'));
+
+            document.getElementById('selectedDate1').value = '';
+            document.getElementById('selectedDate2').value = '';
+
+            modalViewRep.classList.remove('show');
+            modalViewRepContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
 
     function openViewModal() {
 
@@ -957,8 +1282,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
-
-            window.location.reload();
 
             modalRep.classList.remove('show');
             modalRepContent.classList.remove('show');
@@ -1125,6 +1448,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const rowsTable = assetTableBody.getElementsByTagName("tr");
                 firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
+
+                setupTableNavigation("soldierTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
             })
             .catch(error => console.error("Error fetching keys:", error))
             .finally(() => {
@@ -1151,8 +1476,6 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.search-input-soldier').forEach((input) => {
                 input.value = '';
             });
-
-            window.location.reload();
 
             modalListSoldier.classList.remove('show');
             modalListSoldierContent.classList.remove('show');
@@ -1255,6 +1578,7 @@ document.addEventListener('DOMContentLoaded', function () {
         soldierSearchMoveInput.classList.remove("is-invalid");
         soldierSearchMoveInput.classList.remove("is-valid");
 
+        moveList = [];
         soldierSearchMoveInput.value = '';
         selectedSoldierMoveId.value = '';
         document.getElementById('modal-soldier-2').textContent = 'Soldier: Undefined'
@@ -1547,9 +1871,11 @@ document.addEventListener('DOMContentLoaded', function () {
             modalGlobalMess.classList.remove('show');
             modalGlobalMessContent.classList.remove('show');
 
-            const button = modalGlobalMessContent.getElementsByTagName('button');
-            if (button.length > 0)
-                modalGlobalMessContent.removeChild(button[0]);
+            // Remove all buttons from modalGlobalMessContent
+            const buttons = modalGlobalMessContent.getElementsByTagName('button');
+            while (buttons.length > 0) {
+                buttons[0].remove();
+            }
 
             // Check if the Delete button exists and remove it
             const deleteBtn = document.getElementById('delete-btn');
@@ -1567,20 +1893,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementsByClassName('close-btn')[0].onclick = closeModalKey;
     document.getElementsByClassName('close-btn')[1].onclick = closeModal;
-    document.getElementsByClassName('close-btn')[2].onclick = closeViewModal;
-    document.getElementsByClassName('close-btn')[3].onclick = closeMoveModal;
-    document.getElementsByClassName('close-btn')[4].onclick = closeSoldierListModal;
-    document.getElementsByClassName('close-btn')[5].onclick = closeEditSoldierModal;
-    document.getElementsByClassName('close-btn')[6].onclick = closeAddSoldierModal;
-    document.getElementsByClassName('close-btn')[7].onclick = closeAddMultiSoldierModal;
-    document.getElementsByClassName('close-btn')[8].onclick = closeUploadMultiSoldierModal;
-    document.getElementsByClassName('close-btn')[9].onclick = closeDeleteModal;
-    document.getElementsByClassName('close-btn')[10].onclick = closeModalDest;
-    document.getElementsByClassName('close-btn')[11].onclick = closeModalAddRoom;
-    document.getElementsByClassName('close-btn')[12].onclick = closeModalRemoveRoom;
-    document.getElementsByClassName('close-btn')[13].onclick = closeModalAddKey;
-    document.getElementsByClassName('close-btn')[14].onclick = closeModalRemoveKey;
-    document.getElementsByClassName('close-btn')[15].onclick = closeGlobalMessModal;
+    document.getElementsByClassName('close-btn')[2].onclick = closeViewReportModal;
+    document.getElementsByClassName('close-btn')[3].onclick = closeViewModal;
+    document.getElementsByClassName('close-btn')[4].onclick = closeMoveModal;
+    document.getElementsByClassName('close-btn')[5].onclick = closeSoldierListModal;
+    document.getElementsByClassName('close-btn')[6].onclick = closeEditSoldierModal;
+    document.getElementsByClassName('close-btn')[7].onclick = closeAddSoldierModal;
+    document.getElementsByClassName('close-btn')[8].onclick = closeAddMultiSoldierModal;
+    document.getElementsByClassName('close-btn')[9].onclick = closeUploadMultiSoldierModal;
+    document.getElementsByClassName('close-btn')[10].onclick = closeDeleteModal;
+    document.getElementsByClassName('close-btn')[11].onclick = closeModalDest;
+    document.getElementsByClassName('close-btn')[12].onclick = closeModalAddRoom;
+    document.getElementsByClassName('close-btn')[13].onclick = closeModalRemoveRoom;
+    document.getElementsByClassName('close-btn')[14].onclick = closeModalAddKey;
+    document.getElementsByClassName('close-btn')[15].onclick = closeModalRemoveKey;
+    document.getElementsByClassName('close-btn')[16].onclick = closeAdditionalItemModal;
+    document.getElementsByClassName('close-btn')[17].onclick = closeGlobalMessModal;
 
     // Hide dropdown if clicked outside
     window.addEventListener('click', function (event) {
@@ -1610,6 +1938,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!buildSearchDropdown.contains(event.target) && event.target !== buildSearchDropdown) {
             buildSearchDropdown.style.display = 'none';
+        }
+
+        if (!additionBagsSearchDropdown.contains(event.target) && event.target !== additionBagsSearchDropdown) {
+            additionBagsSearchDropdown.style.display = 'none';
+        }
+
+        if (!additionalItemSoldierSearchDropdown.contains(event.target) && event.target !== additionalItemSoldierSearchDropdown) {
+            additionalItemSoldierSearchDropdown.style.display = 'none';
         }
     });
 
@@ -1769,6 +2105,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeViewModal();
                 break;
 
+            case modalViewRep:
+                closeViewReportModal();
+                break;
+
             case modalMove:
                 closeMoveModal();
                 break;
@@ -1824,6 +2164,9 @@ document.addEventListener('DOMContentLoaded', function () {
             case modalKeyRemoveModal:
                 closeModalRemoveKey();
                 break;
+            case additionalItemModal:
+                closeAdditionalItemModal();
+                break;
         }
     };
 
@@ -1837,14 +2180,18 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById(pageNumberId).textContent = `${currentPage}/${totalPages}`;
     }
 
-    async function fetchReport() {
+    async function fetchReport(selectDate1, selectDate2) {
 
         loadingIndicator.style.display = 'flex';
 
         try {
 
             const response = await fetch(`/accommodation/viewReport`, {
-                method: 'GET',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ selectedDate1: selectDate1, selectedDate2: selectDate2 }),
             });
 
             if (!response.ok) {
@@ -1882,6 +2229,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
             firstUpdateTable(rowsTableMove, 0, 10, 'pageNumberDate');
+
+            setupTableNavigation("soldierUsageTable", "prevBtn", "nextBtn", "pageNumber");
+            setupTableNavigation("soldierMoveTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
 
         } catch (error) {
             console.error('Error fetching the report:', error);
@@ -1956,10 +2306,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    document.getElementById('form12').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
+    additionalItemDescription.addEventListener('input', function (event) {
+        const description = event.target;
+        toggleInputValidity(description, /^[a-zA-Z0-9\s]+$/.test(description.value));
+    });
+
+    additionalItemQuantity.addEventListener('input', function (event) {
+        const quantity = event.target;
+        toggleInputValidity(quantity, /^[0-9]+$/.test(quantity.value));
+    });
+
     // Open the report modal when the Reports button is clicked
     document.getElementById("btnReport").addEventListener("click", function () {
-        openViewModal();
-        fetchReport();
+        openViewReportModal();
+        // openViewModal();
     });
 
     // Open the list soldier modal when the Add soldier button is clicked
@@ -1970,6 +2336,28 @@ document.addEventListener('DOMContentLoaded', function () {
     // Open the add soldier modal when the Add soldier button is clicked
     document.getElementById("addSoldier").addEventListener("click", function () {
         openAddSoldierModal();
+    });
+
+    document.getElementById('confirmReportBtn').addEventListener('click', () => {
+
+        const selectDate1 = document.getElementById('selectedDate1').value;
+        const selectDate2 = document.getElementById('selectedDate2').value;
+        const today = new Date().toISOString().split('T')[0];
+
+        if (!selectDate1 || !selectDate2) {
+            showGlobalMess('Error', 'Both dates must be selected!');
+            return;
+        }
+
+        if (new Date(selectDate1) > new Date(selectDate2)) {
+            showGlobalMess('Error', 'Invalid time slot!');
+            return;
+        }
+
+        closeViewReportModal();
+
+        fetchReport(selectDate1, selectDate2);
+        openViewModal();
     });
 
     // Open the delete soldier modal when the Delete soldier button is clicked
@@ -2142,7 +2530,13 @@ document.addEventListener('DOMContentLoaded', function () {
             return showGlobalMess('Error', 'This room is empty. To move a soldier, select a room that is occupied!');
         }
 
+        closeModal();
+
         openMoveModal(roomNum1, solNum1);
+    });
+
+    additionalItemButtoon.addEventListener("click", function () {
+        openAdditionalItemModal();
     });
 
     document.getElementById('upload-btn').addEventListener("click", function () {
@@ -2292,19 +2686,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (soldierId.value === "") {
-            toggleInputValidity(soldierId, false);
-            return;
-        }
-
         const soldierNamePattern = new RegExp(`^${soldierId.value} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
-        if (soldierName.value === "" || !soldierNamePattern.test(soldierName.value)) {
-            toggleInputValidity(soldierName, false);
-            return;
-        }
+        const inputsToCheck = [
+            { input: soldierId, condition: soldierId.value === "" },
+            { input: soldierName, condition: soldierName.value === "" || !soldierNamePattern.test(soldierName.value) },
+            { input: soldierCountry, condition: soldierCountry.value === "" }
+        ];
 
-        if (soldierCountry.value === "") {
-            toggleInputValidity(soldierCountry, false);
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 
@@ -2413,7 +2813,7 @@ document.addEventListener('DOMContentLoaded', function () {
         input.addEventListener('input', function () {
             const soldierId = document.getElementById('edit-soldier-number').value;
             const soldierNamePattern = new RegExp(`^${soldierId.value} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
-            toggleInputValidity(input, input.value !== "" && soldierNamePattern.test(input.value));
+            toggleInputValidity(input, input.value !== "" && !soldierNamePattern.test(input.value));
         });
     });
 
@@ -2617,33 +3017,39 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     buildId.addEventListener('input', () => {
-        toggleInputValidity(buildId, buildId.value !== "");
+        toggleInputValidity(buildId, buildId.value !== "" && /^[a-zA-Z0-9]+$/.test(buildId.value));
     });
 
     buildName.addEventListener('input', () => {
-        toggleInputValidity(buildName, buildName.value !== "");
+        toggleInputValidity(buildName, buildName.value !== "" && new RegExp(`^Building ${buildId.value}$`).test(buildName.value));
     });
 
     buildType.addEventListener('input', () => {
-        toggleInputValidity(buildType, buildType.value !== "");
+        toggleInputValidity(buildType, buildType.value !== "" && /^[a-zA-Z]+$/.test(buildType.value));
     });
 
     document.getElementById('form6').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (buildId.value === "") {
-            toggleInputValidity(buildId, false);
-            return;
-        }
+        const inputsToCheck = [
+            { input: buildId, condition: buildId.value === "" || !/^[a-zA-Z0-9]+$/.test(buildId.value) },
+            { input: buildName, condition: buildName.value === "" || !new RegExp(`^Building ${buildId.value}$`).test(buildName.value) },
+            { input: buildType, condition: buildType.value === "" || !/^[a-zA-Z]+$/.test(buildType.value) }
+        ];
 
-        if (buildName.value === "") {
-            toggleInputValidity(buildName, false);
-            return;
-        }
+        let isValid = true;
 
-        if (buildType.value === "") {
-            toggleInputValidity(buildType, false);
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 
@@ -2730,20 +3136,34 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     roomId.addEventListener('input', () => {
-        toggleInputValidity(roomId, roomId.value !== "");
+        toggleInputValidity(roomId, roomId.value !== "" && /^[a-zA-Z0-9]+$/.test(roomId.value));
+    });
+
+    roomName.addEventListener('input', function () {
+        toggleInputValidity(roomName, roomName.value !== "" && new RegExp(`^${clickBuild.value}\/${roomId.value}$`).test(roomName.value));
     });
 
     document.getElementById('form7').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (roomId.value === "") {
-            toggleInputValidity(roomId, false);
-            return;
-        }
+        const inputsToCheck = [
+            { input: roomId, condition: roomId.value === "" || !/^[a-zA-Z0-9]+$/.test(roomId.value) },
+            { input: roomName, condition: roomName.value === "" || !new RegExp(`^${clickBuild.value}\/${roomId.value}$`).test(roomName.value) },
+        ];
 
-        if (roomName.value === "") {
-            toggleInputValidity(roomName, false);
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 
@@ -2837,12 +3257,6 @@ document.addEventListener('DOMContentLoaded', function () {
         showGlobalMess('Warning', 'Are you sure you want to add this room?');
     };
 
-    document.querySelectorAll('#room-name').forEach((input) => {
-        input.addEventListener('input', function () {
-            toggleInputValidity(input, input.value !== "" && input.checkValidity());
-        });
-    });
-
     document.getElementById('form8').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
@@ -2933,17 +3347,36 @@ document.addEventListener('DOMContentLoaded', function () {
         showGlobalMess('Warning', 'Are you sure you want to remove this room?');
     };
 
+    keyId.addEventListener('input', () => {
+        toggleInputValidity(keyId, keyId.value !== "" && /^[a-zA-Z0-9]+$/.test(keyId.value));
+    });
+
+    keyName.addEventListener('input', () => {
+        let roomId = selectedRoomForKey.value.slice(0, 2) + '/' + selectedRoomForKey.value.slice(2);
+        toggleInputValidity(keyName, keyName.value !== "" && new RegExp(`^${roomId}\/[0-9]+$`).test(keyName.value));
+    });
+
     document.getElementById('form9').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (keyId.value === "") {
-            toggleInputValidity(keyId, false);
-            return;
-        }
+        const inputsToCheck = [
+            { input: keyId, condition: keyId.value === "" || !/^[a-zA-Z0-9]+$/.test(keyId.value) },
+            { input: keyName, condition: keyName.value === "" || !new RegExp(`^${selectedRoomForKey.value.slice(0, 2) + '/' + selectedRoomForKey.value.slice(2)}\/[0-9]+$`).test(keyName.value) }
+        ];
 
-        if (keyName.value === "") {
-            toggleInputValidity(keyName, false);
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 
@@ -3028,28 +3461,28 @@ document.addEventListener('DOMContentLoaded', function () {
         showGlobalMess('Warning', 'Are you sure you want to add this key?');
     };
 
-    document.querySelectorAll('#key-name, #key-id').forEach((input) => {
-        input.addEventListener('input', function () {
-            toggleInputValidity(input, input.value !== "" && input.checkValidity());
-        });
-    });
-
     document.getElementById('form10').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (selectedKeyId.value === "") {
-            toggleInputValidity(selectKeyInput, false);
-            return;
-        } else {
-            toggleInputValidity(selectKeyInput, true);
-        }
+        const inputsToCheck = [
+            { input: selectKeyInput, condition: selectedKeyId.value === "" },
+            { input: newKeyName, condition: newKeyName.value === "" },
+        ];
 
-        if (newKeyName.value === "") {
-            toggleInputValidity(newKeyName, false);
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
-        } else {
-            toggleInputValidity(newKeyName, true);
         }
 
         const data = {
@@ -3137,19 +3570,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (editSoldierId.value === "") {
-            toggleInputValidity(editSoldierId, false);
-            return;
-        }
-
         const soldierNamePattern = new RegExp(`^${editSoldierId.value} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
-        if (editSoldierName.value === "" || soldierNamePattern.test(editSoldierName.value)) {
-            toggleInputValidity(editSoldierName, false);
-            return;
-        }
+        const inputsToCheck = [
+            { input: editSoldierId, condition: editSoldierId.value === "" },
+            { input: newKeyName, condition: editSoldierName.value === "" || !soldierNamePattern.test(editSoldierName.value) },
+            { input: editSoldierCountry, condition: editSoldierCountry.value === "" }
+        ];
 
-        if (editSoldierCountry.value === "") {
-            toggleInputValidity(editSoldierCountry, false);
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 
@@ -3235,25 +3674,37 @@ document.addEventListener('DOMContentLoaded', function () {
         showGlobalMess('Warning', 'Are you sure you want to edit this soldier?');
     };
 
-    document.getElementById('form3').onsubmit = async function (event) {
+    document.getElementById('form12').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
 
-        if (selectedSoldierMoveId.value === "") {
-            toggleInputValidity(soldierSearchMoveInput, false);
+        const inputsToCheck = [
+            { input: additionalItemSoldierSearchInput, condition: additionalItemSelectedSoldierId.value === "" },
+            { input: additionalItemDescription, condition: !/^[a-zA-Z0-9\s]+$/.test(additionalItemDescription.value) },
+            { input: additionBagsSearchInput, condition: false },
+            { input: additionalItemQuantity, condition: !/^[0-9]+$/.test(additionalItemQuantity.value) }
+        ];
+
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 
-        const keyId = document.getElementById('previewKey').value;
-        const soldId = document.getElementById('previewSoldier').value;
-        const keyMoveId = document.getElementById('selectedKeyMoveId').value;
-        const soldMoveId = document.getElementById('selectedSoldMoveId').value;
-
         const data = {
-            keyId: keyId,
-            soldId: soldId,
-            keyMoveId: keyMoveId,
-            soldMoveId: soldMoveId
+            soldierId: additionalItemSelectedSoldierId.value,
+            description: additionalItemDescription.value,
+            bagId: selectedAdditionBagsId.value,
+            quantity: additionalItemQuantity.value
         };
 
         const submitButton = document.createElement('button');
@@ -3274,7 +3725,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const response = await fetch(this.action, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(data)
                 });
@@ -3285,14 +3736,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     hasError = true;
                 }
 
-                closeGlobalMessModal();
-
             } catch (error) {
                 hasError = true;
 
             } finally {
                 loadingIndicator.style.display = 'none';
             }
+
+            closeGlobalMessModal();
         });
 
         modalGlobalMessContent.appendChild(submitButton);
@@ -3317,10 +3768,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeModalRemoveKey();
-                    showGlobalMess('Info', 'Soldier moved successfully');
+                    closeAdditionalItemModal();
+                    showGlobalMess('Info', 'Additional item successfully added');
                 } else if (isSubmit) {
-                    showGlobalMess('Error', responseData.message || 'An error occurred while moving the soldier');
+                    showGlobalMess('Error', responseData.message || 'An error occurred while adding the additional item');
                 }
             }
         });
@@ -3328,7 +3779,191 @@ document.addEventListener('DOMContentLoaded', function () {
         closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
 
         // Show the warning modal
-        showGlobalMess('Warning', 'Are you sure you want to move this soldier?');
+        showGlobalMess('Warning', 'Are you sure you want to add this additional item?');
+    };
+
+    function handleSoldierRelocation(selectedKeyId) {
+        try {
+            const selectedSoldier = soldiers.find(soldier => soldier.keyid === selectedKeyId);
+            const soldier = selectedSoldier ? { id: selectedSoldier.id, name: selectedSoldier.name } : null;
+            const room = selectedSoldier ? { id: selectedKeyId, name: selectedSoldier.namekey } : null;
+
+            const keyId = document.getElementById('previewKey')?.value;
+            const soldId = document.getElementById('previewSoldier')?.value;
+            const keyMoveId = document.getElementById('selectedKeyMoveId')?.value;
+            const soldMoveId = document.getElementById('selectedSoldMoveId')?.value;
+
+            const yesButton = document.createElement('button');
+            const noButton = document.createElement('button');
+
+            yesButton.textContent = 'Yes';
+            yesButton.classList.add('btn', 'btn-success', 'me-2');
+            modalGlobalMessContent.appendChild(yesButton);
+
+            noButton.textContent = 'No';
+            noButton.classList.add('btn', 'btn-danger');
+            modalGlobalMessContent.appendChild(noButton);
+
+            if (soldier) {
+
+                showGlobalMess('Warning', `The room already has ${soldier.name}. Do you want to relocate them?`);
+
+                yesButton.onclick = () => {
+                    moveList.push({ keyId, soldId, keyMoveId, soldMoveId: '' });
+
+                    document.getElementById('key-code-value').value = room.id;
+                    selectedSoldierId.value = soldier.id;
+                    soldierSearchMoveInput.value = '';
+                    selectedSoldierMoveId.value = '';
+                    document.getElementById('modal-soldier-2').textContent = 'Soldier: Undefined';
+                    soldierSearchMoveInput.classList.remove("is-invalid");
+                    soldierSearchMoveInput.classList.remove("is-valid");
+
+
+                    closeGlobalMessModal();
+                    openMoveModal(`Key number: ${room.name}`, soldier.name);
+                }
+
+                noButton.onclick = () => {
+                    closeGlobalMessModal();
+                    setTimeout(async () => {
+                        moveList.push({ keyId, soldId, keyMoveId, soldMoveId });
+                        if (moveList.length > 0) {
+                            await fetch('/accommodation/moveSoldier', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ moves: moveList })
+                            });
+                            showGlobalMess('Info', 'Soldier(s) moved successfully!');
+                        } else {
+                            showGlobalMess('Info', 'No data to move.');
+                        }
+                    }, 500); // Adjust timeout if needed
+                }
+
+            } else {
+                showGlobalMess('Warning', 'The room is empty. Are you sure you want to proceed?');
+
+                yesButton.onclick = () => {
+                    closeGlobalMessModal();
+                    setTimeout(async () => {
+                        moveList.push({ keyId, soldId, keyMoveId, soldMoveId: '' });
+                        if (moveList.length > 0) {
+                            await fetch('/accommodation/moveSoldier', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ moves: moveList })
+                            });
+                            showGlobalMess('Info', 'Soldier(s) moved successfully!');
+                        }
+                    }, 500); // Adjust timeout if needed
+                }
+
+                noButton.onclick = () => {
+                    closeGlobalMessModal();
+                }
+            }
+        } catch (error) {
+            console.error('Error handling soldier relocation:', error);
+        }
+    }
+
+    document.getElementById('form3').onsubmit = async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        if (selectedSoldierMoveId.value === "") {
+            toggleInputValidity(soldierSearchMoveInput, false);
+            return;
+        }
+
+        handleSoldierRelocation(selectedSoldierMoveId.value);
+
+        // const keyId = document.getElementById('previewKey').value;
+        // const soldId = document.getElementById('previewSoldier').value;
+        // const keyMoveId = document.getElementById('selectedKeyMoveId').value;
+        // const soldMoveId = document.getElementById('selectedSoldMoveId').value;
+
+        // const data = {
+        //     keyId: keyId,
+        //     soldId: soldId,
+        //     keyMoveId: keyMoveId,
+        //     soldMoveId: soldMoveId
+        // };
+
+        // const submitButton = document.createElement('button');
+        // var isSubmit = false;
+        // let hasError = false;
+        // var responseData = {};
+
+        // submitButton.textContent = 'Yes';
+        // submitButton.classList.add('btn', 'btn-success');
+
+        // submitButton.addEventListener('click', async () => {
+        //     hasError = false;
+        //     isSubmit = true;
+
+        //     loadingIndicator.style.display = 'flex';
+
+        //     try {
+        //         const response = await fetch(this.action, {
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/json',
+        //             },
+        //             body: JSON.stringify(data)
+        //         });
+
+        //         responseData = await response.json();
+
+        //         if (!response.ok) {
+        //             hasError = true;
+        //         }
+
+        //         closeGlobalMessModal();
+
+        //     } catch (error) {
+        //         hasError = true;
+
+        //     } finally {
+        //         loadingIndicator.style.display = 'none';
+        //     }
+        // });
+
+        // modalGlobalMessContent.appendChild(submitButton);
+
+        // // Wait for the modal to close, then check if the submit button was clicked
+        // const observer = new MutationObserver(() => {
+        //     if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+        //         observer.disconnect();
+
+        //         if (modalGlobalMessContent.contains(submitButton)) {
+        //             // Check if the button is still a child before removing
+        //             modalGlobalMessContent.removeChild(submitButton);
+        //         }
+        //     }
+        // });
+
+        // observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // // Close the warning modal and show appropriate messages based on the result
+        // const closeWarningObserver = new MutationObserver(() => {
+        //     if (!modalGlobalMess.classList.contains('show')) {
+        //         closeWarningObserver.disconnect();
+
+        //         if (isSubmit && !hasError) {
+        //             closeModalRemoveKey();
+        //             showGlobalMess('Info', 'Soldier moved successfully');
+        //         } else if (isSubmit) {
+        //             showGlobalMess('Error', responseData.message || 'An error occurred while moving the soldier');
+        //         }
+        //     }
+        // });
+
+        // closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // // Show the warning modal
+        // showGlobalMess('Warning', 'Are you sure you want to move this soldier?');
     };
 
     // Track sort order and priority for each column
@@ -3586,5 +4221,12 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             toggleInputValidity(newKeyName, true);
         }
+    });
+
+    document.getElementById("toggleFormButton").addEventListener("click", function () {
+        let form = document.getElementById("form12");
+        let table = document.getElementById("additonalItemTable");
+        form.style.display = form.style.display === "none" ? "flex" : "none";
+        table.style.display = form.style.display === "flex" ? "none" : "flex";
     });
 });

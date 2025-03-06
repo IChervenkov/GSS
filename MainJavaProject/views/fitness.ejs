@@ -193,6 +193,7 @@
 
     </div>
 
+    <% if(username !='NSPA' ) { %>
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
             aria-live="assertive" aria-atomic="true">
@@ -211,13 +212,17 @@
             </div>
         </div>
     </div>
+    <% } %>
 
 </body>
 
 <script src="/java/calendar.js" defer></script>
 <script src="/java/pageNumber.js"></script>
 <script src="/java/showSpecialRow.js"></script>
-<script src="/java/showPinMessage.js"></script>
 <script src="/java/phoneMenu.js"></script>
+
+<% if(username !='NSPA' ) { %>
+    <script src="/java/showPinMessage.js"></script>
+<% } %>
 
 </html>

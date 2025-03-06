@@ -215,26 +215,22 @@ document.addEventListener('DOMContentLoaded', function () {
             pageNumberDisplay.textContent = `${currentPage}/${totalPages}`;
         }
 
-        document.getElementById(prevBtnId).addEventListener("click", function () {
+        document.getElementById(prevBtnId).onclick = function () {
             if (currentIndex > 0) {
                 currentIndex -= rowsPerPage;
                 updateTable();
             }
-        });
+        };
 
-        document.getElementById(nextBtnId).addEventListener("click", function () {
+        document.getElementById(nextBtnId).onclick = function () {
             if (currentIndex + rowsPerPage < rows.length) {
                 currentIndex += rowsPerPage;
                 updateTable();
             }
-        });
+        };
 
         updateTable(); // Initialize table view
     }
-
-    // Apply navigation to both tables
-    setupTableNavigation("bikeUsageTable", "prevBtn", "nextBtn", "pageNumber");
-    setupTableNavigation("bikeTotalsTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
 
     function openModal(modal, modalContent) {
 
@@ -264,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const icon = document.getElementById("mess-icon-rep");
 
-            if ((modal === modalMessRep && icon.src.includes('information')) || modal === modalViewRep) {
+            if ((modal === modalMessRep && icon.src.includes('information'))) {
                 // Refresh the page after the modal is closed
                 window.location.reload();
             }
@@ -1114,6 +1110,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
             firstUpdateTable(rowsTableDate, 0, 10, 'pageNumberDate');
+
+            setupTableNavigation("bikeUsageTable", "prevBtn", "nextBtn", "pageNumber");
+            setupTableNavigation("bikeTotalsTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
 
         } catch (error) {
             console.error('Error fetching the report:', error);

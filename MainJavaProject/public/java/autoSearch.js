@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
         attachPaginationControls('prevBtn', 'nextBtn', 'pageNumber');
         attachPaginationControls('prevBtnDate', 'nextBtnDate', 'pageNumberDate');
         attachPaginationControls('prevBtnSecond', 'nextBtnSecond', 'pageNumberSecond');
+        attachPaginationControls('prevBtnTherd', 'nextBtnTherd', 'pageNumberTherd');
     }
 
     function updateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
@@ -76,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const newPrevBtn = document.getElementById(prevBtnId);
         const newNextBtn = document.getElementById(nextBtnId);
 
-        newPrevBtn.addEventListener("click", function () {
+        newPrevBtn.onclick = () => {
             if (tablePagination[pageNumberId].currentIndex > 0) {
                 tablePagination[pageNumberId].currentIndex -= tablePagination[pageNumberId].rowsPerPage;
                 updateTable(
@@ -86,9 +87,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     pageNumberId
                 );
             }
-        });
+        };
 
-        newNextBtn.addEventListener("click", function () {
+        newNextBtn.onclick = () => {
             if (tablePagination[pageNumberId].currentIndex + tablePagination[pageNumberId].rowsPerPage < tablePagination[pageNumberId].rows.length) {
                 tablePagination[pageNumberId].currentIndex += tablePagination[pageNumberId].rowsPerPage;
                 updateTable(
@@ -98,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     pageNumberId
                 );
             }
-        });
+        };
     }
 
     function attachFilterEvents(tableId, filterClass, pageNumberId = '') {
@@ -122,4 +123,6 @@ document.addEventListener('DOMContentLoaded', function () {
     attachFilterEvents('bagsTable', 'laundry-search-input', 'pageNumberSecond');
     attachFilterEvents('assetsTable', 'search-input-view-assets', 'pageNumber');
     attachFilterEvents('assetDateTable', 'search-input-view-assets-second', 'pageNumberDate');
+    attachFilterEvents('lostItemsTable', 'lost-item-search-input', 'pageNumberTherd');
+    attachFilterEvents('additonalItemTable', 'additional-item-search-input', 'pageNumberTherd');
 });

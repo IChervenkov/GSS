@@ -227,7 +227,7 @@
         <div class="button-container-report">
           <button type="button" id="btnReportPhone" class="login-btn-report"><i class="bi bi-file-earmark-text"></i>
             Reports</button>
-          <button type="button" class="download-btn <% if(username == 'guest') { %> disabled-button <% } %>"
+          <button type="button" class="download-btn <% if(username == 'NSPA') { %> disabled-button <% } %>"
             id="downloadBtn"><i class="bi bi-download"></i> Download App</button>
         </div>
       </div>
@@ -346,8 +346,8 @@
       </div>
 
       <!-- "Check" Button in New Line -->
-      <div class="button-container " <% if(username=='guest' ) { %> style="cursor: not-allowed" <% } %>>
-          <button type="button" id="checkBtn" class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">
+      <div class="button-container " <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
+          <button type="button" id="checkBtn" class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
             <i class="bi bi-save"></i> Save
           </button>
       </div>
@@ -740,13 +740,13 @@
       </div>
 
       <!-- Buttons for confirming the selection -->
-      <div class="button-container" <% if(username=='guest' ) { %> style="cursor: not-allowed" <% } %>>
+      <div class="button-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
           <button type="submit" id="confirmAddBikeBtn"
-            class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">
+            class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
             <i class="bi bi-plus-circle"></i> Add bicycle
           </button>
           <button type="button" id="confirmAddMultiBikeBtn"
-            class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">
+            class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
             <i class="bi bi-plus-circle"></i> Add multiple bicycles
           </button>
       </div>
@@ -773,9 +773,9 @@
       </div>
 
       <!-- Buttons for confirming the selection -->
-      <div class="button-container" <% if(username=='guest' ) { %> style="cursor: not-allowed" <% } %>>
+      <div class="button-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
           <button type="submit" id="confirmRemoveBikeBtn"
-            class="login-btn <% if(username == 'guest') { %> disabled-button <% } %>">
+            class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
             <i class="bi bi-trash"></i> Remove bicycle
           </button>
       </div>
@@ -855,9 +855,12 @@
 
       <input type="hidden" id="isAccommodation" value="false">
 
-      <button type="submit" class="login-btn" id="save-button">
-        <i class="bi bi-save"></i> Save
-      </button>
+      <div class="button-container " <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
+          <button type="submit" class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>"
+            id="save-button">
+            <i class="bi bi-save"></i> Save
+          </button>
+      </div>
     </form>
   </div>
   </div>
@@ -874,7 +877,7 @@
     </div>
   </div>
 
-  <% if(username !='guest' ) { %>
+  <% if(username !='NSPA' ) { %>
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
       <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
         aria-live="assertive" aria-atomic="true">
@@ -904,8 +907,8 @@
 <script src="/java/calendar.js" defer></script>
 <script src="/java/phoneMenu.js"></script>
 
-<% if(username !='guest' ) { %>
+<% if(username !='NSPA' ) { %>
   <script src="/java/showPinMessage.js"></script>
-  <% } %>
+<% } %>
 
 </html>

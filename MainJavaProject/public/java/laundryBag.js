@@ -462,27 +462,22 @@ document.addEventListener('DOMContentLoaded', () => {
             pageNumberDisplay.textContent = `${currentPage}/${totalPages}`;
         }
 
-        document.getElementById(prevBtnId).addEventListener("click", function () {
+        document.getElementById(prevBtnId).onclick = function () {
             if (currentIndex > 0) {
                 currentIndex -= rowsPerPage;
                 updateTable();
             }
-        });
+        };
 
-        document.getElementById(nextBtnId).addEventListener("click", function () {
+        document.getElementById(nextBtnId).onclick = function () {
             if (currentIndex + rowsPerPage < rows.length) {
                 currentIndex += rowsPerPage;
                 updateTable();
             }
-        });
+        };
 
         updateTable(); // Initialize table view
     }
-
-    // Apply navigation to both tables
-    setupTableNavigation("bagsWashedTable", "prevBtn", "nextBtn", "pageNumber");
-    setupTableNavigation("bagsWashedNationalityTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
-    setupTableNavigation("bagsTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
 
     function openReportModal() {
 
@@ -510,8 +505,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.search-input-view-laundry-second').forEach((input) => {
                 input.value = '';
             });
-
-            window.location.reload();
 
             reportViewModal.classList.remove('show');
             reportViewModalContent.classList.remove('show');
@@ -741,6 +734,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const rowsTable = tbody.getElementsByTagName("tr");
         firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
+
+        setupTableNavigation("bagsTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
     }
 
     function closeListBagModal() {
@@ -754,8 +749,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.laundry-search-input').forEach((input) => {
                 input.value = '';
             });
-
-            window.location.reload();
 
             listBagModal.classList.remove('show');
             listBagModalContent.classList.remove('show');
@@ -1449,6 +1442,9 @@ document.addEventListener('DOMContentLoaded', () => {
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
             firstUpdateTable(rowsTableNational, 0, 10, 'pageNumberDate');
 
+            setupTableNavigation("bagsWashedTable", "prevBtn", "nextBtn", "pageNumber");
+            setupTableNavigation("bagsWashedNationalityTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+
         } catch (error) {
             console.error('Error fetching the report:', error);
 
@@ -1547,7 +1543,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    openMess('Info', formId !== 'form5' ? 'Laundry bag has been updated successfully' : 'Line Exchange bag has been applay successfully');
+                    openMess('Info', formId !== 'form5' ? 'Laundry bag has been updated successfully.' : 'Line exchange bag has been applied successfully.');
                     modalCloseFn();
                 } else if (isSubmit) {
                     openMess('Error', responseData.message || formId !== 'form5' ? 'Failed to update the laundry bag' : 'Failed to apply the Line Exchange bag');
