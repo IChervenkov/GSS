@@ -48,6 +48,7 @@ public class ReturnBike extends AppCompatActivity {
 
     private NfcAdapter nfcAdapter;
     private TextView nfcTextView;
+    private TextView nfcHelmetTextView;
     private DatePicker datePicker;
     private TimePicker timePicker;
     private Button submitButton;
@@ -61,6 +62,7 @@ public class ReturnBike extends AppCompatActivity {
         setContentView(R.layout.activity_return_bike);
 
         nfcTextView = findViewById(R.id.nfcTextView);
+        nfcHelmetTextView = findViewById(R.id.nfcHelmetTextView);
         datePicker = findViewById(R.id.datePicker);
         timePicker = findViewById(R.id.timePicker);
         submitButton = findViewById(R.id.submitButton);
@@ -174,6 +176,7 @@ public class ReturnBike extends AppCompatActivity {
         JSONObject json = new JSONObject();
         try {
             json.put("nfcData", nfcData);
+            json.put("isValidCode", GlobalVariable.getVariable(this));
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -209,8 +212,19 @@ public class ReturnBike extends AppCompatActivity {
                     try {
                         JSONObject jsonResponse = new JSONObject(responseData);
                         final String bikeName = jsonResponse.getString("namebike");
+                        final String helmetCode = jsonResponse.getString("getBikeHelmet");
 
-                        runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
+                        if(!bikeName.isEmpty() && !helmetCode.isEmpty()) {
+                            runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
+                            runOnUiThread(() -> nfcHelmetTextView.setText("Helmet code: " + helmetCode));
+                        } else if (!bikeName.isEmpty() && helmetCode.isEmpty()) {
+                            runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
+                            runOnUiThread(() -> nfcHelmetTextView.setText("Helmet code: None"));
+                        } else {
+                            runOnUiThread(() -> nfcTextView.setText("Bike code: None"));
+                            runOnUiThread(() -> nfcHelmetTextView.setText("Helmet code: None"));
+                        }
+
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
@@ -229,6 +243,7 @@ public class ReturnBike extends AppCompatActivity {
             jsonData.put("nfcData", nfcData);
             jsonData.put("date", date);
             jsonData.put("time", time);
+            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
         } catch (JSONException e) {
             e.printStackTrace();
             runOnUiThread(() ->

@@ -12,14 +12,15 @@
             android:id="@+id/bikeAutoCompleteTextView"
             android:layout_width="300dp"
             android:layout_height="wrap_content"
-            android:hint="Select Bike"
+            android:layout_centerHorizontal="true"
             android:layout_marginTop="250dp"
-            tools:ignore="MissingConstraints"
-            tools:text="Sample Bike"
-            app:layout_constraintStart_toStartOf="parent"
+            android:hint="Select Bike"
+            android:minHeight="48dp"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            android:layout_centerHorizontal="true"/>
+            tools:ignore="MissingConstraints"
+            tools:text="Sample Item" />
 
         <!-- Second TextView -->
         <TextView
@@ -40,7 +41,7 @@
             android:layout_below="@id/newNfcTextView"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
-            android:hint="Enter bike name"
+            android:hint="Enter name"
             android:minHeight="48dp"
             android:padding="10dp"
             android:textSize="18sp" />
@@ -52,6 +53,17 @@
             android:layout_height="wrap_content"
             android:text="Edit bike"
             android:layout_below="@id/bikeNameEditText"
+            android:layout_marginTop="20dp"
+            android:layout_centerHorizontal="true"
+            android:textColor="@android:color/white"
+            android:backgroundTint="@android:color/holo_green_dark" />
+
+        <Button
+            android:id="@+id/editHelmetButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Edit helmet"
+            android:layout_below="@id/editButton"
             android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
             android:textColor="@android:color/white"

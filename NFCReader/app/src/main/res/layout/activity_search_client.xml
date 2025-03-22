@@ -14,11 +14,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:hint="Select Client"
-        tools:ignore="MissingConstraints"
-        tools:text="Sample Client"
-        app:layout_constraintStart_toStartOf="parent"
+        android:minHeight="48dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="MissingConstraints"
+        tools:text="Sample Client" />
 
     <TableLayout
         android:id="@+id/table_layout"

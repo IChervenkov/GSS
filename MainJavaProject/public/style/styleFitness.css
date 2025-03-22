@@ -391,14 +391,40 @@ tbody tr:nth-child(even) {
     /* Ensure it's visible when showing */
 }
 
-.modal-content.slide-in {
+.modal-content.slide-in,
+.modal-content-mess.slide-in {
     animation: slideIn 0.4s forwards;
     /* Slide in animation */
 }
 
-.modal-content.slide-out {
+.modal-content.slide-out,
+.modal-content-mess.slide-out {
     animation: slideOut 0.4s forwards;
     /* Slide out animation */
+}
+
+.modal-content-mess {
+    margin-top: 10%;
+    margin-left: 35%;
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    max-width: 30%;
+    border-radius: 10px;
+    text-align: center;
+    position: relative;
+    transform: translateY(-200px);
+    /* Initial position for sliding */
+    opacity: 0;
+    /* Hidden initially */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    /* Slide and fade effect */
+}
+
+.modal-content-mess.show {
+    transform: translateY(0);
+    /* Slide into view */
+    opacity: 1;
 }
 
 .modal-content {
@@ -481,10 +507,6 @@ input[type="checkbox"]:checked::after {
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
 }
-
-/* Media Queries for mobile responsiveness */
-@media screen and (max-width: 768px) {}
-
 
 /* Keyframes for slide-down animation */
 @keyframes slideDown {
@@ -600,6 +622,10 @@ input[type="checkbox"]:checked::after {
     }
 }
 
+.download-btn {
+    display: none;
+}
+
 /* Media Queries for mobile responsiveness */
 @media screen and (max-width: 768px) {
 
@@ -607,6 +633,22 @@ input[type="checkbox"]:checked::after {
         max-width: 100%;
         margin-left: 50px;
         margin-right: 50px;
+    }
+
+    .download-btn {
+        display: block;
+        /* Show on mobile */
+        flex: 1;
+        padding: 5px 10px 5px 10px;
+        border: none;
+        border-radius: 5px;
+        background-color: #28a745;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        width: 100%;
+        text-align: center;
     }
 
     .modal-content {

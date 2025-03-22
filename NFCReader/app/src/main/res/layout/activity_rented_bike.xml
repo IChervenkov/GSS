@@ -16,15 +16,26 @@
             android:layout_marginTop="50dp"
             android:layout_centerHorizontal="true" />
 
+        <TextView
+            android:id="@+id/nfcHelmetCode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/nfcTextView"
+            android:text="Helmet code: None"
+            android:textSize="24sp"
+            android:layout_marginTop="20dp"
+            android:layout_centerHorizontal="true" />
+
         <!-- Spinner (Dropdown) -->
         <AutoCompleteTextView
             android:id="@+id/clientAutoCompleteTextView"
             android:layout_width="550px"
             android:layout_height="wrap_content"
-            android:layout_below="@id/nfcTextView"
+            android:layout_below="@id/nfcHelmetCode"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
-            android:hint="Select Client" />
+            android:hint="Select Client"
+            android:minHeight="48dp" />
 
         <!-- DatePicker -->
         <DatePicker

@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            // Remove duplicates from allCheckedRow if needed
+            // Ensure no duplicates in allCheckedRow
             if (isChecked) {
                 allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
                     .map(code => ({ code }));
@@ -2763,7 +2763,7 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault(); // Prevent default form submission
 
         const inputsToCheck = [
-            { input: lostAssetSearchInput, condition: lostAssetSearchInput.value === '' },
+            { input: lostAssetSearchInput, condition: selectedLostAssetId.value === '' },
             { input: lostItemDescription, condition: !/^[a-zA-Z0-9\s]*$/.test(lostItemDescription.value) },
             { input: lostAssetLocationSearchInput, condition: selectedLostAssetLocationId.value === '' },
             { input: lostAssetQuantity, condition: lostAssetQuantity.value === '' || !lostAssetQuantity.checkValidity() }

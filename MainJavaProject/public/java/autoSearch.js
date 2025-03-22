@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const cells = row.getElementsByTagName('td');
 
                     // Configurable column index adjustment
-                    const offsetTables = ['assetTable', 'soldierTable', 'bagsTable'];
+                    const offsetTables = ['assetTable', 'soldierTable', 'bagsTable', 'helmetTable'];
                     const effectiveColumnIndex = offsetTables.includes(tableId) ? columnIndex + 1 : columnIndex;
 
                     const cellToCheck = cells[effectiveColumnIndex];
@@ -125,4 +125,5 @@ document.addEventListener('DOMContentLoaded', function () {
     attachFilterEvents('assetDateTable', 'search-input-view-assets-second', 'pageNumberDate');
     attachFilterEvents('lostItemsTable', 'lost-item-search-input', 'pageNumberTherd');
     attachFilterEvents('additonalItemTable', 'additional-item-search-input', 'pageNumberTherd');
+    attachFilterEvents('helmetTable', 'search-input-helmet', 'pageNumberSecond');
 });

@@ -11,7 +11,7 @@
             android:id="@+id/nfcTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Bike code: None"
+            android:text="Item code: None"
             android:textSize="24sp"
             android:layout_marginTop="250dp"
             android:layout_centerHorizontal="true" />
@@ -24,6 +24,17 @@
             android:text="Remove bike"
             android:textColor="@android:color/white"
             android:layout_below="@id/nfcTextView"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp" />
+
+        <Button
+            android:id="@+id/removeHelmetButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@android:color/holo_green_dark"
+            android:text="Remove helmet"
+            android:textColor="@android:color/white"
+            android:layout_below="@id/removeButton"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp" />
 

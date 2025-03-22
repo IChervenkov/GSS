@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -39,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<String> ownerList = new ArrayList<>();
     private Map<String, String> clientIdMap = new HashMap<>();
     private AutoCompleteTextView clientAutoCompleteTextView;
+    private ExecutorService executorService = Executors.newFixedThreadPool(3);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
 
     // Modify the sendEmojiData method to include modal and clear old data
     private void sendClientData(String userId) {
-        new Thread(() -> {
+        executorService.execute(() -> {
             try {
                 // Prepare the request body
                 RequestBody body = new FormBody.Builder()
@@ -104,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
                     showErrorDialog("Error: " + e.getMessage());
                 });
             }
-        }).start();
+        });
     }
 
     // Method to show error dialog
@@ -120,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void fetchAvailableBikes() {
-        new Thread(() -> {
+        executorService.execute(() -> {
             try {
                 Request request = new Request.Builder()
                         .url("https://bunker.bg/getClient")
@@ -147,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
             }
-        }).start();
+        });
     }
 
     private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
@@ -171,5 +174,11 @@ public class MainActivity extends AppCompatActivity {
     private void clearOldData() {
         clientId = null;
         clientAutoCompleteTextView.setText(""); // Clear the text
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executorService.shutdown(); // Shutdown executor properly
     }
 }

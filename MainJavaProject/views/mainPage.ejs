@@ -49,6 +49,12 @@
         </ul>
     </div>
 
+    <div id="loadingIndicator" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <input type="hidden" id="isFirstLogin" value="<%= firstLogin %>">
+
     <!-- Main Content Area -->
     <div class="main-content">
 
@@ -57,13 +63,31 @@
         </button>
 
         <% if(navItems) { %>
-            <!-- Left Navigation Bar -->
             <div class="left-nav">
+
+                <div class="title-container mb-2 sticky-top w-100 bg-light" <% if(username !='helpDeskNikolay' &&
+                    username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
+                        <div class="btn-container" style="width: 100%;">
+                            <button id="addCampButton"
+                                class="sticky-button <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
+                                aria-label="Perform Action">
+                                <i class="bi bi-plus-circle"></i> Add camp
+                            </button>
+                            <div class="tooltip-custom">
+                                <i class="bi bi-question-circle"></i>
+                                <span class="tooltiptext">Add camp to the system</span>
+                            </div>
+                        </div>
+                </div>
+
                 <ul>
                     <% navItems.forEach(function(item) { %>
-                        <li><a href="<%= item.href %>">
-                                <%= item.name %>
-                            </a></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <button id="<%= item.id %>"
+                                class="flex-grow-1 text-decoration-none full-back <% if(campId == item.id) { %> pinClass <% } %>">
+                                <%= item.campname %>
+                            </button>
+                        </li>
                         <% }); %>
                 </ul>
             </div>
@@ -393,7 +417,8 @@
                             containing the data shown in the main table for the selected time period.</p> -->
 
                         <h4 class="mt-4 mb-2" id="accommodationKeys"><i class="bi bi-key"></i><span
-                                class="ms-2">Accommodation & Keys</span></h4>
+                                class="ms-2">Accommodation &
+                                Keys</span></h4>
 
                         <p>The Accommodation & Keys section manages the allocation of soldiers to accommodations and
                             tracks the status of keys associated with rooms. The system provides the following
@@ -405,7 +430,8 @@
                                     <li>
                                         <p><b>Adding a Destination (Building)</b>: To add a new building
                                             (destination), click the <i class="bi bi-plus-circle ms-1"><span
-                                                    class="ms-2">Add Destination</span></i>
+                                                    class="ms-2">Add
+                                                    Destination</span></i>
                                             button and fill in the required details (fields marked with * are
                                             mandatory):</p>
                                         <ul class="mb-3">
@@ -755,7 +781,8 @@
                                 <p>Generating a Report: To generate a report, follow these steps:</p>
                                 <ol>
                                     <li>Click the <i class="bi bi-file-earmark-text"><span
-                                                class="ms-1">Reports</span></i> button at the top of the main screen.
+                                                class="ms-1">Reports</span></i>
+                                        button at the top of the main screen.
                                     <li>
                                         Select the start date and end date to define the time interval for the report.
                                     </li>
@@ -840,7 +867,8 @@
                                                 <li>Rented (<img src="/icon/unavailable.png" class="img-fluid ms-1 me-1"
                                                         width="24">)</li>
                                                 <li>Repair (<img src="/icon/repire.png" class="img-fluid ms-1 me-1"
-                                                        width="24">)</li>
+                                                        width="24">)
+                                                </li>
                                                 <li>Late Return (<img src="/icon/timeout.png"
                                                         class="img-fluid ms-1 me-1" width="24">)</li>
                                                 <li>Long-Term (<img src="/icon/long-term.png"
@@ -949,7 +977,8 @@
                                 </p>
                                 <ul class="mt-2 mb-3">
                                     <li>Bike Status</li>
-                                    <li>Overdue Status (if a bike is overdue, a symbol is displayed ⚠️ in the last column).</li>
+                                    <li>Overdue Status (if a bike is overdue, a symbol is displayed ⚠️ in the last
+                                        column).</li>
                                 </ul>
                             </li>
 
@@ -958,31 +987,60 @@
                 </div>
     </div>
 
-    <% if(username !='NSPA' ) { %>
-        <!-- Toast Container -->
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
-            <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
-                aria-live="assertive" aria-atomic="true">
-                <div class="d-flex align-items-center">
-                    <!-- Info Icon -->
-                    <i class="bi bi-info-circle-fill toast-icon"></i>
+    <div id="addCampModal" class="modal">
+        <form class="modal-content" method="POST" , action="/addCamp" id="form1">
+            <span class="close-btn">&times;</span>
 
-                    <!-- Toast Message -->
-                    <div class="toast-body flex-grow-1" id="toast-message">
-                        <!-- Message will be inserted here -->
-                    </div>
+            <h2 class="mb-4">Add camp</h2>
 
-                    <!-- Close Button -->
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
-                        aria-label="Close"></button>
+            <div class="mb-3" id="camp-container">
+                <label for="addCamp" class="form-label">Camp name <span class="text-danger">*</span></label>
+                <input type="text" id="addCamp" class="form-control" placeholder="Camp name">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+
+            <button type="submit" class="modal-button" id="add-button">
+                <i class="bi bi-plus-circle"></i> Add Camp
+            </button>
+
+        </form>
+    </div>
+
+    <!-- The Modal Message -->
+    <div id="myMessage" class="modal">
+        <div class="modal-content-mess">
+            <span class="close-btn">&times;</span>
+
+            <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon">
+            <p id="mess-text"></p>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex align-items-center">
+                <!-- Info Icon -->
+                <i class="bi bi-info-circle-fill toast-icon"></i>
+
+                <!-- Toast Message -->
+                <div class="toast-body flex-grow-1" id="toast-message">
+                    <!-- Message will be inserted here -->
                 </div>
+
+                <!-- Close Button -->
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
+                    aria-label="Close"></button>
             </div>
         </div>
-        <% } %>
+    </div>
 
 </body>
 
 <script src="/java/guideNavBar.js"></script>
+<script src="/java/mainAction.js"></script>
 <script src="/java/phoneMenu.js"></script>
 <% if(username !='NSPA' ) { %>
     <script src="/java/showPinMessage.js"></script>

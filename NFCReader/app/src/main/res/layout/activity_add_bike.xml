@@ -23,7 +23,7 @@
             android:layout_below="@id/nfcTextView"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
-            android:hint="Enter bike name"
+            android:hint="Enter name"
             android:minHeight="48dp"
             android:padding="10dp"
             android:textSize="18sp" />
@@ -34,6 +34,17 @@
             android:layout_height="wrap_content"
             android:text="Add bike"
             android:layout_below="@id/bikeNameEditText"
+            android:layout_marginTop="20dp"
+            android:layout_centerHorizontal="true"
+            android:textColor="@android:color/white"
+            android:backgroundTint="@android:color/holo_green_dark"/>
+
+        <Button
+            android:id="@+id/addHelmetButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add helmet"
+            android:layout_below="@id/addButton"
             android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
             android:textColor="@android:color/white"

@@ -26,7 +26,6 @@ thead th {
 .main-content {
     display: flex;
     flex: 1;
-    max-height: calc(100vh - 50px);
 }
 
 /* Hover effect for table rows */
@@ -231,7 +230,7 @@ td {
     padding-top: 0px;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
-    max-height: calc(100vh - 30px);
+    max-height: calc(100vh - 50px);
 }
 
 /* Custom Scrollbar for Left Navigation */
@@ -1089,6 +1088,10 @@ input[type="checkbox"] {
     z-index: 1001;
 }
 
+.button-container-report {
+    display: none;
+}
+
 /* Media Queries for mobile responsiveness */
 @media screen and (max-width: 768px) {
 
@@ -1115,7 +1118,6 @@ input[type="checkbox"] {
         transition: background-color 0.3s ease;
         width: 100%;
         text-align: center;
-        margin-top: 10px;
     }
 
     .modal-content-mess {
@@ -1180,7 +1182,6 @@ input[type="checkbox"] {
         flex-direction: column;
         align-items: stretch;
         gap: 10px;
-        margin-top: 15px;
         width: 100%;
     }
 
@@ -1245,26 +1246,11 @@ input[type="checkbox"] {
         width: auto;
         background-color: #f4f4f4;
         box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-        transform: translateX(-100%);
-        height: 84%;
-        width: 100%;
-        z-index: 1000;
-        position: fixed;
-        top: 1;
-        left: 0;
-        overflow-y: auto;
-    }
-
-    body.no-scroll {
-        overflow: hidden;
-        /* Disable scrolling on the main page */
     }
 
     /* Add an active class to show the left-nav */
     .left-nav.active {
         display: block;
-        margin-top: 60px;
-        transform: translateX(0);
     }
 
     .left-nav ul.active {

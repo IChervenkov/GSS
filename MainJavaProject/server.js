@@ -44,6 +44,14 @@ const pool = new Pool({
 
 const Joi = require('joi');
 
+const shemaChangeCamp = Joi.object({
+    campId: Joi.string().alphanum().optional()
+});
+
+const schemaAddCamp = Joi.object({
+    campName: Joi.string().alphanum().required()
+});
+
 const schemaLogIn = Joi.object({
     username: Joi.string().alphanum().required(),
     password: Joi.string().alphanum().required()
@@ -72,7 +80,8 @@ const updateBagsScanerSchema = Joi.object({
         .required(),
     prev_destination: Joi.string()
         .valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None')
-        .required()
+        .required(),
+    campId: Joi.string().alphanum().required()
 });
 
 const exchangeServiceSchema = Joi.object({
@@ -100,7 +109,8 @@ const checkScaningCodeSchema = Joi.object({
 
 const checkCountScaningCodesSchema = Joi.object({
     countScaneCode: Joi.number().required(),
-    prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required()
+    prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
+    campId: Joi.string().alphanum().required()
 });
 
 const schemaAddBag = Joi.object({
@@ -108,11 +118,13 @@ const schemaAddBag = Joi.object({
     code: Joi.string().alphanum().required(),
     type: Joi.string().regex(/^[a-zA-Z0-9\s]+$/).required(),
     maxcount: Joi.number().required(),
+    campId: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
 
 const shemaGetBags = Joi.object({
-    isValidCode: Joi.bool().optional()
+    isValidCode: Joi.bool().optional(),
+    campId: Joi.string().alphanum().optional()
 });
 
 const schemaRemoveBag = Joi.object({
@@ -147,13 +159,16 @@ const schemaNFCRent = Joi.object({
     nfcData: Joi.string().required(), // nfcData should be a string and is required
     date: Joi.date().iso().required(), // date should be a valid ISO date and is required
     time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), // time should be in HH:MM format and is required
-    selectClient: Joi.string().pattern(/^[a-zA-Z0-9]+$/).required() // selectClient should be a string and is required
+    selectClient: Joi.string().pattern(/^[a-zA-Z0-9]+$/).required(), // selectClient should be a string and is required
+    helmetId: Joi.string().allow('').alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaNFCReturn = Joi.object({
     nfcData: Joi.string().required(), // nfcData should be a string and is required
     date: Joi.date().iso().required(), // date should be a valid ISO date and is required
     time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), // time should be in HH:MM format and is required
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaBike = Joi.object({
@@ -163,7 +178,8 @@ const schemaBike = Joi.object({
     dateId: Joi.date().iso().required(), // dateId should be a valid ISO date and is required (e.g., "2023-10-12")
     hourSelectId: Joi.number().integer().min(0).max(23).required(), // hourId should be an integer between 0 and 23, representing the hour
     minuteSelect: Joi.number().integer().min(0).max(59).required(), // minuteId should be an integer between 0 and 59, representing the minutes
-    ltstatus: Joi.boolean().optional()
+    ltstatus: Joi.boolean().optional(),
+    helmetId: Joi.string().allow('').alphanum().optional()
 });
 
 const schemaReport = Joi.object({
@@ -180,13 +196,32 @@ const schemaReportBike = Joi.object({
 
 const schemaAddBike = Joi.object({
     bikeAddId: Joi.string().alphanum().required(),
-    bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required()
+    bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
+    campId: Joi.string().alphanum().optional(),
+    isValidCode: Joi.bool().optional()
+});
+
+const schemaAddHelmet = Joi.object({
+    helmetAddId: Joi.string().alphanum().required(),
+    helmetName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
+    campId: Joi.string().alphanum().optional(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaEditParameturBike = Joi.object({
     oldBikeId: Joi.string().alphanum().required(),
     newBikeId: Joi.string().alphanum().required(),
-    bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required()
+    bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
+    campId: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
+});
+
+const schemaEditParameturHelmet = Joi.object({
+    oldHelmetId: Joi.string().alphanum().required(),
+    newHelmetId: Joi.string().alphanum().required(),
+    helmetName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
+    campId: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaUploadBike = Joi.object({
@@ -194,19 +229,32 @@ const schemaUploadBike = Joi.object({
     namebike: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required()
 });
 
+const schemaUploadHelmet = Joi.object({
+    id: Joi.string().alphanum().required(),
+    code: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required()
+});
+
 const schemaRemoveBike = Joi.object({
-    bikeRemoveId: Joi.string().alphanum().required()
+    bikeRemoveId: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
+});
+
+const schemaCheckBike = Joi.object({
+    bikeId: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaEditBike = Joi.object({
     bikeId: Joi.string().alphanum().required(),
     status: Joi.string().valid('Repair', 'Late', 'Long term', 'Rented').required(),
     soldierId: Joi.string().alphanum().required(),
+    helmetId: Joi.string().allow('').alphanum().required(),
     dateFrom: Joi.date().iso().required()
 });
 
 const schemaSearchBike = Joi.object({
-    id: Joi.string().alphanum().required()
+    id: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaGetSoldier = Joi.object({
@@ -237,14 +285,14 @@ const schemaRemoveDestination = Joi.object({
 
 const schemaRoomToDestination = Joi.object({
     roomId: Joi.string().alphanum().required(),
-    roomName: Joi.string().pattern(/^[^\/]+\/.+$/).required(),
-    clickBuild: Joi.string().alphanum().required()
+    roomName: Joi.string().pattern(/^[^\/]+\/([^\/]+\/)?.+$/).required(),
+    clickBuild: Joi.string().allow('').alphanum().required()
 });
 
 const schemaKeyToRoom = Joi.object({
     keyId: Joi.string().alphanum().required(),
-    keyName: Joi.string().pattern(/^[^\/]+\/.+$/).required(),
-    selectedRoomForKey: Joi.string().alphanum().required()
+    keyName: Joi.string().pattern(/^[^\/]+\/[^\/]+\/.+$/).required(),
+    selectedRoomForKey: Joi.string().pattern(/^[^\/]+\/.+$/).required()
 });
 
 const schemaSpecialRoom = Joi.object({
@@ -252,8 +300,7 @@ const schemaSpecialRoom = Joi.object({
 });
 
 const schemaSpecialKey = Joi.object({
-    numBuild: Joi.string().alphanum().allow('').required(),
-    numRoom: Joi.string().alphanum().allow('').required()
+    numRoom: Joi.string().pattern(/^([a-zA-Z0-9]+(\/[a-zA-Z0-9])?\/[a-zA-Z0-9]+)*$/).required()
 });
 
 const schemaSpecialAssets = Joi.object({
@@ -262,6 +309,7 @@ const schemaSpecialAssets = Joi.object({
 
 const schemaDeleteAsets = Joi.object({
     code: Joi.string().alphanum().required(),
+    campId: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -303,6 +351,7 @@ const schemaAddAsset = Joi.object({
     assetStatus: Joi.number().integer().required(),
     assetAddExpandable: Joi.valid('Expandable', 'Non Expandable').required(),
     assetAddDescription: Joi.string().allow('').pattern(/^[a-zA-Z0-9\s]*$/).required(),
+    campId: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -336,6 +385,7 @@ const schemaEditAssetDevice = Joi.object({
     status: Joi.number().integer().required(),
     expandable: Joi.valid('Expandable', 'Non Expandable').required(),
     description: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    campId: Joi.string().alphanum().required(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -365,11 +415,7 @@ const schemaReturnAdditionalItem = Joi.object({
 });
 
 const schemaAddSoldier = Joi.object({
-    soldierId: Joi.alternatives().try(
-        Joi.string().pattern(/^\d+$/), // Numeric string
-        Joi.string().pattern(/^unknown\d+$/), // Numeric string
-        Joi.number().integer()        // Number
-    ).required(),
+    soldierId: Joi.string().alphanum().required(),
     soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
     soldierCountry: Joi.string().alphanum().required()
 });
@@ -383,6 +429,11 @@ const schemaEditSoldier = Joi.object({
 
 const schemaRemoveSoldier = Joi.object({
     code: Joi.string().alphanum().required()
+});
+
+const schemaRemoveHelmet = Joi.object({
+    code: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaUploadSoldier = Joi.object({
@@ -402,11 +453,22 @@ const schemaSaveSoldier = Joi.object({
 });
 
 const schemaViewKey = Joi.object({
-    roomNumber: Joi.string().alphanum().required()
+    roomNumber: Joi.string().pattern(/^([a-zA-Z0-9]+(\/[a-zA-Z0-9])?\/[a-zA-Z0-9]+)*$/).required()
 });
 
 const schemaNFCBikeRead = Joi.object({
     nfcData: Joi.string().required(), // nfcData should be a string and is required
+    isValidCode: Joi.bool().optional()
+});
+
+const shemaClientNfc = Joi.object({
+    campId: Joi.string().alphanum().optional(),
+    isValidCode: Joi.bool().optional()
+});
+
+const shemaHelmetBike = Joi.object({
+    bikeId: Joi.string().allow('').alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaGetBagsByStatus = Joi.object({
@@ -542,7 +604,7 @@ class Server {
         this.defineRoutesAssets();
     }
 
-    giveSpecificPermissionMain(username, indexs, res) {
+    giveSpecificPermissionMain(username, indexs, res, navItems, isFirstLogin, campId) {
 
         res.render('mainPage', {
             title: 'Main Page Layout',
@@ -551,7 +613,9 @@ class Server {
             headerTable: null,
             data: null,
             startMessage: "Welcome to Global Support System (GSS)",
-            username: username
+            username: username,
+            firstLogin: isFirstLogin,
+            campId: campId
         });
     }
 
@@ -618,7 +682,7 @@ class Server {
 
     }
 
-    giveSpecificPermissionAssets(username ,indexes, res, inventory, numBuild, numSelectBuild) {
+    giveSpecificPermissionAssets(username, indexes, res, inventory, numBuild, numSelectBuild) {
 
         res.render('assets', {
             title: "Assets",
@@ -693,8 +757,10 @@ class Server {
 
         const expectedHashBike = process.env.HASH_APP_BIKE; // You should know the expected hash of a legal APK
         const expectedHashLaundry = process.env.HASH_APP_LAUNDRY; // You should know the expected hash of a legal APK
+        const expectedHashAsset = process.env.HASH_APP_ASSET; // You should know the expected hash of a legal APK
+        const expectedHashGym = process.env.HASH_APP_GYM; // You should know the expected hash of a legal APK
 
-        if (hashDigest !== expectedHashBike && hashDigest !== expectedHashLaundry) {
+        if (hashDigest !== expectedHashBike && hashDigest !== expectedHashLaundry && hashDigest !== expectedHashAsset && hashDigest !== expectedHashGym) {
             console.error('APK file hash does not match expected value');
             res.status(400).json({ message: 'File integrity check failed' }); // Send JSON response
             return false;
@@ -707,21 +773,95 @@ class Server {
     defineRoutesMain() {
 
         // GET route for checking server status
-        this.app.get('/', this.isLoggedIn.bind(this), (req, res) => {
+        this.app.get('/', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            let navItems = [];
+
+            try {
+
+                await client.query('BEGIN');
+
+                const get_all_camp = await client.query(`SELECT * FROM camps ORDER BY created_at ASC`);
+                navItems = get_all_camp.rows;
+                if (req.session.firstLogin)
+                    req.session.camp = navItems.length > 0 ? navItems[0].id : '';
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Surver error: ', error);
+                res.status(500).json({ error: 'Failed to load camp data.' });
+
+            } finally {
+                client.release();
+            }
+
+            const isFirstLogin = req.session.firstLogin;
+            req.session.firstLogin = false;
 
             switch (req.session.username) {
                 case 'helpDeskGatis':
                 case 'laundrySupervaizer':
-                    this.giveSpecificPermissionMain(req.session.username, [0, 2, 6], res);
+                    this.giveSpecificPermissionMain(req.session.username, [0, 2, 6], res, navItems, isFirstLogin, req.session.camp);
                     break;
                 case 'admin':
-                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4, 5, 6], res);
+                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 3, 4, 5, 6], res, navItems, isFirstLogin, req.session.camp);
                     break;
                 default:
-                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 4, 5, 6], res);
+                    this.giveSpecificPermissionMain(req.session.username, [0, 1, 2, 4, 5, 6], res, navItems, isFirstLogin, req.session.camp);
                     break;
             }
 
+        });
+
+        this.app.post('/setCampValue', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = shemaChangeCamp.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { campId } = req.body;
+
+            if (campId)
+                req.session.camp = campId;
+
+            return res.status(200).json({ message: '' })
+
+        });
+
+        this.app.post('/addCamp', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAddCamp.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: 'Invalid camp name' });
+            }
+
+            const { campName } = req.body;
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+                const uniqueId = crypto.randomBytes(16).toString('hex');
+
+                await Promise.all([
+                    client.query('INSERT INTO camps VALUES ($1, $2);', [uniqueId, campName]),
+                    client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.session.username, `Camp ${campName} added`])
+                ]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'Camp added successfully' });
+
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error('Error querying the database', err);
+                res.status(500).send('An error occurred. Please try again later.');
+
+            } finally {
+                client.release();
+            }
         });
     }
 
@@ -772,6 +912,7 @@ class Server {
                 const passwordMatches = bcrypt.compareSync(password, user.password);
                 if (passwordMatches) {
                     req.session.username = username;
+                    req.session.firstLogin = true;
 
                     // Reset failed login attempts on successful login
                     failedLoginAttempts[username] = { failedAttempts: 0 };
@@ -810,7 +951,31 @@ class Server {
 
     defineRoutesRFID() {
 
-        this.app.post('/checkCodeProduct', (req, res) => {
+        this.app.get('/getAllCamp', async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(`SELECT * FROM camps`);
+
+                await client.query('COMMIT');
+                return res.status(200).json(result.rows);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(error);
+                res.status(500);
+
+            } finally {
+                client.release();
+            }
+
+        });
+
+        this.app.post('/checkCodeProduct', async (req, res) => {
             try {
                 const { error } = schemaCheckAppCode.validate(req.body);
                 if (error) {
@@ -818,9 +983,10 @@ class Server {
                 }
 
                 const { code } = req.body;
-                const codeMatches = bcrypt.compare(code, process.env.DEVISE_CODE); // Use async bcrypt
+                const codeMatches = await bcrypt.compare(code, process.env.DEVISE_CODE); // Use async bcrypt
+                const codeMatchesNFC = await bcrypt.compare(code, process.env.DEVISE_CODE_NFC); // Use async bcrypt
 
-                if (codeMatches) {
+                if (codeMatches || codeMatchesNFC) {
                     return res.status(200).json({ success: true, message: 'Code is valid.' });
                 }
 
@@ -856,6 +1022,9 @@ class Server {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
+            if (!req.body.isValidCode)
+                return res.status(400).json({ message: "Invalid product code!" });
+
             const { nfcData } = req.body;
 
             const client = await pool.connect();
@@ -866,16 +1035,30 @@ class Server {
                 const result = await client.query(`
                     SELECT SPLIT_PART(namebike, '/', 1) AS namebike
                     FROM bicycles
+                    WHERE id = $1`, [nfcData]);
+
+                const resultHelmet = await client.query(`
+                    SELECT SPLIT_PART(code, '/', 1) AS code
+                    FROM helmets
                     WHERE id = $1;`, [nfcData]);
 
+                const getBikeHelmet = await client.query(`
+                    SELECT SPLIT_PART(code, '/', 1) AS code
+                    FROM helmets
+                    WHERE id = (SELECT helmet_id FROM bikesoldier WHERE bikeid = $1 AND dateto IS NULL);`, [nfcData]);
+
                 // Check if a result was found
-                if (result.rows.length === 0) {
+                if (result.rows.length === 0 && resultHelmet.rows.length === 0) {
                     await client.query('ROLLBACK');
-                    return res.status(404).json({ error: 'Bike not found for the provided NFC data.' });
+                    return res.status(401).json({ error: 'Not found bike or helmet with provided NFC data.' });
                 }
 
                 await client.query('COMMIT');
-                res.status(200).json({ namebike: result.rows[0].namebike });
+                res.status(200).json({
+                    namebike: result.rows.length > 0 ? result.rows[0].namebike : '',
+                    code: resultHelmet.rows.length > 0 ? resultHelmet.rows[0].code : '',
+                    getBikeHelmet: getBikeHelmet.rows.length > 0 ? getBikeHelmet.rows[0].code : ''
+                });
 
             } catch (err) {
                 await client.query('ROLLBACK');
@@ -887,8 +1070,17 @@ class Server {
         });
 
         // Endpoint to get all available bikes
-        this.app.get('/getClient', async (req, res) => {
+        this.app.post('/getClient', async (req, res) => {
 
+            const { error } = shemaClientNfc.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { campId } = req.body;
             const client = await pool.connect();
 
             try {
@@ -900,7 +1092,7 @@ class Server {
                     (SELECT COUNT(*) FROM bikesoldier WHERE soldierid = s.id AND datefrom IS NOT NULL AND dateto IS NULL) AS count_get_bike
                     FROM soldier s
                     LEFT JOIN key k ON k.soldierid = s.id
-                    WHERE date_accommodation IS NOT NULL AND date_free IS NULL`);
+                    WHERE date_accommodation IS NOT NULL AND date_free IS NULL AND s.camp_id = $1`, [campId]);
 
                 await client.query('COMMIT');
                 res.status(200).json(result.rows);
@@ -922,7 +1114,10 @@ class Server {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            const { nfcData, date, time, selectClient } = req.body;
+            if (!req.body.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { nfcData, date, time, selectClient, helmetId } = req.body;
 
             const dateText = `${date} ${time}`;
             const recDate = new Date(dateText);
@@ -971,9 +1166,9 @@ class Server {
                         [newStatus, nfcData]
                     ),
                     client.query(
-                        `INSERT INTO bikesoldier(id, bikeid, soldierid, datefrom, status_bike) VALUES (
-                        (SELECT COALESCE(MAX(id), 0) + 1 FROM bikesoldier), $1, $2, $3, $4);`,
-                        [nfcData, selectClient, recDate, newStatus]
+                        `INSERT INTO bikesoldier(id, bikeid, soldierid, datefrom, status_bike, helmet_id) VALUES (
+                        (SELECT COALESCE(MAX(id), 0) + 1 FROM bikesoldier), $1, $2, $3, $4, $5);`,
+                        [nfcData, selectClient, recDate, newStatus, helmetId ? helmetId : null]
                     ),
                     client.query(
                         `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
@@ -1000,6 +1195,9 @@ class Server {
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
+
+            if (!req.body.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
 
             const { nfcData, date, time } = req.body;
 
@@ -1048,7 +1246,10 @@ class Server {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            const { oldBikeId, newBikeId, bikeName } = req.body;
+            if (!req.body.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { oldBikeId, newBikeId, bikeName, campId } = req.body;
 
             const client = await pool.connect();
 
@@ -1071,8 +1272,8 @@ class Server {
                 } else {
                     await Promise.all([
                         client.query(
-                            "INSERT INTO bicycles VALUES ($1, $2, 'Available');",
-                            [newBikeId, bikeName]
+                            "INSERT INTO bicycles VALUES ($1, $2, 'Available', $3);",
+                            [newBikeId, bikeName, campId]
                         ),
                         client.query(
                             "UPDATE bikesoldier SET bikeid = $1 WHERE bikeid = $2",
@@ -1085,6 +1286,69 @@ class Server {
                         client.query(
                             `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
                             [`Edit Bike with name ${bikeName}, replace old NFC ${oldBikeId} with new NFC ${newBikeId}`]
+                        )
+                    ]);
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'Bike edit successfully.' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error executing database query', error);
+                res.status(500).send('An error occurred. Please try again later.');
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/editParameturHelmet', async (req, res) => {
+
+            const { error } = schemaEditParameturHelmet.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { oldHelmetId, newHelmetId, helmetName, campId } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                if (oldHelmetId === newHelmetId) {
+                    await Promise.all([
+                        client.query(
+                            "UPDATE helmets SET code = $1 WHERE id = $2",
+                            [helmetName, oldHelmetId]
+                        ),
+                        client.query(
+                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
+                            [`Edit Helmet name with code ${oldHelmetId}`]
+                        )
+                    ]);
+
+                } else {
+                    await Promise.all([
+                        client.query(
+                            "INSERT INTO helmets VALUES ($1, $2, $3);",
+                            [newHelmetId, helmetName, campId]
+                        ),
+                        client.query(
+                            "UPDATE bikesoldier SET helmet_id = $1 WHERE helmet_id = $2",
+                            [newHelmetId, oldHelmetId]
+                        ),
+                        client.query(
+                            "DELETE FROM helmets WHERE id = $1",
+                            [oldHelmetId]
+                        ),
+                        client.query(
+                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
+                            [`Edit Bike with name ${helmetName}, replace old NFC ${oldHelmetId} with new NFC ${newHelmetId}`]
                         )
                     ]);
                 }
@@ -1174,19 +1438,23 @@ class Server {
                     `SELECT 
                     namebike, 
                     b.status, 
-                    namesoldier, 
+                    namesoldier,
+                    h.code,
                     TO_CHAR(lb.datefrom, 'FMMonth DD, YYYY HH24:MI') AS formatted_date
                 FROM bicycles b 
-                LEFT JOIN (SELECT bikeId, soldierId, datefrom, ROW_NUMBER() OVER (PARTITION BY bikeId ORDER BY id DESC) AS rn FROM bikeSoldier) lb ON b.id = lb.bikeId AND lb.rn = 1 
+                LEFT JOIN (SELECT bikeId, soldierId, datefrom, helmet_id, ROW_NUMBER() OVER (PARTITION BY bikeId ORDER BY id DESC) AS rn FROM bikeSoldier) lb ON b.id = lb.bikeId AND lb.rn = 1 
                 LEFT JOIN soldier s ON lb.soldierId = s.id
+                LEFT JOIN helmets h ON lb.helmet_id = h.id
+                WHERE b.camp_id = $1
                 ORDER BY CASE WHEN b.status = 'Late' THEN 0 WHEN b.status = 'Repair' THEN 1 WHEN b.status = 'Rented' THEN 2 WHEN b.status = 'Available' THEN 3 ELSE 4 END, b.status;`
-                );
+                    , [req.session.camp]);
 
                 result_bike.rows.forEach(element => {
                     data.push({
                         name: element.namebike,
                         status: element.status,
                         hiredby: element.status == "Available" ? "None" : element.namesoldier,
+                        helmet: element.code ? element.code : "None",
                         datefrom: element.status == "Available" ? "None" : element.formatted_date
                     });
 
@@ -1250,7 +1518,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { bikeId, clientId, actionId, dateId, hourSelectId, minuteSelect, ltstatus } = req.body;
+            const { bikeId, clientId, actionId, dateId, hourSelectId, minuteSelect, ltstatus, helmetId } = req.body;
 
             // Ensure hour and minute are valid numbers
             const hour = parseInt(hourSelectId, 10);
@@ -1289,6 +1557,16 @@ class Server {
                         return res.status(403).json({ message: 'The bike is already rented.' });
                     }
 
+                    const check_helmet = await client.query(
+                        `SELECT COUNT(*) FROM bikesoldier WHERE helmet_id = $1 AND dateto IS NULL`,
+                        [helmetId]
+                    );
+
+                    if (check_helmet.rows[0].count > 0) {
+                        await client.query('ROLLBACK');
+                        return res.status(403).json({ message: 'The helmet is already rented.' });
+                    }
+
                     // Update bike status and assign to client
 
                     const now = new Date();
@@ -1313,9 +1591,9 @@ class Server {
                             [newStatus, bikeId]
                         ),
                         client.query(
-                            `INSERT INTO bikesoldier(id, bikeid, soldierid, datefrom, status_bike) VALUES (
-                            (SELECT COALESCE(MAX(id), 0) + 1 FROM bikesoldier), $1, $2, $3, $4);`,
-                            [bikeId, clientId, recDate, newStatus]
+                            `INSERT INTO bikesoldier(id, bikeid, soldierid, datefrom, status_bike, helmet_id) VALUES (
+                            (SELECT COALESCE(MAX(id), 0) + 1 FROM bikesoldier), $1, $2, $3, $4, $5);`,
+                            [bikeId, clientId, recDate, newStatus, helmetId ? helmetId : null]
                         ),
                         client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                             [req.session.username, `Rented Bike with name ${bikeResult.rows[0].namebike}`])
@@ -1386,7 +1664,8 @@ class Server {
                     client.query(
                         `SELECT DISTINCT
                         b.namebike, 
-                        s.namesoldier,
+                        COALESCE(s.namesoldier, 'N/A') AS namesoldier,
+                        COALESCE(h.code, 'N/A') AS helmet_code,
                         COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
                         COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_to,
                         CASE 
@@ -1404,22 +1683,24 @@ class Server {
                         FROM bikesoldier bs 
                         LEFT JOIN soldier s ON bs.soldierid = s.id 
                         LEFT JOIN bicycles b ON bs.bikeid = b.id
-                        WHERE datefrom BETWEEN $1 AND $2
+                        LEFT JOIN helmets h ON bs.helmet_id = h.id
+                        WHERE datefrom BETWEEN $1 AND $2 AND b.camp_id = $3
                         ORDER BY date_from;`,
-                        [selectedDate1, selectedDate2]
+                        [selectedDate1, selectedDate2, req.session.camp]
                     ),
                     client.query(
                         `SELECT 
                             TO_CHAR(datefrom, 'YYYY-MM-DD') AS date, 
                             COUNT(*) AS total_bikes
                         FROM (
-                            SELECT DISTINCT ON (bikeid, soldierid, datefrom, dateto) bikeid, datefrom
-                            FROM bikesoldier
-                            WHERE datefrom BETWEEN $1 AND $2
+                            SELECT DISTINCT ON (bs.bikeid, bs.soldierid, bs.datefrom, bs.dateto) bs.bikeid, bs.datefrom
+                            FROM bikesoldier bs
+                            LEFT JOIN bicycles b ON b.id = bs.bikeid
+                            WHERE bs.datefrom BETWEEN $1 AND $2 AND b.camp_id = $3
                         ) subquery
                         GROUP BY TO_CHAR(datefrom, 'YYYY-MM-DD')
                         ORDER BY date;`,
-                        [selectedDate1, selectedDate2]
+                        [selectedDate1, selectedDate2, req.session.camp]
                     )
                 ]);
 
@@ -1437,7 +1718,7 @@ class Server {
                 const worksheet1 = workbook.addWorksheet('Bike Usage Data');
 
                 // Add custom column titles for the first sheet
-                const headers1 = ['Bike Name', 'Soldier Name', 'Date From', 'Date To', 'Duration', 'Status', 'Overdue Status'];
+                const headers1 = ['Bike Name', 'Soldier Name', 'Helmet Code', 'Date From', 'Date To', 'Duration', 'Status', 'Overdue Status'];
                 const headerRow1 = worksheet1.addRow(headers1);
 
                 // Apply styling to the headers
@@ -1460,7 +1741,8 @@ class Server {
                     { width: 20 }, // Date To
                     { width: 25 }, // Duration
                     { width: 15 }, // Status
-                    { width: 20 }
+                    { width: 20 },
+                    { width: 25 }
                 ];
 
                 // Add data rows to the first sheet with alternating row color styling
@@ -1469,13 +1751,13 @@ class Server {
 
                     // Check if the status is "Late" and add a ⚠️ icon
                     if (row.status === 'Late') {
-                        dataRow.getCell(7).value = '⚠️';
+                        dataRow.getCell(8).value = '⚠️';
                     } else {
-                        dataRow.getCell(7).value = '';
+                        dataRow.getCell(8).value = '';
                     }
 
-                    // Center align the "Status" column (7th column)
-                    dataRow.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
+                    // Center align the "Status" column (8th column)
+                    dataRow.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
 
                     // Apply borders and alternating row color
                     dataRow.eachCell((cell) => {
@@ -1573,15 +1855,25 @@ class Server {
 
         });
 
-        this.app.get('/bikes', async (req, res) => {
+        this.app.post('/bikes', async (req, res) => {
+
+            const { error } = shemaClientNfc.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
 
             var optionBike = [];
 
             const client = await pool.connect();
 
+            const campId = req.session.username ? req.session.camp : req.body.campId;
+
             try {
                 await client.query('BEGIN');
-                const result_bike = await client.query(`SELECT id, namebike, status FROM bicycles;`);
+                const result_bike = await client.query(`SELECT id, namebike, status FROM bicycles WHERE camp_id = $1;`, [campId]);
 
                 result_bike.rows.forEach(element => {
                     optionBike.push({ id: element.id, name: element.namebike, status: element.status });
@@ -1589,6 +1881,88 @@ class Server {
 
                 await client.query('COMMIT');
                 res.status(200).json(optionBike);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.log('Error:', error);
+                res.status(500).send('An error occurred');
+            } finally {
+                client.release();
+            }
+
+        });
+
+        this.app.post('/helmets', async (req, res) => {
+
+            const { error } = shemaClientNfc.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            var optionsHelmets = [];
+
+            const client = await pool.connect();
+
+            const campId = req.session.username ? req.session.camp : req.body.campId;
+
+            try {
+                await client.query('BEGIN');
+                const result_bike = await client.query(`
+                    SELECT h.id, 
+                        CASE 
+                            WHEN bs.helmet_id IS NOT NULL AND bs.dateto IS NULL THEN CONCAT(h.code, ' (Rented)') 
+                            ELSE CONCAT(h.code, ' (Available)') 
+                        END AS code_status,
+                        h.code
+                    FROM helmets h
+                    LEFT JOIN bikesoldier bs ON h.id = bs.helmet_id AND bs.dateto IS NULL
+                    WHERE h.camp_id = $1;`, [campId]);
+
+                result_bike.rows.forEach(element => {
+                    optionsHelmets.push({ id: element.id, name: element.code, code: element.code_status });
+                });
+
+                await client.query('COMMIT');
+                res.status(200).json(optionsHelmets);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.log('Error:', error);
+                res.status(500).send('An error occurred');
+            } finally {
+                client.release();
+            }
+
+        });
+
+        this.app.post('/getHelmetByBike', async (req, res) => {
+
+            const { error } = shemaHelmetBike.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { bikeId } = req.body;
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+                const result_bike = await client.query(`
+                    SELECT h.id, h.code FROM helmets h
+                    LEFT JOIN bikesoldier bs ON bs.helmet_id = h.id
+                    WHERE bs.dateto IS NULL AND bs.bikeid = $1`, [bikeId]);
+
+                await client.query('COMMIT');
+                res.status(200).json({
+                    code: result_bike.rows.length > 0 ? result_bike.rows[0].code : '',
+                    helmetId: result_bike.rows.length > 0 ? result_bike.rows[0].id : ''
+                });
 
             } catch (error) {
                 await client.query('ROLLBACK');
@@ -1625,7 +1999,8 @@ class Server {
                         client.query(
                             `SELECT DISTINCT
                                 b.namebike, 
-                                s.namesoldier, 
+                                s.namesoldier,
+                                h.code AS helmet_code,
                                 COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
                                 COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_to, 
                                 CASE 
@@ -1639,22 +2014,24 @@ class Server {
                             FROM bikesoldier bs 
                             LEFT JOIN soldier s ON bs.soldierid = s.id 
                             LEFT JOIN bicycles b ON bs.bikeid = b.id
-                            WHERE datefrom BETWEEN $1 AND $2
+                            LEFT JOIN helmets h ON bs.helmet_id = h.id
+                            WHERE datefrom BETWEEN $1 AND $2 AND b.camp_id = $3
                             ORDER BY date_from DESC;`,
-                            [selectedDate1, selectedDate2]
+                            [selectedDate1, selectedDate2, req.session.camp]
                         ),
                         client.query(
                             `SELECT 
                                 TO_CHAR(datefrom, 'YYYY-MM-DD') AS date, 
                                 COUNT(*) AS total_bikes
                             FROM (
-                                SELECT DISTINCT ON (bikeid, soldierid, datefrom, dateto) bikeid, datefrom
-                                FROM bikesoldier
-                                WHERE datefrom BETWEEN $1 AND $2
+                                SELECT DISTINCT ON (bs.bikeid, bs.soldierid, bs.datefrom, bs.dateto) bs.bikeid, bs.datefrom
+                                FROM bikesoldier bs
+                                LEFT JOIN bicycles b ON b.id = bs.bikeid
+                                WHERE datefrom BETWEEN $1 AND $2 AND b.camp_id = $3
                             ) subquery
                             GROUP BY TO_CHAR(datefrom, 'YYYY-MM-DD')
                             ORDER BY date;`,
-                            [selectedDate1, selectedDate2]
+                            [selectedDate1, selectedDate2, req.session.camp]
                         )
                     ]);
 
@@ -1681,7 +2058,12 @@ class Server {
                 return res.status(400).send({ message: error.details[0].message });
             }
 
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
+
             let { bikeAddId, bikeName } = req.body;
+
+            const campId = req.session.username ? req.session.camp : req.body.campId;
 
             const client = await pool.connect();
 
@@ -1698,7 +2080,7 @@ class Server {
                 }
 
                 // Insert new bike if bikeAddId doesn't exist
-                await client.query(`INSERT INTO bicycles VALUES ($1, $2, 'Available');`, [bikeAddId, bikeName]);
+                await client.query(`INSERT INTO bicycles VALUES ($1, $2, 'Available', $3);`, [bikeAddId, bikeName, campId]);
 
                 // Query the database for the user
                 await client.query(
@@ -1718,12 +2100,110 @@ class Server {
             }
         });
 
+        this.app.post('/bicycles/addHelmet', async (req, res) => {
+
+            const { error } = schemaAddHelmet.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            let { helmetAddId, helmetName } = req.body;
+
+            const campId = req.session.username ? req.session.camp : req.body.campId;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                // Check if bikeAddId already exists
+                const result = await client.query(`SELECT * FROM helmets WHERE id = $1`, [helmetAddId]);
+
+                if (result.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).send({ message: 'This helmet already exists.' });
+                }
+
+                // Insert new bike if bikeAddId doesn't exist
+                await client.query(`INSERT INTO helmets VALUES ($1, $2, $3);`, [helmetAddId, helmetName, campId]);
+
+                // Query the database for the user
+                await client.query(
+                    `INSERT INTO usermonitoring (user_id, location)
+                    VALUES ( COALESCE((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = 'PhoneUser')), $2)`,
+                    [req.session.username, `Add Helmet with name ${helmetName}`]
+                );
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'Helmet added successfully.' });
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error('Database error:', err);
+                res.status(500).send({ message: 'Internal server error.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/bicycles/removeHelmet', async (req, res) => {
+
+            const { error } = schemaRemoveHelmet.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
+            }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { code } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const check_give_helmet = await client.query(`SELECT helmet_id FROM bikesoldier WHERE helmet_id = $1 AND dateto IS NULL`, [code]);
+
+                if (check_give_helmet.rows.length > 0) {
+                    return;
+                }
+
+                await Promise.all([
+                    client.query(`DELETE FROM bikesoldier WHERE helmet_id = $1;`, [code]),
+                    client.query(`DELETE FROM helmets WHERE id = $1`, [code])
+                ]);
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Remove helmet ${code}`]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'Helmet removed successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.log('Error:', error);
+                res.status(500).json({ message: 'An error occurred' });
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.post('/bicycles/removeBike', async (req, res) => {
 
             const { error } = schemaRemoveBike.validate(req.body);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
 
             let { bikeRemoveId } = req.body;
 
@@ -1786,6 +2266,39 @@ class Server {
             // Set the response headers for file download
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             res.setHeader('Content-Disposition', 'attachment; filename=templateBicyclesBike.xlsx');
+
+            // Write the workbook to the response stream
+            await workbook.xlsx.write(res);
+            res.end(); // End the response
+
+        });
+
+        this.app.get('/bicycles/multiHelmet/download', this.isLoggedIn.bind(this), async (req, res) => {
+
+            // Create a new Excel workbook
+            const workbook = new excelJS.Workbook();
+
+            // Sheet 1: Accommodation Multipul Soldiers
+            const worksheet = workbook.addWorksheet('Helmets Multipul Bike');
+
+            const headers = ['id', 'code'];
+            const headerRow = worksheet.addRow(headers);
+
+            // Apply styling to the headers
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, size: 12 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+
+            // Set the response headers for file download
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=templateHelmetsBike.xlsx');
 
             // Write the workbook to the response stream
             await workbook.xlsx.write(res);
@@ -1858,8 +2371,8 @@ class Server {
                     }
 
                     await client.query(
-                        "INSERT INTO bicycles VALUES ($1, $2, 'Available')",
-                        [row.id, row.namebike]
+                        "INSERT INTO bicycles VALUES ($1, $2, 'Available', $3)",
+                        [row.id, row.namebike, req.session.camp]
                     );
 
                 }));
@@ -1880,7 +2393,102 @@ class Server {
             }
         });
 
+        this.app.post('/bicycles/uploadMultiHelmet', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+
+            const client = await pool.connect();
+            const errors = [];
+
+            try {
+
+                await client.query('BEGIN');
+
+                if (!req.file) {
+                    return res.status(400).json({ error: 'No file uploaded.' });
+                }
+
+                const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet);
+
+                // Create a Set to track unique bike IDs within the data array
+                const uniqueHelmetId = new Set();
+
+                await Promise.all(data.map(async (row) => {
+
+                    if (!row.id) {
+                        return;
+                    }
+
+                    const { error } = schemaUploadHelmet.validate(row);
+
+                    if (error) {
+                        errors.push({ type: 'Validation', details: error.details, row });
+                        return;
+                    }
+
+                    // Check for duplicates within the data array
+                    if (uniqueHelmetId.has(row.id)) {
+                        errors.push({ type: 'UniqueIdCheck', message: `Duplicate helmet id '${row.id}' found within the data.` });
+                        return;
+                    }
+
+                    // Add bike ID to the Set after checking
+                    uniqueHelmetId.add(row.id);
+
+                    // Inside the backend function, when checking for duplicates
+                    const result = await client.query("SELECT * FROM helmets WHERE id = $1;", [row.id]);
+
+                    if (result.rows.length > 0) {
+                        errors.push({ type: 'CheckExist', message: `Helmet with number '${row.id}' already exists.` });
+                        return;
+                    }
+
+                }));
+
+                if (errors.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row) => {
+
+                    if (!row.id) {
+                        return;
+                    }
+
+                    await client.query(
+                        "INSERT INTO helmets VALUES ($1, $2, $3)",
+                        [row.id, row.code, req.session.camp]
+                    );
+
+                }));
+
+                // Query the database for the user
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), 'Multi Add Helmets')", [req.session.username]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'File processed successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.post('/checkBike', async (req, res) => {
+
+            const { error } = schemaCheckBike.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
 
             const { bikeId } = req.body;
 
@@ -1900,7 +2508,7 @@ class Server {
 
                 if (result_check_bike.rows.length === 0) {
                     await client.query('ROLLBACK');
-                    return res.status(401).json();
+                    return res.status(401).json({ message: 'Bike not found' });
                 }
 
                 if (result_bike.rows.length > 0) {
@@ -1938,7 +2546,8 @@ class Server {
                     SELECT s.id, namesoldier, country, namekey, l.id as etc, l.code, s.meal_card, s.date_free, s.date_accommodation, k.id AS keyid
                     FROM soldier s
                     LEFT JOIN key k ON k.soldierid = s.id
-                    LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id;`);
+                    LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id
+                    WHERE s.camp_id = $1;`, [req.session.camp]);
 
                 result_client.rows.forEach(element => {
                     optionClient.push({
@@ -1968,14 +2577,14 @@ class Server {
             }
         });
 
-        this.app.post('/bicycles/editBike', async (req, res) => {
+        this.app.post('/bicycles/editBike', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaEditBike.validate(req.body);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            const { bikeId, status, soldierId, dateFrom } = req.body;
+            const { bikeId, status, soldierId, helmetId, dateFrom } = req.body;
 
             const client = await pool.connect();
 
@@ -1985,7 +2594,7 @@ class Server {
 
                 await Promise.all([
                     client.query(`UPDATE bicycles SET status = $1 WHERE id = $2;`, [status, bikeId]),
-                    client.query(`UPDATE bikesoldier SET soldierid = $1, datefrom = $2, status_bike = $4 WHERE bikeid = $3 AND dateto IS NULL;`, [soldierId, dateFrom, bikeId, status])
+                    client.query(`UPDATE bikesoldier SET soldierid = $1, datefrom = $2, status_bike = $4, helmet_id = $5 WHERE bikeid = $3 AND dateto IS NULL;`, [soldierId, dateFrom, bikeId, status, helmetId || null]),
                 ]);
 
                 await client.query('COMMIT');
@@ -2020,7 +2629,7 @@ class Server {
                     JOIN assets a ON a.location_key = k.id
                     LEFT JOIN roomskey rk ON rk.keyid = k.id
                     LEFT JOIN buildroom br ON br.roomid = rk.roomid
-                    LEFT JOIN buildings b ON b.id = br.buildid AND b.type = 'Accommodation';`);
+                    JOIN buildings b ON b.id = br.buildid AND b.type = 'Accommodation' AND b.camp_id = $1;`, [req.session.camp]);
 
                 result_client.rows.forEach(element => {
                     optionRoom.push({ id: element.id, name: `${element.namekey}${element.soldierid ? ' 🚫' : ' ✅'}` });
@@ -2051,13 +2660,14 @@ class Server {
 
             var optionAllBag = [];
 
+            const campId = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
             const client = await pool.connect();
 
             try {
 
                 await client.query('BEGIN');
 
-                const result_all_bags = await client.query(`SELECT * FROM laundrybags`);
+                const result_all_bags = await client.query(`SELECT * FROM laundrybags WHERE camp_id = $1`, [campId]);
 
                 result_all_bags.rows.forEach(element => {
                     optionAllBag.push({ id: element.id, name: element.code, status: element.status, maxcountlandry: element.maxcountlandry, type: element.type });
@@ -2092,7 +2702,8 @@ class Server {
                     WHERE l.id NOT IN (SELECT l.id FROM laundrybags l
 										LEFT JOIN additionalitem ai ON ai.bag_id = l.id
                                         LEFT JOIN soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
-                                        WHERE s.date_accommodation IS NOT NULL AND date_free IS NULL); `);
+                                        WHERE s.date_accommodation IS NOT NULL AND s.date_free IS NULL)
+                    AND l.camp_id = $1;`, [req.session.camp]);
 
                 result_all_bags.rows.forEach(element => {
                     optionAllBag.push({ id: element.id, name: element.code, status: element.status });
@@ -2121,7 +2732,7 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result_all_builds = await client.query(`SELECT id, namebuilding FROM buildings WHERE type = 'Accommodation'`);
+                const result_all_builds = await client.query(`SELECT id, namebuilding FROM buildings WHERE type = 'Accommodation' AND camp_id = $1;`, [req.session.camp]);
 
                 result_all_builds.rows.forEach(element => {
                     builds.push({ id: element.id, name: element.namebuilding });
@@ -2183,6 +2794,9 @@ class Server {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
+
             const selectBike = req.body.id;
             var allBikeInfo = [];
 
@@ -2229,6 +2843,9 @@ class Server {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
+
             const selectClient = req.body.id;
             var allClientInfo = [];
 
@@ -2257,6 +2874,55 @@ class Server {
 
                 await client.query('COMMIT');
                 res.json(allClientInfo);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/searchHelmet', async (req, res) => {
+
+            const { error } = schemaSearchBike.validate(req.body);
+            if (error) {
+                return res.status(400).send({ error: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode && !req.session.username)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { id } = req.body;
+            var allHelmetInfo = [];
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result_helmet = await client.query(`
+                SELECT DISTINCT
+                namesoldier,
+                TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI') AS formatted_date_from,
+                datefrom,
+                COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS formatted_date_to
+                FROM bikesoldier bs
+                LEFT JOIN soldier s ON s.id = bs.soldierid
+                LEFT JOIN helmets h ON h.id = bs.helmet_id
+                WHERE helmet_id = $1
+                ORDER BY datefrom DESC
+                LIMIT 2;`, [id]);
+
+                result_helmet.rows.forEach(element => {
+                    allHelmetInfo.push({ namesoldier: element.namesoldier, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
+                });
+
+                await client.query('COMMIT');
+                res.status(200).json(allHelmetInfo);
 
             } catch (error) {
                 await client.query('ROLLBACK');
@@ -2309,10 +2975,11 @@ class Server {
                     LEFT JOIN key k ON k.id = rk.keyid
                     LEFT JOIN soldier s ON s.id = k.soldierid
                     LEFT JOIN buildroom br ON br.roomid = r.id
+                    LEFT JOIN buildings b ON br.buildid = b.id
                     LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
-                    WHERE nameroom SIMILAR TO '%/' || $1 || '[0-9]%'
+                    WHERE nameroom SIMILAR TO '%/' || $1 || '[0-9]%' AND b.camp_id = $2
                     GROUP BY nameroom
-                    ORDER BY nameroom;`, [numBuild]);
+                    ORDER BY nameroom;`, [numBuild, req.session.camp]);
 
                     // Initialize room counts using the query result
                     resultData.rows.forEach(row => {
@@ -2364,16 +3031,15 @@ class Server {
                     ORDER BY 
                         nameroom;`, [numBuild]);
 
-                    const res_type = await client.query('SELECT type FROM buildings WHERE id = $1', [numBuild]);
+                    const res_type = await client.query('SELECT type, namebuilding FROM buildings WHERE id = $1', [numBuild]);
                     type = res_type.rows[0].type;
+                    title = res_type.rows[0].namebuilding;
 
                     // Initialize room counts using the query result
                     resultData.rows.forEach(row => {
                         nameroomSet.add(row.nameroom);
                         roomCounts[row.nameroom] = type === 'Accommodation' ? row.count_with_location || 0 : row.count_without_location || 0;
                     });
-
-                    title = `Building ${numBuild}`;
 
                     const countFreeBedsResult = await client.query(`
                     SELECT COUNT(*) AS freebeds
@@ -2388,9 +3054,7 @@ class Server {
                     AND r.nameroom LIKE '__/___';`, [numBuild]);
 
                     countFreeBeds = countFreeBedsResult.rows[0].freebeds;
-
-                    const selectBuildTyperesult = await client.query(`SELECT type FROM buildings WHERE id = $1;`, [numBuild]);
-                    selectBuildType = selectBuildTyperesult.rows[0].type;
+                    selectBuildType = type;
 
                 } else {
 
@@ -2415,10 +3079,11 @@ class Server {
                     WHERE 
                         nameroom NOT SIMILAR TO '%/(E|D)[0-9]%'
                         AND b.type = 'Accommodation'
+                        AND b.camp_id = $1
                     GROUP BY 
                         nameroom
                     ORDER BY 
-                        nameroom;`);
+                        nameroom;`, [req.session.camp]);
 
                     // Initialize room counts using the query result
                     resultData.rows.forEach(row => {
@@ -2440,7 +3105,7 @@ class Server {
                         break;
                 }
 
-                const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings`);
+                const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings WHERE camp_id = $1`, [req.session.camp]);
 
                 var navBuild = [
                     { id: "E", name: "Entrance" },
@@ -2456,8 +3121,9 @@ class Server {
                 LEFT JOIN key k ON k.id = rk.keyid
                 LEFT JOIN soldier s ON s.id = k.soldierid
                 LEFT JOIN buildroom br ON br.roomid = r.id
+                LEFT JOIN buildings b ON b.id = br.buildid
                 JOIN assets a ON a.location_key = k.id
-                WHERE nameroom NOT LIKE '__/D_' AND nameroom NOT LIKE '__/_/E_';`);
+                WHERE nameroom NOT LIKE '__/D_' AND nameroom NOT LIKE '__/_/E_' AND b.camp_id = $1;`, [req.session.camp]);
 
                 await Promise.all(resultBuild.rows.map(async (row) => {
                     try {
@@ -2479,11 +3145,13 @@ class Server {
                         const countFreeBeds = countFreeBedsResult.rows[0].freebeds;
                         totalFreeBeds += Number(countFreeBeds);
 
+                        const [firstPart, secondPart] = row.namebuilding.split(/\s/);
+
                         if (selectBuildTypeResult.rows[0].type === 'Accommodation') {
-                            navBuild.push({ id: row.id, name: `${row.namebuilding}`, nameAdd: `(${countFreeBeds} free beds)`, numBuild: row.id });
+                            navBuild.push({ id: row.id, name: `${row.namebuilding}`, nameAdd: `(${countFreeBeds} free beds)`, numBuild: row.id, nameBuilding: secondPart });
 
                         } else {
-                            navBuild.push({ id: row.id, name: `${row.namebuilding}`, numBuild: row.id });
+                            navBuild.push({ id: row.id, name: `${row.namebuilding}`, numBuild: row.id, nameBuilding: secondPart });
                         }
 
                     } catch (error) {
@@ -2605,6 +3273,7 @@ class Server {
             try {
 
                 await client.query('BEGIN');
+
                 const result = await client.query(`
                     SELECT namekey, k.id as code, namesoldier, country, meal_card as mealcard, lb.code as lbcode, a.location_key
                     FROM rooms r
@@ -2613,8 +3282,10 @@ class Server {
                     LEFT JOIN soldier s ON s.id = k.soldierid
                     LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
                     LEFT JOIN assets a ON a.location_key = k.id
-                    WHERE r.id = $1 AND k.id IS NOT NULL
-                    ORDER BY namekey;`, [roomNumber]);
+                    LEFT JOIN buildroom br ON br.roomid = r.id
+                    LEFT JOIN buildings b ON b.id = br.buildid
+                    WHERE r.nameroom = $1 AND k.id IS NOT NULL AND b.camp_id = $2
+                    ORDER BY namekey;`, [roomNumber, req.session.camp]);
 
                 // Send back filtered data for the specified room
                 await client.query('COMMIT');
@@ -2684,12 +3355,12 @@ class Server {
 
                     if (result_accommodation_soldier.rows.length === 0) {
                         await client.query(
-                            "UPDATE soldier SET date_accommodation = CURRENT_DATE, date_free = NULL, meal_card = $2, laundry_bag_id = $3, used_room = $4 where id = $1;",
+                            "UPDATE soldier SET date_accommodation = CURRENT_DATE, date_free = NULL, meal_card = $2, laundry_bag_id = $3, used_room = $4 WHERE id = $1;",
                             [soldierId, mealCardId, bagId === '' ? null : bagId, keyCodeId]
                         );
                     } else {
                         await client.query(
-                            "UPDATE soldier SET meal_card = $2, laundry_bag_id = $3 where id = $1;",
+                            "UPDATE soldier SET meal_card = $2, laundry_bag_id = $3 WHERE id = $1;",
                             [soldierId, mealCardId, bagId === '' ? null : bagId]
                         );
                     }
@@ -2743,8 +3414,8 @@ class Server {
                     }
 
                     await Promise.all([
-                        client.query("UPDATE key SET soldierid = NULL where id = $1;", [keyCodeId]),
-                        client.query("UPDATE soldier SET date_free = CURRENT_DATE where id = $1;", [res_query.rows[0].soldierid])
+                        client.query("UPDATE key SET soldierid = NULL WHERE id = $1;", [keyCodeId]),
+                        client.query("UPDATE soldier SET date_free = CURRENT_DATE WHERE id = $1;", [res_query.rows[0].soldierid])
                     ]);
 
                     // Query the database for the user
@@ -2753,7 +3424,7 @@ class Server {
 
                 } else {
                     await client.query(
-                        "UPDATE key SET soldierid = NULL where id = $1;",
+                        "UPDATE key SET soldierid = NULL WHERE id = $1;",
                         [keyCodeId]
                     );
 
@@ -2794,7 +3465,7 @@ class Server {
                 const [result_soldior, result_move] = await Promise.all([
                     client.query(`
                         SELECT 
-                            r.nameroom,
+                            k.namekey,
                             namesoldier, 
                             country, 
                             TO_CHAR(date_accommodation, 'Mon DD, YYYY') AS date_accommodation, 
@@ -2804,10 +3475,9 @@ class Server {
                         FROM 
                             soldier s
                         LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
-                        LEFT JOIN roomskey rk ON rk.keyid = s.used_room
-                        LEFT JOIN rooms r ON r.id = rk.roomid
+                        LEFT JOIN key k ON k.id = s.used_room
                         WHERE 
-                            country <> 'None';`),
+                            country <> 'None' AND s.camp_id = $1;`, [req.session.camp]),
                     client.query(`
                         SELECT 
                             k_current.namekey AS current_room,
@@ -2823,8 +3493,8 @@ class Server {
                         JOIN 
                             soldier soldier_name ON soldier_name.id = ms.idsoldier
                         WHERE
-                            datemove BETWEEN TO_DATE($1, 'YYYY-MM-DD') AND TO_DATE($2, 'YYYY-MM-DD');`,
-                        [selectedDate1, selectedDate2])
+                            datemove BETWEEN TO_DATE($1, 'YYYY-MM-DD') AND TO_DATE($2, 'YYYY-MM-DD') AND soldier_name.camp_id = $3;`,
+                        [selectedDate1, selectedDate2, req.session.camp])
                 ]);
 
                 const data = result_soldior.rows;
@@ -2871,7 +3541,7 @@ class Server {
                 const worksheet1 = workbook.addWorksheet('Information about soldiers');
                 const worksheet2 = workbook.addWorksheet('Movement soldiers information');
 
-                const headers1 = ['Room Number', 'Soldier Name', 'Country', 'Accommodation Date', 'Release Date', 'Meal card', 'Laundry bag'];
+                const headers1 = ['Key Number', 'Soldier Name', 'Country', 'Accommodation Date', 'Release Date', 'Meal card', 'Laundry bag'];
                 worksheet1.addRow(headers1).eachCell((cell) => {
                     cell.font = { bold: true };
                     cell.alignment = { horizontal: 'center' };
@@ -2967,7 +3637,10 @@ class Server {
                 try {
                     await client.query('BEGIN');
 
-                    await Promise.all(moves.map(async (move) => {
+                    let firstSingleMove = true;
+
+                    for (const move of moves) {
+
                         const { error } = schemaMoveSoldier.validate(move);
                         if (error) {
                             throw new Error(error.details[0].message);
@@ -2976,27 +3649,29 @@ class Server {
                         const { keyId, soldId, keyMoveId, soldMoveId } = move;
 
                         if (soldMoveId) {
-                            await Promise.all([
-                                client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]),
-                                client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyId, keyMoveId, soldMoveId]),
-                                client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldId, keyMoveId]),
-                                client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldMoveId, keyId]),
-                                client.query(`UPDATE soldier SET used_room = $1 WHERE id = $2;`, [keyMoveId, soldId]),
-                                client.query(`UPDATE soldier SET used_room = $1 WHERE id = $2;`, [keyId, soldMoveId])
-                            ]);
-                        } else {
-                            await Promise.all([
-                                client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]),
-                                client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldId, keyMoveId]),
-                                client.query("UPDATE key SET soldierid = NULL WHERE id = $1;", [keyId]),
-                                client.query(`UPDATE soldier SET used_room = $1 WHERE id = $2;`, [keyMoveId, soldId])
-                            ]);
-                        }
+                            await client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]);
+                            await client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyId, keyMoveId, soldMoveId]);
+                            await client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldId, keyMoveId]);
+                            await client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldMoveId, keyId]);
+                            await client.query(`UPDATE soldier SET used_room = $1 WHERE id = $2;`, [keyMoveId, soldId]);
+                            await client.query(`UPDATE soldier SET used_room = $1 WHERE id = $2;`, [keyId, soldMoveId]);
+                            await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                                [req.session.username, `Swap soldier ${soldId} and ${soldMoveId}`]);
 
-                        // Query the database for the user
-                        await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                            [req.session.username, `Move soldier ${soldId} from room ${keyId} to room ${keyMoveId}`]);
-                    }));
+                        } else {
+                            await client.query("INSERT INTO movesoldier VALUES ($1, $2, $3, CURRENT_DATE);", [keyMoveId, keyId, soldId]);
+                            await client.query("UPDATE key SET soldierid = $1 WHERE id = $2;", [soldId, keyMoveId]);
+
+                            if (firstSingleMove) {
+                                await client.query("UPDATE key SET soldierid = NULL WHERE id = $1;", [keyId]);
+                                firstSingleMove = false;
+                            }
+
+                            await client.query(`UPDATE soldier SET used_room = $1 WHERE id = $2;`, [keyMoveId, soldId]);
+                            await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                                [req.session.username, `Move soldier ${soldId} from room ${keyId} to room ${keyMoveId}`]);
+                        }
+                    }
 
                     await client.query('COMMIT');
                     res.status(200).json({ message: 'The soldier has been successfully moved' });
@@ -3046,7 +3721,7 @@ class Server {
                 }
 
                 await Promise.all([
-                    client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [soldierId, soldierName, soldierCountry]),
+                    client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, NULL, NULL, NULL, $4);", [soldierId, soldierName, soldierCountry, req.session.camp]),
                     client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)", [req.session.username, `Add soldier ${soldierName}`])
                 ]);
 
@@ -3076,9 +3751,7 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const check_soldier_accommodatation = await Promise.all([
-                    client.query(`SELECT id FROM soldier WHERE date_accommodation IS NOT NULL AND date_free IS NULL AND id = $1`, code)
-                ]);
+                const check_soldier_accommodatation = await client.query(`SELECT id FROM soldier WHERE date_accommodation IS NOT NULL AND date_free IS NULL AND id = $1`, [code]);
 
                 if (check_soldier_accommodatation.rows.length > 0) {
                     return res.status(401).json({ message: "The soldier is deployed to reduce him from the system first release him" });
@@ -3142,7 +3815,7 @@ class Server {
                     const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [soldierId]);
                     const respons = result.rows[0];
 
-                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, $4, $5, $6, $7, $8);", [soldierNewId, soldierName, soldierCountry, respons.date_accommodation || null, respons.date_free || null, respons.meal_card || null, respons.laundry_bag_id || null, respons.used_room || null]);
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);", [soldierNewId, soldierName, soldierCountry, respons.date_accommodation || null, respons.date_free || null, respons.meal_card || null, respons.laundry_bag_id || null, respons.used_room || null, respons.camp_id]);
 
                     await Promise.all([
                         client.query("UPDATE movesoldier SET idsoldier = $1 WHERE idsoldier = $2;", [soldierNewId, soldierId]),
@@ -3231,7 +3904,7 @@ class Server {
                 }
 
                 await Promise.all(data.map(async (row) => {
-                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL);", [row.soldierId, row.soldierName, row.soldierCountry]);
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, NULL, NULL, NULL, $4);", [row.soldierId, row.soldierName, row.soldierCountry, req.session.camp]);
                 }));
 
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -3311,7 +3984,8 @@ class Server {
                 WHERE nameroom NOT LIKE '%/E_' AND SUBSTRING(nameroom, POSITION('/E' IN nameroom) + 2, 1) BETWEEN '0' AND '9'
                 AND nameroom NOT LIKE '%/D_' AND SUBSTRING(nameroom, POSITION('/D' IN nameroom) + 2, 1) BETWEEN '0' AND '9'
                 AND namesoldier IS NULL AND k.id IS NOT NULL AND b.type = 'Accommodation'
-                ORDER BY nameroom, namekey;`);
+                AND b.camp_id = $1
+                ORDER BY nameroom, namekey;`, [req.session.camp]);
 
                 const data = result.rows;
 
@@ -3322,11 +3996,13 @@ class Server {
                 const worksheet = workbook.addWorksheet('Accommodation Multipul Soldiers');
 
                 // Add column headers (modify based on your table structure)
-                worksheet.columns = Object.keys(data[0]).map((key) => ({
-                    header: key,
-                    key: key,
-                    width: 15,
-                }));
+                if (data.length > 0) {
+                    worksheet.columns = Object.keys(data[0]).map((key) => ({
+                        header: key,
+                        key: key,
+                        width: 15,
+                    }));
+                }
 
                 // Add rows
                 data.forEach((row) => {
@@ -3420,12 +4096,12 @@ class Server {
                     }
 
                     const [result_check_bag, result_check_bag_soldier] = await Promise.all([
-                        client.query("SELECT * FROM laundrybags where code = $1;", [row.laundrybag]),
+                        client.query("SELECT * FROM laundrybags WHERE code = $1 AND camp_id = $2;", [row.laundrybag, req.session.camp]),
                         client.query(`
                             SELECT * FROM soldier s 
 							LEFT JOIN additionalitem ai ON s.id = ai.soldier_id
                             LEFT JOIN laundrybags l ON s.laundry_bag_id = l.id OR l.id = ai.bag_id
-                            WHERE l.code = $1 AND s.date_accommodation IS NOT NULL AND date_free IS NULL;`, [row.laundrybag])
+                            WHERE l.code = $1 AND s.date_accommodation IS NOT NULL AND date_free IS NULL AND l.camp_id = $2;`, [row.laundrybag, req.session.camp])
                     ]);
 
                     if (result_check_bag.rows.length === 0) {
@@ -3567,7 +4243,7 @@ class Server {
                 await client.query('BEGIN');
 
                 const result_build = await client.query(
-                    `SELECT * FROM buildings WHERE id = $1;`, [buildId]
+                    `SELECT * FROM buildings WHERE namebuilding = $1 AND camp_id = $2;`, [buildName, req.session.camp]
                 );
 
                 if (result_build.rows.length > 0) {
@@ -3575,9 +4251,11 @@ class Server {
                     return res.status(401).json({ message: 'This destination already exists!' });
                 }
 
+                const randomBuildId = crypto.randomBytes(16).toString('hex');
+
                 await Promise.all([
                     client.query(
-                        `INSERT INTO buildings VALUES ($1, $2, $3);`, [buildId, buildName, buildType]
+                        `INSERT INTO buildings VALUES ($1, $2, $3, $4);`, [randomBuildId, buildName, buildType, req.session.camp]
                     ),
                     client.query(
                         "INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -3646,10 +4324,23 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const buildingName = clickBuild ?? roomName.split('/')[0];
+                let buildingName;
+
+                if (clickBuild !== '')
+                    buildingName = clickBuild;
+
+                else {
+                    const build_id = await client.query(`SELECT id FROM buildings WHERE namebuilding = $1 AND camp_id = $2`,
+                        [`Building ${roomName.split('/')[0]}`, req.session.camp]);
+
+                    buildingName = build_id.rows[0].id;
+                }
 
                 const result_build = await client.query(
-                    `SELECT * FROM rooms WHERE id = $1;`, [roomId]
+                    `SELECT * FROM rooms r
+                    LEFT JOIN buildroom br ON br.roomid = r.id
+                    LEFT JOIN buildings b ON b.id = br.buildid
+                    WHERE nameroom = $1 AND b.camp_id = $2;`, [roomName, req.session.camp]
                 );
 
                 if (result_build.rows.length > 0) {
@@ -3657,15 +4348,17 @@ class Server {
                     return res.status(401).json({ message: 'This room already exists!' });
                 }
 
+                const randomRoomId = crypto.randomBytes(16).toString('hex');
+
                 await Promise.all([
-                    client.query("INSERT INTO rooms VALUES ($1, $2)", [roomId, roomName]),
-                    client.query("INSERT INTO buildroom VALUES ($1, $2)", [buildingName, roomId]),
+                    client.query("INSERT INTO rooms VALUES ($1, $2)", [randomRoomId, roomName]),
+                    client.query("INSERT INTO buildroom VALUES ($1, $2)", [buildingName, randomRoomId]),
                     client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                        [req.session.username, `Add room ${roomName} to ${buildingName}`])
+                        [req.session.username, `Add room ${roomName} to ${roomName.split('/')[0]}`])
                 ]);
 
                 await client.query('COMMIT');
-                return res.status(200).send({ message: `The room ${roomName} was added into building ${buildingName}.` });
+                return res.status(200).send({ message: `The room ${roomName} was added into building ${roomName.split('/')[0]}.` });
 
             } catch (error) {
                 await client.query('ROLLBACK');
@@ -3705,7 +4398,9 @@ class Server {
                     result = await client.query(`
                         SELECT r.* 
                         FROM rooms r
-                        WHERE nameroom SIMILAR TO '%/(E|D)[0-9]%';`);
+                        LEFT JOIN buildroom br ON br.roomid = r.id
+                        LEFT JOIN buildings b ON br.buildid = b.id
+                        WHERE nameroom SIMILAR TO '%/(E|D)[0-9]%' AND b.camp_id = $1;`, [req.session.camp]);
                 }
 
                 const result_room_data = result.rows;
@@ -3736,7 +4431,7 @@ class Server {
                 return res.status(400).send({ message: error.details[0].message });
             }
 
-            const { numBuild, numRoom } = req.body;
+            const { numRoom } = req.body;
 
             const client = await pool.connect();
 
@@ -3744,38 +4439,14 @@ class Server {
 
                 await client.query('BEGIN');
 
-                let result;
-
-                if (numBuild === 'D') {
-
-                    result = await client.query(`
+                const result = await client.query(`
                     SELECT k.*
                     FROM key k
                     LEFT JOIN roomskey rk ON rk.keyid = k.id
                     LEFT JOIN rooms r ON r.id = rk.roomid
-                    WHERE r.id = $1
-                    AND r.nameroom SIMILAR TO '%/(D)[0-9]%';`, [numRoom]);
-
-                } else if (numBuild === 'E') {
-
-                    result = await client.query(`
-                    SELECT k.*
-                    FROM key k
-                    LEFT JOIN roomskey rk ON rk.keyid = k.id
-                    LEFT JOIN rooms r ON r.id = rk.roomid
-                    WHERE r.id = $1
-                    AND r.nameroom SIMILAR TO '%/(E)[0-9]%';`, [numRoom]);
-
-                } else {
-
-                    result = await client.query(`
-                    SELECT k.*
-                    FROM key k
-                    LEFT JOIN roomskey rk ON rk.keyid = k.id
-                    LEFT JOIN rooms r ON r.id = rk.roomid
-                    WHERE r.id = $1
-                    AND r.nameroom NOT SIMILAR TO '%/(E|D)[0-9]%';`, [numRoom]);
-                }
+                    LEFT JOIN buildroom br ON br.roomid = r.id
+                    LEFT JOIN buildings b ON br.buildid = b.id
+                    WHERE r.nameroom = $1 AND b.camp_id = $2;`, [numRoom, req.session.camp]);
 
                 const result_key_data = result.rows;
                 let total_res = [];
@@ -3811,7 +4482,10 @@ class Server {
                     LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id
                     LEFT JOIN roomskey rk ON rk.keyid = k.id
                     LEFT JOIN rooms r ON rk.roomid = r.id
-                    JOIN assets a ON a.location_key = k.id;`);
+					LEFT JOIN buildroom br ON br.roomid = r.id
+					LEFT JOIN buildings b ON br.buildid = b.id
+                    JOIN assets a ON a.location_key = k.id
+                    WHERE b.camp_id = $1;`, [req.session.camp]);
 
                 const result_key_data = result.rows;
                 let total_res = [];
@@ -3895,6 +4569,12 @@ class Server {
                     `SELECT * FROM key WHERE id = $1;`, [keyId]
                 );
 
+                const get_room_id = await client.query(`
+                    SELECT r.id FROM rooms r
+                    LEFT JOIN buildroom br ON br.roomid = r.id
+                    LEFT JOIN buildings b ON br.buildid = b.id
+                    WHERE r.nameroom = $1 AND b.camp_id = $2`, [selectedRoomForKey, req.session.camp]);
+
                 if (result_key.rows.length > 0) {
                     await client.query('ROLLBACK');
                     return res.status(401).json({ message: 'This key already exists!' });
@@ -3902,7 +4582,7 @@ class Server {
 
                 await Promise.all([
                     client.query("INSERT INTO key VALUES ($1, $2)", [keyId, keyName]),
-                    client.query("INSERT INTO roomskey VALUES ($1, $2)", [selectedRoomForKey, keyId]),
+                    client.query("INSERT INTO roomskey VALUES ($1, $2)", [get_room_id.rows[0].id, keyId]),
                     client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                         [req.session.username, `Add key ${keyName} to room ${selectedRoomForKey}`])
                 ]);
@@ -4045,7 +4725,8 @@ class Server {
                     SELECT ai.id, s.namesoldier, ai.description, ai.quantity, lb.code
                     FROM additionalitem ai
 					LEFT JOIN soldier s ON s.id = ai.soldier_id
-                    LEFT JOIN laundrybags lb ON lb.id = ai.bag_id;`);
+                    LEFT JOIN laundrybags lb ON lb.id = ai.bag_id
+                    WHERE s.camp_id = $1;`, [req.session.camp]);
 
                 const result_data = result.rows;
                 let total_res = [];
@@ -4129,6 +4810,29 @@ class Server {
     }
 
     defineRoutesFitnes() {
+
+        // Serve APK file from local directory
+        this.app.get('/download-apk-gym', this.isLoggedIn.bind(this), (req, res) => {
+            // Path to your APK file
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RateFitnesCleaning-1.0-release.apk');
+
+            // Check legality and existence of the APK file
+            if (!this.checkApkFileLegality(apkFilePath, res)) {
+                return;
+            }
+
+            // Set proper headers for an APK file
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
+            res.setHeader('Content-Disposition', 'attachment; filename="RateFitnesCleaning-1.0-release.apk"'); // Force download with custom filename
+
+            // Use res.download() to send the file to the client
+            res.download(apkFilePath, (err) => {
+                if (err) {
+                    console.error('Error downloading the file:', err);
+                    res.status(500).send('Error downloading the file');
+                }
+            });
+        });
 
         this.app.post('/sendClientData', async (req, res) => {
             const { error } = clientDataSchema.validate(req.body);
@@ -4238,16 +4942,17 @@ class Server {
                             COUNT(f.soldierid) AS soldier_count
                         FROM fitness f
                         LEFT JOIN soldier s ON f.soldierid = s.id
+                        WHERE s.camp_id = $1
                         GROUP BY s.namesoldier, created_date
-                        ORDER BY created_date;
-                    `),
+                        ORDER BY created_date;`, [req.session.camp]),
                     client.query(`
                         SELECT 
                             COUNT(CASE WHEN f.emoji = '😞' THEN 1 END) AS percent_sad,
                             COUNT(CASE WHEN f.emoji = '😐' THEN 1 END) AS percent_neutral,
                             COUNT(CASE WHEN f.emoji = '😁' THEN 1 END) AS percent_very_happy
                         FROM fitness f
-                    `)
+                        LEFT JOIN soldier s ON f.soldierid = s.id
+                        WHERE s.camp_id = $1;`, [req.session.camp])
                 ]);
 
                 const data = data_emoji.rows;
@@ -4311,18 +5016,19 @@ class Server {
                             COUNT(f.soldierid) AS soldier_count
                         FROM fitness f
                         LEFT JOIN soldier s ON f.soldierid = s.id
-                        WHERE f.created_at::date BETWEEN $1 AND $2
+                        WHERE f.created_at::date BETWEEN $1 AND $2 AND s.camp_id = $3
                         GROUP BY s.namesoldier, created_date
                         ORDER BY created_date;
-                    `, [date1, date2]),
+                    `, [date1, date2, req.session.camp]),
                     client.query(`
                         SELECT 
                             COUNT(CASE WHEN f.emoji = '😞' THEN 1 END) AS percent_sad,
                             COUNT(CASE WHEN f.emoji = '😐' THEN 1 END) AS percent_neutral,
                             COUNT(CASE WHEN f.emoji = '😁' THEN 1 END) AS percent_very_happy
                         FROM fitness f
-                        WHERE f.created_at::date BETWEEN $1 AND $2
-                    `, [date1, date2])
+                        LEFT JOIN soldier s ON f.soldierid = s.id
+                        WHERE f.created_at::date BETWEEN $1 AND $2 AND s.camp_id = $3
+                    `, [date1, date2, req.session.camp])
                 ]);
 
                 const total_data = data_emoji_total.rows[0];
@@ -4471,7 +5177,8 @@ class Server {
                         COUNT(*) AS count,
                         SUM(laundrycount) AS sum
                     FROM laundrybags
-                    GROUP BY status, type;`);
+                    WHERE camp_id = $1
+                    GROUP BY status, type;`, [req.session.camp]);
 
                 const bagData = {};
                 const totalCounts = {};
@@ -4508,20 +5215,22 @@ class Server {
                     const query = `
                         SELECT ${column} as value
                         FROM laundrybags
-                        WHERE ${column} <> 0
-                        GROUP BY ${column};`;
+                        WHERE ${column} <> 0 AND camp_id = $1;`;
 
                     try {
-                        const results = await client.query(query);
-                        var updatedTime;
+                        const results = await client.query(query, [req.session.camp]);
 
-                        if (results.rows.length > 0) {
-                            updatedTime = results.rows[0].value;
-                            totalAvgTimeInSeconds += parseInt(updatedTime, 10) || 0;
-                            count += 1;
-                        } else {
-                            updatedTime = 0;
-                        }
+                        let totalTime = 0;
+                        let localCount = 0;
+
+                        results.rows.forEach(row => {
+                            totalTime += parseInt(row.value, 10) || 0;
+                            localCount += 1;
+                        });
+
+                        let updatedTime = localCount > 0 ? Math.floor(totalTime / localCount) : 0;
+                        totalAvgTimeInSeconds += updatedTime;
+                        count += localCount;
 
                         avgTimeData[status] = formatTime(updatedTime);
 
@@ -4605,7 +5314,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { codes, destination, prev_destination } = req.body;
+            const { codes, destination, prev_destination, campId } = req.body;
 
             if (!Array.isArray(codes)) {
                 return res.status(400).json({ message: "Invalid codes array" });
@@ -4658,8 +5367,8 @@ class Server {
                 const avgTimeResult = await client.query(
                     `SELECT AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds 
                      FROM laundrybags 
-                     WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1;`,
-                    [prev_destination]
+                     WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1 AND camp_id = $2;`,
+                    [prev_destination, campId]
                 );
 
                 const avgTimeRow = avgTimeResult.rows[0];
@@ -4669,8 +5378,8 @@ class Server {
                         await client.query(
                             `UPDATE laundrybags 
                              SET ${columnName} = $1 
-                             WHERE status = $2;`,
-                            [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination]
+                             WHERE status = $2 AND camp_id = $3;`,
+                            [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination, campId]
                         );
                     }
                 }
@@ -4727,7 +5436,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { codes, destination, prev_destination } = req.body;
+            const { codes, destination, prev_destination, campId } = req.body;
 
             if (!Array.isArray(codes)) {
                 return res.status(400).json({ message: "Invalid codes array" });
@@ -4755,7 +5464,7 @@ class Server {
 
             } catch (error) {
                 await client.query('ROLLBACK');
-                console.error(error); // Log the error
+                console.error(error);
                 res.status(500).json({ message: "Internal server error" });
             } finally {
                 client.release();
@@ -4867,7 +5576,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { countScaneCode, prev_destination } = req.body;
+            const { countScaneCode, prev_destination, campId } = req.body;
             const client = await pool.connect();
 
             try {
@@ -4879,7 +5588,7 @@ class Server {
                     FROM laundrybags l
 					LEFT JOIN additionalitem ai ON ai.bag_id = l.id
                     LEFT JOIN soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
-                    WHERE s.date_accommodation IS NOT NULL AND s.date_free IS NULL AND l.status = $1;`, [prev_destination]);
+                    WHERE s.date_accommodation IS NOT NULL AND s.date_free IS NULL AND l.status = $1 AND l.camp_id = $2;`, [prev_destination, campId]);
 
                 const bag = result.rows;
 
@@ -4920,7 +5629,7 @@ class Server {
                     LEFT JOIN soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
                     WHERE s.date_accommodation IS NOT NULL AND s.date_free IS NULL AND l.id = $1;`, [code]);
 
-                if (!result.rows[0].id) {
+                if (result.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.status(404).json({ message: "Laundry bag is in storage" });
                 }
@@ -4939,11 +5648,6 @@ class Server {
                         UPDATE laundryreport SET date_ready_to_pick_up = CURRENT_TIMESTAMP WHERE bag_id = $1 AND date_ready_to_pick_up IS NULL;`, [code]));
                 }
 
-                if (destination === 'None') {
-                    queries.push(client.query(`
-                        UPDATE laundrybags SET status = $1 WHERE id = $2;`, [destination, code]));
-                }
-
                 if (prev_destination === 'None') {
                     queries.push(client.query(`
                         INSERT INTO laundryreport VALUES ($1, CURRENT_TIMESTAMP, NULL);`, [code]));
@@ -4955,14 +5659,14 @@ class Server {
                     queries.push(client.query(`
                         UPDATE laundrybags SET laundrycount = laundrycount + 1 WHERE id = $1;`, [code]));
 
-                } else if (destination === 'None') {
+                } else {
                     queries.push(client.query(`
                         UPDATE laundrybags SET timeout = CURRENT_TIMESTAMP WHERE id = $1;`, [code]));
 
                     const avgTimeResult = await client.query(`
                         SELECT AVG(EXTRACT(EPOCH FROM (timeout - timein))) AS avg_time_in_seconds
                         FROM laundrybags
-                        WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1;`, [prev_destination]);
+                        WHERE timeout IS NOT NULL AND timein IS NOT NULL AND status = $1 AND camp_id = $2;`, [prev_destination, req.session.camp]);
 
                     const avgTimeRow = avgTimeResult.rows[0];
                     if (avgTimeRow) {
@@ -4971,7 +5675,7 @@ class Server {
                             queries.push(client.query(`
                                 UPDATE laundrybags
                                 SET ${columnName} = $1
-                                WHERE status = $2;`, [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination]));
+                                WHERE status = $2 AND camp_id = $3;`, [Math.floor(avgTimeRow.avg_time_in_seconds), prev_destination, req.session.camp]));
                         }
                     }
                 }
@@ -5010,7 +5714,7 @@ class Server {
                     SELECT * 
                     FROM laundrybags 
                     WHERE status = 'Ready to pick up' 
-                    AND timein < NOW() - INTERVAL '1 week';`);
+                    AND timein < NOW() - INTERVAL '1 week' AND camp_id = $1;`, [req.session.camp]);
 
                 if (result.rows.length > 0) {
                     await client.query('ROLLBACK');
@@ -5064,7 +5768,8 @@ class Server {
                         WHERE 
                             s.date_accommodation IS NOT NULL AND
                             s.date_free IS NULL AND 
-                            l.status = $1
+                            l.status = $1 AND
+                            l.camp_id = $2
                         ORDER BY 
                         islate ASC),
                         query2 AS (SELECT
@@ -5083,13 +5788,14 @@ class Server {
                         WHERE 
                             s.date_accommodation IS NOT NULL AND
                             s.date_free IS NULL AND 
-                            l.status = $1
+                            l.status = $1 AND 
+                            l.camp_id = $2
                         ORDER BY 
                         islate ASC)
 						SELECT * FROM query1
 						UNION ALL
 						SELECT * FROM query2
-						WHERE NOT EXISTS (SELECT 1 FROM query1);`, [status]);
+						WHERE NOT EXISTS (SELECT 1 FROM query1);`, [status, req.session.camp]);
                 } else {
                     result = await client.query(`
                         WITH query1 AS (SELECT
@@ -5103,7 +5809,8 @@ class Server {
                             soldier s ON s.laundry_bag_id = l.id
                         WHERE 
                             s.date_accommodation IS NOT NULL AND
-                            s.date_free IS NULL),
+                            s.date_free IS NULL
+                            AND l.camp_id = $1),
                         query2 AS (SELECT
                             l.id,
                             l.code
@@ -5115,11 +5822,12 @@ class Server {
                             soldier s ON ai.soldier_id = s.id
                         WHERE 
                             s.date_accommodation IS NOT NULL AND
-                            s.date_free IS NULL)
+                            s.date_free IS NULL
+                            AND l.camp_id = $1)
 						SELECT * FROM query1
 						UNION ALL
 						SELECT * FROM query2
-						WHERE NOT EXISTS (SELECT 1 FROM query1);`);
+						WHERE NOT EXISTS (SELECT 1 FROM query1);`, [req.session.camp]);
                 }
 
                 await client.query('COMMIT');
@@ -5162,7 +5870,7 @@ class Server {
                                 s.namesoldier,
                                 s.country
                             FROM soldier s
-                            WHERE s.laundry_bag_id IS NOT NULL
+                            WHERE s.laundry_bag_id IS NOT NULL AND s.camp_id = $3
                             ORDER BY s.laundry_bag_id, 
                                     (s.date_free IS NULL) DESC, 
                                     s.date_free DESC
@@ -5185,7 +5893,7 @@ class Server {
                             FROM laundrybags l
                             JOIN laundryreport lr ON lr.bag_id = l.id
                             JOIN latest_soldier ls ON l.id = ls.laundry_bag_id
-                            WHERE lr.date_drop_off BETWEEN $1 AND $2
+                            WHERE lr.date_drop_off BETWEEN $1 AND $2 AND l.camp_id = $3
                         ),
                         query2 AS (
                             SELECT 
@@ -5205,12 +5913,12 @@ class Server {
                             FROM laundrybags l
                             JOIN laundryreport lr ON lr.bag_id = l.id
                             JOIN soldier s ON l.soldier_id = s.id
-                            WHERE lr.date_drop_off BETWEEN $1 AND $2
+                            WHERE lr.date_drop_off BETWEEN $1 AND $2 AND l.camp_id = $3
                         )
                         SELECT * FROM query1
                         UNION ALL
                         SELECT * FROM query2
-                        WHERE NOT EXISTS (SELECT 1 FROM query1);`, [selectedDate1, selectedDate2]),
+                        WHERE NOT EXISTS (SELECT 1 FROM query1);`, [selectedDate1, selectedDate2, req.session.camp]),
                     client.query(`
                         WITH latest_soldier AS (
                             SELECT DISTINCT ON (s.laundry_bag_id)
@@ -5218,7 +5926,7 @@ class Server {
                             s.laundry_bag_id,
                             s.country
                             FROM soldier s
-                            WHERE s.laundry_bag_id IS NOT NULL
+                            WHERE s.laundry_bag_id IS NOT NULL AND s.camp_id = $3
                             ORDER BY s.laundry_bag_id, 
                                 (s.date_free IS NULL) DESC, 
                                 s.date_free DESC
@@ -5229,7 +5937,7 @@ class Server {
                         FROM laundrybags l
                         JOIN laundryreport lr ON lr.bag_id = l.id
                         JOIN latest_soldier ls ON l.id = ls.laundry_bag_id
-                        WHERE lr.date_drop_off BETWEEN $1 AND $2
+                        WHERE lr.date_drop_off BETWEEN $1 AND $2 AND l.camp_id = $3
                         GROUP BY ls.country),
 						query2 AS (SELECT 
                             COUNT(*) AS total_count_bags,
@@ -5237,12 +5945,12 @@ class Server {
                         FROM laundrybags l
                         JOIN laundryreport lr ON lr.bag_id = l.id
 						JOIN soldier s ON l.soldier_id = s.id
-                        WHERE lr.date_drop_off BETWEEN $1 AND $2
+                        WHERE lr.date_drop_off BETWEEN $1 AND $2 AND l.camp_id = $3
                         GROUP BY s.country)
 						SELECT * FROM query1
 						UNION ALL
 						SELECT * FROM query2
-						WHERE NOT EXISTS (SELECT 1 FROM query1);`, [selectedDate1, selectedDate2])
+						WHERE NOT EXISTS (SELECT 1 FROM query1);`, [selectedDate1, selectedDate2, req.session.camp])
                 ]);
 
                 await client.query('COMMIT');
@@ -5403,6 +6111,7 @@ class Server {
                 return res.status(402).json({ message: "Invalid product code!" });
 
             const { epc, code, type, maxcount } = req.body;
+            const campId = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
 
             const client = await pool.connect();
 
@@ -5417,8 +6126,8 @@ class Server {
                     return res.status(401).json({ message: 'This bag already exists!' });
                 }
 
-                await client.query(`INSERT INTO laundrybags(id, code, type, status, timein, timeout, maxcountlandry, soldier_id) VALUES ($1, $2, $3, 'None', NULL, NULL, $4, NULL);`,
-                    [epc, code, type, maxcount]
+                await client.query(`INSERT INTO laundrybags(id, code, type, status, timein, timeout, maxcountlandry, soldier_id, camp_id) VALUES ($1, $2, $3, 'None', NULL, NULL, $4, NULL, $5);`,
+                    [epc, code, type, maxcount, campId]
                 );
 
                 const username = req.session.username ? req.session.username : "PhoneUser";
@@ -5569,7 +6278,7 @@ class Server {
                     const result = await client.query(`SELECT * FROM laundrybags WHERE id = $1;`, [oldCode]);
                     const response = result.rows[0];
 
-                    await client.query(`INSERT INTO laundrybags VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`, [
+                    await client.query(`INSERT INTO laundrybags VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`, [
                         newCode,
                         code,
                         type,
@@ -5583,7 +6292,8 @@ class Server {
                         response.avg_transportation_drop_off_duration || 0,
                         response.laundrycount || 0,
                         maxcount,
-                        response.soldier_id || null]);
+                        response.soldier_id || null,
+                        response.camp_id]);
 
                     await Promise.all([
                         client.query(`UPDATE additionalItem SET bag_id = $1 WHERE bag_id = $2`, [newCode, oldCode]),
@@ -5613,6 +6323,29 @@ class Server {
 
     defineRoutesAssets() {
 
+        // Serve APK file from local directory
+        this.app.get('/download-apk-asset', this.isLoggedIn.bind(this), (req, res) => {
+            // Path to your APK file
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.0-release.apk');
+
+            // Check legality and existence of the APK file
+            if (!this.checkApkFileLegality(apkFilePath, res)) {
+                return;
+            }
+
+            // Set proper headers for an APK file
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryAsset-1.0-release.apk"'); // Force download with custom filename
+
+            // Use res.download() to send the file to the client
+            res.download(apkFilePath, (err) => {
+                if (err) {
+                    console.error('Error downloading the file:', err);
+                    res.status(500).send('Error downloading the file');
+                }
+            });
+        });
+
         this.app.post('/allAssets', async (req, res) => {
             const { error } = shemaGetBags.validate(req.body);
             if (error) {
@@ -5625,20 +6358,22 @@ class Server {
 
             const client = await pool.connect();
 
+            const camp_id = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
+
             try {
                 // Optional transaction for consistent reads
                 await client.query('BEGIN');
 
-                // Fetch all required data
                 const [resultAllAssets, resultKeys, resultLocations, resultAllLostItem] = await Promise.all([
-                    client.query('SELECT * FROM assets'),
+                    client.query('SELECT * FROM assets WHERE camp_id = $1', [camp_id]),
                     client.query(`
-                        SELECT id AS id, code AS name, quantity FROM assets;`),
+                        SELECT id AS id, code AS name, quantity FROM assets WHERE camp_id = $1;`, [camp_id]),
                     client.query(`
-                        SELECT id, namesoldier AS name FROM soldier WHERE date_accommodation IS NOT NULL AND date_free IS NULL;`),
+                        SELECT id, namesoldier AS name FROM soldier WHERE date_accommodation IS NOT NULL AND date_free IS NULL AND camp_id = $1;`, [camp_id]),
                     client.query(`
                         SELECT nameitem, description, namesoldier, lost_quantity FROM lostitem l
-                        LEFT JOIN soldier s ON s.id = l.soldier_id;`)
+                        LEFT JOIN soldier s ON s.id = l.soldier_id
+                        WHERE l.camp_id = $1;`, [camp_id])
                 ]);
 
                 // Process data
@@ -5713,13 +6448,16 @@ class Server {
             try {
 
                 await client.query('BEGIN');
+                const camp_id = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
 
                 const result = await client.query(`
-                    SELECT k.id, k.namekey, r.nameroom, r.id AS roomid 
-                    FROM key k
-                    LEFT JOIN roomskey rk ON rk.keyid = k.id
-                    LEFT JOIN rooms r ON rk.roomid = r.id
-                    LEFT JOIN assets a ON a.location_key = k.id;`);
+                        SELECT k.id, k.namekey, r.nameroom, r.id AS roomid, camp_id
+                        FROM key k
+                        LEFT JOIN roomskey rk ON rk.keyid = k.id
+                        LEFT JOIN rooms r ON rk.roomid = r.id
+						LEFT JOIN buildroom br ON br.roomid = r.id
+						LEFT JOIN buildings b ON b.id = br.buildid
+						WHERE b.camp_id = $1;`, [camp_id]);
 
                 const result_key_data = result.rows;
                 let total_res = [];
@@ -5763,8 +6501,9 @@ class Server {
                     FROM key k
                     LEFT JOIN roomskey rk ON rk.keyid = k.id
                     LEFT JOIN rooms r ON rk.roomid = r.id
-                    LEFT JOIN assets a ON a.location_key = k.id
-                    WHERE a.location_key IS NULL `);
+                    LEFT JOIN buildroom br ON br.roomid = r.id
+                    LEFT JOIN buildings b ON b.id = br.buildid
+                    WHERE b.camp_id = $1;`, [req.session.camp]);
 
                 const result_key_data = result.rows;
                 let total_res = [];
@@ -5819,10 +6558,11 @@ class Server {
                         SELECT r.id, nameroom, COALESCE(SUM(a.quantity::NUMERIC), 0) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
-                        LEFT JOIN buildroom br ON br.roomid = r.id
+                        LEFT JOIN buildroom br ON br.roomid = r.id 
+                        JOIN buildings b ON b.id = br.buildid AND b.camp_id = $2
                         WHERE br.buildid = $1
                         GROUP BY nameroom, r.id
-                        ORDER BY nameroom;`, [numBuild]);
+                        ORDER BY nameroom;`, [numBuild, req.session.camp]);
 
                     inventory = result_get_room.rows.map(row => ({
                         id: row.id,
@@ -5836,8 +6576,10 @@ class Server {
                         SELECT r.id, nameroom, COALESCE(SUM(a.quantity::NUMERIC), 0) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
+                        LEFT JOIN buildroom br ON r.id = br.roomid
+						JOIN buildings b ON b.id = br.buildid AND b.camp_id = $1
                         GROUP BY nameroom, r.id
-                        ORDER BY nameroom;`);
+                        ORDER BY nameroom;`, [req.session.camp]);
 
                     inventory = result_get_room.rows.map(row => ({
                         id: row.id,
@@ -5846,7 +6588,7 @@ class Server {
                     }));
                 }
 
-                const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings`);
+                const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings WHERE camp_id = $1`, [req.session.camp]);
 
                 navBuild = resultBuild.rows.map(row => ({
                     name: row.namebuilding,
@@ -5899,16 +6641,19 @@ class Server {
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
                         LEFT JOIN buildroom br ON br.roomid = r.id
+                        JOIN buildings b ON b.id = br.buildid AND b.camp_id = $2
                         WHERE br.buildid = $1
                         GROUP BY nameroom, r.id
-                        ORDER BY nameroom;`, [numBuild]);
+                        ORDER BY nameroom;`, [numBuild, req.session.camp]);
                 } else {
                     result_get_room = await client.query(`
                         SELECT r.id, nameroom, COALESCE(SUM(a.quantity::NUMERIC), 0) AS count_assets
                         FROM rooms r
                         LEFT JOIN assets a ON r.id = a.location_room
+                        LEFT JOIN buildroom br ON r.id = br.roomid
+						JOIN buildings b ON b.id = br.buildid AND b.camp_id = $1
                         GROUP BY nameroom, r.id
-                        ORDER BY nameroom;`);
+                        ORDER BY nameroom;`, [req.session.camp]);
                 }
 
                 await Promise.all(result_get_room.rows.map(async (row) => {
@@ -6079,29 +6824,29 @@ class Server {
                     );
                 }
 
-                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [req.session.camp]);
 
                 const queries = [];
 
                 if (result_exist_date.rows.length > 0) {
                     if (asset_quantity === assetQuantity)
-                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity]));
+                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [assetQuantity, req.session.camp]));
 
                     else if (asset_quantity > assetQuantity)
-                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity - assetQuantity]));
+                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [asset_quantity - assetQuantity, req.session.camp]));
 
                     else
-                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity - asset_quantity]));
+                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [assetQuantity - asset_quantity, req.session.camp]));
 
                 } else {
                     if (asset_quantity === assetQuantity)
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1);`, [assetQuantity]));
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1, $2);`, [assetQuantity, req.session.camp]));
 
                     else if (asset_quantity > assetQuantity)
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity - assetQuantity]));
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [asset_quantity - assetQuantity, req.session.camp]));
 
                     else
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [assetQuantity - asset_quantity]));
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [assetQuantity - asset_quantity, req.session.camp]));
                 }
 
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -6132,15 +6877,16 @@ class Server {
             if (!req.body.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { oldCode, newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description } = req.body;
+            const { oldCode, newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description, campId } = req.body;
 
             const client = await pool.connect();
 
             try {
                 await client.query('BEGIN');
 
-                const result_asset_quantity = await client.query(`SELECT quantity FROM assets WHERE id = $1;`, [oldCode]);
+                const result_asset_quantity = await client.query(`SELECT quantity, camp_id FROM assets WHERE id = $1;`, [oldCode]);
                 const asset_quantity = result_asset_quantity.rows[0].quantity;
+                const oldCampId = result_asset_quantity.rows[0].camp_id;
 
                 if (oldCode === newCode) {
                     if (subLocation !== '') {
@@ -6183,13 +6929,13 @@ class Server {
 
                     if (subLocation !== '') {
 
-                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
-                            [newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description ? description : null]
+                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`,
+                            [newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description ? description : null, oldCampId]
                         );
 
                     } else {
-                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12);`,
-                            [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description ? description : null]
+                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12, $13);`,
+                            [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description ? description : null, oldCampId]
                         );
                     }
 
@@ -6198,29 +6944,29 @@ class Server {
                     );
                 }
 
-                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [campId]);
 
                 const queries = [];
 
                 if (result_exist_date.rows.length > 0) {
                     if (asset_quantity === quantity)
-                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [quantity]));
+                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [quantity, campId]));
 
                     else if (asset_quantity > quantity)
-                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity - quantity]));
+                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [asset_quantity - quantity, campId]));
 
                     else
-                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [quantity - asset_quantity]));
+                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [quantity - asset_quantity, campId]));
 
                 } else {
                     if (asset_quantity === quantity)
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1);`, [quantity]));
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1, $2);`, [quantity, campId]));
 
                     else if (asset_quantity > quantity)
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity - quantity]));
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [asset_quantity - quantity, campId]));
 
                     else
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [quantity - asset_quantity]));
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [quantity - asset_quantity, campId]));
                 }
 
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -6267,6 +7013,7 @@ class Server {
                 assetAddDescription } = req.body;
 
             const client = await pool.connect();
+            const campId = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
 
             try {
                 await client.query('BEGIN');
@@ -6281,22 +7028,22 @@ class Server {
                 const queries = [];
 
                 if (selectedAddSubLocationId !== '') {
-                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
-                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription ? assetAddDescription : null]
+                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`,
+                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription ? assetAddDescription : null, campId]
                     ));
 
                 } else {
-                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12);`,
-                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription ? assetAddDescription : null]
+                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12, $13);`,
+                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription ? assetAddDescription : null, campId]
                     ));
                 }
 
-                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [campId]);
                 if (result_exist_date.rows.length > 0) {
-                    queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [assetQuantity]));
+                    queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [assetQuantity, campId]));
 
                 } else {
-                    queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [assetQuantity]));
+                    queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [assetQuantity, campId]));
                 }
 
                 const username = req.session.username ? req.session.username : 'PhoneUser';
@@ -6332,6 +7079,7 @@ class Server {
             const { code } = req.body;
 
             const client = await pool.connect();
+            const campId = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
 
             try {
                 await client.query('BEGIN');
@@ -6339,13 +7087,13 @@ class Server {
                 const result_quantity = await client.query(`SELECT quantity FROM assets WHERE id = $1`, [code]);
                 const asset_quantity = result_quantity.rows[0].quantity;
 
-                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [campId]);
                 const queries = [];
 
                 if (result_exist_date.rows.length > 0) {
-                    queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [asset_quantity]));
+                    queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [asset_quantity, campId]));
                 } else {
-                    queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0);`, [asset_quantity]));
+                    queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [asset_quantity, campId]));
                 }
 
                 queries.push(client.query(`DELETE FROM assets WHERE id = $1`, [code]));
@@ -6430,7 +7178,7 @@ class Server {
 
                 await Promise.all([
                     client.query(`INSERT INTO assetstype VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM assetstype), $1);`, [assetType]),
-                        client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                         [req.session.username, `Add asset type with name ${assetType}`])
                 ]);
 
@@ -6491,7 +7239,11 @@ class Server {
 
             const { error } = schemaLostItems.validate(req.body);
             if (error) {
-                return res.status(400).send({ message: error.details[0].message });
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            if (!req.session.camp) {
+                return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
             }
 
             const { itemName, description, soldierId, lostQuantity } = req.body;
@@ -6502,18 +7254,18 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result = await client.query(`SELECT * FROM assets WHERE code = $1;`, [itemName]);
+                const result = await client.query(`SELECT * FROM assets WHERE code = $1 AND camp_id = $2;`, [itemName, req.session.camp]);
                 const item_into = result.rows[0];
 
-                const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE nameitem = $1;`, [itemName]);
+                const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE nameitem = $1 AND camp_id = $2;`, [itemName, req.session.camp]);
 
                 const queries = [];
 
                 if (get_exist_lost_item.rows.length > 0) {
-                    queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2;`, [lostQuantity, itemName]));
+                    queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2 AND camp_id = $3;`, [lostQuantity, itemName, req.session.camp]));
                 } else {
                     queries.push(client.query(`INSERT INTO lostitem VALUES (
-                        (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`,
+                        (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);`,
                         [
                             itemName,
                             description !== '' ? description : null,
@@ -6529,20 +7281,21 @@ class Server {
                             item_into.asset_owner,
                             item_into.status,
                             item_into.expandable,
-                            item_into.description
+                            item_into.description,
+                            item_into.camp_id
                         ]));
                 }
 
                 const asset_quantity = result.rows[0].quantity;
                 const asset_id = result.rows[0].id;
 
-                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`);
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [req.session.camp]);
 
                 if (result.rows.length > 0) {
                     if (result_exist_date.rows.length > 0) {
-                        queries.push(client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lostQuantity]));
+                        queries.push(client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [lostQuantity, req.session.camp]));
                     } else {
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0);`, [lostQuantity]));
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0, $2);`, [lostQuantity, req.session.camp]));
                     }
 
                     if (asset_quantity - lostQuantity > 0) {
@@ -6585,9 +7338,9 @@ class Server {
                 await client.query('BEGIN');
 
                 const [check_exist, result_exist_date, result_restor_data] = await Promise.all([
-                    client.query(`SELECT * FROM assets WHERE code = $1;`, [code]),
-                    client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE`),
-                    client.query(`SELECT * FROM lostitem WHERE nameitem = $1;`, [code])
+                    client.query(`SELECT * FROM assets WHERE code = $1 AND camp_id = $2;`, [code, req.session.camp]),
+                    client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [req.session.camp]),
+                    client.query(`SELECT * FROM lostitem WHERE nameitem = $1 AND camp_id = $2;`, [code, req.session.camp])
                 ]);
 
                 const restor_data = result_restor_data.rows[0];
@@ -6597,12 +7350,12 @@ class Server {
                         client.query(`UPDATE assets SET quantity = quantity::NUMERIC + $1 WHERE id = $2;`, [lost_quantity, restor_data.item_id]),
                         client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id]),
                         result_exist_date.rows.length > 0
-                            ? client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lost_quantity])
-                            : client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [lost_quantity])
+                            ? client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [lost_quantity, req.session.camp])
+                            : client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [lost_quantity, req.session.camp])
                     ]);
                 } else {
                     await Promise.all([
-                        client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`, [
+                        client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`, [
                             restor_data.item_id,
                             restor_data.nameitem,
                             restor_data.item_name,
@@ -6615,12 +7368,13 @@ class Server {
                             restor_data.item_owner,
                             restor_data.item_status,
                             restor_data.item_expandable,
-                            restor_data.item_description
+                            restor_data.item_description,
+                            restor_data.camp_id
                         ]),
                         client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id]),
                         result_exist_date.rows.length > 0
-                            ? client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE;`, [lost_quantity])
-                            : client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0);`, [lost_quantity])
+                            ? client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [lost_quantity, req.session.camp])
+                            : client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [lost_quantity, req.session.camp])
                     ]);
                 }
 
@@ -6677,7 +7431,7 @@ class Server {
                         LEFT JOIN assetstype at ON a.type_id = at.id
                         LEFT JOIN rooms r ON r.id = a.location_room
                         LEFT JOIN buildroom br ON br.roomid = a.location_room
-                        LEFT JOIN buildings b ON b.id = br.buildid;`
+                        JOIN buildings b ON b.id = br.buildid AND b.camp_id = $1;`, [req.session.camp]
                     ),
                     client.query(
                         `WITH date_series AS (
@@ -6695,7 +7449,7 @@ class Server {
                             change_remove_asset_quantity::NUMERIC AS total_remove, 
                             change_lost_asset_quantity::NUMERIC AS total_lost
                             FROM asset_actions 
-                            WHERE date_change BETWEEN $1 AND $2 + INTERVAL '1 day'
+                            WHERE date_change BETWEEN $1 AND $2 + INTERVAL '1 day' AND camp_id = $3
                         ),
                         asset_after_changes AS (
                             SELECT 
@@ -6704,10 +7458,10 @@ class Server {
                             change_remove_asset_quantity::NUMERIC AS total_remove, 
                             change_lost_asset_quantity::NUMERIC AS total_lost
                             FROM asset_actions 
-                            WHERE date_change > $2 + INTERVAL '1 day'
+                            WHERE date_change > $2 + INTERVAL '1 day' AND camp_id = $3
                         ),
                         initial_assets AS (
-                            SELECT SUM(quantity::NUMERIC) AS initial_asset_count FROM assets
+                            SELECT SUM(quantity::NUMERIC) AS initial_asset_count FROM assets WHERE camp_id = $3
                         ),
                         after_change_totals AS (
                             SELECT COALESCE(SUM(total_added - total_remove - total_lost), 0) AS after_changes_total
@@ -6753,7 +7507,8 @@ class Server {
                             total_removed_assets, 
                             total_missing_assets
                         FROM cumulative_assets
-                        ORDER BY event_date;`, [selectedDate1, selectedDate2]
+                        WHERE total_assets IS NOT NULL
+                        ORDER BY event_date;`, [selectedDate1, selectedDate2, req.session.camp]
                     )
                 ]);
 

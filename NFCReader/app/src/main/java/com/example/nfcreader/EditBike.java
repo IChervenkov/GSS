@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -41,6 +42,7 @@ public class EditBike extends AppCompatActivity {
     private String newNfcContent = "";
     private TextView newNfcTextView;
     private Button submitButton;
+    private Button submitHelmetButton;
     private EditText bikeNameText;
     private OkHttpClient client = new OkHttpClient();
     private ArrayList<String> ownerList = new ArrayList<>();
@@ -56,10 +58,15 @@ public class EditBike extends AppCompatActivity {
 
         newNfcTextView = findViewById(R.id.newNfcTextView);
         submitButton = findViewById(R.id.editButton);
+        submitHelmetButton = findViewById(R.id.editHelmetButton);
         bikeNameText = findViewById(R.id.bikeNameEditText);
 
         // Fetch bike from the server
-        fetchAvailableBikes();
+        try {
+            fetchAvailableBikesAndHelmets();
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
 
         bikeAutoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> {
             String selectedBikeName = (String) parent.getItemAtPosition(position);
@@ -97,9 +104,26 @@ public class EditBike extends AppCompatActivity {
                 Toast.makeText(this, "No NFC content detected!", Toast.LENGTH_SHORT).show();
             }
         });
+
+        submitHelmetButton.setOnClickListener(v -> {
+            if (!oldNfcContent.isEmpty() && !newNfcContent.isEmpty()) {
+                String helmetName = bikeNameText.getText().toString().trim();
+
+                // Check if bikeName matches the required format
+                if (!helmetName.matches("^[0-9]+/[A-Za-z\\s]+$")) {
+                    Toast.makeText(this, "Please enter a valid bike name (e.g., '123/Helmet Name')!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                sendHelmetDataToServer(oldNfcContent, newNfcContent, helmetName);
+
+            } else {
+                Toast.makeText(this, "No NFC content detected!", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
-    private void fetchAvailableBikes() {
+    private void fetchAvailableBikesAndHelmets() throws JSONException {
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(EditBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -107,16 +131,35 @@ public class EditBike extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        Request request = new Request.Builder()
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject jsonData = new JSONObject();
+
+        jsonData.put("campId", GlobalVariable.getCamp(this));
+        jsonData.put("isValidCode", GlobalVariable.getVariable(this));
+
+        RequestBody body = RequestBody.create(JSON, jsonData.toString());
+
+        Request bikeRequest = new Request.Builder()
                 .url("https://bunker.bg/bikes")
+                .post(body)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        Request helmetRequest = new Request.Builder()
+                .url("https://bunker.bg/helmets")
+                .post(body)
+                .build();
+
+        AtomicInteger pendingRequests = new AtomicInteger(2); // Track pending requests
+        JSONArray combinedArray = new JSONArray(); // Store combined results
+
+        Callback commonCallback = new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 runOnUiThread(() -> {
                     Toast.makeText(EditBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    loadingDialog.dismiss();
+                    if (pendingRequests.decrementAndGet() == 0) {
+                        loadingDialog.dismiss();
+                    }
                 });
             }
 
@@ -126,20 +169,38 @@ public class EditBike extends AppCompatActivity {
                     final String responseData = response.body().string();
                     runOnUiThread(() -> {
                         try {
-                            populateBikeAutoComplete(new JSONArray(responseData));
+                            JSONArray dataArray = new JSONArray(responseData);
+                            synchronized (combinedArray) { // Ensure thread safety
+                                for (int i = 0; i < dataArray.length(); i++) {
+                                    combinedArray.put(dataArray.getJSONObject(i));
+                                }
+                            }
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
-                        loadingDialog.dismiss();
+                        if (pendingRequests.decrementAndGet() == 0) {
+                            // Once both requests complete, process combined result
+                            try {
+                                populateBikeAutoComplete(combinedArray);
+                            } catch (JSONException e) {
+                                throw new RuntimeException(e);
+                            }
+                            loadingDialog.dismiss();
+                        }
                     });
                 } else {
                     runOnUiThread(() -> {
-                        Toast.makeText(EditBike.this, "Error fetching client", Toast.LENGTH_SHORT).show();
-                        loadingDialog.dismiss();
+                        Toast.makeText(EditBike.this, "Error fetching data", Toast.LENGTH_SHORT).show();
+                        if (pendingRequests.decrementAndGet() == 0) {
+                            loadingDialog.dismiss();
+                        }
                     });
                 }
             }
-        });
+        };
+
+        client.newCall(bikeRequest).enqueue(commonCallback);
+        client.newCall(helmetRequest).enqueue(commonCallback);
     }
 
     private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
@@ -174,6 +235,8 @@ public class EditBike extends AppCompatActivity {
             jsonData.put("oldBikeId", oldNfcContent);
             jsonData.put("newBikeId", newNfcContent);
             jsonData.put("bikeName", bikeName);
+            jsonData.put("campId", GlobalVariable.getCamp(this));
+            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 
             RequestBody body = RequestBody.create(JSON, jsonData.toString());
             Request request = new Request.Builder()
@@ -198,6 +261,82 @@ public class EditBike extends AppCompatActivity {
                             JSONObject jsonResponse = new JSONObject(responseData);
                             if (response.isSuccessful()) {
                                 String message = jsonResponse.optString("message", "Bike edit successfully.");
+                                runOnUiThread(() -> {
+                                    Toast.makeText(EditBike.this, message, Toast.LENGTH_SHORT).show();
+                                    Intent intent = new Intent(EditBike.this, MainActivity.class);
+                                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    startActivity(intent);
+                                    finish();
+                                });
+                            } else {
+                                String error = jsonResponse.optString("error", "Server error occurred.");
+                                runOnUiThread(() -> {
+                                    Toast.makeText(EditBike.this, "Error: " + error, Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            runOnUiThread(() -> {
+                                Toast.makeText(EditBike.this, "Error processing response", Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    } else {
+                        runOnUiThread(() -> {
+                            Toast.makeText(EditBike.this, "Response body is null", Toast.LENGTH_SHORT).show();
+                            loadingDialog.dismiss();
+                        });
+                    }
+                }
+            });
+        } catch (JSONException e) {
+            e.printStackTrace();
+            runOnUiThread(() -> {
+                Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                loadingDialog.dismiss();
+            });
+        }
+    }
+
+    private void sendHelmetDataToServer(String oldNfcContent, String newNfcContent, String helmetName) {
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(EditBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject jsonData = new JSONObject();
+        try {
+            jsonData.put("oldHelmetId", oldNfcContent);
+            jsonData.put("newHelmetId", newNfcContent);
+            jsonData.put("helmetName", helmetName);
+            jsonData.put("campId", GlobalVariable.getCamp(this));
+            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
+
+            RequestBody body = RequestBody.create(JSON, jsonData.toString());
+            Request request = new Request.Builder()
+                    .url("https://bunker.bg/editParameturHelmet")
+                    .post(body)
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        loadingDialog.dismiss();
+                    });
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    if (response.body() != null) {
+                        String responseData = response.body().string();
+                        try {
+                            JSONObject jsonResponse = new JSONObject(responseData);
+                            if (response.isSuccessful()) {
+                                String message = jsonResponse.optString("message", "Helmet edit successfully.");
                                 runOnUiThread(() -> {
                                     Toast.makeText(EditBike.this, message, Toast.LENGTH_SHORT).show();
                                     Intent intent = new Intent(EditBike.this, MainActivity.class);

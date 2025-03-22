@@ -25,6 +25,8 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -49,7 +51,6 @@ public class AddAsset extends AppCompatActivity {
     private AutoCompleteTextView assetSubLocationText;
     private RFIDWithUHFUART rfidReader;
     private boolean isInventory = false;
-    private ThreadInventory threadInventory;
     private Spinner assetExpandableText;
     private EditText assetCategoriesText;
     private EditText assetQuantityText;
@@ -57,6 +58,8 @@ public class AddAsset extends AppCompatActivity {
     private EditText assetOwnerText;
     private Spinner assetStatusText;
     private EditText assetDescriptionText;
+    private ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,9 +142,6 @@ public class AddAsset extends AppCompatActivity {
         try {
             rfidReader = RFIDWithUHFUART.getInstance();
             rfidReader.init();
-
-            // Set the output power to minimum
-            rfidReader.setPower(1); // Replace '5' with the actual minimum value defined in the API
 
             Toast.makeText(AddAsset.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -237,7 +237,7 @@ public class AddAsset extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
@@ -254,6 +254,7 @@ public class AddAsset extends AppCompatActivity {
                 payload.put("assetStatus", status);
                 payload.put("assetAddExpandable", expandable);
                 payload.put("assetAddDescription", description);
+                payload.put("campId", GlobalVariable.getCamp(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
                 RequestBody body = RequestBody.create(JSON, payload.toString());
@@ -282,7 +283,7 @@ public class AddAsset extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void navigateToAssets() {
@@ -318,7 +319,7 @@ public class AddAsset extends AppCompatActivity {
             if (isInventory) {
                 stopInventoryThread();
             } else {
-                new Thread(() -> {
+                executorService.execute(() -> {
                     final boolean serverActive;
                     try {
                         serverActive = isServerActive();
@@ -332,7 +333,7 @@ public class AddAsset extends AppCompatActivity {
                             Toast.makeText(AddAsset.this, "Server is not active. Cannot start scan.", Toast.LENGTH_SHORT).show();
                         }
                     });
-                }).start();
+                });
             }
             return true;
         }
@@ -362,39 +363,33 @@ public class AddAsset extends AppCompatActivity {
         // Start inventory tag reading
         if (rfidReader.startInventoryTag()) {
             isInventory = true;
-            threadInventory = new ThreadInventory();
-            threadInventory.start(); // Start the background thread for reading tags
+
+            executorService.execute(() -> {
+
+                while (isInventory) {
+                    UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
+                    if (uhftagInfo == null) {
+                        try {
+                            Thread.sleep(20);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt(); // Properly interrupt the thread
+                            break;
+                        }
+                        continue;
+                    }
+
+                    epc = uhftagInfo.getEPC();
+                    if (epc != null && !epc.isEmpty()) {
+                        stopInventoryThread(); // Stop the inventory scanning when EPC is found
+                        runOnUiThread(() -> updateEpcTextView(epc)); // Update UI with EPC code
+                    }
+                }
+            });
+
         } else {
             Toast.makeText(AddAsset.this, "Failed to start scanning", Toast.LENGTH_SHORT).show();
         }
     }
-
-    // Background thread for scanning RFID tags
-    private class ThreadInventory extends Thread {
-
-        @Override
-        public void run() {
-            while (isInventory && !Thread.interrupted()) {
-                UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
-                if (uhftagInfo == null) {
-                    try {
-                        Thread.sleep(20);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt(); // Properly interrupt the thread
-                        break;
-                    }
-                    continue;
-                }
-
-                epc = uhftagInfo.getEPC();
-                if (epc != null && !epc.isEmpty()) {
-                    stopInventoryThread(); // Stop the inventory scanning when EPC is found
-                    runOnUiThread(() -> updateEpcTextView(epc)); // Update UI with EPC code
-                }
-            }
-        }
-    }
-
 
     // Method to stop the background thread for reading tags
     private void stopInventoryThread() {
@@ -402,14 +397,6 @@ public class AddAsset extends AppCompatActivity {
             isInventory = false; // Set flag to false to stop the loop in the thread
             if (rfidReader != null) {
                 rfidReader.stopInventory(); // Stop the RFID inventory
-            }
-            if (threadInventory != null) {
-                try {
-                    threadInventory.interrupt(); // Interrupt the thread to stop it
-                    threadInventory = null; // Clean up thread reference
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
             }
         }
     }
@@ -440,7 +427,7 @@ public class AddAsset extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
             try {
 
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -473,7 +460,7 @@ public class AddAsset extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void populateAssetTypeAutoComplete(JSONArray types) throws JSONException {
@@ -503,7 +490,7 @@ public class AddAsset extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
             try {
                 // Define the media type for the JSON payload
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -511,6 +498,7 @@ public class AddAsset extends AppCompatActivity {
                 // Prepare the request payload
                 JSONObject payload = new JSONObject();
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
+                payload.put("campId", GlobalVariable.getCamp(this));
 
                 // Create the request body
                 RequestBody body = RequestBody.create(JSON, payload.toString());
@@ -594,6 +582,12 @@ public class AddAsset extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executorService.shutdown(); // Shutdown executor properly
     }
 }

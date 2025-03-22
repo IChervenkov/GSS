@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const roomId = document.getElementById('room-id');
     const roomName = document.getElementById('room-name');
+    const clickBuildNumber = document.getElementById('click-build-number');
     const clickBuild = document.getElementById('click-build');
 
     const soldierId = document.getElementById('soldier-number');
@@ -221,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Function to fetch soldier from the server
-    async function fetchSpecialKey(numBuild, numRoom) {
+    async function fetchSpecialKey(numRoom) {
 
         loadingIndicator.style.display = 'flex';
 
@@ -231,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ numBuild: numBuild, numRoom: numRoom })
+                body: JSON.stringify({ numRoom: numRoom })
             });
 
             if (!responseBike.ok) {
@@ -731,6 +732,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             rooms = await responseBike.json(); // Store fetched bikes in the global variable
 
+            // Find the room where rooms.id === the last item.keyMoveId in moveList
+            const lastMoveItem = moveList[moveList.length - 1];
+            const roomToUpdate = moveList.length > 0 ? rooms.find(room => room.id === lastMoveItem.keyMoveId) : '';
+
+            if (roomToUpdate) {
+                // Replace the last 2 characters in rooms.name
+                rooms.find(room => room.id === moveList[0].keyId).name = rooms.find(room => room.id === moveList[0].keyId).name.slice(0, -2) + '✅';
+                rooms.find(room => room.id === lastMoveItem.keyMoveId).name = roomToUpdate.name.slice(0, -2) + '🚫';
+            }
+
         } catch (error) {
             console.error('There was a problem with the fetch operation:', error);
 
@@ -797,16 +808,26 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const result = await responseSoldier.json();
-            document.getElementById('modal-soldier-2').textContent = `Soldier: ${result.name}`;
-            document.getElementById('selectedSoldMoveId').value = result.id;
+
+            if (moveList.length > 0 && moveList[0].keyId === selectedSoldierMoveId.value) {
+                document.getElementById('modal-soldier-2').textContent = `Soldier: None`;
+                document.getElementById('selectedSoldMoveId').value = '';
+
+            } else {
+                let soldierId = moveList.find(item => item.keyMoveId === selectedSoldierMoveId.value) ?
+                    moveList.find(item => item.keyMoveId === selectedSoldierMoveId.value).soldId :
+                    result.id;
+
+                let soldierName = soldiers.find(soldier => soldier.id === soldierId) ? soldiers.find(soldier => soldier.id === soldierId).name : 'None';
+
+                document.getElementById('modal-soldier-2').textContent = `Soldier: ${soldierName}`;
+                document.getElementById('selectedSoldMoveId').value = soldierId;
+            }
         }
     });
 
     // Fetch the soldier when the script loads
     fetchItem();
-
-    // Fetch the rooms when the script loads
-    fetchRoom();
 
     // Fetch the bags when the script loads
     fetchBag();
@@ -902,10 +923,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function openModalKey(roomNumber) {
         // Remove all slashes from roomNumber
-        const cleanedRoomNumber = roomNumber.replace(/[/\s]/g, '');
+        const cleanedRoomNumber = roomNumber.replace(/\s/g, '');
 
         // Fetch the keys when the script loads
-        fetchSpecialKey(document.getElementById('numBuild').value, cleanedRoomNumber);
+        fetchSpecialKey(cleanedRoomNumber);
 
         // Add the slide-in effect by adding the necessary classes
         modalKey.classList.add('show');
@@ -1276,6 +1297,10 @@ document.addEventListener('DOMContentLoaded', function () {
             item.value = '';
         });
 
+        Array.from(document.getElementsByClassName('search-input-view-second')).forEach(item => {
+            item.value = '';
+        });
+
         // Add the slide-out effect
         modalRepContent.classList.add('slide-out');
         modalRepContent.classList.remove('slide-in');
@@ -1556,6 +1581,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         modalMoveContent.classList.remove('slide-out');
+
+        // Fetch the rooms when the script loads
+        fetchRoom();
 
         document.getElementById('modal-move-room-1').textContent = roomNumber1;
         document.getElementById('modal-soldier-1').textContent = `Soldier: ${soldierName1}`;
@@ -2207,7 +2235,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             data.forEach(row => {
                 const newRow = soldierUsageTableBody.insertRow();
-                newRow.insertCell().textContent = row.nameroom ? row.nameroom : 'No room assigned';
+                newRow.insertCell().textContent = row.namekey ? row.namekey : 'No key assigned';
                 newRow.insertCell().textContent = row.namesoldier;
                 newRow.insertCell().textContent = row.country;
                 newRow.insertCell().textContent = row.date_accommodation ? row.date_accommodation : 'Not accommodated';
@@ -2796,7 +2824,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('#soldier-name').forEach((input) => {
         input.addEventListener('input', function () {
             const soldierId = document.getElementById('soldier-number').value;
-            console.log(soldierId);
             const soldierNamePattern = new RegExp(`^${soldierId} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
             toggleInputValidity(input, input.value !== "" && soldierNamePattern.test(input.value));
         });
@@ -2812,8 +2839,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         input.addEventListener('input', function () {
             const soldierId = document.getElementById('edit-soldier-number').value;
-            const soldierNamePattern = new RegExp(`^${soldierId.value} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
-            toggleInputValidity(input, input.value !== "" && !soldierNamePattern.test(input.value));
+            const soldierNamePattern = new RegExp(`^${soldierId} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
+            toggleInputValidity(input, input.value !== "" && soldierNamePattern.test(input.value));
         });
     });
 
@@ -3140,17 +3167,29 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     roomName.addEventListener('input', function () {
-        toggleInputValidity(roomName, roomName.value !== "" && new RegExp(`^${clickBuild.value}\/${roomId.value}$`).test(roomName.value));
+        
+        if (clickBuildNumber.value)
+            toggleInputValidity(roomName, roomName.value !== "" && new RegExp(`^${clickBuildNumber.value}\/${roomId.value}$`).test(roomName.value));
+        else
+            toggleInputValidity(roomName, true);
     });
 
     document.getElementById('form7').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
 
-        const inputsToCheck = [
-            { input: roomId, condition: roomId.value === "" || !/^[a-zA-Z0-9]+$/.test(roomId.value) },
-            { input: roomName, condition: roomName.value === "" || !new RegExp(`^${clickBuild.value}\/${roomId.value}$`).test(roomName.value) },
-        ];
+        let inputsToCheck;
+        if (clickBuildNumber.value) {
+            inputsToCheck = [
+                { input: roomId, condition: roomId.value === "" || !/^[a-zA-Z0-9]+$/.test(roomId.value) },
+                { input: roomName, condition: roomName.value === "" || !new RegExp(`^${clickBuildNumber.value}\/${roomId.value}$`).test(roomName.value) },
+            ];
+        } else {
+            inputsToCheck = [
+                { input: roomId, condition: false },
+                { input: roomName, condition: false },
+            ];
+        }
 
         let isValid = true;
 
@@ -3164,15 +3203,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         if (!isValid) {
-            return;
-        }
-
-        // Remove all '/' from roomId
-        const cleanedRoomName = roomName.value.replace(/\//g, '');
-
-        // Check if the cleaned roomId is equal to the original roomId
-        if (roomId !== cleanedRoomName) {
-            showGlobalMess('Error', 'The room number must equal with room name with remove delimiter (/).');
             return;
         }
 
@@ -3352,7 +3382,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     keyName.addEventListener('input', () => {
-        let roomId = selectedRoomForKey.value.slice(0, 2) + '/' + selectedRoomForKey.value.slice(2);
+        let roomId = selectedRoomForKey.value;
         toggleInputValidity(keyName, keyName.value !== "" && new RegExp(`^${roomId}\/[0-9]+$`).test(keyName.value));
     });
 
@@ -3362,7 +3392,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const inputsToCheck = [
             { input: keyId, condition: keyId.value === "" || !/^[a-zA-Z0-9]+$/.test(keyId.value) },
-            { input: keyName, condition: keyName.value === "" || !new RegExp(`^${selectedRoomForKey.value.slice(0, 2) + '/' + selectedRoomForKey.value.slice(2)}\/[0-9]+$`).test(keyName.value) }
+            { input: keyName, condition: keyName.value === "" || !new RegExp(`^${selectedRoomForKey.value}\/[0-9]+$`).test(keyName.value) }
         ];
 
         let isValid = true;
@@ -3573,7 +3603,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const soldierNamePattern = new RegExp(`^${editSoldierId.value} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
         const inputsToCheck = [
             { input: editSoldierId, condition: editSoldierId.value === "" },
-            { input: newKeyName, condition: editSoldierName.value === "" || !soldierNamePattern.test(editSoldierName.value) },
+            { input: editSoldierName, condition: editSoldierName.value === "" || !soldierNamePattern.test(editSoldierName.value) },
             { input: editSoldierCountry, condition: editSoldierCountry.value === "" }
         ];
 
@@ -3782,11 +3812,8 @@ document.addEventListener('DOMContentLoaded', function () {
         showGlobalMess('Warning', 'Are you sure you want to add this additional item?');
     };
 
-    function handleSoldierRelocation(selectedKeyId) {
+    function handleSoldierRelocation() {
         try {
-            const selectedSoldier = soldiers.find(soldier => soldier.keyid === selectedKeyId);
-            const soldier = selectedSoldier ? { id: selectedSoldier.id, name: selectedSoldier.name } : null;
-            const room = selectedSoldier ? { id: selectedKeyId, name: selectedSoldier.namekey } : null;
 
             const keyId = document.getElementById('previewKey')?.value;
             const soldId = document.getElementById('previewSoldier')?.value;
@@ -3804,24 +3831,26 @@ document.addEventListener('DOMContentLoaded', function () {
             noButton.classList.add('btn', 'btn-danger');
             modalGlobalMessContent.appendChild(noButton);
 
-            if (soldier) {
+            if (soldMoveId) {
 
-                showGlobalMess('Warning', `The room already has ${soldier.name}. Do you want to relocate them?`);
+                const soldierName = document.getElementById('modal-soldier-2').textContent.split(': ')[1];
+                const keyNumber = soldierSearchMoveInput.value.slice(0, -2);
+
+                showGlobalMess('Warning', `The room already has ${soldierName}. Do you want to relocate them?`);
 
                 yesButton.onclick = () => {
                     moveList.push({ keyId, soldId, keyMoveId, soldMoveId: '' });
 
-                    document.getElementById('key-code-value').value = room.id;
-                    selectedSoldierId.value = soldier.id;
+                    document.getElementById('key-code-value').value = keyMoveId;
+                    selectedSoldierId.value = soldMoveId;
                     soldierSearchMoveInput.value = '';
                     selectedSoldierMoveId.value = '';
                     document.getElementById('modal-soldier-2').textContent = 'Soldier: Undefined';
                     soldierSearchMoveInput.classList.remove("is-invalid");
                     soldierSearchMoveInput.classList.remove("is-valid");
 
-
                     closeGlobalMessModal();
-                    openMoveModal(`Key number: ${room.name}`, soldier.name);
+                    openMoveModal(`Key number: ${keyNumber}`, soldierName);
                 }
 
                 noButton.onclick = () => {
@@ -3877,7 +3906,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        handleSoldierRelocation(selectedSoldierMoveId.value);
+        handleSoldierRelocation();
 
         // const keyId = document.getElementById('previewKey').value;
         // const soldId = document.getElementById('previewSoldier').value;
@@ -4191,8 +4220,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (target.closest('.btn-add')) {
             const button = event.target.closest('button');
             const numBuild = button.name;
+            const nameBuild = button.getAttribute('numberBuild');
 
             clickBuild.value = numBuild;
+            clickBuildNumber.value = nameBuild;
             openModalAddRoom();
 
         }

@@ -14,6 +14,8 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
@@ -27,6 +29,7 @@ public class Rated extends AppCompatActivity {
     private String selectedEmoji = null;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable timeoutRunnable = this::onTimeout;
+    private ExecutorService executorService = Executors.newFixedThreadPool(3);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,7 +56,7 @@ public class Rated extends AppCompatActivity {
 
     // Modify the sendEmojiData method to include modal and clear old data
     private void sendEmojiData(String emoji) {
-        new Thread(() -> {
+        executorService.execute(() -> {
             try {
                 // Prepare the request body
                 RequestBody body = new FormBody.Builder()
@@ -85,7 +88,7 @@ public class Rated extends AppCompatActivity {
                     showErrorDialog("Error: " + e.getMessage());
                 });
             }
-        }).start();
+        });
     }
 
     // Method to show success dialog
@@ -140,6 +143,7 @@ public class Rated extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        executorService.shutdown();
         // Ensure the timeout is canceled when the activity is destroyed
         cancelTimeout();
     }

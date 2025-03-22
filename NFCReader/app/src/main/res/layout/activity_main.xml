@@ -24,16 +24,14 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="44dp"
         android:backgroundTint="@android:color/holo_green_dark"
+        android:drawableLeft="@drawable/ic_rent"
+        android:drawablePadding="8dp"
+        android:drawableTint="@android:color/white"
         android:text="Rent Bike"
-        android:textColor="@android:color/white"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.195"
+        app:layout_constraintHorizontal_bias="0.129"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/titleText" />
-
-    <!-- Add Bike Button -->
-
-    <!-- Remove Bike Button -->
 
     <Button
         android:id="@+id/buttonPage2"
@@ -42,7 +40,9 @@
         android:layout_marginTop="44dp"
         android:backgroundTint="@android:color/holo_green_dark"
         android:text="Return Bike"
-        android:textColor="@android:color/white"
+        android:drawableTint="@android:color/white"
+        android:drawableLeft="@drawable/ic_return"
+        android:drawablePadding="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.652"
         app:layout_constraintStart_toEndOf="@+id/buttonPage1"
@@ -54,10 +54,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:backgroundTint="@android:color/holo_green_dark"
+        android:drawableLeft="@drawable/ic_search_bike"
+        android:drawablePadding="8dp"
+        android:drawableTint="@android:color/white"
         android:text="Search Bike"
-        android:textColor="@android:color/white"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.18"
+        app:layout_constraintHorizontal_bias="0.109"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/buttonPage1" />
 
@@ -68,7 +70,9 @@
         android:layout_marginTop="24dp"
         android:backgroundTint="@android:color/holo_green_dark"
         android:text="Search Client"
-        android:textColor="@android:color/white"
+        android:drawableTint="@android:color/white"
+        android:drawableLeft="@drawable/ic_search_client"
+        android:drawablePadding="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.699"
         app:layout_constraintStart_toEndOf="@+id/buttonSearchBike"
@@ -80,10 +84,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:backgroundTint="@android:color/holo_green_dark"
+        android:drawableLeft="@drawable/ic_add_bike"
+        android:drawablePadding="8dp"
+        android:drawableTint="@android:color/white"
         android:text="Add Bike"
-        android:textColor="@android:color/white"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.192"
+        app:layout_constraintHorizontal_bias="0.138"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/buttonSearchBike" />
 
@@ -94,7 +100,9 @@
         android:layout_marginTop="16dp"
         android:backgroundTint="@android:color/holo_green_dark"
         android:text="Remove Bike"
-        android:textColor="@android:color/white"
+        android:drawableTint="@android:color/white"
+        android:drawableLeft="@drawable/ic_remove_bike"
+        android:drawablePadding="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.715"
         app:layout_constraintStart_toEndOf="@+id/buttonAddBike"
@@ -102,15 +110,28 @@
 
     <Button
         android:id="@+id/buttonEditBike"
-        android:layout_width="134dp"
-        android:layout_height="46dp"
+        android:layout_width="138dp"
+        android:layout_height="48dp"
         android:layout_marginTop="16dp"
         android:backgroundTint="@android:color/holo_green_dark"
+        android:drawableLeft="@drawable/ic_edit_bike"
+        android:drawableTint="@android:color/white"
         android:text="Edit Bike"
-        android:textColor="@android:color/white"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/buttonAddBike" />
 
+    <ImageButton
+        android:id="@+id/buttonSettings"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Settings"
+        android:src="@drawable/ic_settings"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="HardcodedText" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

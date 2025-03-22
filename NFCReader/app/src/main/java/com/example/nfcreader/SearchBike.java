@@ -117,6 +117,7 @@ public class SearchBike extends AppCompatActivity {
         JSONObject json = new JSONObject();
         try {
             json.put("nfcData", nfcData);
+            json.put("isValidCode", GlobalVariable.getVariable(this));
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -179,6 +180,7 @@ public class SearchBike extends AppCompatActivity {
         JSONObject jsonData = new JSONObject();
         try {
             jsonData.put("id", bikeId);
+            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
         } catch (JSONException e) {
             e.printStackTrace();
             Toast.makeText(this, "Error creating JSON: " + e.getMessage(), Toast.LENGTH_SHORT).show();

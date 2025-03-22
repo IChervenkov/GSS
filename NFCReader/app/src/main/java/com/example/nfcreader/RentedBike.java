@@ -52,10 +52,12 @@ public class RentedBike extends AppCompatActivity {
 
     private NfcAdapter nfcAdapter;
     private TextView nfcTextView;
+    private TextView nfcHelmetCode;
     private DatePicker datePicker;
     private TimePicker timePicker;
     private Button submitButton;
     private String nfcContent = "";
+    private String nfcHelmetContent = "";
     private Integer scanningIndex = 1;
     private final Map<BikeInfo, String> clientIdMap = new HashMap<>();
     private final Map<BikeInfo, String> keyIdMap = new HashMap<>();
@@ -72,6 +74,7 @@ public class RentedBike extends AppCompatActivity {
 
         clientAutoCompleteTextView = findViewById(R.id.clientAutoCompleteTextView);
         nfcTextView = findViewById(R.id.nfcTextView);
+        nfcHelmetCode = findViewById(R.id.nfcHelmetCode);
         datePicker = findViewById(R.id.datePicker);
         timePicker = findViewById(R.id.timePicker);
         submitButton = findViewById(R.id.submitButton);
@@ -139,7 +142,7 @@ public class RentedBike extends AppCompatActivity {
                 String date = year + "-" + (month < 10 ? "0" + month : month) + "-" + (day < 10 ? "0" + day : day);
                 String time = (hour < 10 ? "0" + hour : hour) + ":" + (minute < 10 ? "0" + minute : minute);
 
-                checkBikeRented(nfcContent, date, time, selectedClientId);
+                checkBikeRented(nfcContent, date, time, selectedClientId, nfcHelmetContent);
 
             } else {
                 Toast.makeText(this, "No NFC content detected!", Toast.LENGTH_SHORT).show();
@@ -155,8 +158,22 @@ public class RentedBike extends AppCompatActivity {
             loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
             loadingDialog.show();
 
+            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+            JSONObject jsonData = new JSONObject();
+
+            try {
+                jsonData.put("campId", GlobalVariable.getCamp(this));
+                jsonData.put("isValidCode", GlobalVariable.getVariable(this));
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            RequestBody body = RequestBody.create(JSON, jsonData.toString());
+
             Request request = new Request.Builder()
                     .url("https://bunker.bg/getClient")
+                    .post(body)
                     .build();
 
             client.newCall(request).enqueue(new Callback() {
@@ -256,9 +273,7 @@ public class RentedBike extends AppCompatActivity {
             byte[] tagId = tag.getId();
             String nfcId = bytesToHex(tagId);
 
-            if(scanningIndex % 2 != 0)
-                nfcContent = nfcId;
-            else {
+            if(scanningIndex % 2 == 0) {
                 String selectedClientName = null;
                 String selectedClientId = nfcId;
 
@@ -318,6 +333,7 @@ public class RentedBike extends AppCompatActivity {
             JSONObject json = new JSONObject();
             try {
                 json.put("nfcData", nfcData);
+                json.put("isValidCode", GlobalVariable.getVariable(this));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -345,7 +361,17 @@ public class RentedBike extends AppCompatActivity {
                         try {
                             JSONObject jsonResponse = new JSONObject(responseData);
                             String bikeName = jsonResponse.getString("namebike");
-                            nfcTextView.setText("Bike code: " + bikeName);
+                            String helmetCode = jsonResponse.getString("code");
+
+                            if(!bikeName.isEmpty()) {
+                                nfcTextView.setText("Bike code: " + bikeName);
+                                nfcContent = nfcData;
+                            }
+                            else if(!helmetCode.isEmpty()) {
+                                nfcHelmetCode.setText("Helmet code: " + helmetCode);
+                                nfcHelmetContent = nfcData;
+                            }
+
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -355,13 +381,14 @@ public class RentedBike extends AppCompatActivity {
         });
     }
 
-    private void checkBikeRented(String nfcData, String date, String time, String selectedClientId) {
+    private void checkBikeRented(String nfcData, String date, String time, String selectedClientId, String nfcHelmetDate) {
         OkHttpClient client = new OkHttpClient();
 
         // Prepare the JSON request body
         JSONObject json = new JSONObject();
         try {
             json.put("bikeId", nfcData);
+            json.put("isValidCode", GlobalVariable.getVariable(this));
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -413,7 +440,7 @@ public class RentedBike extends AppCompatActivity {
                             });
                         } else {
                             // Send data to the server
-                            sendDataToServer(nfcContent, date, time, selectedClientId);
+                            sendDataToServer(nfcContent, date, time, selectedClientId, nfcHelmetDate);
                         }
 
                     } catch (JSONException e) {
@@ -447,8 +474,7 @@ public class RentedBike extends AppCompatActivity {
         }
     }
 
-
-    private void sendDataToServer(String nfcData, String date, String time, String selectedClientId) {
+    private void sendDataToServer(String nfcData, String date, String time, String selectedClientId, String nfcHelmetDate) {
 
         try {
             MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -457,6 +483,8 @@ public class RentedBike extends AppCompatActivity {
             jsonData.put("date", date);
             jsonData.put("time", time);
             jsonData.put("selectClient", selectedClientId);
+            jsonData.put("helmetId", nfcHelmetDate);
+            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 
             RequestBody body = RequestBody.create(JSON, jsonData.toString());
 

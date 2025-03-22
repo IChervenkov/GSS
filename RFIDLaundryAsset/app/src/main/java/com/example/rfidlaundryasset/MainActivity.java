@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -19,6 +20,8 @@ import org.json.JSONObject;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -30,6 +33,8 @@ public class MainActivity extends AppCompatActivity {
 
     private OkHttpClient client; // Reuse a single OkHttpClient instance
     private boolean isValidCode;
+    private ImageButton settingsButton;
+    private ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
 
     @SuppressLint("MissingInflatedId")
     @Override
@@ -40,8 +45,20 @@ public class MainActivity extends AppCompatActivity {
         client = new OkHttpClient();
         isValidCode = GlobalVariable.getVariable(this);
 
-        if(!isValidCode)
+        if(!isValidCode) {
             showCodeEntryDialog();
+            return;
+        }
+
+        String campId = GlobalVariable.getCamp(this);
+
+        if(campId.isEmpty()) {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            Toast.makeText(MainActivity.this, "No set camp. Set a camp to start scanning.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         findViewById(R.id.buttonLaundry).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -57,6 +74,13 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(MainActivity.this, Assets.class);
                 startActivity(intent);
             }
+        });
+
+        settingsButton = findViewById(R.id.buttonSettings);
+
+        settingsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
         });
     }
 
@@ -110,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkDataToServer(String code, EditText input, AlertDialog dialog) {
-        new Thread(() -> {
+        executorService.execute(()-> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
@@ -145,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
             }
-        }).start();
+        });
     }
 
     private void handleError(Response response, EditText input) {
@@ -176,6 +200,12 @@ public class MainActivity extends AppCompatActivity {
             // Optionally, reset or perform other actions after closing the dialog
         });
         builder.show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executorService.shutdown(); // Shutdown executor properly
     }
 
 }

@@ -23,7 +23,6 @@ body {
 .main-content {
     display: flex;
     flex: 1;
-    max-height: calc(100vh - 50px);
 }
 
 /* Left Sidebar */
@@ -35,7 +34,7 @@ body {
     padding-top: 0px;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
-    max-height: calc(100vh - 30px);
+    height: calc(100vh - 50px);
 }
 
 .transparent-bg {
@@ -112,6 +111,7 @@ body {
     flex: 1;
     padding: 20px;
     background-color: #fff;
+    max-height: calc(100vh - 50px);
 }
 
 /* Sample table styling */
@@ -797,6 +797,11 @@ thead th input:focus {
 
 .btn-add-destination {
 
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+    text-align: center;
     padding: 5px 10px 5px 10px;
     border: none;
     border-radius: 5px;
@@ -804,6 +809,7 @@ thead th input:focus {
     color: white;
     font-size: 16px;
     cursor: pointer;
+    margin-top: 16px;
     transition: background-color 0.3s ease;
 }
 
@@ -1360,26 +1366,11 @@ thead th input:focus {
         width: auto;
         background-color: #f4f4f4;
         box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-        transform: translateX(-100%);
-        height: 84%;
-        width: 100%;
-        z-index: 1000;
-        position: fixed;
-        top: 1;
-        left: 0;
-        overflow-y: auto;
-    }
-
-    body.no-scroll {
-        overflow: hidden;
-        /* Disable scrolling on the main page */
     }
 
     /* Add an active class to show the left-nav */
     .left-nav.active {
         display: block;
-        margin-top: 60px;
-        transform: translateX(0);
     }
 
     .left-nav ul.active {

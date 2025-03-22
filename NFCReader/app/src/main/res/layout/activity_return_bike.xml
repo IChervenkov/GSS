@@ -16,12 +16,22 @@
             android:layout_marginTop="50dp"
             android:layout_centerHorizontal="true" />
 
+        <TextView
+            android:id="@+id/nfcHelmetTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/nfcTextView"
+            android:text="Helmet code: None"
+            android:textSize="24sp"
+            android:layout_marginTop="24dp"
+            android:layout_centerHorizontal="true" />
+
         <!-- DatePicker -->
         <DatePicker
             android:id="@+id/datePicker"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/nfcTextView"
+            android:layout_below="@id/nfcHelmetTextView"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
             android:calendarViewShown="true" />

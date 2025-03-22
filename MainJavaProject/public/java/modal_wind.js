@@ -14,14 +14,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalAddBike = document.getElementById('addBikeModal');
     const modalAddBikeContent = modalAddBike.querySelector('.modal-content');
 
+    const modalAddHelmet = document.getElementById('addHelmetModal');
+    const modalAddHelmetContent = modalAddHelmet.querySelector('.modal-content');
+
     const modalRemoveBike = document.getElementById('removeBikeModal');
     const modalRemoveBikeContent = modalRemoveBike.querySelector('.modal-content');
 
     const modalAddMultiBike = document.getElementById('addMultiBikeModal');
     const modalAddMultiBikeContent = modalAddMultiBike.querySelector('.modal-content');
 
+    const modalAddMultiHelmet = document.getElementById('addMultiHelmetModal');
+    const modalAddMultiHelmetContent = modalAddMultiHelmet.querySelector('.modal-content');
+
     const modalEditBike = document.getElementById('bikeEditModal');
     const modalEditBikeContent = modalEditBike.querySelector('.modal-content');
+
+    const modalListHelmets = document.getElementById('listHelmetsModal');
+    const modalListHelmetsContent = modalListHelmets.querySelector('.modal-content');
 
     const selectedStatus = document.getElementById('statusSelect');
     const selectedBike = document.getElementById('editBikeSearch');
@@ -65,6 +74,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var modalSearchClient = document.getElementById("searchClientModal");
     var modalSearchClientContent = modalSearchClient.querySelector(".modal-content-total-info");
 
+    var modalSearchHelmet = document.getElementById("searchHelmetModal");
+    var modalSearchHelmetContent = modalSearchHelmet.querySelector(".modal-content-total-info");
+
     // Get the text inside the modal to modify dynamically
     var modalText = document.getElementById("modalText");
 
@@ -85,11 +97,15 @@ document.addEventListener('DOMContentLoaded', function () {
     var spanTotalLongTermBike = document.getElementsByClassName("close")[8];
     var spanSearchBike = document.getElementsByClassName("close")[9];
     var spanSearchClient = document.getElementsByClassName("close")[10];
-    var spanAddBike = document.getElementsByClassName("close")[11];
-    var spanRemoveBike = document.getElementsByClassName("close")[12];
-    var spanAddMultiBike = document.getElementsByClassName("close")[13];
-    document.getElementsByClassName("close")[14].onclick = closeEditModal;
-    var spanMessRep = document.getElementsByClassName("close")[15];
+    var spanSearchHelmet = document.getElementsByClassName("close")[11];
+    var spanAddBike = document.getElementsByClassName("close")[12];
+    var spanRemoveBike = document.getElementsByClassName("close")[13];
+    var spanAddMultiBike = document.getElementsByClassName("close")[14];
+    document.getElementsByClassName("close")[15].onclick = closeEditModal;
+    document.getElementsByClassName("close")[16].onclick = closeListHelmetsModal;
+    var spanAddHelmet = document.getElementsByClassName("close")[17];
+    var spanAddMultiHelmet = document.getElementsByClassName("close")[18];
+    var spanMessRep = document.getElementsByClassName("close")[19];
 
     const bikeSearchInput = document.getElementById('bikeSearch');
     const bikeSearchDropdown = document.getElementById('bikeDropdown');
@@ -99,15 +115,25 @@ document.addEventListener('DOMContentLoaded', function () {
     const editSoldierSearchDropdown = document.getElementById('editSoldierDropdown');
     const selectedEditSoldierId = document.getElementById('selectedEditSoldierId');
 
+    const editHelmetCodeSearchInput = document.getElementById('editHelmetCode');
+    const editHelmetCodeSearchDropdown = document.getElementById('editHelmetCodeDropdown');
+    const selectedEditHelmetCodeId = document.getElementById('selectedEditHelmetCodeId');
+
     const removeBikeSearchInput = document.getElementById('removeBikeSearch');
     const removeBikeDropdown = document.getElementById('removeBikeDropdown');
     const selectedRemoveBikeId = document.getElementById('selectedRemoveBikeId');
 
     let bikes = [];
+    let helmets = [];
+    let allCheckedRow = [];
 
     const clientSearchInput = document.getElementById('clientSearch');
     const clientSearchDropdown = document.getElementById('clientDropdown');
     const selectedClientId = document.getElementById('selectedClientId');
+
+    const helmetSearchInput = document.getElementById('helmetSearch');
+    const helmetSearchDropdown = document.getElementById('helmetDropdown');
+    const selectedHelmetId = document.getElementById('selectedHelmetId');
 
     const loadingIndicator = document.getElementById('loadingIndicator');
 
@@ -149,12 +175,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    document.getElementById('form6').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
     document.querySelectorAll('tr.data-bike').forEach(row => {
         row.addEventListener('click', function () {
             const bikeName = this.querySelector('td:nth-child(1)').textContent.trim();
             const status = this.querySelector('td:nth-child(2)').getAttribute('data-status');
             const hiredBy = this.querySelector('td:nth-child(3)').textContent.trim();
-            const dateFrom = this.querySelector('td:nth-child(4)').textContent.trim();
+            const helmet = this.querySelector('td:nth-child(4)').textContent.trim();
+            const dateFrom = this.querySelector('td:nth-child(5)').textContent.trim();
 
             if (status === 'Available') {
                 const icon = document.getElementById("mess-icon-rep");
@@ -167,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 openModal(modalMessRep, modalMessRepContent);
             } else {
                 // Call the modal opening function with extracted data
-                openEditModal(bikeName, status, hiredBy, dateFrom);
+                openEditModal(bikeName, status, hiredBy, dateFrom, helmet);
             }
         });
     });
@@ -253,6 +286,13 @@ document.addEventListener('DOMContentLoaded', function () {
             listItems.forEach(li => li.classList.remove('selected'));
         }
 
+        if (modal === modalViewRep) {
+
+            document.querySelectorAll('.search-input-view-bike, .search-input-view-total-bike').forEach((input) => {
+                input.value = '';
+            });
+        }
+
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
             modal.classList.remove('show');
@@ -267,11 +307,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    function openEditModal(bikeName, status, hiredBy, dateFrom) {
+    function openEditModal(bikeName, status, hiredBy, dateFrom, helmetCode) {
 
         editSoldierSearchInput.value = hiredBy === 'None' ? '' : hiredBy;
         const foundClient = clients.find(client => client.name && client.name === hiredBy);
         selectedEditSoldierId.value = foundClient ? foundClient.id : '';
+
+        editHelmetCodeSearchInput.value = helmetCode === 'None' ? '' : helmetCode;
+        const foundHelemt = helmets.find(helmet => helmet.name && helmet.name.replace(/\s*\(.+\)$/, '') === helmetCode);
+        selectedEditHelmetCodeId.value = foundHelemt ? foundHelemt.id : '';
 
         editBikeSearchId = bikes.find(bike => bike.name === bikeName).id;
 
@@ -291,8 +335,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (selectedStatus.value !== 'Repair') {
             editSoldierSearchInput.classList.remove('disabled-select');
+            editHelmetCodeSearchInput.classList.remove('disabled-select');
         } else {
             editSoldierSearchInput.classList.add('disabled-select');
+            editHelmetCodeSearchInput.classList.add('disabled-select');
         }
 
         // Add the slide-in effect by adding the necessary classes
@@ -309,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalEditBikeContent.classList.add('slide-out');
         modalEditBikeContent.classList.remove('slide-in');
 
-        document.querySelectorAll('#statusSelect, #editSoldierSearch, #editDateFrom').forEach((input) => {
+        document.querySelectorAll('#statusSelect, #editSoldierSearch, #editHelmetCode, #editDateFrom').forEach((input) => {
 
             input.classList.remove('is-valid');
             input.classList.remove('is-invalid');
@@ -324,23 +370,213 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    function openListHelmetsModal() {
+        // Add the slide-in effect by adding the necessary classes
+        modalListHelmets.classList.add('show');
+        modalListHelmetsContent.classList.add('show');
+        modalListHelmetsContent.classList.add('slide-in');
+
+        loadingIndicator.style.display = 'flex';
+
+        fetch(`/helmets`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                // Parse the JSON string into an array of objects
+                var helmetListData = data;
+
+                const tbody = document.getElementById('tableBodyModal');
+                const helmetTableBody = document.getElementById('helmetTable').getElementsByTagName('tbody')[0];
+                tbody.innerHTML = '';
+
+                allCheckedRow = []; // Reset the global array
+
+                // Dynamically create the header checkbox
+                const headerCheckbox = document.createElement('input');
+                headerCheckbox.type = 'checkbox';
+                headerCheckbox.className = 'form-check-input header-checkbox';
+                headerCheckbox.style.border = '1px solid black'; // Make the border more bold
+                headerCheckbox.style.backgroundColor = ''; // Clear any previous color
+
+                headerCheckbox.addEventListener('change', (event) => {
+                    headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+                    const isChecked = event.target.checked;
+
+                    // Get all visible rows
+                    const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+
+                    visibleRows.forEach(row => {
+                        const checkbox = row.querySelector('.form-check-input');
+                        if (checkbox) {
+                            checkbox.checked = isChecked;
+                            checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                            if (isChecked) {
+                                allCheckedRow.push({ code: checkbox.dataset.id });
+                            } else {
+                                allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
+                            }
+                        }
+                    });
+
+                    // Ensure no duplicates in allCheckedRow
+                    if (isChecked) {
+                        allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
+                            .map(code => ({ code }));
+                    }
+                });
+
+                // Append the header checkbox to the table header
+                const thead = tbody.parentElement.querySelector('thead');
+                const headerRow = thead.querySelector('tr');
+
+                headerRow.querySelectorAll('th').forEach(th => {
+                    if (!th.textContent.trim()) {
+                        th.remove();
+                    }
+                });
+
+                const headerCell = document.createElement('th');
+                headerCell.appendChild(headerCheckbox);
+                headerRow.insertBefore(headerCell, headerRow.firstChild);
+
+                helmetListData.forEach(item => {
+                    const row = document.createElement("tr");
+                    row.classList.add('data-helmet');
+
+                    // Add the checkbox cell
+                    const checkboxCell = document.createElement('td');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'form-check-input';
+                    checkbox.dataset.id = item.id;
+                    checkbox.style.border = '1px solid black'; // Make the border more bold
+
+                    // Add change event to the checkbox
+                    checkbox.addEventListener('change', () => {
+                        if (checkbox.checked) {
+                            checkbox.style.backgroundColor = 'green';
+                            allCheckedRow.push({ code: item.id });
+                        } else {
+                            checkbox.style.backgroundColor = '';
+                            allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
+                        }
+                    });
+
+                    checkboxCell.appendChild(checkbox);
+                    row.appendChild(checkboxCell);
+
+                    // Room number cell
+                    const codeCell = document.createElement("td");
+                    codeCell.textContent = item.id;
+                    row.appendChild(codeCell);
+
+                    // Room status cell
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = item.name;
+                    row.appendChild(nameCell);
+
+                    // Append row to the table body
+                    tbody.appendChild(row);
+                });
+
+                const rowsTable = helmetTableBody.getElementsByTagName("tr");
+                firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
+
+                setupTableNavigation("helmetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
+            })
+            .catch(error => console.error("Error fetching keys:", error))
+            .finally(() => {
+                loadingIndicator.style.display = 'none';
+            })
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalListHelmetsContent.classList.remove('slide-out');
+    }
+
+    function closeListHelmetsModal() {
+        modalListHelmetsContent.classList.add('slide-out');
+        modalListHelmetsContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('.search-input-helmet').forEach(input => {
+                input.value = '';
+            });
+
+            modalListHelmets.classList.remove('show');
+            modalListHelmetsContent.classList.remove('show');
+
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
     // Function to fetch bikes from the server
     async function fetchItem() {
 
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBike = await fetch(`/bikes`);
+            const responseBike = await fetch(`/bikes`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
             if (!responseBike.ok) {
                 throw new Error('Network response was not ok');
             }
             bikes = await responseBike.json(); // Store fetched bikes in the global variable
+
+            const responseHelmets = await fetch(`/helmets`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!responseHelmets.ok) {
+                throw new Error('Network response was not ok');
+            }
+            helmets = await responseHelmets.json(); // Store fetched bikes in the global variable
 
             const responseClient = await fetch(`/clients`);
             if (!responseClient.ok) {
                 throw new Error('Network response was not ok');
             }
             clients = await responseClient.json(); // Store fetched bikes in the global variable
+
+        } catch (error) {
+            console.error('There was a problem with the fetch operation:', error);
+
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
+    async function fetchHelmetBike(bikeId) {
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+            const responseBike = await fetch(`/getHelmetByBike`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ bikeId: bikeId })
+            });
+
+            if (!responseBike.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const result = await responseBike.json();
+            document.getElementById('modalHelmetLabel').textContent = result.code ? result.code : 'None';
+            document.getElementById('selectedByBikeHelmetId').value = result.helmetId ? result.helmetId : '';
 
         } catch (error) {
             console.error('There was a problem with the fetch operation:', error);
@@ -389,6 +625,23 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function filterEditHelmeet(query) {
+        editHelmetCodeSearchDropdown.innerHTML = '';
+        const filteredHelmet = helmets.filter(helemt => helemt.code.replace(/\s*\(.+\)$/, "").toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredHelmet.length > 0) {
+            editHelmetCodeSearchDropdown.style.display = 'block';
+            filteredHelmet.forEach(helmet => {
+                const li = document.createElement('li');
+                li.textContent = helmet.name;
+                li.setAttribute('data-id', helmet.id);
+                editHelmetCodeSearchDropdown.appendChild(li);
+            });
+        } else {
+            editHelmetCodeSearchDropdown.style.display = 'none';
+        }
+    }
+
     // Show filtered bikes in the dropdown
     function filterRemoveBikes(query) {
         removeBikeDropdown.innerHTML = '';
@@ -428,6 +681,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Show filtered bikes in the dropdown
+    function filterHelmets(query) {
+        helmetSearchDropdown.innerHTML = '';
+        const filteredHelmets = helmets.filter(helmet => helmet.code.toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredHelmets.length > 0) {
+            helmetSearchDropdown.style.display = 'block';
+            filteredHelmets.forEach(helmet => {
+                const li = document.createElement('li');
+                li.textContent = `${helmet.code}`;
+                li.setAttribute('data-id', helmet.id);
+                helmetSearchDropdown.appendChild(li);
+            });
+        } else {
+            helmetSearchDropdown.style.display = 'none';
+        }
+    }
+
     // Handle input change
     clientSearchInput.addEventListener('input', function () {
         const query = clientSearchInput.value;
@@ -435,6 +706,7 @@ document.addEventListener('DOMContentLoaded', function () {
             filterClient(query);
         } else {
             clientSearchDropdown.style.display = 'none';
+            selectedClientId.value = '';
         }
     });
 
@@ -445,7 +717,32 @@ document.addEventListener('DOMContentLoaded', function () {
             filterBikes(query);
         } else {
             bikeSearchDropdown.style.display = 'none';
+            selectedBikeId.value = '';
         }
+    });
+
+    // Handle input change
+    helmetSearchInput.addEventListener('input', function () {
+        const query = helmetSearchInput.value;
+        if (query.length > 0) {
+            filterHelmets(query);
+        } else {
+            helmetSearchDropdown.style.display = 'none';
+            selectedHelmetId.value = '';
+        }
+    });
+
+    // Handle input change
+    editHelmetCodeSearchInput.addEventListener('input', function () {
+        const query = editHelmetCodeSearchInput.value;
+        if (query.length > 0) {
+            filterEditHelmeet(query);
+        } else {
+            editHelmetCodeSearchDropdown.style.display = 'none';
+            selectedEditHelmetCodeId.value = '';
+        }
+
+        toggleInputValidity(editHelmetCodeSearchInput, true);
     });
 
     // Handle input change
@@ -455,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function () {
             filterEditSoldiers(query);
         } else {
             editSoldierSearchDropdown.style.display = 'none';
-            selectedEditSoldierId.value = ''
+            selectedEditSoldierId.value = '';
         }
 
         toggleInputValidity(editSoldierSearchInput, selectedEditSoldierId.value !== '');
@@ -487,6 +784,18 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Handle bike selection
+    editHelmetCodeSearchDropdown.addEventListener('click', function (event) {
+        const selectedHelmet = event.target;
+        if (selectedHelmet && selectedHelmet.dataset.id) {
+            editHelmetCodeSearchInput.value = selectedHelmet.textContent.replace(/\s*\(.+\)$/, "");
+            selectedEditHelmetCodeId.value = selectedHelmet.getAttribute('data-id');
+            editHelmetCodeSearchDropdown.style.display = 'none';
+
+            toggleInputValidity(editHelmetCodeSearchInput, selectedEditHelmetCodeId.value !== '');
+        }
+    });
+
+    // Handle bike selection
     bikeSearchDropdown.addEventListener('click', function (event) {
         const selectedBike = event.target;
         if (selectedBike && selectedBike.dataset.id) {
@@ -494,6 +803,16 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedBikeId.value = selectedBike.getAttribute('data-id');
             bikeSearchDropdown.style.display = 'none';
             updateLabel(bikeLabel, selectedBike.textContent);
+        }
+    });
+
+    // Handle bike selection
+    helmetSearchDropdown.addEventListener('click', function (event) {
+        const selectedHelmet = event.target;
+        if (selectedHelmet && selectedHelmet.dataset.id) {
+            helmetSearchInput.value = selectedHelmet.textContent;
+            selectedHelmetId.value = selectedHelmet.getAttribute('data-id');
+            helmetSearchDropdown.style.display = 'none';
         }
     });
 
@@ -536,6 +855,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!editSoldierSearchDropdown.contains(event.target) && event.target !== editSoldierSearchInput) {
             editSoldierSearchDropdown.style.display = 'none';
+        }
+
+        if (!helmetSearchDropdown.contains(event.target) && event.target !== helmetSearchInput) {
+            helmetSearchDropdown.style.display = 'none';
+        }
+
+        if (!editHelmetCodeSearchDropdown.contains(event.target) && event.target !== editHelmetCodeSearchInput) {
+            editHelmetCodeSearchDropdown.style.display = 'none';
         }
     });
 
@@ -611,6 +938,8 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('longTermCheckbox').style.display = 'inline-block';
             document.getElementById('longTermCheckboxLabel').style.display = 'inline-block';
 
+            document.getElementById('modalHelmetLabel').textContent = selectedHelmetId.value ? helmetSearchInput.value.replace(/\s*\(.+\)$/, "") : 'None';
+
             clientLabel.style.display = "contents";
             labelClient.style.display = "contents";
         }
@@ -630,6 +959,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             document.getElementById('longTermCheckbox').style.display = 'none';
             document.getElementById('longTermCheckboxLabel').style.display = 'none';
+
+            fetchHelmetBike(selectedBikeId.value);
 
             clientLabel.style.display = "none";
             labelClient.style.display = "none";
@@ -743,6 +1074,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                     break;
 
+                case modalAddHelmet:
+                    document.querySelectorAll('#helmet-number, #helmet-name').forEach((input) => {
+
+                        input.classList.remove('is-valid');
+                        input.classList.remove('is-invalid');
+
+                        input.value = '';
+                    });
+                    break;
+
                 case modalRemoveBike:
                     document.querySelectorAll('#removeBikeSearch, #selectedRemoveBikeId').forEach((input) => {
 
@@ -777,10 +1118,13 @@ document.addEventListener('DOMContentLoaded', function () {
     spanCloseModal(spanTotalLongTermBike, modalTotalLongTermBike, modalTotalLongTermBikeContent);
     spanCloseModal(spanSearchBike, modalSearchBike, modalSearchBikeContent);
     spanCloseModal(spanSearchClient, modalSearchClient, modalSearchClientContent);
+    spanCloseModal(spanSearchHelmet, modalSearchHelmet, modalSearchHelmetContent);
     spanCloseModal(spanMessRep, modalMessRep, modalMessRepContent);
     spanCloseModal(spanAddBike, modalAddBike, modalAddBikeContent);
+    spanCloseModal(spanAddHelmet, modalAddHelmet, modalAddHelmetContent);
     spanCloseModal(spanRemoveBike, modalRemoveBike, modalRemoveBikeContent);
     spanCloseModal(spanAddMultiBike, modalAddMultiBike, modalAddMultiBikeContent);
+    spanCloseModal(spanAddMultiHelmet, modalAddMultiHelmet, modalAddMultiHelmetContent);
 
     // When the user clicks anywhere outside of the modal, close it
     window.onclick = function (event) {
@@ -831,6 +1175,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeModal(modalSearchClient, modalSearchClientContent);
                 break;
 
+            case modalSearchHelmet:
+                closeModal(modalSearchHelmet, modalSearchHelmetContent);
+                break;
+
             case modalMessRep:
                 closeModal(modalMessRep, modalMessRepContent);
                 break;
@@ -838,6 +1186,17 @@ document.addEventListener('DOMContentLoaded', function () {
             case modalAddBike:
                 closeModal(modalAddBike, modalAddBikeContent);
                 document.querySelectorAll('#bike-number, #bike-name').forEach((input) => {
+
+                    input.classList.remove('is-valid');
+                    input.classList.remove('is-invalid');
+
+                    input.value = '';
+                });
+                break;
+
+            case modalAddHelmet:
+                closeModal(modalAddHelmet, modalAddHelmetContent);
+                document.querySelectorAll('#helmet-number, #helmet-name').forEach((input) => {
 
                     input.classList.remove('is-valid');
                     input.classList.remove('is-invalid');
@@ -863,8 +1222,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('fileInputBike').value = '';
                 break;
 
+            case modalAddMultiHelmet:
+                closeModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
+                document.getElementById("progress-multi-helmet").style.width = 0 + "%";
+                document.getElementById('fileInputHelmet').value = '';
+                break;
+
             case modalEditBike:
                 closeEditModal();
+                break;
+
+            case modalListHelmets:
+                closeListHelmetsModal();
                 break;
         }
     }
@@ -882,6 +1251,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Open the report modal when the Reports button is clicked on phone
     document.getElementById("btnReportPhone").addEventListener("click", function () {
         openModal(modalRep, modalRepContent);
+    });
+
+    // Open the report modal when the Reports button is clicked
+    document.getElementById("btnListHelmet").addEventListener("click", function () {
+        openListHelmetsModal();
+    });
+
+    // Open the report modal when the Reports button is clicked
+    document.getElementById("btnListHelmetPhone").addEventListener("click", function () {
+        openListHelmetsModal();
     });
 
     document.getElementById("rentedBike").addEventListener("click", function () {
@@ -908,12 +1287,20 @@ document.addEventListener('DOMContentLoaded', function () {
         openModal(modalAddBike, modalAddBikeContent);
     });
 
+    document.getElementById('addHelmet').addEventListener("click", function () {
+        openModal(modalAddHelmet, modalAddHelmetContent);
+    });
+
     document.getElementById('removeBike').addEventListener("click", function () {
         openModal(modalRemoveBike, modalRemoveBikeContent);
     });
 
     document.getElementById('confirmAddMultiBikeBtn').onclick = function () {
         openModal(modalAddMultiBike, modalAddMultiBikeContent);
+    }
+
+    document.getElementById('confirmAddMultiHelmetBtn').onclick = function () {
+        openModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
     }
 
     document.getElementById("searchButtonBike").addEventListener("click", function () {
@@ -1048,6 +1435,152 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    document.getElementById("searchButtonHelmet").addEventListener("click", function () {
+        openModal(modalSearchHelmet, modalSearchHelmetContent);
+
+        // Clear existing rows from the table
+        const existingTableBody = document.querySelector("#searchHelmetModal table tbody");
+        if (existingTableBody) {
+            existingTableBody.remove();
+        }
+
+        const helmetId = selectedHelmetId.value;
+        const helmetContent = helmetSearchInput.value;
+
+        if (helmetContent.length != 0) {
+
+            loadingIndicator.style.display = 'flex';
+
+            // Fetch bike data from server
+            fetch(`/searchHelmet`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: helmetId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector("#searchHelmetModal table tbody");
+
+                    // Clear existing rows if needed
+                    if (tableBody) {
+                        tableBody.remove();
+                    }
+
+                    // Create new table body
+                    const newTableBody = document.createElement("tbody");
+
+                    data.forEach(bike => {
+                        const row = document.createElement("tr");
+
+                        const nameCell = document.createElement("td");
+                        nameCell.textContent = bike.namesoldier;
+                        row.appendChild(nameCell);
+
+                        const dateFromCell = document.createElement("td");
+                        dateFromCell.textContent = bike.datefrom ? bike.datefrom : "None";
+                        row.appendChild(dateFromCell);
+
+                        const dateToCell = document.createElement("td");
+                        dateToCell.textContent = bike.dateto ? bike.dateto : "None";
+                        row.appendChild(dateToCell);
+
+                        newTableBody.appendChild(row);
+                    });
+
+                    // Append new table body to table
+                    document.querySelector("#searchHelmetModal table").appendChild(newTableBody);
+                })
+                .catch(error => {
+                    console.error('Error fetching bike data:', error);
+                })
+                .finally(() => {
+                    loadingIndicator.style.display = 'none';
+                });
+        }
+    });
+
+    document.getElementById("removeHelmet").addEventListener("click", function () {
+
+        const submitButton = document.createElement('button');
+        var isRemove = false;
+        var isError = false;
+        var result = {};
+        
+        const icon = document.getElementById('mess-icon-rep');
+        const message = document.getElementById('mess-text-rep');
+        const btnYes = document.getElementById('btnMess');
+        btnYes.style.display = "none";
+
+        if (allCheckedRow.length === 0) {
+            icon.src = "/icon/error.png";
+            message.textContent = 'You have not selected any helmets to remove';
+            openModal(modalMessRep, modalMessRepContent);
+            return;
+        }
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+        submitButton.addEventListener('click', async () => {
+
+            loadingIndicator.style.display = 'flex';
+
+            for (const data of allCheckedRow) {
+
+                isRemove = true;
+
+                const response = await fetch('/bicycles/removeHelmet', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                if (!response.ok) {
+                    isError = true;
+                }
+
+                result = await response.json();
+            }
+
+            loadingIndicator.style.display = 'none';
+            closeModal(modalMessRep, modalMessRepContent);
+        });
+
+        modalMessRepContent.appendChild(submitButton);
+
+        // Close the warning modal and show the info modal
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                // Explicitly remove submitButton if it's still in the modal content
+                if (modalMessRepContent.contains(submitButton)) {
+                    modalMessRepContent.removeChild(submitButton);
+                }
+
+                if (isRemove && !isError) {
+                    icon.src = "/icon/information.png";
+                    message.textContent = result.message;
+                    openModal(modalMessRep, modalMessRepContent);
+                } else if (isError) {
+                    icon.src = "/icon/error.png";
+                    message.textContent = result.message || 'An error occurred while adding the bike';
+                    openModal(modalMessRep, modalMessRepContent);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        icon.src = "/icon/timeout.png";
+        message.textContent = 'Are you sure you want to remove the selected helmets?';
+        openModal(modalMessRep, modalMessRepContent);
+    });
+
     function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
         for (let i = 0; i < rows.length; i++) {
             rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
@@ -1090,6 +1623,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const newRow = bikeUsageTableBody.insertRow();
                 newRow.insertCell().textContent = row.namebike;
                 newRow.insertCell().textContent = row.namesoldier;
+                newRow.insertCell().textContent = row.helmet_code || 'N/A';
                 newRow.insertCell().textContent = row.date_from;
                 newRow.insertCell().textContent = row.date_to;
                 newRow.insertCell().textContent = row.duration;
@@ -1116,7 +1650,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error('Error fetching the report:', error);
-            
+
         } finally {
             loadingIndicator.style.display = 'none';
         }
@@ -1139,7 +1673,8 @@ document.addEventListener('DOMContentLoaded', function () {
             dateId: document.getElementById('date').value,
             hourSelectId: hourSelect.value,
             minuteSelect: minuteSelect.value,
-            ltstatus: document.getElementById("longTermCheckbox").value
+            ltstatus: document.getElementById("longTermCheckbox").value,
+            helmetId: selectedHelmetId.value ? selectedHelmetId.value : ''
         };
 
         const icon = document.getElementById('mess-icon-rep');
@@ -1157,15 +1692,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: JSON.stringify(data)
             });
 
-            const result = await response.json(); // Parse JSON response
-
             // Display success or error messages
             if (response.ok) {
+                const result = await response.json(); // Parse JSON response
                 message.textContent = result.message;
             } else {
+                const result = await response.json(); // Parse JSON response
                 icon.src = "/icon/error.png";
-                message.textContent = result.error || 'An unexpected error occurred.';
+                message.textContent = result.message || 'An unexpected error occurred.';
             }
+
             btnYes.style.display = "none";
             openModal(modalMessRep, modalMessRepContent);
             this.reset();
@@ -1238,13 +1774,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const bikeAddId = document.getElementById('bike-number');
         const bikeName = document.getElementById('bike-name');
 
-        if (bikeAddId.value === '') {
-            toggleInputValidity(bikeAddId, false);
-            return;
-        }
+        const inputsToCheck = [
+            { input: bikeAddId, condition: bikeAddId.value === "" || !/^[a-zA-Z0-9]+$/.test(bikeAddId.value) },
+            { input: bikeName, condition: bikeName.value === "" || !/^[0-9]+\/[A-Za-z\s]+$/.test(bikeName.value) }
+        ];
 
-        if (bikeName.value === '') {
-            toggleInputValidity(bikeName, false);
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 
@@ -1319,6 +1865,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!modalMessRep.classList.contains('show')) {
                 closeWarningObserver.disconnect();
 
+                // Explicitly remove submitButton if it's still in the modal content
+                if (modalMessRepContent.contains(submitButton)) {
+                    modalMessRepContent.removeChild(submitButton);
+                }
+
                 if (isSubmit && !hasError) {
                     icon.src = "/icon/information.png";
                     message.textContent = responseData.message;
@@ -1348,18 +1899,25 @@ document.addEventListener('DOMContentLoaded', function () {
         // Check if the value is a valid date
         const isValidDate = !isNaN(new Date(value).getTime());
 
-        if (selectedStatus.value === 'Select Status') {
-            toggleInputValidity(selectedStatus, false);
-            return;
-        }
+        const inputsToCheck = [
+            { input: selectedStatus, condition: selectedStatus.value === 'Select Status' },
+            { input: editSoldierSearchInput, condition: selectedEditSoldierId.value === "" },
+            { input: editHelmetCodeSearchInput, condition: false },
+            { input: editDateFrom, condition: !isValidDate }
+        ];
 
-        if (selectedEditSoldierId.value === '') {
-            toggleInputValidity(editSoldierSearchInput, false);
-            return;
-        }
+        let isValid = true;
 
-        if (!isValidDate) {
-            toggleInputValidity(editDateFrom, false);
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
             return;
         }
 
@@ -1378,6 +1936,7 @@ document.addEventListener('DOMContentLoaded', function () {
             bikeId: editBikeSearchId,
             status: selectedStatus.value,
             soldierId: selectedEditSoldierId.value,
+            helmetId: selectedEditHelmetCodeId.value,
             dateFrom: formattedDateFrom
         };
 
@@ -1447,6 +2006,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!modalMessRep.classList.contains('show')) {
                 closeWarningObserver.disconnect();
 
+                // Explicitly remove submitButton if it's still in the modal content
+                if (modalMessRepContent.contains(submitButton)) {
+                    modalMessRepContent.removeChild(submitButton);
+                }
+
                 if (isSubmit && !hasError) {
                     icon.src = "/icon/information.png";
                     message.textContent = responseData.message;
@@ -1464,6 +2028,129 @@ document.addEventListener('DOMContentLoaded', function () {
         // Show the warning modal
         icon.src = "/icon/timeout.png";
         message.textContent = 'Are you sure you want to edit this bike?';
+        openModal(modalMessRep, modalMessRepContent);
+    });
+
+    document.getElementById('form6').addEventListener('submit', async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        const helmetAddId = document.getElementById('helmet-number');
+        const helmetName = document.getElementById('helmet-name');
+
+        const inputsToCheck = [
+            { input: helmetAddId, condition: helmetAddId.value === "" || !/^[a-zA-Z0-9]+$/.test(helmetAddId.value) },
+            { input: helmetName, condition: helmetName.value === "" || !/^[0-9]+\/[A-Za-z\s]+$/.test(helmetName.value) }
+        ];
+
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
+            return;
+        }
+
+        const data = {
+            helmetAddId: helmetAddId.value,
+            helmetName: helmetName.value
+        };
+
+        const icon = document.getElementById('mess-icon-rep');
+        const message = document.getElementById('mess-text-rep');
+        const btnYes = document.getElementById('btnMess');
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        btnYes.style.display = "none";
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            loadingIndicator.style.display = 'flex';
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json(); // Parse JSON response
+
+                // Display success or error messages
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                closeModal(modalMessRep, modalMessRepContent);
+
+            } catch (error) {
+                hasError = true;
+
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+
+        modalMessRepContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessRepContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessRepContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                // Explicitly remove submitButton if it's still in the modal content
+                if (modalMessRepContent.contains(submitButton)) {
+                    modalMessRepContent.removeChild(submitButton);
+                }
+
+                if (isSubmit && !hasError) {
+                    icon.src = "/icon/information.png";
+                    message.textContent = responseData.message;
+                    openModal(modalMessRep, modalMessRepContent);
+                } else if (isSubmit) {
+                    icon.src = "/icon/error.png";
+                    message.textContent = responseData.message || 'An error occurred while adding the bike';
+                    openModal(modalMessRep, modalMessRepContent);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        icon.src = "/icon/timeout.png";
+        message.textContent = 'Are you sure you want to add this helmet?';
         openModal(modalMessRep, modalMessRepContent);
     });
 
@@ -1497,16 +2184,50 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 
-    document.querySelectorAll('#bike-number, #bike-name').forEach((input) => {
-        input.addEventListener('input', function () {
-            if (input.checkValidity() && input.value !== '') {
-                input.classList.add('is-valid');
-                input.classList.remove('is-invalid');
-            } else {
-                input.classList.add('is-invalid');
-                input.classList.remove('is-valid');
-            }
-        });
+    document.getElementById('bike-number').addEventListener('input', function (event) {
+        const input = event.target;
+        if (input.value !== '' && /^[a-zA-Z0-9]+$/.test(input.value)) {
+            input.classList.add('is-valid');
+            input.classList.remove('is-invalid');
+        } else {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+        }
+    });
+
+
+    document.getElementById('bike-name').addEventListener('input', function (event) {
+        const input = event.target;
+        if (input.value !== '' && /^[0-9]+\/[A-Za-z\s]+$/.test(input.value)) {
+            input.classList.add('is-valid');
+            input.classList.remove('is-invalid');
+        } else {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+        }
+    });
+
+    document.getElementById('helmet-number').addEventListener('input', function (event) {
+        const input = event.target;
+        if (input.value !== '' && /^[a-zA-Z0-9]+$/.test(input.value)) {
+            input.classList.add('is-valid');
+            input.classList.remove('is-invalid');
+        } else {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+        }
+    });
+
+
+    document.getElementById('helmet-name').addEventListener('input', function (event) {
+        const input = event.target;
+        if (input.value !== '' && /^[0-9]+\/[A-Za-z\s]+$/.test(input.value)) {
+            input.classList.add('is-valid');
+            input.classList.remove('is-invalid');
+        } else {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+        }
     });
 
     editDateFrom.addEventListener('input', () => {
@@ -1597,6 +2318,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const closeWarningObserver = new MutationObserver(() => {
             if (!modalMessRep.classList.contains('show')) {
                 closeWarningObserver.disconnect();
+
+                // Explicitly remove submitButton if it's still in the modal content
+                if (modalMessRepContent.contains(submitButton)) {
+                    modalMessRepContent.removeChild(submitButton);
+                }
 
                 if (isSubmit && !hasError) {
                     icon.src = "/icon/information.png";
@@ -1710,6 +2436,107 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById("progress-multi-bike").style.width = 0 + "%";
             document.getElementById('fileInputBike').value = '';
             closeModal(modalAddMultiBike, modalAddMultiBikeContent);
+
+            icon.src = '/icon/error.png';
+            message.textContent = "An unexpected error occurred.";
+            openModal(modalMessRep, modalMessRepContent);
+        };
+
+        xhr.send(formData);
+    });
+
+    document.getElementById('upload-multi-helmet-btn').addEventListener("click", function () {
+
+        const fileInput = document.getElementById("fileInputHelmet");
+        const file = fileInput.files[0];
+
+        const icon = document.getElementById("mess-icon-rep");
+        const message = document.getElementById("mess-text-rep");
+        const btnYes = document.getElementById("btnMess");
+
+        icon.src = '/icon/error.png';
+        btnYes.style.display = 'none';
+
+        if (!file) {
+            message.textContent = 'You have not selected a file to upload';
+            openModal(modalMessRep, modalMessRepContent);
+            return;
+        }
+
+        const url = "/bicycles/uploadMultiHelmet";
+        const progressBar = document.getElementById("progress-multi-helmet");
+
+        const updateProgressBar = (percentage) => {
+            progressBar.style.width = percentage + "%";
+        };
+
+        updateProgressBar(0);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Use XMLHttpRequest to track upload progress
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+
+        xhr.upload.onprogress = function (event) {
+            if (event.lengthComputable) {
+                const percentage = (event.loaded / event.total) * 100;
+                updateProgressBar(percentage);
+            }
+        };
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                setTimeout(() => {
+                    document.getElementById("progress-multi-helmet").style.width = 0 + "%";
+                    document.getElementById('fileInputHelmet').value = '';
+                    closeModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
+                    icon.src = '/icon/information.png';
+                    message.textContent = 'File uploaded successfully!';
+                    openModal(modalMessRep, modalMessRepContent);
+                }, 1000);
+
+            } else {
+
+                const data = JSON.parse(xhr.responseText);
+
+                if (data.errors) {
+
+                    data.errors.forEach(error => {
+
+                        switch (error.type) {
+                            case 'Validation':
+                                icon.src = '/icon/error.png';
+                                message.textContent = 'Check the syntax of all rows in the table';
+                                openModal(modalMessRep, modalMessRepContent);
+                                break;
+
+                            default:
+                                icon.src = '/icon/error.png';
+                                message.textContent = error.message;
+                                openModal(modalMessRep, modalMessRepContent);
+                                break;
+                        }
+                    });
+
+                } else {
+                    icon.src = '/icon/error.png';
+                    message.textContent = data.error || "File upload failed.";
+                    openModal(modalMessRep, modalMessRepContent);
+                }
+
+                document.getElementById("progress-multi-helmet").style.width = 0 + "%";
+                document.getElementById('fileInputHelmet').value = '';
+                closeModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
+            }
+        };
+
+        xhr.onerror = function () {
+            console.error('Error:', xhr.statusText);
+            document.getElementById("progress-multi-helemet").style.width = 0 + "%";
+            document.getElementById('fileInputHelmet').value = '';
+            closeModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
 
             icon.src = '/icon/error.png';
             message.textContent = "An unexpected error occurred.";

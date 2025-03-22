@@ -19,6 +19,9 @@ import com.rscja.deviceapi.entity.UHFTAGInfo;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -30,12 +33,12 @@ public class AddBag extends AppCompatActivity {
     private RFIDWithUHFUART rfidReader;
     private boolean isInventory = false;
     private OkHttpClient client; // Reuse a single OkHttpClient instance
-    private ThreadInventory threadInventory;
     private String epc = "";
     private Button submitButton;
     private EditText bagCodeText;
     private EditText bagTypeText;
     private EditText bagMaxWashText;
+    private ExecutorService executorService = Executors.newFixedThreadPool(3);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,9 +56,6 @@ public class AddBag extends AppCompatActivity {
         try {
             rfidReader = RFIDWithUHFUART.getInstance();
             rfidReader.init();
-
-            // Set the output power to minimum
-            rfidReader.setPower(1); // Replace '5' with the actual minimum value defined in the API
 
             Toast.makeText(AddBag.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -109,7 +109,7 @@ public class AddBag extends AppCompatActivity {
             if (isInventory) {
                 stopInventoryThread();
             } else {
-                new Thread(() -> {
+                executorService.execute(() -> {
                     final boolean serverActive;
                     try {
                         serverActive = isServerActive();
@@ -123,7 +123,7 @@ public class AddBag extends AppCompatActivity {
                             Toast.makeText(AddBag.this, "Server is not active. Cannot start scan.", Toast.LENGTH_SHORT).show();
                         }
                     });
-                }).start();
+                });
             }
             return true;
         }
@@ -153,19 +153,8 @@ public class AddBag extends AppCompatActivity {
         // Start inventory tag reading
         if (rfidReader.startInventoryTag()) {
             isInventory = true;
-            threadInventory = new ThreadInventory();
-            threadInventory.start(); // Start the background thread for reading tags
-        } else {
-            Toast.makeText(AddBag.this, "Failed to start scanning", Toast.LENGTH_SHORT).show();
-        }
-    }
 
-    // Background thread for scanning RFID tags
-    private class ThreadInventory extends Thread {
-
-        @Override
-        public void run() {
-            while (isInventory && !Thread.interrupted()) {
+            while (isInventory) {
                 UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
                 if (uhftagInfo == null) {
                     try {
@@ -183,9 +172,11 @@ public class AddBag extends AppCompatActivity {
                     runOnUiThread(() -> updateEpcTextView(epc)); // Update UI with EPC code
                 }
             }
+
+        } else {
+            Toast.makeText(AddBag.this, "Failed to start scanning", Toast.LENGTH_SHORT).show();
         }
     }
-
 
     // Method to stop the background thread for reading tags
     private void stopInventoryThread() {
@@ -193,14 +184,6 @@ public class AddBag extends AppCompatActivity {
             isInventory = false; // Set flag to false to stop the loop in the thread
             if (rfidReader != null) {
                 rfidReader.stopInventory(); // Stop the RFID inventory
-            }
-            if (threadInventory != null) {
-                try {
-                    threadInventory.interrupt(); // Interrupt the thread to stop it
-                    threadInventory = null; // Clean up thread reference
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
             }
         }
     }
@@ -232,7 +215,8 @@ public class AddBag extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
+
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
@@ -240,6 +224,7 @@ public class AddBag extends AppCompatActivity {
                 payload.put("code", code);
                 payload.put("type", type);
                 payload.put("maxcount", maxcount);
+                payload.put("campId", GlobalVariable.getCamp(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
                 RequestBody body = RequestBody.create(JSON, payload.toString());
@@ -268,7 +253,7 @@ public class AddBag extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void navigateToLaundry() {
@@ -296,5 +281,11 @@ public class AddBag extends AppCompatActivity {
                 response.body().close(); // Ensure the response body is closed
             }
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executorService.shutdown(); // Shutdown executor properly
     }
 }

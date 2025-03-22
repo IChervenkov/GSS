@@ -22,6 +22,8 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -33,12 +35,13 @@ public class DeleteAsset extends AppCompatActivity {
 
     private RFIDWithUHFUART rfidReader;
     private boolean isInventory = false;
-    private ThreadInventory threadInventory;
     private Button submitButton;
     private TextView assetEpcText;
     private OkHttpClient client = new OkHttpClient();
     private Map<String, String> assetInfoMap = new HashMap<>();
     private String epc = "";
+    private ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,9 +58,6 @@ public class DeleteAsset extends AppCompatActivity {
         try {
             rfidReader = RFIDWithUHFUART.getInstance();
             rfidReader.init();
-
-            // Set the output power to minimum
-            rfidReader.setPower(1); // Replace '5' with the actual minimum value defined in the API
 
             Toast.makeText(DeleteAsset.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -94,13 +94,14 @@ public class DeleteAsset extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
             try {
 
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
 
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
+                payload.put("campId", GlobalVariable.getCamp(this));
 
                 RequestBody body = RequestBody.create(JSON, payload.toString());
                 Request request = new Request.Builder()
@@ -128,7 +129,7 @@ public class DeleteAsset extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void populateBagAutoComplete(JSONArray assets) throws JSONException {
@@ -150,7 +151,7 @@ public class DeleteAsset extends AppCompatActivity {
             if (isInventory) {
                 stopInventoryThread();
             } else {
-                new Thread(() -> {
+                executorService.execute(() -> {
                     final boolean serverActive;
                     try {
                         serverActive = isServerActive();
@@ -164,7 +165,7 @@ public class DeleteAsset extends AppCompatActivity {
                             Toast.makeText(DeleteAsset.this, "Server is not active. Cannot start scan.", Toast.LENGTH_SHORT).show();
                         }
                     });
-                }).start();
+                });
             }
             return true;
         }
@@ -194,19 +195,8 @@ public class DeleteAsset extends AppCompatActivity {
         // Start inventory tag reading
         if (rfidReader.startInventoryTag()) {
             isInventory = true;
-            threadInventory = new ThreadInventory();
-            threadInventory.start(); // Start the background thread for reading tags
-        } else {
-            Toast.makeText(DeleteAsset.this, "Failed to start scanning", Toast.LENGTH_SHORT).show();
-        }
-    }
 
-    // Background thread for scanning RFID tags
-    private class ThreadInventory extends Thread {
-
-        @Override
-        public void run() {
-            while (isInventory && !Thread.interrupted()) {
+            while (isInventory) {
                 UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
                 if (uhftagInfo == null) {
                     try {
@@ -225,6 +215,8 @@ public class DeleteAsset extends AppCompatActivity {
                 }
 
             }
+        } else {
+            Toast.makeText(DeleteAsset.this, "Failed to start scanning", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -234,14 +226,6 @@ public class DeleteAsset extends AppCompatActivity {
             isInventory = false; // Set flag to false to stop the loop in the thread
             if (rfidReader != null) {
                 rfidReader.stopInventory(); // Stop the RFID inventory
-            }
-            if (threadInventory != null) {
-                try {
-                    threadInventory.interrupt(); // Interrupt the thread to stop it
-                    threadInventory = null; // Clean up thread reference
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
             }
         }
     }
@@ -281,11 +265,12 @@ public class DeleteAsset extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
                 payload.put("code", epc);
+                payload.put("campId", GlobalVariable.getCamp(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
                 RequestBody body = RequestBody.create(JSON, payload.toString());
@@ -314,7 +299,7 @@ public class DeleteAsset extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void navigateToAssets() {
@@ -342,5 +327,11 @@ public class DeleteAsset extends AppCompatActivity {
                 response.body().close(); // Ensure the response body is closed
             }
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executorService.shutdown(); // Shutdown executor properly
     }
 }

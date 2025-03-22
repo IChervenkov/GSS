@@ -97,6 +97,25 @@
         <input type="hidden" id="selectedClientId" name="clientId" value=""> <!-- To store the selected bike ID -->
       </div>
 
+      <!-- Client Selection with Custom Search -->
+      <div class="mb-3 search-container">
+        <label for="helmetSearch" class="form-label">Helmet </label>
+        <div class="input-group">
+          <input type="text" id="helmetSearch" class="form-control" placeholder="Search for a helmet...">
+          <div class="btn-container">
+            <button class="btn btn-outline-secondary" type="button" id="searchButtonHelmet">
+              <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+            </button>
+            <div class="tooltip-custom">
+              <i class="bi bi-question-circle"></i>
+              <span class="tooltiptext">Search<br>by helmet</span>
+            </div>
+          </div>
+        </div>
+        <ul id="helmetDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+        <input type="hidden" id="selectedHelmetId" name="helmetId" value=""> <!-- To store the selected bike ID -->
+      </div>
+
       <div class="calendar" id="calendarMain">
         <header>
           <h3></h3>
@@ -223,10 +242,25 @@
               <span class="tooltiptext">Generate reports</span>
             </div>
           </div>
+
+          <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
+              <button type="button" id="btnListHelmet"
+                class="login-btn-report <% if(username == 'NSPA') { %> disabled-button <% } %>">
+                <i class="bi bi-list-ul"></i> List of Helmet
+              </button>
+              <div class="tooltip-custom">
+                <i class="bi bi-question-circle"></i>
+                <span class="tooltiptext">List of all helmets</span>
+              </div>
+          </div>
         </div>
         <div class="button-container-report">
           <button type="button" id="btnReportPhone" class="login-btn-report"><i class="bi bi-file-earmark-text"></i>
             Reports</button>
+          <button type="button" id="btnListHelmetPhone"
+            class="login-btn-report <% if(username == 'NSPA') { %> disabled-button <% } %>"><i
+              class="bi bi-list-ul"></i>
+            List of Helmet</button>
           <button type="button" class="download-btn <% if(username == 'NSPA') { %> disabled-button <% } %>"
             id="downloadBtn"><i class="bi bi-download"></i> Download App</button>
         </div>
@@ -239,6 +273,7 @@
               <th>Bike Name</th>
               <th>Status</th>
               <th>Hired by</th>
+              <th>Helmet</th>
               <th>Date From</th>
             </tr>
           </thead>
@@ -274,6 +309,9 @@
                     <%= item.hiredby %>
                   </td>
                   <td>
+                    <%= item.helmet %>
+                  </td>
+                  <td>
                     <%= item.datefrom %>
                   </td>
                 </tr>
@@ -306,6 +344,13 @@
         <div class="mb-3">
           <label id="labelClient" class="form-label">Client:</label>
           <label class="none-selected" id="modalClientLabel">None</label> <!-- Default set to "None" -->
+        </div>
+
+        <div class="mb-3">
+          <label id="labelHelmet" class="form-label">Helmet:</label>
+          <label id="modalHelmetLabel">None</label> <!-- Default set to "None" -->
+          <input type="hidden" id="selectedByBikeHelmetId" name="helmetId" value="">
+          <!-- To store the selected helmet ID -->
         </div>
       </div>
 
@@ -452,6 +497,8 @@
               </th>
               <th><input name="namesoldier" type="text" class="search-input-view-bike" placeholder="Search...">Soldier
                 Name</th>
+              <th><input name="helmet_code" type="text" class="search-input-view-bike" placeholder="Search...">Helmet
+                Code</th>
               <th><input name="date_from" type="text" class="search-input-view-bike" placeholder="Search...">Date From
               </th>
               <th><input name="date_to" type="text" class="search-input-view-bike" placeholder="Search...">Date To</th>
@@ -716,6 +763,24 @@
     </div>
   </div>
 
+  <div id="searchHelmetModal" class="modal">
+    <div class="modal-content-total-info">
+      <span class="close">&times;</span>
+      <h3 class="header-modal-report">History of the helmet</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Client Name</th>
+              <th>Date From</th>
+              <th>Date To</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- The Modal for Add Soldier -->
   <div id="addBikeModal" class="modal">
     <form class="modal-content" action="/bicycles/addBike" method="POST" id="form3">
@@ -726,7 +791,7 @@
       <div class="mb-3">
         <label for="bike-number" class="form-label">Bike Number <span class="text-danger">*</span></label>
         <input type="text" id="bike-number" name="bikeAddId" class="form-control"
-          placeholder="Bike number (e.g., AB1234)" pattern="^[A-Za-z0-9]+$">
+          placeholder="Bike number (e.g., AB1234)">
         <div class="invalid-feedback"></div>
         <div class="valid-feedback"></div>
       </div>
@@ -734,7 +799,7 @@
       <div class="mb-3">
         <label for="bike-name" class="form-label">Bike Name <span class="text-danger">*</span></label>
         <input type="text" id="bike-name" name="bikeName" class="form-control"
-          placeholder="Bike name (e.g., 123/Bike Model)" pattern="^[0-9]+\/[A-Za-z\s]+$">
+          placeholder="Bike name (e.g., 123/Bike Model)">
         <div class="invalid-feedback"></div>
         <div class="valid-feedback"></div>
       </div>
@@ -843,17 +908,20 @@
       </div>
 
       <!-- Soldier Selection with Custom Search -->
+      <div class="mt-3 mb-3 search-container" id="search-helmet-container">
+        <label class="form-label text-start d-block">Helmet Code </label>
+        <input type="text" id="editHelmetCode" class="form-control" placeholder="Helmet Code">
+        <ul id="editHelmetCodeDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+        <input type="hidden" id="selectedEditHelmetCodeId" name="editHelmetId" value="">
+        <!-- To store the selected Soldier ID -->
+      </div>
+
+      <!-- Soldier Selection with Custom Search -->
       <div class="mt-3 mb-3 search-container">
         <label for="editDateFrom" class="form-label text-start d-block">Date From <span
             class="text-danger">*</span></label>
         <input type="datetime-local" id="editDateFrom" class="form-control" placeholder="Date From">
       </div>
-
-      <!-- Label for Country -->
-      <p class="modal-labal-info" id="modal-country"></p>
-      <input type="hidden" id="country-value" name="countryId" value="">
-
-      <input type="hidden" id="isAccommodation" value="false">
 
       <div class="button-container " <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
           <button type="submit" class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>"
@@ -863,6 +931,119 @@
       </div>
     </form>
   </div>
+  </div>
+
+  <div id="listHelmetsModal" class="modal">
+    <div class="modal-content mt-5">
+      <span class="close">&times;</span>
+
+      <h2 class="mb-0 text-start">List of Helmets
+        <div class="btn-container">
+          <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold" id="addHelmet"><i
+              class="bi bi-plus"></i></button>
+          <div class="tooltip-custom">
+            <i class="bi bi-question-circle"></i>
+            <span class="tooltiptext">Add helmet to the system</span>
+          </div>
+        </div>
+        <div class="btn-container">
+          <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold" id="removeHelmet"><i
+              class="bi bi-dash"></i></button>
+          <div class="tooltip-custom">
+            <i class="bi bi-question-circle"></i>
+            <span class="tooltiptext">Remove helmet from the system</span>
+          </div>
+        </div>
+      </h2>
+
+      <div class="d-flex justify-content-end mt-2 mb-2">
+        <button type="button" id="prevBtnSecond"></button>
+        <span id="pageNumberSecond"></span>
+        <button type="button" id="nextBtnSecond"></button>
+      </div>
+
+      <div class="table-container">
+        <table id="helmetTable">
+          <thead>
+            <tr>
+              <th>
+                <input type="text" class="search-input-helmet" placeholder="Search...">
+                <label id="helmet-code-header">Helmet code</label>
+              </th>
+
+              <th>
+                <input type="text" class="search-input-helmet" placeholder="Search...">
+                <label id="helmet-name-header">Helmet name</label>
+              </th>
+
+            </tr>
+          </thead>
+          <tbody id="tableBodyModal">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Modal for Add Soldier -->
+  <div id="addHelmetModal" class="modal">
+    <form class="modal-content" action="/bicycles/addHelmet" method="POST" id="form6">
+      <span class="close">&times;</span>
+
+      <h2>Add Helmet</h2>
+
+      <div class="mb-3">
+        <label for="helmet-number" class="form-label">Helmet Number <span class="text-danger">*</span></label>
+        <input type="text" id="helmet-number" name="helmetAddId" class="form-control"
+          placeholder="Helmet number (e.g., AB1234)">
+        <div class="invalid-feedback"></div>
+        <div class="valid-feedback"></div>
+      </div>
+
+      <div class="mb-3">
+        <label for="helmet-name" class="form-label">Helmet Name <span class="text-danger">*</span></label>
+        <input type="text" id="helmet-name" name="helmetName" class="form-control"
+          placeholder="Helmet name (e.g., 123/Bike Model)">
+        <div class="invalid-feedback"></div>
+        <div class="valid-feedback"></div>
+      </div>
+
+      <!-- Buttons for confirming the selection -->
+      <div class="button-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
+          <button type="submit" id="confirmAddHelmetBtn"
+            class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
+            <i class="bi bi-plus-circle"></i> Add helmet
+          </button>
+          <button type="button" id="confirmAddMultiHelmetBtn"
+            class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
+            <i class="bi bi-plus-circle"></i> Add multiple helmets
+          </button>
+      </div>
+
+    </form>
+  </div>
+
+  <div id="addMultiHelmetModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+
+      <h2>Add multiple helmets <a href="/bicycles/multiHelmet/download"><i class="bi bi-download"></i></a></h2>
+
+      <div class="mb-3">
+        <label for="fileInputHelmet" class="form-label">Upload File <span class="text-danger">*</span></label>
+        <input type="file" id="fileInputHelmet" class="form-control" accept=".xlsx">
+        <!-- Accept specific file types -->
+      </div>
+
+      <div class="progress-bar">
+        <div class="custom-progress" id="progress-multi-helmet">
+        </div>
+      </div>
+
+      <button type="button" id="upload-multi-helmet-btn" class="login-btn">
+        <i class="bi bi-upload"></i> Upload
+      </button>
+    </div>
   </div>
 
   <div id="myMessageReport" class="modal">
@@ -909,6 +1090,6 @@
 
 <% if(username !='NSPA' ) { %>
   <script src="/java/showPinMessage.js"></script>
-<% } %>
+  <% } %>
 
 </html>

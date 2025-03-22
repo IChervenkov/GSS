@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -56,7 +58,6 @@ public class EditAsset extends AppCompatActivity {
     private AutoCompleteTextView assetSubLocationText;
     private RFIDWithUHFUART rfidReader;
     private boolean isInventory = false;
-    private ThreadInventory threadInventory;
     private AutoCompleteTextView assetAutoCompleteTextView;
     private TextView assetEpcText;
     private EditText assetCategoriesText;
@@ -66,6 +67,7 @@ public class EditAsset extends AppCompatActivity {
     private Spinner assetStatusText;
     private Spinner assetExpandableText;
     private EditText assetDescriptionText;
+    private ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -133,9 +135,6 @@ public class EditAsset extends AppCompatActivity {
         try {
             rfidReader = RFIDWithUHFUART.getInstance();
             rfidReader.init();
-
-            // Set the output power to minimum
-            rfidReader.setPower(1); // Replace '5' with the actual minimum value defined in the API
 
             Toast.makeText(EditAsset.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -218,7 +217,8 @@ public class EditAsset extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
+
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
@@ -236,7 +236,7 @@ public class EditAsset extends AppCompatActivity {
                 payload.put("status", assetStatus);
                 payload.put("expandable", assetExpandable);
                 payload.put("description", assetDescription);
-
+                payload.put("campId", GlobalVariable.getCamp(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
                 RequestBody body = RequestBody.create(JSON, payload.toString());
@@ -265,7 +265,7 @@ public class EditAsset extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void navigateToAssets() {
@@ -301,7 +301,8 @@ public class EditAsset extends AppCompatActivity {
             if (isInventory) {
                 stopInventoryThread();
             } else {
-                new Thread(() -> {
+                executorService.execute(() -> {
+
                     final boolean serverActive;
                     try {
                         serverActive = isServerActive();
@@ -315,7 +316,7 @@ public class EditAsset extends AppCompatActivity {
                             Toast.makeText(EditAsset.this, "Server is not active. Cannot start scan.", Toast.LENGTH_SHORT).show();
                         }
                     });
-                }).start();
+                });
             }
             return true;
         }
@@ -345,19 +346,8 @@ public class EditAsset extends AppCompatActivity {
         // Start inventory tag reading
         if (rfidReader.startInventoryTag()) {
             isInventory = true;
-            threadInventory = new ThreadInventory();
-            threadInventory.start(); // Start the background thread for reading tags
-        } else {
-            Toast.makeText(EditAsset.this, "Failed to start scanning", Toast.LENGTH_SHORT).show();
-        }
-    }
 
-    // Background thread for scanning RFID tags
-    private class ThreadInventory extends Thread {
-
-        @Override
-        public void run() {
-            while (isInventory && !Thread.interrupted()) {
+            while (isInventory) {
                 UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
                 if (uhftagInfo == null) {
                     try {
@@ -374,6 +364,8 @@ public class EditAsset extends AppCompatActivity {
                     runOnUiThread(() -> updateEpcTextView(newEpc)); // Update UI with EPC code
                 }
             }
+        } else {
+            Toast.makeText(EditAsset.this, "Failed to start scanning", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -383,14 +375,6 @@ public class EditAsset extends AppCompatActivity {
             isInventory = false; // Set flag to false to stop the loop in the thread
             if (rfidReader != null) {
                 rfidReader.stopInventory(); // Stop the RFID inventory
-            }
-            if (threadInventory != null) {
-                try {
-                    threadInventory.interrupt(); // Interrupt the thread to stop it
-                    threadInventory = null; // Clean up thread reference
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
             }
         }
     }
@@ -421,7 +405,8 @@ public class EditAsset extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
+
             try {
 
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -454,7 +439,7 @@ public class EditAsset extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void populateAssetTypeAutoComplete(JSONArray types) throws JSONException {
@@ -506,7 +491,8 @@ public class EditAsset extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
+
             try {
                 // Define the media type for the JSON payload
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -514,6 +500,7 @@ public class EditAsset extends AppCompatActivity {
                 // Prepare the request payload
                 JSONObject payload = new JSONObject();
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
+                payload.put("campId", GlobalVariable.getCamp(this));
 
                 // Create the request body
                 RequestBody body = RequestBody.create(JSON, payload.toString());
@@ -590,7 +577,7 @@ public class EditAsset extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void fetchAssetCode() {
@@ -602,12 +589,14 @@ public class EditAsset extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
+
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
                 JSONObject payload = new JSONObject();
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
+                payload.put("campId", GlobalVariable.getCamp(this));
 
                 RequestBody body = RequestBody.create(JSON, payload.toString());
                 Request request = new Request.Builder()
@@ -663,7 +652,7 @@ public class EditAsset extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private String getTypeNameById(String typeId) {
@@ -772,5 +761,11 @@ public class EditAsset extends AppCompatActivity {
                 Toast.makeText(EditAsset.this, "Error updating asset details: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executorService.shutdown(); // Shutdown executor properly
     }
 }

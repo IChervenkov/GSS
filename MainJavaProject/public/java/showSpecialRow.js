@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', function () {
 
+    const modalMess = document.getElementById("myMessage");
+    const modalMessContent = modalMess.querySelector('.modal-content-mess');
+
     const selectedDate1Input = document.getElementById('selectedDate1');
     const selectedDate2Input = document.getElementById('selectedDate2');
 
@@ -8,6 +11,69 @@ document.addEventListener('DOMContentLoaded', function () {
     const total_percent_very_happy = document.getElementById('percentVeryHappy');
 
     const loadingIndicator = document.getElementById('loadingIndicator');
+
+    function showMess(type, message) {
+
+        const icon = document.getElementById('mess-icon');
+
+        switch (type) {
+            case 'Error':
+                icon.src = "/icon/error.png";
+                document.getElementById('mess-text').textContent = message;
+                isInfo = false;
+                break;
+
+            case 'Warnning':
+                icon.src = "/icon/timeout.png";
+                document.getElementById('mess-text').textContent = message;
+                isInfo = false;
+                break;
+
+            default:
+                icon.src = "/icon/information.png";
+                document.getElementById('mess-text').textContent = message;
+                isInfo = true;
+                break;
+        }
+
+        // Add the slide-in effect by adding the necessary classes
+        modalMess.classList.add('show');
+        modalMessContent.classList.add('show');
+        modalMessContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalMessContent.classList.remove('slide-out');
+    }
+
+    function closeMessModal() {
+        // Add the slide-out effect
+        modalMessContent.classList.add('slide-out');
+        modalMessContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            modalMess.classList.remove('show');
+            modalMessContent.classList.remove('show');
+
+            const button = modalMessContent.getElementsByTagName('button')
+            if (button.length > 0)
+                modalMessContent.removeChild(button[0]);
+
+            if (isInfo)
+                window.location.reload();
+
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    document.getElementsByClassName('close')[0].onclick = closeMessModal;
+
+    window.onclick = function (event) {
+        switch (event.target) {
+            case modalMess:
+                closeMessModal();
+                break;
+        }
+    }
 
     function formatDate(date) {
         const year = date.getFullYear();

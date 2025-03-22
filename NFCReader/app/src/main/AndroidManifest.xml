@@ -21,6 +21,12 @@
         android:theme="@style/Theme.NFCReader"
         tools:targetApi="31">
         <activity
+            android:name=".SearchHelmet"
+            android:exported="false" />
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+        <activity
             android:name=".EditBike"
             android:exported="false" />
         <activity

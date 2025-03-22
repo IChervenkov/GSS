@@ -18,6 +18,19 @@
         android:layout_marginTop="10dp"
         android:layout_marginStart="10dp" />
 
+    <ImageButton
+        android:id="@+id/settingsButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="50dp"
+        android:layout_alignParentEnd="true"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Settings"
+        android:src="@drawable/ic_settings"
+        tools:ignore="TouchTargetSizeCheck" />
+
     <!-- Three vertical dots button (Menu) in the top right corner -->
     <ImageButton
         android:id="@+id/menuButton"

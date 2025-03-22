@@ -130,6 +130,12 @@
                         </div>
                     </div>
 
+                    <div class="button-container-report" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
+                        <button type="button" class="download-btn <% if(username=='NSPA' ) { %> disabled-button <% } %>" id="downloadRFIDAppBtnAsset">
+                            <i class="bi bi-download"></i> Download App
+                        </button>
+                    </div>
+
                 </div>
             </div>
 
@@ -913,6 +919,7 @@
 <script src="/java/assetsInventory.js"></script>
 <script src="/java/calendar.js"></script>
 <script src="/java/phoneMenu.js"></script>
+<script src="/java/downloald-app.js"></script>
 
 <% if(username !='NSPA' ) { %>
     <script src="/java/showPinMessage.js"></script>

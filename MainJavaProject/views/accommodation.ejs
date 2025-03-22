@@ -60,7 +60,7 @@
 
         <!-- Left Navigation Bar -->
         <div class="left-nav">
-            <div class="title-container mb-2 sticky-top p-3 w-100 transparent-bg" <% if(username !='helpDeskNikolay' &&
+            <div class="title-container mb-2 sticky-top w-100 bg-light" <% if(username !='helpDeskNikolay' &&
                 username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
                     <div class="btn-container" style="width: 100%;">
                         <button type="button" id="btnAddDestination"
@@ -86,7 +86,7 @@
                             style="cursor: not-allowed" <% } %>>
                                 <button type="button"
                                     class="btn btn-success btn-sm me-1 btn-add <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
-                                    name="<%= item.numBuild %>"><i class="bi bi-plus"></i></button>
+                                    numberBuild="<%= item.nameBuilding %>" name="<%= item.numBuild %>"><i class="bi bi-plus"></i></button>
                                 <button type="button"
                                     class="btn btn-danger btn-sm btn-remove <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
                                     name="<%= item.numBuild %>"><i class="bi bi-dash"></i></button>
@@ -573,9 +573,7 @@
                 <div class="mb-3 search-container" id="search-soldier-container-move">
 
                     <input type="text" id="soldierSearchMove" class="form-control" placeholder="Key Number">
-                    <div class="invalid-feedback">
-                        Please choose a key number
-                    </div>
+                    <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
 
                     <ul id="soldierDropdownMove" class="list-group"></ul> <!-- Custom dropdown for search -->
@@ -926,6 +924,7 @@
                 </div>
             </div>
 
+            <input type="hidden" id="click-build-number" name="clickBuildNumber">
             <input type="hidden" id="click-build" name="clickBuild">
 
             <button type="submit" id="add-room-btn" class="modal-button">
@@ -957,6 +956,7 @@
             </div>
 
             <input type="hidden" id="click-build" name="clickBuild">
+            <input type="hidden" id="click-build-number" name="clickBuildNumber">
 
             <button type="submit" id="add-room-btn" class="modal-button">
                 <i class="bi bi-trash"></i> Remove room
@@ -976,9 +976,7 @@
                 <label for="key-id" class="form-label">Key Number <span class="text-danger">*</span></label>
                 <input type="text" id="key-id" name="keyId" class="form-control" placeholder="Key Number">
 
-                <div class="invalid-feedback">
-                    Please enter a key number
-                </div>
+                <div class="invalid-feedback"></div>
                 <div class="valid-feedback"></div>
             </div>
 
@@ -989,9 +987,7 @@
                 <div class="invalid-feedback">
                     Please enter a valid key name (format: build number/room number/key number)
                 </div>
-                <div class="valid-feedback">
-                    Valid key name
-                </div>
+                <div class="valid-feedback"></div>
             </div>
 
             <input type="hidden" id="selected-room-for-key" name="selectedRoomForKey">

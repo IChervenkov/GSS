@@ -4,6 +4,7 @@ package com.example.rfidlaundryreader;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
@@ -33,6 +34,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -46,13 +50,15 @@ public class MainActivity extends AppCompatActivity {
     private boolean isInventory = false;
     private String destination;
     private String prev_destination;
+    private String campId;
     private int perm_count = 1;
     private TextView title;
     private Boolean isSuccesful;
-    private ThreadInventory threadInventory;
     private HashSet<String> uniqueEpcSet = new HashSet<>();
     private TableLayout tableLayout;
     private OkHttpClient client; // Reuse a single OkHttpClient instance
+    private ImageButton settingsButton;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
 
     @SuppressLint("WrongViewCast")
     @Override
@@ -60,10 +66,26 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        settingsButton = findViewById(R.id.settingsButton);
+
+        settingsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
+        });
+
         title = findViewById(R.id.title);
 
         destination = GlobalVariable.getVariable(this);
         prev_destination = GlobalVariable.getPrevDestination(this);  // Retrieving the previous destination
+        campId = GlobalVariable.getCamp(this);
+
+        if(campId.isEmpty()) {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            Toast.makeText(MainActivity.this, "No set camp. Set a camp to start scanning.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         title.setText(destination);
 
@@ -82,10 +104,8 @@ public class MainActivity extends AppCompatActivity {
         // Initialize RFID reader
         try {
             rfidReader = RFIDWithUHFUART.getInstance();
+            rfidReader.free();
             rfidReader.init();
-
-            // Set the output power to minimum
-            rfidReader.setPower(5); // Replace '5' with the actual minimum value defined in the API
 
             Toast.makeText(MainActivity.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -96,14 +116,14 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == 293) { // KeyCode may vary based on your Chainway device configuration
+        if (keyCode == 293) {
             if (isInventory) {
                 isSuccesful = true;
                 stopInventoryThread();
-            } else if(destination.equals("No set mode")) {
+            } else if (destination.equals("No set mode")) {
                 showPopupWindow("Error", "First you need to select a destination in the upper right corner");
             } else {
-                new Thread(() -> {
+                executorService.execute(() -> {
                     final boolean serverActive = isServerActive();
                     runOnUiThread(() -> {
                         if (serverActive) {
@@ -112,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
                             Toast.makeText(MainActivity.this, "Server is not active. Cannot start scan.", Toast.LENGTH_SHORT).show();
                         }
                     });
-                }).start();
+                });
             }
             return true;
 
@@ -144,63 +164,177 @@ public class MainActivity extends AppCompatActivity {
         title.setText(destination.equals("None") ? "Taking from soldier" : destination);
         resetData(); // Clear data before starting a new scan
 
-        // Start inventory tag reading
         if (rfidReader.startInventoryTag()) {
             isInventory = true;
-            threadInventory = new ThreadInventory();
-            threadInventory.start(); // Start the background thread for reading tags
+
+            // Submit the RFID scanning task to the executor
+            executorService.execute(() -> {
+
+                final Set<String> invalidEpcSet = Collections.synchronizedSet(new HashSet<>()); // To store invalid EPCs
+
+                    while (isInventory) {
+                        UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
+                        if (uhftagInfo == null) {
+                            try {
+                                Thread.sleep(0); // Wait for 0 milliseconds before reading the next tag
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                                if (Thread.interrupted()) {
+                                    return; // Exit the thread if it's interrupted
+                                }
+                            }
+                            continue;
+                        }
+
+                        String epc = uhftagInfo.getEPC();
+
+                        if (epc != null && !epc.isEmpty()) {
+                            // Skip invalid EPCs that have already been marked
+                            synchronized (invalidEpcSet) {
+                                if (invalidEpcSet.contains(epc)) {
+                                    continue; // Skip rescanning invalid EPC
+                                }
+                            }
+
+                            // Check if the EPC is already processed
+                            synchronized (uniqueEpcSet) {
+                                if (uniqueEpcSet.contains(epc)) {
+                                    continue; // Skip processing for already handled EPCs
+                                }
+                            }
+
+                            // Proceed only if EPC passes local validation
+                            if (checkBagCode(epc)) {
+                                try {
+                                    MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+                                    JSONObject jsonPayload = new JSONObject();
+                                    try {
+                                        jsonPayload.put("code", epc);
+                                        jsonPayload.put("prev_destination", prev_destination);
+                                        jsonPayload.put("destination", destination);
+                                        jsonPayload.put("permCount", perm_count);
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
+
+                                    String jsonData = jsonPayload.toString();
+                                    RequestBody body = RequestBody.create(JSON, jsonData);
+
+                                    Request request = new Request.Builder()
+                                            .url("https://bunker.bg/checkScaningCode")
+                                            .post(body)
+                                            .build();
+
+                                    Response response = client.newCall(request).execute();
+
+                                    if (response.isSuccessful()) {
+                                        String responseData = response.body().string();
+                                        JSONObject jsonResponse = new JSONObject(responseData);
+                                        String code = jsonResponse.getString("code");
+                                        String soldierId = jsonResponse.getString("soldierId");
+
+                                        boolean isNewEpc;
+                                        synchronized (uniqueEpcSet) {
+                                            // Only add to the set if validation is successful
+                                            isNewEpc = uniqueEpcSet.add(epc); // Returns true only if the EPC is newly added
+                                        }
+
+                                        if (isNewEpc) {
+                                            // Add row only for new EPCs
+                                            runOnUiThread(() -> addRowToTable(code, soldierId));
+                                        }
+                                    } else {
+                                        // Extract the error message from the server response
+                                        String errorMessage = "Unknown error";
+                                        try {
+                                            if (response.body() != null) {
+                                                String responseBody = response.body().string();
+                                                JSONObject errorJson = new JSONObject(responseBody);
+                                                errorMessage = errorJson.optString("message", "Internal server error");
+                                            }
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
+
+                                        // Mark the EPC as invalid and skip it in future scans
+                                        synchronized (invalidEpcSet) {
+                                            invalidEpcSet.add(epc);
+                                        }
+
+                                        String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
+                                        runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
+                                    }
+
+                                } catch (InterruptedIOException e) {
+                                    // Log the error or handle it as needed
+                                    e.printStackTrace();
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                    runOnUiThread(() -> showPopupWindow("Error", "Error checking bag code: " + e.getMessage()));
+
+                                    // Mark the EPC as invalid and skip it in future scans
+                                    synchronized (invalidEpcSet) {
+                                        invalidEpcSet.add(epc);
+                                    }
+                                }
+                            } else {
+                                // Mark the EPC as invalid if it fails local validation
+                                synchronized (invalidEpcSet) {
+                                    invalidEpcSet.add(epc);
+                                }
+                            }
+                        }
+                    }
+            });
         } else {
-            Toast.makeText(MainActivity.this, "Failed to start scanning", Toast.LENGTH_SHORT).show();
+            runOnUiThread(() ->
+                    Toast.makeText(MainActivity.this, "Failed to start scanning", Toast.LENGTH_SHORT).show()
+            );
         }
     }
 
     // Method to stop the background thread for reading tags
     private void stopInventoryThread() {
         if (isInventory) {
-            isInventory = false; // Set flag to false to stop the loop in the thread
+            isInventory = false;
+
             if (rfidReader != null) {
-                rfidReader.stopInventory(); // Stop the RFID inventory
-            }
-            if (threadInventory != null) {
-                try {
-                    threadInventory.interrupt(); // Interrupt the thread to stop it
-                    threadInventory = null; // Clean up thread reference
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                rfidReader.stopInventory();
             }
 
-            if(isSuccesful) {
-//                if(checkCountScanningCodes(uniqueEpcSet.size())) {
-                    // Send all EPCs to the server
+            if (isSuccesful) {
+                executorService.execute(() -> {
                     boolean success = sendAllEpcsToServer(uniqueEpcSet);
-                    if (success) {
-                        // Show summary only if sending to the server was successful
-                        showPopupWindow("Scan Summary", "Total bags codes found: " + uniqueEpcSet.size());
-                    }
-//                }
+                    runOnUiThread(() -> {
+                        if (success) {
+                            showPopupWindow("Scan Summary", "Total bags codes found: " + uniqueEpcSet.size());
+                        }
+                    });
+                });
                 isSuccesful = false;
             }
         }
     }
 
-    private boolean checkCountScanningCodes(Integer countScannedCode) {
-        final boolean[] success = {true};
+    private Future<Boolean> checkCountScanningCodes(Integer countScannedCode) {
+        return executorService.submit(() -> {
+            boolean success = true;
 
-        // Create and show the loading dialog
-        Dialog loadingDialog = new Dialog(MainActivity.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
+            Dialog loadingDialog = new Dialog(MainActivity.this);
+            runOnUiThread(() -> {
+                loadingDialog.setContentView(R.layout.progress_dialog);
+                loadingDialog.setCancelable(false);
+                loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+                loadingDialog.show();
+            });
 
-        Thread thread = new Thread(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
                 JSONObject payload = new JSONObject();
-                payload.put("countScaneCode", countScannedCode); // Send the EPC array to the server
+                payload.put("countScaneCode", countScannedCode);
                 payload.put("prev_destination", prev_destination);
+                payload.put("campId", campId);
 
                 RequestBody body = RequestBody.create(JSON, payload.toString());
 
@@ -219,29 +353,19 @@ public class MainActivity extends AppCompatActivity {
                         errorMessage = errorJson.optString("message", "Internal server error");
                     }
 
-                    String finalErrorMessage = errorMessage;
+                    final String finalErrorMessage = errorMessage;
                     runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
-                    success[0] = false;
+                    success = false;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
-                success[0] = false;
+                success = false;
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
+
+            return success;
         });
-
-        thread.start();
-
-        try {
-            thread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            success[0] = false;
-        }
-
-        return success[0];
     }
 
     // Method to reset the table and EPC set before starting a new scan
@@ -271,11 +395,12 @@ public class MainActivity extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        new Thread(() -> {
+        executorService.execute(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
                 payload.put("isValidCode", true);
+                payload.put("campId", campId);
 
                 RequestBody body = RequestBody.create(JSON, payload.toString());
                 Request request = new Request.Builder()
@@ -304,7 +429,7 @@ public class MainActivity extends AppCompatActivity {
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
-        }).start();
+        });
     }
 
     private void showPopupWindowService(String title) {
@@ -368,132 +493,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        executorService.shutdown(); // Ensures proper shutdown of background tasks
         // Stop inventory and free resources when activity is destroyed
         stopInventoryThread();
         if (rfidReader != null) {
             rfidReader.free();
-        }
-    }
-
-    // Background thread for scanning RFID tags
-    private class ThreadInventory extends Thread {
-        private final Set<String> invalidEpcSet = Collections.synchronizedSet(new HashSet<>()); // To store invalid EPCs
-
-        @Override
-        public void run() {
-            while (isInventory) {
-                UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
-                if (uhftagInfo == null) {
-                    try {
-                        Thread.sleep(0); // Wait for 0 milliseconds before reading the next tag
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        if (Thread.interrupted()) {
-                            return; // Exit the thread if it's interrupted
-                        }
-                    }
-                    continue;
-                }
-
-                String epc = uhftagInfo.getEPC();
-
-                if (epc != null && !epc.isEmpty()) {
-                    // Skip invalid EPCs that have already been marked
-                    synchronized (invalidEpcSet) {
-                        if (invalidEpcSet.contains(epc)) {
-                            continue; // Skip rescanning invalid EPC
-                        }
-                    }
-
-                    // Check if the EPC is already processed
-                    synchronized (uniqueEpcSet) {
-                        if (uniqueEpcSet.contains(epc)) {
-                            continue; // Skip processing for already handled EPCs
-                        }
-                    }
-
-                    // Proceed only if EPC passes local validation
-                    if (checkBagCode(epc)) {
-                        try {
-                            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                            JSONObject jsonPayload = new JSONObject();
-                            try {
-                                jsonPayload.put("code", epc);
-                                jsonPayload.put("prev_destination", prev_destination);
-                                jsonPayload.put("destination", destination);
-                                jsonPayload.put("permCount", perm_count);
-                            } catch (JSONException e) {
-                                e.printStackTrace();
-                            }
-
-                            String jsonData = jsonPayload.toString();
-                            RequestBody body = RequestBody.create(JSON, jsonData);
-
-                            Request request = new Request.Builder()
-                                    .url("https://bunker.bg/checkScaningCode")
-                                    .post(body)
-                                    .build();
-
-                            Response response = client.newCall(request).execute();
-
-                            if (response.isSuccessful()) {
-                                String responseData = response.body().string();
-                                JSONObject jsonResponse = new JSONObject(responseData);
-                                String code = jsonResponse.getString("code");
-                                String soldierId = jsonResponse.getString("soldierId");
-
-                                boolean isNewEpc;
-                                synchronized (uniqueEpcSet) {
-                                    // Only add to the set if validation is successful
-                                    isNewEpc = uniqueEpcSet.add(epc); // Returns true only if the EPC is newly added
-                                }
-
-                                if (isNewEpc) {
-                                    // Add row only for new EPCs
-                                    runOnUiThread(() -> addRowToTable(code, soldierId));
-                                }
-                            } else {
-                                // Extract the error message from the server response
-                                String errorMessage = "Unknown error";
-                                try {
-                                    if (response.body() != null) {
-                                        String responseBody = response.body().string();
-                                        JSONObject errorJson = new JSONObject(responseBody);
-                                        errorMessage = errorJson.optString("message", "Internal server error");
-                                    }
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-
-                                // Mark the EPC as invalid and skip it in future scans
-                                synchronized (invalidEpcSet) {
-                                    invalidEpcSet.add(epc);
-                                }
-
-                                String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
-                                runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
-                            }
-
-                        } catch (InterruptedIOException e) {
-                            // Log the error or handle it as needed
-                            e.printStackTrace();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            runOnUiThread(() -> showPopupWindow("Error", "Error checking bag code: " + e.getMessage()));
-
-                            // Mark the EPC as invalid and skip it in future scans
-                            synchronized (invalidEpcSet) {
-                                invalidEpcSet.add(epc);
-                            }
-                        }
-                    } else {
-                        // Mark the EPC as invalid if it fails local validation
-                        synchronized (invalidEpcSet) {
-                            invalidEpcSet.add(epc);
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -555,14 +559,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean sendAllEpcsToServer(HashSet<String> epcs) {
         final boolean[] success = {true};
 
-        // Create and show the loading dialog
-        Dialog loadingDialog = new Dialog(MainActivity.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
-
-        Thread thread = new Thread(() -> {
+        executorService.execute(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
@@ -576,6 +573,7 @@ public class MainActivity extends AppCompatActivity {
                 payload.put("codes", epcArray); // Send the EPC array to the server
                 payload.put("destination", destination);
                 payload.put("prev_destination", prev_destination);
+                payload.put("campId", campId);
 
                 String url;
 
@@ -612,19 +610,8 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
                 success[0] = false;
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
             }
         });
-
-        thread.start();
-
-        try {
-            thread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            success[0] = false;
-        }
 
         return success[0];
     }

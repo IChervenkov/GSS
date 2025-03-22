@@ -1172,7 +1172,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Wait for the modal to close, then check if the submit button was clicked
         const observer = new MutationObserver(() => {
-            if (!modalMess.classList.contains('show') && isRemove) {
+            if (!modalMess.classList.contains('show') && isRemove && modalMessContent.contains(submitButton)) {
                 modalMessContent.removeChild(submitButton);
             }
         });
@@ -1247,7 +1247,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Wait for the modal to close, then check if the submit button was clicked
             const observer = new MutationObserver(() => {
-                if (!modalMess.classList.contains('show') && isMoved) {
+                if (!modalMess.classList.contains('show') && isMoved && modalMessContent.contains(submitButton)) {
                     modalMessContent.removeChild(submitButton);
                 }
             });
@@ -1319,7 +1319,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Wait for the modal to close, then check if the submit button was clicked
             const observer = new MutationObserver(() => {
-                if (!modalMess.classList.contains('show') && isRemove) {
+                if (!modalMess.classList.contains('show') && isRemove && modalMessContent.contains(submitButton)) {
                     modalMessContent.removeChild(submitButton);
                 }
             });

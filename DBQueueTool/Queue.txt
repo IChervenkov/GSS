@@ -1,3 +1,9 @@
+CREATE TABLE camps (
+	id TEXT NOT NULL PRIMARY KEY,
+	campname TEXT,
+	created_at TIMESTAMP DEFAULT now()
+);
+
 CREATE TABLE users (
 	id TEXT PRIMARY KEY NOT NULL,
 	username TEXT,
@@ -13,13 +19,17 @@ CREATE TABLE Soldier (
 	meal_card TEXT,
 	laundry_bag_id TEXT,
 	used_room TEXT,
-	FOREIGN KEY(laundry_bag_id) REFERENCES laundrybags(id)
+	camp_id TEXT,
+	FOREIGN KEY(laundry_bag_id) REFERENCES laundrybags(id),
+	FOREIGN KEY(camp_id) REFERENCES camps(id)
 );
 
 CREATE TABLE bicycles (
 	id TEXT NOT NULL PRIMARY KEY,
 	namebike TEXT,
-	status TEXT
+	status TEXT,
+	camp_id TEXT,
+	FOREIGN KEY(camp_id) REFERENCES camps(id)
 );
 
 CREATE TABLE bikeSoldier(
@@ -36,7 +46,9 @@ CREATE TABLE bikeSoldier(
 CREATE TABLE buildings (
 	id TEXT NOT NULL PRIMARY KEY,
 	nameBuilding TEXT,
-	type TEXT
+	type TEXT,
+	camp_id TEXT,
+	FOREIGN KEY(camp_id) REFERENCES camps(id)
 );
 
 CREATE TABLE key (
@@ -90,7 +102,9 @@ CREATE TABLE laundryBags (
 	laundrycount BIGINT DEFAULT 0,
 	maxcountlandry INTEGER DEFAULT 1,
 	soldier_id TEXT,
+	camp_id TEXT,
 	FOREIGN KEY (soldier_id) REFERENCES soldier(id);
+	FOREIGN KEY (camp_id) REFERENCES camps(id);
 );
 
 CREATE TABLE fitnes (
@@ -134,9 +148,11 @@ CREATE TABLE assets (
 	status TEXT,
 	expandable TEXT,
 	description TEXT,
+	camp_id TEXT,
 	FOREIGN KEY(type_id) REFERENCES assetstype(id),
 	FOREIGN KEY(location_room) REFERENCES rooms(id),
-	FOREIGN KEY(location_key) REFERENCES key(id)
+	FOREIGN KEY(location_key) REFERENCES key(id),
+	FOREIGN KEY(camp_id) REFERENCES camps(id)
 );
 
 UPDATE soldier
@@ -165,7 +181,9 @@ CREATE TABLE lostItem (
 	item_status TEXT,
 	item_expandable TEXT,
 	item_description TEXT,
-	FOREIGN KEY(soldier_id) REFERENCES soldier(id)
+	camp_id TEXT,
+	FOREIGN KEY(soldier_id) REFERENCES soldier(id),
+	FOREIGN KEY(camp_id) REFERENCES camps(id)
 );
 
 CREATE TABLE asset_actions (
@@ -173,7 +191,9 @@ CREATE TABLE asset_actions (
 	change_asset_quantity TEXT,
 	change_remove_asset_quantity TEXT,
 	change_lost_asset_quantity TEXT,
-	change_modificate_asset_quantity TEXT
+	change_modificate_asset_quantity TEXT,
+	camp_id TEXT,
+	FOREIGN KEY(camp_id) REFERENCES camp(id)
 );
 
 CREATE TABLE additionalItem (
@@ -184,4 +204,11 @@ CREATE TABLE additionalItem (
 	quantity TEXT,
 	FOREIGN KEY(soldier_id) REFERENCES soldier(id),
 	FOREIGN KEY(bag_id) REFERENCES laundrybags(id)
+);
+
+CREATE TABLE helmets (
+	id TEXT PRIMARY KEY NOT NULL,
+	code TEXT,
+	camp_id TEXT,
+	FOREIGN KEY(camp_id) REFERENCES camps(id)
 );

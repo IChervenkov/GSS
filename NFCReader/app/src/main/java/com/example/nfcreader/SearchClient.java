@@ -99,8 +99,22 @@ public class SearchClient extends AppCompatActivity {
         loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject jsonData = new JSONObject();
+        try {
+            jsonData.put("campId", GlobalVariable.getCamp(this));
+            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
+        } catch (JSONException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Error creating JSON: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        RequestBody body = RequestBody.create(jsonData.toString(), JSON);
+
         Request request = new Request.Builder()
                 .url("https://bunker.bg/getClient")
+                .post(body)
                 .build();
 
         client.newCall(request).enqueue(new Callback() {
@@ -166,6 +180,7 @@ public class SearchClient extends AppCompatActivity {
         JSONObject jsonData = new JSONObject();
         try {
             jsonData.put("id", bikeId);
+            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
         } catch (JSONException e) {
             e.printStackTrace();
             Toast.makeText(this, "Error creating JSON: " + e.getMessage(), Toast.LENGTH_SHORT).show();

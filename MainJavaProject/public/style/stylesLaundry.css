@@ -242,7 +242,6 @@ body {
     padding: 20px;
     border: 1px solid #888;
     max-width: 65%;
-    max-height: 90%;
     border-radius: 10px;
     text-align: left;
     position: relative;
@@ -645,6 +644,11 @@ tbody tr:nth-child(even) {
     font-size: 16px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    margin-top: 20px;
+}
+
+.modal-button:hover {
+    background-color: #218838;
 }
 
 /* Input Field Styling Above Headers */
@@ -1012,7 +1016,7 @@ input[type="checkbox"] {
         /* Center the grid container */
     }
 
-    .modal-content-view {
+    .modal-content-report {
         width: 350px;
         max-width: 350px;
         margin-left: 30px;

@@ -37,6 +37,7 @@ public class RemoveBike extends AppCompatActivity {
     private NfcAdapter nfcAdapter;
     private TextView nfcTextView;
     private Button submitButton;
+    private Button submitHelmetButton;
     private String nfcContent = "";
     private OkHttpClient client = new OkHttpClient();
 
@@ -47,6 +48,7 @@ public class RemoveBike extends AppCompatActivity {
 
         nfcTextView = findViewById(R.id.nfcTextView);
         submitButton = findViewById(R.id.removeButton);
+        submitHelmetButton = findViewById(R.id.removeHelmetButton);
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
@@ -78,6 +80,24 @@ public class RemoveBike extends AppCompatActivity {
             }
         });
 
+        submitHelmetButton.setOnClickListener(v -> {
+            if (!nfcContent.isEmpty()) {
+                // Show a confirmation dialog
+                new AlertDialog.Builder(RemoveBike.this)
+                        .setTitle("Attention")
+                        .setMessage("Are you sure you want to remove this helmet?")
+                        .setPositiveButton("Yes", (dialog, which) -> {
+                            sendHelmetDataToServer(nfcContent);  // Proceed with submission
+                        })
+                        .setNegativeButton("No", (dialog, which) -> {
+                            // Do nothing, just dismiss the dialog
+                            dialog.dismiss();
+                        })
+                        .show();
+            } else {
+                Toast.makeText(this, "Helmet code not detected!", Toast.LENGTH_SHORT).show();
+            }
+        });
 
     }
 
@@ -130,6 +150,8 @@ public class RemoveBike extends AppCompatActivity {
         JSONObject json = new JSONObject();
         try {
             json.put("nfcData", nfcData);
+            json.put("isValidCode", GlobalVariable.getVariable(this));
+
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -170,15 +192,21 @@ public class RemoveBike extends AppCompatActivity {
                         // Parse the response if it's JSON
                         JSONObject jsonResponse = new JSONObject(responseData);
                         final String bikeName = jsonResponse.getString("namebike");
+                        final String helmetName = jsonResponse.getString("code");
 
-                        // Update the UI with the bike name
-                        runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
+                        if(!bikeName.isEmpty())
+                            runOnUiThread(() -> nfcTextView.setText("Item code: " + bikeName));
+                        else if(!helmetName.isEmpty())
+                            runOnUiThread(() -> nfcTextView.setText("Item code: " + helmetName));
+                        else
+                            runOnUiThread(() -> nfcTextView.setText("Item code: None"));
+
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
                 } else {
                     runOnUiThread(() -> {
-                        Toast.makeText(RemoveBike.this, "Bike not found", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(RemoveBike.this, "Item not found", Toast.LENGTH_SHORT).show();
                     });
                 }
             }
@@ -197,6 +225,7 @@ public class RemoveBike extends AppCompatActivity {
         JSONObject jsonData = new JSONObject();
         try {
             jsonData.put("bikeRemoveId", nfcContent);
+            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 
             RequestBody body = RequestBody.create(JSON, jsonData.toString());
             Request request = new Request.Builder()
@@ -225,6 +254,78 @@ public class RemoveBike extends AppCompatActivity {
                             // Parse the response if it's JSON
                             JSONObject jsonResponse = new JSONObject(responseData);
                             String message = jsonResponse.optString("message", "Bike removed successfully.");
+
+                            runOnUiThread(() -> {
+                                Toast.makeText(RemoveBike.this, message, Toast.LENGTH_SHORT).show();
+                                Intent intent = new Intent(RemoveBike.this, MainActivity.class);
+                                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(intent);
+                                finish();
+                            });
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            runOnUiThread(() -> {
+                                Toast.makeText(RemoveBike.this, "Error parsing response", Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    } else {
+                        runOnUiThread(() -> {
+                            Toast.makeText(RemoveBike.this, "Error: " + response.message(), Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                }
+            });
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+            runOnUiThread(() -> {
+                Toast.makeText(RemoveBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            });
+            loadingDialog.dismiss();
+        }
+    }
+
+    private void sendHelmetDataToServer(String nfcContent) {
+        // Create and show the loading dialog
+        Dialog loadingDialog = new Dialog(RemoveBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false); // Prevent dismissal
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject jsonData = new JSONObject();
+        try {
+            jsonData.put("code", nfcContent);
+            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
+
+            RequestBody body = RequestBody.create(JSON, jsonData.toString());
+            Request request = new Request.Builder()
+                    .url("https://bunker.bg/bicycles/removeHelmet")
+                    .post(body)
+                    .build();
+
+            // Use enqueue for the asynchronous call
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    e.printStackTrace();
+                    runOnUiThread(() -> {
+                        loadingDialog.dismiss();
+                        Toast.makeText(RemoveBike.this, "Failed to remove helmet", Toast.LENGTH_SHORT).show();
+                    });
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    runOnUiThread(loadingDialog::dismiss); // Dismiss the dialog
+
+                    if (response.isSuccessful()) {
+                        String responseData = response.body().string();
+                        try {
+                            // Parse the response if it's JSON
+                            JSONObject jsonResponse = new JSONObject(responseData);
+                            String message = jsonResponse.optString("message", "Helmet removed successfully.");
 
                             runOnUiThread(() -> {
                                 Toast.makeText(RemoveBike.this, message, Toast.LENGTH_SHORT).show();

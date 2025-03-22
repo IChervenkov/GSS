@@ -43,6 +43,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         url = '/download-apk-laundry';
                         appName = 'RFIDLaundryReader-1.0-release.apk';
                         break;
+                    case 'downloadRFIDAppBtnAsset':
+                        url = '/download-apk-asset';
+                        appName = 'RFIDLaundryAsset-1.0-release.apk';
+                        break;
+                    case 'downloadTabletAppBtn':
+                        url = '/download-apk-gym';
+                        appName = 'RateFitnesCleaning-1.0-release.apk';
+                        break;
                 }
 
                 fetch(url)
@@ -83,4 +91,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     downloadFile('downloadBtn');
     downloadFile('downloadRFIDAppBtn');
+    downloadFile('downloadRFIDAppBtnAsset');
+    downloadFile('downloadTabletAppBtn');
 });
