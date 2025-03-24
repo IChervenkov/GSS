@@ -563,6 +563,7 @@ thead th {
 }
 
 @media screen and (max-width: 1440px) and (min-width: 1280px) {
+    
     .left-nav {
         width: 20%; /* Adjust sidebar width */
         height: 100vh; /* Ensure full height */

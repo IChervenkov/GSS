@@ -265,34 +265,6 @@ h3 {
     font-size: 14px;
 }
 
-@media (max-height: 930px) {
-
-    .content {
-        max-height: 73vh;
-    }
-
-    .content .table-container {
-        height: 75vh;
-        max-height: 75vh;
-    }
-
-    .modal-content {
-        margin-left: 20%;
-    }
-
-    .button-container {
-        flex-direction: column;
-    }
-
-    .modal-content-total-info .table-container {
-        max-height: 60vh;
-    }
-
-    .modal-content-view {
-        margin-left: 80%;
-    }
-}
-
 /* Sample table styling */
 table {
     width: 100%;
@@ -823,4 +795,30 @@ input[type="checkbox"]:checked::after {
     opacity: 1;
     visibility: visible;
     transform: translate(-50%, 0);
+}
+
+@media screen and (max-width: 1440px) and (min-width: 1280px) {
+    .left-nav {
+        height: 100vh; /* Ensure full height */
+    }
+
+    .content {
+        padding: 15px; /* Adjust padding for better spacing */
+        height: 100vh /* Adjust height */
+    }
+
+    .top-nav {
+        font-size: 1.3em; /* Reduce font size slightly */
+        padding: 0.8em;
+    }
+
+    .horizontal-nav ul li a {
+        font-size: 1em;
+        padding: 6px 10px;
+    }
+
+    .modal-content {
+        max-width: 50%; /* Adjust modal width */
+        margin-left: 25%;
+    }
 }
