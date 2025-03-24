@@ -1575,3 +1575,47 @@ thead th input:focus {
 #data-table thead tr th label:hover {
     cursor: pointer;
 }
+
+@media screen and (max-width: 1440px) and (min-width: 1280px) {
+
+    .left-nav {
+        width: 21%;
+        /* Adjust sidebar width */
+        height: 94vh;
+        /* Ensure full height */
+    }
+
+    .content {
+        padding: 15px;
+        /* Adjust padding for better spacing */
+    }
+
+    .top-nav {
+        font-size: 1.3em;
+        /* Reduce font size slightly */
+        padding: 0.8em;
+    }
+
+    .horizontal-nav ul li a {
+        font-size: 1em;
+        padding: 6px 10px;
+    }
+
+    .modal-content {
+        max-width: 50%;
+        /* Adjust modal width */
+        margin-left: 25%;
+    }
+
+    .virtual-warehouse-labels {
+        display: grid;
+        grid-template-columns: repeat(5, auto); /* Three main columns */
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .virtual-warehouse-labels label {
+        display: none;
+    }
+}
