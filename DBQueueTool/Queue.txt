@@ -39,8 +39,10 @@ CREATE TABLE bikeSoldier(
 	datefrom TIMESTAMP,
 	dateto TIMESTAMP,
 	status_bike TEXT,
+	helmet_id TEXT
 	FOREIGN KEY(bikeId) REFERENCES bicycles(id),
-	FOREIGN KEY(soldierId) REFERENCES soldier(id)
+	FOREIGN KEY(soldierId) REFERENCES soldier(id),
+	FOREIGN KEY(helmet_id) REFERENCES helmets(id),
 );
 
 CREATE TABLE buildings (
@@ -92,7 +94,7 @@ CREATE TABLE laundryBags (
 	code TEXT,
 	type TEXT,
 	status TEXT,
-	timein TIMESTAMP
+	timein TIMESTAMP,
 	timeout TIMESTAMP,
 	avg_drop_off_duration BIGINT DEFAULT 0,
 	avg_transportation_duration BIGINT DEFAULT 0,
@@ -103,8 +105,8 @@ CREATE TABLE laundryBags (
 	maxcountlandry INTEGER DEFAULT 1,
 	soldier_id TEXT,
 	camp_id TEXT,
-	FOREIGN KEY (soldier_id) REFERENCES soldier(id);
-	FOREIGN KEY (camp_id) REFERENCES camps(id);
+	FOREIGN KEY (soldier_id) REFERENCES soldier(id),
+	FOREIGN KEY (camp_id) REFERENCES camps(id)
 );
 
 CREATE TABLE fitnes (
@@ -193,7 +195,7 @@ CREATE TABLE asset_actions (
 	change_lost_asset_quantity TEXT,
 	change_modificate_asset_quantity TEXT,
 	camp_id TEXT,
-	FOREIGN KEY(camp_id) REFERENCES camp(id)
+	FOREIGN KEY(camp_id) REFERENCES camps(id)
 );
 
 CREATE TABLE additionalItem (

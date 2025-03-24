@@ -561,3 +561,35 @@ thead th {
         margin-left: 5%;
     }
 }
+
+@media screen and (max-width: 1440px) and (min-width: 1280px) {
+    .left-nav {
+        width: 20%; /* Adjust sidebar width */
+        height: 100vh; /* Ensure full height */
+    }
+
+    .content {
+        padding: 0; /* Adjust padding for better spacing */
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    .top-nav {
+        font-size: 1.3em; /* Reduce font size slightly */
+        padding: 0.8em;
+    }
+
+    .horizontal-nav ul li a {
+        font-size: 1em;
+        padding: 6px 10px;
+    }
+
+    .modal-content {
+        max-width: 50%; /* Adjust modal width */
+        margin-left: 25%;
+    }
+
+    #scrollableDiv {
+        height: calc(100vh - 230px); /* Adjust height */
+    }
+}
