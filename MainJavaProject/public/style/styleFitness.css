@@ -309,9 +309,9 @@ tbody tr:nth-child(even) {
 
 /* Custom Scrollbar */
 .table-container {
-    height: 77vh;
+    height: 95vh;
     /* Set height relative to viewport */
-    max-height: 77vh;
+    max-height: 95vh;
     overflow-y: auto;
     /* Enable vertical scrolling */
     overflow-x: auto;
@@ -798,9 +798,6 @@ input[type="checkbox"]:checked::after {
 }
 
 @media screen and (max-width: 1440px) and (min-width: 1280px) {
-    .left-nav {
-        height: 100vh; /* Ensure full height */
-    }
 
     .content {
         padding: 15px; /* Adjust padding for better spacing */
