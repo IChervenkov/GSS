@@ -285,30 +285,6 @@ h3 {
   background-color: #218838;
 }
 
-@media (max-height: 930px) {
-
-  .content {
-    max-height: 73vh;
-  }
-
-  .content .table-container {
-    height: 75vh;
-    max-height: 75vh;
-  }
-
-  .modal-content {
-    margin-left: 20%;
-  }
-
-  .modal-content-total-info .table-container {
-    max-height: 60vh;
-  }
-
-  .modal-content-view {
-    margin-left: 80%;
-  }
-}
-
 /* Sample table styling */
 table {
   width: 100%;
@@ -387,32 +363,6 @@ tbody tr:nth-child(even) {
 
 .table-container::-webkit-scrollbar-thumb:hover {
   background-color: #28a745;
-}
-
-/* Media Queries for Smaller Screens */
-@media screen and (max-width: 768px) {
-  .table-container {
-    height: 40vh;
-    /* Adjust height for smaller screens */
-    max-height: 70vh;
-  }
-
-  table {
-    font-size: 0.9em;
-    /* Adjust table font size for smaller screens */
-  }
-}
-
-@media screen and (max-width: 480px) {
-  .table-container {
-    height: 35vh;
-    max-height: 60vh;
-  }
-
-  table {
-    font-size: 0.8em;
-    /* Smaller font for very small screens */
-  }
 }
 
 /* Modal background */
@@ -944,7 +894,7 @@ tbody tr:nth-child(even) {
 #removeBikeModal .modal-content,
 #addMultiBikeModal .modal-content,
 #addMultiHelmetModal .modal-content,
-#addHelmetModal .modal-content{
+#addHelmetModal .modal-content {
   text-align: left;
 }
 
@@ -952,7 +902,7 @@ tbody tr:nth-child(even) {
 #removeBikeModal h2,
 #addMultiBikeModal h2,
 #addMultiHelmetModal h2,
-#addHelmetModal h2{
+#addHelmetModal h2 {
   margin-bottom: 30px;
 }
 
@@ -1240,7 +1190,8 @@ tbody tr:nth-child(even) {
 
 /* Toast Styling */
 .custom-toast {
-  background-color: #28a745 !important; /* Bootstrap success green */
+  background-color: #28a745 !important;
+  /* Bootstrap success green */
   color: white;
   border-radius: 8px;
   padding: 12px 15px;
@@ -1297,7 +1248,8 @@ thead th input:focus {
 }
 
 .search-input-view-total-bike {
-  margin-bottom: 5px; /* Adjust spacing as needed */
+  margin-bottom: 5px;
+  /* Adjust spacing as needed */
 }
 
 .table-container {
@@ -1333,10 +1285,11 @@ thead th input:focus {
 
 @keyframes spin {
   from {
-      transform: rotate(0deg);
+    transform: rotate(0deg);
   }
+
   to {
-      transform: rotate(360deg);
+    transform: rotate(360deg);
   }
 }
 
@@ -1368,4 +1321,39 @@ thead th input:focus {
   opacity: 1;
   visibility: visible;
   transform: translate(-50%, 0);
+}
+
+@media screen and (max-width: 1440px) and (min-width: 1280px) {
+
+  .calendar {
+    height: 55%;
+    /* Take almost full width on small screens */
+  }
+
+  .main-content {
+    font-size: 0.9em;
+  }
+
+  .table-container {
+    height: 73vh;
+    /* Set height relative to viewport */
+    max-height: 73vh;
+  }
+
+  .top-nav {
+    font-size: 1.3em;
+    /* Reduce font size slightly */
+    padding: 0.8em;
+  }
+
+  .horizontal-nav ul li a {
+    font-size: 1em;
+    padding: 6px 10px;
+  }
+
+  .modal-content {
+    max-width: 50%;
+    /* Adjust modal width */
+    margin-left: 25%;
+  }
 }
