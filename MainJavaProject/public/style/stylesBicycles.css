@@ -1163,6 +1163,10 @@ tbody tr:nth-child(even) {
   .pagination {
     padding-bottom: 16px;
   }
+
+  .btn-container:hover .tooltip-custom {
+    display: none;
+}
 }
 
 
@@ -1323,7 +1327,7 @@ thead th input:focus {
   transform: translate(-50%, 0);
 }
 
-@media screen and (max-width: 1440px) and (min-width: 1280px) {
+@media screen and (max-width: 1440px) and (min-width: 768px) {
 
   .calendar {
     height: 55%;

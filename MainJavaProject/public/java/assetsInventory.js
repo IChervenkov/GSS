@@ -24,8 +24,36 @@ document.addEventListener('DOMContentLoaded', function () {
     const assetReportModal = document.getElementById('reportViewModal');
     const assetReportModalContent = assetReportModal.querySelector('.modal-content-report');
 
+    const cleanItemModal = document.getElementById('cleanItemListModal');
+    const cleanItemModalContent = cleanItemModal.querySelector('.modal-content');
+
+    const addCleanItemModal = document.getElementById('addCleanItemModal');
+    const addCleanItemModalContent = addCleanItemModal.querySelector('.modal-content');
+
+    const addMultiCleanItemModal = document.getElementById('uploadModal');
+    const addMultiCleanItemModalContent = addMultiCleanItemModal.querySelector('.modal-content');
+
+    const removeCleanItemModal = document.getElementById('removeCleanItemModal');
+    const removeCleanItemModalContent = removeCleanItemModal.querySelector('.modal-content');
+
+    const editCleanItemModal = document.getElementById('editCleanItemModal');
+    const editCleanItemModalContent = editCleanItemModal.querySelector('.modal-content');
+
     const modalMess = document.getElementById("myMessage");
     const modalMessContent = modalMess.querySelector('.modal-content-mess');
+
+    const cleanItemName = document.getElementById('item-name');
+    const cleanItemTotalAmount = document.getElementById('total-amount');
+
+    const removeCleanItemSearchInput = document.getElementById('removeCleanItemSearch');
+    const removeCleanItemSearchDropdown = document.getElementById('removeCleanItemDropdown');
+    const selectedRemoveCleanItemId = document.getElementById('selectedRemoveCleanItemId');
+
+    const editCleanItemSearchInput = document.getElementById('editCleanItemSearch');
+    const editCleanItemSearchDropdown = document.getElementById('editCleanItemDropdown');
+    const selectedEditCleanItemId = document.getElementById('selectedEditCleanItemId');
+
+    const editAmount = document.getElementById('editAmount');
 
     const lostAssetSearchInput = document.getElementById('lostAssetName');
     const lostAssetSearchDropdown = document.getElementById('lostAssetNameDropdown');
@@ -92,8 +120,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const lostItemDescription = document.getElementById('assetDescription');
 
-    const reportButton = document.getElementById('reportButton');
-
     // Track sort order and priority for each column
     let sortOrder = {
         nameroom: true, // true means ascending, false means descending
@@ -119,11 +145,15 @@ document.addEventListener('DOMContentLoaded', function () {
     var assetSubLocation;
     var uniqueRooms;
     var lostAssetsCode;
+    var cleanItems;
+    var isTotalAmound ;
     var lostAssetsLocation;
     var allLostItems;
     var oldEditAssetId = "";
 
     var allCheckedRow = [];
+    var allCheckedLargeRow = [];
+    var allCheckedSmallRow = [];
     var oldAssetNameKey;
     var isInfo = true;
 
@@ -168,6 +198,16 @@ document.addEventListener('DOMContentLoaded', function () {
             allLostItems = data.allLostItem;
         })
         .catch(error => console.error("Error fetching keys:", error));
+
+    fetch(`/cleanItem`, {
+        method: 'GET'
+    })
+        .then(response => response.json())
+        .then(data => {
+            // Parse the JSON string into an array of objects
+            cleanItems = data;
+        })
+        .catch(error => console.error("Error fetching clean item:", error));
 
     fetch(`/allKeys`, {
         method: 'GET'
@@ -542,6 +582,101 @@ document.addEventListener('DOMContentLoaded', function () {
             assetDescription.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).description;
 
             toggleInputValidity(assetSearchInput, true);
+        }
+    });
+
+    function filterCleanItems(query) {
+        removeCleanItemSearchDropdown.innerHTML = '';
+        const filteredRemoveItem = cleanItems.filter(item => item.name.toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredRemoveItem.length > 0) {
+            removeCleanItemSearchDropdown.style.display = 'block';
+            filteredRemoveItem.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item.name;
+                li.setAttribute('data-id', item.id);
+                removeCleanItemSearchDropdown.appendChild(li);
+            });
+        } else {
+            removeCleanItemSearchDropdown.style.display = 'none';
+        }
+    }
+
+    // Handle input change
+    removeCleanItemSearchInput.addEventListener('input', function () {
+        const query = removeCleanItemSearchInput.value;
+        if (query.length > 0) {
+            filterCleanItems(query);
+        } else {
+            removeCleanItemSearchDropdown.style.display = 'none';
+            selectedRemoveCleanItemId.value = '';
+            toggleInputValidity(removeCleanItemSearchInput, false);
+        }
+    });
+
+    // Handle bike selection
+    removeCleanItemSearchDropdown.addEventListener('click', function (event) {
+        const selectedCleanItem = event.target;
+        if (selectedCleanItem && selectedCleanItem.dataset.id) {
+            removeCleanItemSearchInput.value = selectedCleanItem.textContent;
+            selectedRemoveCleanItemId.value = selectedCleanItem.getAttribute('data-id');
+            removeCleanItemSearchDropdown.style.display = 'none';
+
+            toggleInputValidity(removeCleanItemSearchInput, true);
+        }
+    });
+
+    function filterEditCleanItems(query) {
+        editCleanItemSearchDropdown.innerHTML = '';
+        const filterEdeditItem = cleanItems.filter(item => ((isTotalAmound && item.total_amount > 0) || (!isTotalAmound && item.count_get_item > 0)) && item.name.toLowerCase().includes(query.toLowerCase()));
+
+        if (filterEdeditItem.length > 0) {
+            editCleanItemSearchDropdown.style.display = 'block';
+            filterEdeditItem.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item.name;
+                li.setAttribute('data-id', item.id);
+                editCleanItemSearchDropdown.appendChild(li);
+            });
+        } else {
+            editCleanItemSearchDropdown.style.display = 'none';
+        }
+    }
+
+    // Handle input change
+    editCleanItemSearchInput.addEventListener('input', function () {
+        const query = editCleanItemSearchInput.value;
+        if (query.length > 0) {
+            filterEditCleanItems(query);
+        } else {
+            editCleanItemSearchDropdown.style.display = 'none';
+            selectedEditCleanItemId.value = '';
+            toggleInputValidity(editCleanItemSearchInput, false);
+        }
+    });
+
+    // Handle bike selection
+    editCleanItemSearchDropdown.addEventListener('click', function (event) {
+        const selectedCleanItem = event.target;
+        if (selectedCleanItem && selectedCleanItem.dataset.id) {
+            editCleanItemSearchInput.value = selectedCleanItem.textContent;
+            selectedEditCleanItemId.value = selectedCleanItem.getAttribute('data-id');
+            editCleanItemSearchDropdown.style.display = 'none';
+
+            toggleInputValidity(editCleanItemSearchInput, true);
+
+            const totalAmound = cleanItems.find(item => item.name === selectedCleanItem.textContent).total_amount;
+            const countGetItem = cleanItems.find(item => item.name === selectedCleanItem.textContent).count_get_item;
+
+            if (isTotalAmound) {
+                editAmount.value = totalAmound;
+                editAmount.removeAttribute('max');
+                editAmount.min = totalAmound;
+            } else {
+                editAmount.value = countGetItem;
+                editAmount.max = countGetItem;
+                editAmount.min = 1;
+            }
         }
     });
 
@@ -977,6 +1112,13 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleInputValidity(lostAssetQuantity, lostAssetQuantity.value !== '' && lostAssetQuantity.checkValidity());
     });
 
+    editAmount.addEventListener('input', () => {
+        console.log(cleanItems.find(item => item.id === selectedEditCleanItemId.value).total_amount);
+        toggleInputValidity(editAmount, editAmount.value !== '' && 
+            ((isTotalAmound && parseInt(editAmount.value) >= parseInt(cleanItems.find(item => item.id === selectedEditCleanItemId.value).total_amount)) || 
+            (!isTotalAmound && parseInt(editAmount.value) <= parseInt(cleanItems.find(item => item.id === selectedEditCleanItemId.value).count_get_item))));
+    });
+
     assetMrah.addEventListener('input', () => {
         toggleInputValidity(assetMrah, assetMrah.value !== '' && assetMrah.checkValidity());
     });
@@ -1066,6 +1208,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const regex = /^[a-zA-Z0-9\s]*$/;
         const isValid = regex.test(assetAddDescription.value);
         toggleInputValidity(assetAddDescription, isValid);
+    });
+
+    cleanItemName.addEventListener('input', () => {
+        const regex = /^[a-zA-Z0-9\s]+$/;
+        const isValid = regex.test(cleanItemName.value);
+        toggleInputValidity(cleanItemName, isValid);
+    });
+
+    cleanItemTotalAmount.addEventListener('input', () => {
+        toggleInputValidity(cleanItemTotalAmount, cleanItemTotalAmount.value !== '' && cleanItemTotalAmount.checkValidity());
     });
 
     function showMess(type, message) {
@@ -1428,10 +1580,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId) {
+    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId, rowsPerPage = 10) {
         const table = document.getElementById(tableId).getElementsByTagName("tbody")[0];
         const rows = table.getElementsByTagName("tr");
-        const rowsPerPage = 10; // Number of rows visible at a time
         let currentIndex = 0;
         let totalPages = Math.ceil(rows.length / rowsPerPage);
         const pageNumberDisplay = document.getElementById(pageNumberId);
@@ -1503,6 +1654,385 @@ document.addEventListener('DOMContentLoaded', function () {
 
             assetReportModal.classList.remove('show');
             assetReportModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openCleanItemListModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        cleanItemModal.classList.add('show');
+        cleanItemModalContent.classList.add('show');
+        cleanItemModalContent.classList.add('slide-in');
+
+        const largeTbody = document.getElementById('largeWorkhouseBody');
+        const smallTbody = document.getElementById('smallWorkhouseBody');
+
+        const largeTableBody = document.getElementById('largeWorkhouse').getElementsByTagName('tbody')[0];
+        largeTableBody.innerHTML = '';
+
+        const smallTableBody = document.getElementById('smallWorkhouse').getElementsByTagName('tbody')[0];
+        smallTableBody.innerHTML = '';
+
+        allCheckedLargeRow = []; // Reset the global array
+        allCheckedSmallRow = []; // Reset the global array
+
+        // Dynamically create the header checkbox
+        const largeHeaderCheckbox = document.createElement('input');
+        largeHeaderCheckbox.type = 'checkbox';
+        largeHeaderCheckbox.className = 'form-check-input header-checkbox';
+        largeHeaderCheckbox.style.border = '1px solid black'; // Make the border more bold
+        largeHeaderCheckbox.style.backgroundColor = ''; // Clear any previous color
+
+        largeHeaderCheckbox.addEventListener('change', (event) => {
+            largeHeaderCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+            const isChecked = event.target.checked;
+
+            // Get all visible rows
+            const visibleRows = Array.from(largeTbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+
+            visibleRows.forEach(row => {
+                const checkbox = row.querySelector('.form-check-input');
+                if (checkbox) {
+                    checkbox.checked = isChecked;
+                    checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                    if (isChecked) {
+                        const amount = row.getElementsByTagName('td')[2].textContent;
+                        allCheckedLargeRow.push({ code: checkbox.dataset.id, amount: amount });
+                    } else {
+                        allCheckedLargeRow = allCheckedLargeRow.filter(item => item.code !== checkbox.dataset.id);
+                    }
+                }
+            });
+
+            // Ensure no duplicates in allCheckedRow
+            if (isChecked) {
+                allCheckedLargeRow = Array.from(new Set(allCheckedLargeRow.map(item => `${item.code}-${item.amount}`)))
+                    .map(key => {
+                        const [code, amount] = key.split('-');
+                        return { code, amount };
+                    });
+            }
+        });
+
+        // Append the header checkbox to the table header
+        const largeThead = largeTbody.parentElement.querySelector('thead');
+        const largeHeaderRow = largeThead.querySelector('tr');
+
+        largeHeaderRow.querySelectorAll('th').forEach(th => {
+            if (!th.textContent.trim()) {
+                th.remove();
+            }
+        });
+
+        const largeHeaderCell = document.createElement('th');
+        largeHeaderCell.appendChild(largeHeaderCheckbox);
+        largeHeaderRow.insertBefore(largeHeaderCell, largeHeaderRow.firstChild);
+
+        // Dynamically create the header checkbox
+        const smallHeaderCheckbox = document.createElement('input');
+        smallHeaderCheckbox.type = 'checkbox';
+        smallHeaderCheckbox.className = 'form-check-input header-checkbox';
+        smallHeaderCheckbox.style.border = '1px solid black'; // Make the border more bold
+        smallHeaderCheckbox.style.backgroundColor = ''; // Clear any previous color
+
+        smallHeaderCheckbox.addEventListener('change', (event) => {
+            smallHeaderCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+            const isChecked = event.target.checked;
+
+            // Get all visible rows
+            const visibleRows = Array.from(smallTbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+
+            visibleRows.forEach(row => {
+                const checkbox = row.querySelector('.form-check-input');
+                if (checkbox) {
+                    checkbox.checked = isChecked;
+                    checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                    if (isChecked) {
+                        const amount = row.getElementsByTagName('td')[2].textContent;
+                        allCheckedSmallRow.push({ code: checkbox.dataset.id, amount: amount });
+                    } else {
+                        allCheckedSmallRow = allCheckedSmallRow.filter(item => item.code !== checkbox.dataset.id);
+                    }
+                }
+            });
+
+            // Ensure no duplicates in allCheckedRow
+            if (isChecked) {
+                allCheckedSmallRow = Array.from(new Set(allCheckedSmallRow.map(item => `${item.code}-${item.amount}`)))
+                    .map(key => {
+                        const [code, amount] = key.split('-');
+                        return { code, amount };
+                    });
+            }
+        });
+
+        // Append the header checkbox to the table header
+        const smallThead = smallTbody.parentElement.querySelector('thead');
+        const smallHeaderRow = smallThead.querySelector('tr');
+
+        smallHeaderRow.querySelectorAll('th').forEach(th => {
+            if (!th.textContent.trim()) {
+                th.remove();
+            }
+        });
+
+        const smallHeaderCell = document.createElement('th');
+        smallHeaderCell.appendChild(smallHeaderCheckbox);
+        smallHeaderRow.insertBefore(smallHeaderCell, smallHeaderRow.firstChild);
+
+        cleanItems.forEach(item => {
+            const largeRow = document.createElement("tr");
+            const smallRow = document.createElement("tr");
+
+            // Add the checkbox cell
+            const largeCheckboxCell = document.createElement('td');
+            const largeCheckbox = document.createElement('input');
+            largeCheckbox.type = 'checkbox';
+            largeCheckbox.className = 'form-check-input';
+            largeCheckbox.dataset.id = item.id;
+            largeCheckbox.style.border = '1px solid black'; // Make the border more bold
+
+            // Add change event to the checkbox
+            largeCheckbox.addEventListener('change', () => {
+                if (largeCheckbox.checked) {
+                    largeCheckbox.style.backgroundColor = 'green';
+                    allCheckedLargeRow.push({ code: item.id, amount: item.total_amount });
+                } else {
+                    largeCheckbox.style.backgroundColor = '';
+                    allCheckedLargeRow = allCheckedLargeRow.filter(row => row.code !== item.id);
+                }
+            });
+
+            largeCheckboxCell.appendChild(largeCheckbox);
+            largeRow.appendChild(largeCheckboxCell);
+
+            // Add the checkbox cell
+            const smallCheckboxCell = document.createElement('td');
+            const smallCheckbox = document.createElement('input');
+            smallCheckbox.type = 'checkbox';
+            smallCheckbox.className = 'form-check-input';
+            smallCheckbox.dataset.id = item.id;
+            smallCheckbox.style.border = '1px solid black'; // Make the border more bold
+
+            // Add change event to the checkbox
+            smallCheckbox.addEventListener('change', () => {
+                if (smallCheckbox.checked) {
+                    smallCheckbox.style.backgroundColor = 'green';
+                    allCheckedSmallRow.push({ code: item.id, amount: item.count_get_item });
+                } else {
+                    smallCheckbox.style.backgroundColor = '';
+                    allCheckedSmallRow = allCheckedSmallRow.filter(row => row.code !== item.id);
+                }
+            });
+
+            smallCheckboxCell.appendChild(smallCheckbox);
+            smallRow.appendChild(smallCheckboxCell);
+
+            const nameCell1 = document.createElement("td");
+            const nameCell2 = document.createElement("td");
+            nameCell1.textContent = item.name;
+            nameCell2.textContent = item.name;
+            largeRow.appendChild(nameCell1);
+            smallRow.appendChild(nameCell2);
+
+            const totalAmountLargeCell = document.createElement("td");
+            totalAmountLargeCell.textContent = item.total_amount;
+            largeRow.appendChild(totalAmountLargeCell);
+
+            const totalAmountSmallCell = document.createElement("td");
+            totalAmountSmallCell.textContent = item.count_get_item;
+            smallRow.appendChild(totalAmountSmallCell);
+
+            // Attach click event for each row
+            largeRow.addEventListener('click', (event) => {
+                // Check if the clicked element is not the first td in the row
+                if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0 && item.total_amount > 0) {
+                    openEditCleanItemModal(item.id, item.name, item.total_amount);
+                }
+            });
+
+            smallRow.addEventListener('click', (event) => {
+                // Check if the clicked element is not the first td in the row and count_get_item is not 0
+                if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0 && item.count_get_item > 0) {
+                    openEditCleanItemModal(item.id, item.name, null, item.count_get_item);
+                }
+            });
+
+            // Append row to the table body
+            largeTbody.appendChild(largeRow);
+            smallTbody.appendChild(smallRow);
+        });
+
+        const rowsLargeTable = largeTableBody.getElementsByTagName("tr");
+        firstUpdateTable(rowsLargeTable, 0, 7, 'pageNumberFourth');
+
+        const rowsSmallTable = smallTableBody.getElementsByTagName("tr");
+        firstUpdateTable(rowsSmallTable, 0, 7, 'pageNumberFifth');
+
+        setupTableNavigation("largeWorkhouse", "prevBtnFourth", "nextBtnFourth", "pageNumberFourth", 7);
+        setupTableNavigation("smallWorkhouse", "prevBtnFifth", "nextBtnFifth", "pageNumberFifth", 7);
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        cleanItemModalContent.classList.remove('slide-out');
+    }
+
+    function closeCleanItemListModal() {
+        // Add the slide-out effect
+        cleanItemModalContent.classList.add('slide-out');
+        cleanItemModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('.form-check-input').forEach((input) => {
+                input.checked = false;
+                input.style.backgroundColor = '';
+            });
+
+            document.querySelectorAll('.search-input-clean-item, .second-search-input-clean-item').forEach((input) => {
+                input.value = '';
+            });
+
+            cleanItemModal.classList.remove('show');
+            cleanItemModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openAddCleanItemModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        addCleanItemModal.classList.add('show');
+        addCleanItemModalContent.classList.add('show');
+        addCleanItemModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        addCleanItemModalContent.classList.remove('slide-out');
+    }
+
+    function closeAddCleanItemModal() {
+        // Add the slide-out effect
+        addCleanItemModalContent.classList.add('slide-out');
+        addCleanItemModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('#item-name, #total-amount').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+            });
+
+            addCleanItemModal.classList.remove('show');
+            addCleanItemModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openAddMultiCleanItemModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        addMultiCleanItemModal.classList.add('show');
+        addMultiCleanItemModalContent.classList.add('show');
+        addMultiCleanItemModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        addMultiCleanItemModalContent.classList.remove('slide-out');
+    }
+
+    function closeAddMultiCleanItemModal() {
+        // Add the slide-out effect
+        addMultiCleanItemModalContent.classList.add('slide-out');
+        addMultiCleanItemModalContent.classList.remove('slide-in');
+
+        document.getElementById("progress").style.width = 0 + "%";
+        document.getElementById("fileInput").value = '';
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            addMultiCleanItemModal.classList.remove('show');
+            addMultiCleanItemModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+
+    }
+
+    function openRemoveCleanItemModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        removeCleanItemModal.classList.add('show');
+        removeCleanItemModalContent.classList.add('show');
+        removeCleanItemModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        removeCleanItemModalContent.classList.remove('slide-out');
+    }
+
+    function closeRemoveCleanItemModal() {
+        // Add the slide-out effect
+        removeCleanItemModalContent.classList.add('slide-out');
+        removeCleanItemModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('#removeCleanItemSearch, #selectedRemoveCleanItemId').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+            });
+
+            removeCleanItemModal.classList.remove('show');
+            removeCleanItemModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openEditCleanItemModal(id, name, totalAmount = null, countGetItem = null) {
+
+        // Add the slide-in effect by adding the necessary classes
+        editCleanItemModal.classList.add('show');
+        editCleanItemModalContent.classList.add('show');
+        editCleanItemModalContent.classList.add('slide-in');
+
+        selectedEditCleanItemId.value = id;
+        editCleanItemSearchInput.value = name;
+
+        editAmount.value = totalAmount ? totalAmount : countGetItem;
+
+        if (totalAmount) {
+            isTotalAmound = true;
+            editAmount.removeAttribute('max');
+            editAmount.min = totalAmount;
+        } else {
+            isTotalAmound = false;
+            editAmount.max = countGetItem;
+            editAmount.min = 1;
+        }
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        editCleanItemModalContent.classList.remove('slide-out');
+    }
+
+    function closeEditCleanItemModal() {
+        // Add the slide-out effect
+        editCleanItemModalContent.classList.add('slide-out');
+        editCleanItemModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('#editCleanItemSearch, #selectedEditCleanItemId, #editAmount').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+            });
+
+            editCleanItemModal.classList.remove('show');
+            editCleanItemModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
     }
 
@@ -1830,7 +2360,12 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[5].onclick = closeLostAssetsModal;
     document.getElementsByClassName('close-btn')[6].onclick = closeAssetArchiveModal;
     document.getElementsByClassName('close-btn')[7].onclick = closeReportModal;
-    document.getElementsByClassName('close-btn')[8].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[8].onclick = closeCleanItemListModal;
+    document.getElementsByClassName('close-btn')[9].onclick = closeAddCleanItemModal;
+    document.getElementsByClassName('close-btn')[10].onclick = closeAddMultiCleanItemModal;
+    document.getElementsByClassName('close-btn')[11].onclick = closeRemoveCleanItemModal;
+    document.getElementsByClassName('close-btn')[12].onclick = closeEditCleanItemModal;
+    document.getElementsByClassName('close-btn')[13].onclick = closeMessModal;
 
     // Close the modal if the user clicks outside of it
     window.onclick = function (event) {
@@ -1842,6 +2377,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case modalMess:
                 closeMessModal();
+                break;
+
+            case cleanItemModal:
+                closeCleanItemListModal();
+                break;
+
+            case addCleanItemModal:
+                closeAddCleanItemModal();
+                break;
+
+            case addMultiCleanItemModal:
+                closeAddMultiCleanItemModal();
+                break;
+
+            case removeCleanItemModal:
+                closeRemoveCleanItemModal();
+                break;
+
+            case editCleanItemModal:
+                closeEditCleanItemModal();
                 break;
 
             case assetsEditModal:
@@ -1907,6 +2462,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!removeAssetTypeDropdown.contains(event.target) && event.target !== removeAssetTypeDropdown) {
             removeAssetTypeDropdown.style.display = 'none';
         }
+
+        if (!removeCleanItemSearchDropdown.contains(event.target) && event.target !== removeCleanItemSearchDropdown) {
+            removeCleanItemSearchDropdown.style.display = 'none';
+        }
+
+        if (!editCleanItemSearchDropdown.contains(event.target) && event.target !== editCleanItemSearchDropdown) {
+            editCleanItemSearchDropdown.style.display = 'none';
+        }
     });
 
     // Add event listeners to table headers for sorting
@@ -1953,6 +2516,319 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('reportButton').addEventListener('click', () => {
         openAssetArchiveModal();
+    });
+
+    document.getElementById('btnCleaningItem').addEventListener('click', () => {
+        openCleanItemListModal();
+    });
+
+    document.getElementById('addCleanItem').addEventListener('click', () => {
+        openAddCleanItemModal();
+    });
+
+    document.getElementById('confirmBtnAddMultiCleanItem').addEventListener('click', () => {
+        openAddMultiCleanItemModal();
+    });
+
+    document.getElementById('removeCleanItem').addEventListener('click', () => {
+        openRemoveCleanItemModal();
+    });
+
+    document.getElementById('upload-btn').addEventListener("click", function () {
+
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showMess("Error", "You have not selected a file to upload");
+            return;
+        }
+
+        const url = "/uploadCleanItems";
+        const progressBar = document.getElementById("progress");
+
+        const updateProgressBar = (percentage) => {
+            progressBar.style.width = percentage + "%";
+        };
+
+        updateProgressBar(0);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Use XMLHttpRequest to track upload progress
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+
+        xhr.upload.onprogress = function (event) {
+            if (event.lengthComputable) {
+                const percentage = (event.loaded / event.total) * 100;
+                updateProgressBar(percentage);
+            }
+        };
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                setTimeout(() => {
+                    closeAddMultiCleanItemModal();
+                    showMess("Info", "File uploaded successfully!");
+                }, 1000);
+            } else {
+                const data = JSON.parse(xhr.responseText);
+                if (data.errors) {
+                    data.errors.forEach(error => {
+                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat') {
+                            closeAddMultiCleanItemModal();
+                            showMess("Error", error.message);
+                        } else if (error.type === 'Validation') {
+                            closeAddMultiCleanItemModal();
+                            showMess("Error", `Invalid data in row with item name: ${error.row.itemName}. Check the syntax of name, and amount.`);
+                        }
+                    });
+                } else {
+                    closeAddMultiCleanItemModal();
+                    showMess("Error", data.error || "File upload failed.");
+                }
+            }
+        };
+
+        xhr.onerror = function () {
+            console.error('Error:', xhr.statusText);
+            closeAddMultiCleanItemModal();
+            showMess("Error", "An unexpected error occurred.");
+        };
+
+        xhr.send(formData);
+    });
+
+    document.getElementById('largeToSmallBtn').addEventListener('click', function () {
+
+        if (allCheckedLargeRow.length === 0) {
+            showMess('Error', 'You have not selected any items to move');
+            return;
+        }
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        const quantityInput = document.createElement('input');
+        const maxAmount = Math.min(...allCheckedLargeRow.map(item => parseInt(item.amount, 10)));
+        quantityInput.type = 'number';
+        quantityInput.classList.add('form-control');
+        quantityInput.min = 1;
+        quantityInput.max = maxAmount;
+        quantityInput.style.marginBottom = '10px';
+
+        quantityInput.addEventListener('input', function () {
+            const isValid = quantityInput.value > 0 && quantityInput.value <= maxAmount;
+            toggleInputValidity(quantityInput, isValid);
+        });
+
+        submitButton.addEventListener('click', async () => {
+
+            if (!quantityInput.value || quantityInput.value < 0 || quantityInput.value > maxAmount) {
+                toggleInputValidity(quantityInput, false);
+                return;
+            }
+
+            hasError = false;
+            isSubmit = true;
+
+            loadingIndicator.style.display = 'flex';
+
+            try {
+                const data = {
+                    checkList: allCheckedLargeRow,
+                    moveAmount: quantityInput.value
+                };
+
+                const response = await fetch('/changeAmountLargeToSmall', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+
+        modalMessContent.appendChild(quantityInput);
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+
+                if (modalMessContent.contains(quantityInput)) {
+                    // Check if the input is still a child before removing
+                    modalMessContent.removeChild(quantityInput);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    showMess('Info', 'The items has been move from small to large workhouse succesful');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while move items');
+                }
+
+                if (modalMessContent.contains(quantityInput)) {
+                    // Check if the input is still a child before removing
+                    modalMessContent.removeChild(quantityInput);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'Are you sure you want to move this item from small to large workhouse?\nPlease enter the quantity of items you want to move.');
+    });
+
+    document.getElementById('smallToLargeBtn').addEventListener('click', function () {
+
+        if (allCheckedSmallRow.length === 0) {
+            showMess('Error', 'You have not selected any items to move');
+            return;
+        }
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        const quantityInput = document.createElement('input');
+        const maxAmount = Math.min(...allCheckedSmallRow.map(item => parseInt(item.amount, 10)));
+        quantityInput.type = 'number';
+        quantityInput.classList.add('form-control');
+        quantityInput.min = 1;
+        quantityInput.max = maxAmount;
+        quantityInput.style.marginBottom = '10px';
+
+        quantityInput.addEventListener('input', function () {
+            const isValid = quantityInput.value > 0 && quantityInput.value <= maxAmount;
+            toggleInputValidity(quantityInput, isValid);
+        });
+
+        submitButton.addEventListener('click', async () => {
+
+            if (!quantityInput.value || quantityInput.value < 0 || quantityInput.value > maxAmount) {
+                toggleInputValidity(quantityInput, false);
+                return;
+            }
+
+            hasError = false;
+            isSubmit = true;
+
+            loadingIndicator.style.display = 'flex';
+
+            try {
+                const data = {
+                    checkList: allCheckedSmallRow,
+                    moveAmount: quantityInput.value
+                };
+
+                const response = await fetch('/changeAmountSmallToLarge', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+
+        modalMessContent.appendChild(quantityInput);
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+
+                if (modalMessContent.contains(quantityInput)) {
+                    // Check if the input is still a child before removing
+                    modalMessContent.removeChild(quantityInput);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    showMess('Info', 'The items has been move from small to large workhouse succesful');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while move items');
+                }
+
+                if (modalMessContent.contains(quantityInput)) {
+                    // Check if the input is still a child before removing
+                    modalMessContent.removeChild(quantityInput);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'Are you sure you want to move this item from large to small workhouse?\nPlease enter the quantity of items you want to move.');
     });
 
     function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
@@ -2301,6 +3177,24 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('form6').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
+    document.getElementById('form7').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
+    document.getElementById('form8').addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
+    document.getElementById('form9').addEventListener('keypress', function (event) {
         if (event.key === 'Enter') {
             event.preventDefault();
         }
@@ -2948,6 +3842,320 @@ document.addEventListener('DOMContentLoaded', function () {
             loadingIndicator.style.display = 'none';
         }
     }
+
+    document.getElementById('form7').onsubmit = async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        const inputsToCheck = [
+            { input: cleanItemName, condition: !/^[a-zA-Z0-9\s]+$/.test(cleanItemName.value) },
+            { input: cleanItemTotalAmount, condition: cleanItemTotalAmount.value === '' }
+        ];
+
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
+            return;
+        }
+
+        const data = {
+            itemName: cleanItemName.value,
+            totalAmount: cleanItemTotalAmount.value
+        };
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            loadingIndicator.style.display = 'flex';
+
+            try {
+
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeAddCleanItemModal();
+                    showMess('Info', 'The clean item is added successfully');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while add the clean item');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'Are you sure you want to add this clean item?');
+    };
+
+    document.getElementById('form8').onsubmit = async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        const inputsToCheck = [
+            { input: removeCleanItemSearchInput, condition: selectedRemoveCleanItemId.value === '' }
+        ];
+
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
+            return;
+        }
+
+        const data = {
+            itemId: selectedRemoveCleanItemId.value
+        };
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            loadingIndicator.style.display = 'flex';
+
+            try {
+
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeRemoveCleanItemModal();
+                    showMess('Info', 'The clean item is removed successfully');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while remove the clean item');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'Are you sure you want to remove this clean item?');
+    };
+
+    document.getElementById('form9').onsubmit = async function (event) {
+
+        event.preventDefault(); // Prevent default form submission
+
+        const inputsToCheck = [
+            { input: editCleanItemSearchInput, condition: selectedEditCleanItemId.value === '' },
+            { input: editAmount, condition: editAmount.value === '' || 
+                ((isTotalAmound && parseInt(editAmount.value) < parseInt(cleanItems.find(item => item.id === selectedEditCleanItemId.value).total_amount)) || 
+                (!isTotalAmound && parseInt(editAmount.value) > parseInt(cleanItems.find(item => item.id === selectedEditCleanItemId.value).count_get_item)))
+            }
+        ];
+
+        let isValid = true;
+
+        inputsToCheck.forEach(({ input, condition }) => {
+            if (condition) {
+                toggleInputValidity(input, false);
+                isValid = false;
+            } else {
+                toggleInputValidity(input, true);
+            }
+        });
+
+        if (!isValid) {
+            return;
+        }
+
+        const data = {
+            itemId: selectedEditCleanItemId.value,
+            editAmount: editAmount.value,
+            isTotalAmound: isTotalAmound
+        };
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
+
+            loadingIndicator.style.display = 'flex';
+
+            try {
+
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    closeRemoveCleanItemModal();
+                    showMess('Info', 'The clean item is edit successfully');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while edit the clean item');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'Are you sure you want to edit this clean item?');
+    };
 
     lostItemDescription.addEventListener('input', function () {
         const regex = /^[a-zA-Z0-9\s]*$/;

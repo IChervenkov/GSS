@@ -1535,6 +1535,15 @@ thead th input:focus {
         font-size: 12px;
         /* Smaller text size for small screens */
     }
+
+    #confirmReportBtnAddSoldier,
+    #confirmReportBtnAddMultiSoldier {
+        margin: 0;
+    }
+
+    .btn-container:hover .tooltip-custom {
+        display: none;
+    }
 }
 
 #toggleFormButton {
@@ -1576,7 +1585,7 @@ thead th input:focus {
     cursor: pointer;
 }
 
-@media screen and (max-width: 1440px) and (min-width: 1280px) {
+@media screen and (max-width: 1440px) and (min-width: 768px) {
 
     .left-nav {
         width: 21%;
@@ -1607,6 +1616,12 @@ thead th input:focus {
         margin-left: 25%;
     }
 
+    #soldierListModal .modal-content {
+        max-width: 70%;
+        /* Adjust modal width */
+        margin-left: 16%;
+    }
+
     .virtual-warehouse-labels {
         display: grid;
         grid-template-columns: repeat(5, auto); /* Three main columns */
@@ -1617,5 +1632,14 @@ thead th input:focus {
 
     .virtual-warehouse-labels label {
         display: none;
+    }
+
+    .modal-content-view {
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+
+    .modal-content-view .table-container {
+        max-height: 250px;
     }
 }

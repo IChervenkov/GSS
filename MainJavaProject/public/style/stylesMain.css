@@ -560,9 +560,13 @@ thead th {
         max-width: 90%;
         margin-left: 5%;
     }
+
+    .btn-container:hover .tooltip-custom {
+        display: none;
+    }
 }
 
-@media screen and (max-width: 1440px) and (min-width: 1280px) {
+@media screen and (max-width: 1440px) and (min-width: 768px) {
     
     .left-nav {
         width: 20%; /* Adjust sidebar width */

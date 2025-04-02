@@ -20,6 +20,8 @@ CREATE TABLE Soldier (
 	laundry_bag_id TEXT,
 	used_room TEXT,
 	camp_id TEXT,
+	upcoming_accommodation DATE,
+	upcoming_release DATE,
 	FOREIGN KEY(laundry_bag_id) REFERENCES laundrybags(id),
 	FOREIGN KEY(camp_id) REFERENCES camps(id)
 );
@@ -213,4 +215,13 @@ CREATE TABLE helmets (
 	code TEXT,
 	camp_id TEXT,
 	FOREIGN KEY(camp_id) REFERENCES camps(id)
+);
+
+CREATE TABLE clearitem (
+    id TEXT NOT NULL PRIMARY KEY,
+    itemname TEXT,
+    total_amount NUMERIC DEFAULT 0,
+    count_get_item NUMERIC DEFAULT 0,
+    camp_id TEXT,
+    FOREIGN KEY (camp_id) REFERENCES camps (id)
 );

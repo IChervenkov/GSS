@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const cells = row.getElementsByTagName('td');
 
                     // Configurable column index adjustment
-                    const offsetTables = ['assetTable', 'soldierTable', 'bagsTable', 'helmetTable'];
+                    const offsetTables = ['assetTable', 'soldierTable', 'bagsTable', 'helmetTable', 'largeWorkhouse', 'smallWorkhouse'];
                     const effectiveColumnIndex = offsetTables.includes(tableId) ? columnIndex + 1 : columnIndex;
 
                     const cellToCheck = cells[effectiveColumnIndex];
@@ -44,6 +44,8 @@ document.addEventListener('DOMContentLoaded', function () {
         attachPaginationControls('prevBtnDate', 'nextBtnDate', 'pageNumberDate');
         attachPaginationControls('prevBtnSecond', 'nextBtnSecond', 'pageNumberSecond');
         attachPaginationControls('prevBtnTherd', 'nextBtnTherd', 'pageNumberTherd');
+        attachPaginationControls('prevBtnFourth', 'nextBtnFourth', 'pageNumberFourth');
+        attachPaginationControls('prevBtnFifth', 'nextBtnFifth', 'pageNumberFifth');
     }
 
     function updateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
@@ -102,10 +104,10 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     }
 
-    function attachFilterEvents(tableId, filterClass, pageNumberId = '') {
+    function attachFilterEvents(tableId, filterClass, pageNumberId = '', rowsPerPage = 10) {
         document.querySelectorAll(`.${filterClass}`).forEach((input) => {
             input.addEventListener('input', () => {
-                applyFilters(tableId, filterClass, pageNumberId);
+                applyFilters(tableId, filterClass, pageNumberId, rowsPerPage);
             });
         });
     }
@@ -126,4 +128,6 @@ document.addEventListener('DOMContentLoaded', function () {
     attachFilterEvents('lostItemsTable', 'lost-item-search-input', 'pageNumberTherd');
     attachFilterEvents('additonalItemTable', 'additional-item-search-input', 'pageNumberTherd');
     attachFilterEvents('helmetTable', 'search-input-helmet', 'pageNumberSecond');
+    attachFilterEvents('largeWorkhouse', 'search-input-clean-item', 'pageNumberFourth', 7);
+    attachFilterEvents('smallWorkhouse', 'second-search-input-clean-item', 'pageNumberFifth', 7);
 });

@@ -109,11 +109,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const soldierId = document.getElementById('soldier-number');
     const soldierName = document.getElementById('soldier-name');
     const soldierCountry = document.getElementById('soldier-country');
+    const soldierDate1 = document.getElementById('addDate1');
+    const soldierDate2 = document.getElementById('addDate2');
 
     const editSoldierId = document.getElementById('edit-soldier-number');
     const editOldSoldierId = document.getElementById('edit-old-soldier-id');
     const editSoldierName = document.getElementById('edit-soldier-name');
     const editSoldierCountry = document.getElementById('edit-soldier-country');
+    const editSoldierUpcomeAccom = document.getElementById('edit-upcoming-accommodation');
+    const editSoldierUpcomeRel = document.getElementById('edit-upcoming-release');
 
     const keyId = document.getElementById('key-id');
     const keyName = document.getElementById('key-name');
@@ -1329,7 +1333,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalAddSoldierContent.classList.add('slide-out');
         modalAddSoldierContent.classList.remove('slide-in');
 
-        document.querySelectorAll('#soldier-number, #soldier-name, #soldier-country').forEach((input) => {
+        document.querySelectorAll('#soldier-number, #soldier-name, #soldier-country, #addDate1, #addDate2').forEach((input) => {
 
             input.classList.remove('is-valid');
             input.classList.remove('is-invalid');
@@ -1459,11 +1463,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     countryCell.textContent = item.country;
                     row.appendChild(countryCell);
 
+                    const upcoming_accommodation = document.createElement("td");
+                    const accommodationDate = new Date(item.upcoming_accommodation);
+                    upcoming_accommodation.textContent = item.upcoming_accommodation
+                        ? accommodationDate.toLocaleDateString()
+                        : 'N/A';
+                    row.appendChild(upcoming_accommodation);
+
+                    const upcoming_release = document.createElement("td");
+                    const releaseDate = new Date(item.upcoming_release);
+                    upcoming_release.textContent = item.upcoming_release
+                        ? releaseDate.toLocaleDateString()
+                        : 'N/A';
+                    row.appendChild(upcoming_release);
+
                     // Attach click event for each row
                     row.addEventListener('click', (event) => {
                         // Check if the clicked element is not the first td in the row
                         if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
-                            openEditSoldierModal(item.id, item.name, item.country);
+                            openEditSoldierModal(item.id, item.name, item.country, item.upcoming_accommodation, item.upcoming_release);
                         }
                     });
 
@@ -1508,7 +1526,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     }
 
-    function openEditSoldierModal(id, name, country) {
+    function openEditSoldierModal(id, name, country, upcoming_accommodation, upcoming_release) {
+
+        function convertDate(date) {
+            const dateObj = new Date(date);
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+            const day = String(dateObj.getDate()).padStart(2, "0");
+
+            return `${year}-${month}-${day}`;
+        }
 
         // Add the slide-in effect by adding the necessary classes
         modalEditSoldier.classList.add('show');
@@ -1522,6 +1549,12 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('edit-old-soldier-id').value = id;
         document.getElementById('edit-soldier-name').value = name;
         document.getElementById('edit-soldier-country').value = country === 'None' ? '' : country;
+
+        const accommodationDate = new Date(upcoming_accommodation);
+        const releaseDate = new Date(upcoming_release);
+
+        editSoldierUpcomeAccom.value = convertDate(accommodationDate);
+        editSoldierUpcomeRel.value = convertDate(releaseDate);
     }
 
     function closeEditSoldierModal() {
@@ -1529,7 +1562,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalEditSoldierContent.classList.add('slide-out');
         modalEditSoldierContent.classList.remove('slide-in');
 
-        document.querySelectorAll('#edit-soldier-number, #edit-soldier-name, #edit-soldier-country').forEach((input) => {
+        document.querySelectorAll('#edit-soldier-number, #edit-soldier-name, #edit-soldier-country, #edit-upcoming-accommodation, #edit-upcoming-release').forEach((input) => {
 
             input.classList.remove('is-valid');
             input.classList.remove('is-invalid');
@@ -2610,7 +2643,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
-                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat') {
+                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'InvalidDate') {
                             closeAddMultiSoldierModal();
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {
@@ -2718,7 +2751,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const inputsToCheck = [
             { input: soldierId, condition: soldierId.value === "" },
             { input: soldierName, condition: soldierName.value === "" || !soldierNamePattern.test(soldierName.value) },
-            { input: soldierCountry, condition: soldierCountry.value === "" }
+            { input: soldierCountry, condition: soldierCountry.value === "" },
+            { input: soldierDate1, condition: false },
+            { input: soldierDate2, condition: false }
         ];
 
         let isValid = true;
@@ -2739,7 +2774,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = {
             soldierId: soldierId.value,
             soldierName: soldierName.value,
-            soldierCountry: soldierCountry.value
+            soldierCountry: soldierCountry.value,
+            upcomingAccommodationDate: soldierDate1.value,
+            upcomingReleaseDate: soldierDate2.value
         };
 
         const submitButton = document.createElement('button');
@@ -2842,6 +2879,22 @@ document.addEventListener('DOMContentLoaded', function () {
             const soldierNamePattern = new RegExp(`^${soldierId} [A-Za-z0-9\\s\\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇ]+$`);
             toggleInputValidity(input, input.value !== "" && soldierNamePattern.test(input.value));
         });
+    });
+
+    soldierDate1.addEventListener('change', function () {
+        toggleInputValidity(soldierDate1, true);
+    });
+
+    soldierDate2.addEventListener('change', function () {
+        toggleInputValidity(soldierDate2, true);
+    });
+
+    editSoldierUpcomeAccom.addEventListener('change', function () {
+        toggleInputValidity(editSoldierUpcomeAccom, true);
+    });
+
+    editSoldierUpcomeRel.addEventListener('change', function () {
+        toggleInputValidity(editSoldierUpcomeRel, true);
     });
 
     document.getElementById('btnAddDestination').addEventListener("click", () => {
@@ -3167,7 +3220,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     roomName.addEventListener('input', function () {
-        
+
         if (clickBuildNumber.value)
             toggleInputValidity(roomName, roomName.value !== "" && new RegExp(`^${clickBuildNumber.value}\/${roomId.value}$`).test(roomName.value));
         else
@@ -3604,7 +3657,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const inputsToCheck = [
             { input: editSoldierId, condition: editSoldierId.value === "" },
             { input: editSoldierName, condition: editSoldierName.value === "" || !soldierNamePattern.test(editSoldierName.value) },
-            { input: editSoldierCountry, condition: editSoldierCountry.value === "" }
+            { input: editSoldierCountry, condition: editSoldierCountry.value === "" },
+            { input: editSoldierUpcomeAccom, condition: false },
+            { input: editSoldierUpcomeRel, condition: false }
         ];
 
         let isValid = true;
@@ -3626,7 +3681,9 @@ document.addEventListener('DOMContentLoaded', function () {
             soldierId: editOldSoldierId.value,
             soldierNewId: editSoldierId.value,
             soldierName: editSoldierName.value,
-            soldierCountry: editSoldierCountry.value
+            soldierCountry: editSoldierCountry.value,
+            soldierUpcomeAccom: editSoldierUpcomeAccom.value,
+            soldierUpcomeRel: editSoldierUpcomeRel.value
         };
 
         const submitButton = document.createElement('button');

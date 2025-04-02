@@ -765,6 +765,10 @@ input[type="checkbox"]:checked::after {
     .pagination {
         padding-bottom: 16px;
     }
+
+    .btn-container:hover .tooltip-custom {
+        display: none;
+    }
 }
 
 /* Tooltip styling */
@@ -797,7 +801,7 @@ input[type="checkbox"]:checked::after {
     transform: translate(-50%, 0);
 }
 
-@media screen and (max-width: 1440px) and (min-width: 1280px) {
+@media screen and (max-width: 1440px) and (min-width: 768px) {
 
     .content {
         padding: 15px; /* Adjust padding for better spacing */

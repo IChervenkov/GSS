@@ -71,6 +71,22 @@ const checkBagsSchema = Joi.object({
     code: Joi.string().alphanum().required()
 });
 
+const changeAmountSchema = Joi.object({
+    checkList: Joi.array().items(
+        Joi.object({
+            code: Joi.string().alphanum().required(),
+            amount: Joi.number().integer().min(1).required()
+        })
+    ).required(),
+    moveAmount: Joi.number().integer().min(1).required()
+});
+
+const editCleanItemSchema = Joi.object({
+    itemId: Joi.string().alphanum().required(),
+    editAmount: Joi.number().required(),
+    isTotalAmound: Joi.boolean().required()
+});
+
 const updateBagsScanerSchema = Joi.object({
     codes: Joi.array()
         .items(Joi.string().alphanum())
@@ -417,14 +433,27 @@ const schemaReturnAdditionalItem = Joi.object({
 const schemaAddSoldier = Joi.object({
     soldierId: Joi.string().alphanum().required(),
     soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
-    soldierCountry: Joi.string().alphanum().required()
+    soldierCountry: Joi.string().alphanum().required(),
+    upcomingAccommodationDate: Joi.date().allow('').iso().required(),
+    upcomingReleaseDate: Joi.date().allow('').iso().required()
 });
 
 const schemaEditSoldier = Joi.object({
     soldierId: Joi.string().alphanum().required(),
     soldierNewId: Joi.string().alphanum().required(),
     soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
-    soldierCountry: Joi.string().alphanum().required()
+    soldierCountry: Joi.string().alphanum().required(),
+    soldierUpcomeAccom: Joi.date().allow('').iso().required(),
+    soldierUpcomeRel: Joi.date().allow('').iso().required()
+});
+
+const schemaAddCleanItem = Joi.object({
+    itemName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    totalAmount: Joi.number().integer().min(0).required()
+});
+
+const schemaRemoveCleanItem = Joi.object({
+    itemId: Joi.string().alphanum().required()
 });
 
 const schemaRemoveSoldier = Joi.object({
@@ -2543,7 +2572,7 @@ class Server {
                 await client.query('BEGIN');
 
                 const result_client = await client.query(`
-                    SELECT s.id, namesoldier, country, namekey, l.id as etc, l.code, s.meal_card, s.date_free, s.date_accommodation, k.id AS keyid
+                    SELECT s.id, namesoldier, country, upcoming_accommodation, upcoming_release, namekey, l.id as etc, l.code, s.meal_card, s.date_free, s.date_accommodation, k.id AS keyid
                     FROM soldier s
                     LEFT JOIN key k ON k.soldierid = s.id
                     LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id
@@ -2554,6 +2583,8 @@ class Server {
                         id: element.id,
                         name: element.namesoldier,
                         country: element.country,
+                        upcoming_accommodation: element.upcoming_accommodation ? element.upcoming_accommodation : '',
+                        upcoming_release: element.upcoming_release ? element.upcoming_release : '',
                         keyid: element.keyid ? element.keyid : '',
                         namekey: element.namekey ? element.namekey : '',
                         etc: element.etc ? element.etc : '',
@@ -2613,6 +2644,47 @@ class Server {
 
     // Section Accommodation
     defineRoutesAccommodation() {
+
+        this.app.get('/checkUpcomingDate', this.isLoggedIn.bind(this), async (req, res) => {
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                // Combine both queries into one
+                const query = `
+                    SELECT *
+                    FROM soldier
+                    WHERE camp_id = $1 
+                        AND (upcoming_accommodation = CURRENT_DATE OR upcoming_release = CURRENT_DATE);`;
+                const result = await client.query(query, [req.session.camp]);
+
+                await client.query('COMMIT');
+
+                function convertDate(date) {
+                    const dateObj = new Date(date);
+                    const year = dateObj.getFullYear();
+                    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+                    const day = String(dateObj.getDate()).padStart(2, "0");
+
+                    return `${year}-${month}-${day}`;
+                }
+
+                // Determine accommodations and releases
+                const isAccommodation = result.rows.some(row => convertDate(row.upcoming_accommodation) === new Date().toISOString().slice(0, 10));
+                const isRelease = result.rows.some(row => convertDate(row.upcoming_release) === new Date().toISOString().slice(0, 10));
+
+                // Send response
+                return res.status(200).json({ isAccommodation, isRelease });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing request:', error.message);
+                return res.status(500).json({ message: 'An internal error occurred while processing your request.' });
+            } finally {
+                client.release();
+            }
+        });
 
         this.app.get('/rooms', this.isLoggedIn.bind(this), async (req, res) => {
 
@@ -3355,7 +3427,7 @@ class Server {
 
                     if (result_accommodation_soldier.rows.length === 0) {
                         await client.query(
-                            "UPDATE soldier SET date_accommodation = CURRENT_DATE, date_free = NULL, meal_card = $2, laundry_bag_id = $3, used_room = $4 WHERE id = $1;",
+                            "UPDATE soldier SET date_accommodation = CURRENT_DATE, date_free = NULL, meal_card = $2, laundry_bag_id = $3, used_room = $4, upcoming_accommodation = NULL WHERE id = $1;",
                             [soldierId, mealCardId, bagId === '' ? null : bagId, keyCodeId]
                         );
                     } else {
@@ -3415,7 +3487,7 @@ class Server {
 
                     await Promise.all([
                         client.query("UPDATE key SET soldierid = NULL WHERE id = $1;", [keyCodeId]),
-                        client.query("UPDATE soldier SET date_free = CURRENT_DATE WHERE id = $1;", [res_query.rows[0].soldierid])
+                        client.query("UPDATE soldier SET date_free = CURRENT_DATE, upcoming_release = NULL WHERE id = $1;", [res_query.rows[0].soldierid])
                     ]);
 
                     // Query the database for the user
@@ -3699,8 +3771,11 @@ class Server {
                 return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
             }
 
-            const { soldierId, soldierName, soldierCountry } = req.body;
+            const { soldierId, soldierName, soldierCountry, upcomingAccommodationDate, upcomingReleaseDate } = req.body;
             const client = await pool.connect();
+
+            if (upcomingAccommodationDate && upcomingReleaseDate && new Date(upcomingAccommodationDate) > new Date(upcomingReleaseDate))
+                return res.status(400).json({ message: "The date of accommodation cannot be greater than the date of release" });
 
             try {
 
@@ -3721,7 +3796,7 @@ class Server {
                 }
 
                 await Promise.all([
-                    client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, NULL, NULL, NULL, $4);", [soldierId, soldierName, soldierCountry, req.session.camp]),
+                    client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, NULL, NULL, NULL, $4, $5, $6);", [soldierId, soldierName, soldierCountry, req.session.camp, upcomingAccommodationDate || null, upcomingReleaseDate || null]),
                     client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)", [req.session.username, `Add soldier ${soldierName}`])
                 ]);
 
@@ -3790,8 +3865,11 @@ class Server {
                 return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
             }
 
-            const { soldierId, soldierNewId, soldierName, soldierCountry } = req.body;
+            const { soldierId, soldierNewId, soldierName, soldierCountry, soldierUpcomeAccom, soldierUpcomeRel } = req.body;
             const client = await pool.connect();
+
+            if (soldierUpcomeAccom && soldierUpcomeRel && new Date(soldierUpcomeAccom) > new Date(soldierUpcomeRel))
+                return res.status(400).json({ message: "The date of accommodation cannot be greater than the date of release" });
 
             try {
 
@@ -3810,12 +3888,12 @@ class Server {
                 }
 
                 if (soldierId === soldierNewId) {
-                    await client.query("UPDATE soldier SET namesoldier = $1, country = $2 WHERE id = $3;", [soldierName, soldierCountry, soldierId]);
+                    await client.query("UPDATE soldier SET namesoldier = $1, country = $2, upcoming_accommodation = $4, upcoming_release = $5 WHERE id = $3;", [soldierName, soldierCountry, soldierId, soldierUpcomeAccom || null, soldierUpcomeRel || null]);
                 } else {
                     const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [soldierId]);
                     const respons = result.rows[0];
 
-                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);", [soldierNewId, soldierName, soldierCountry, respons.date_accommodation || null, respons.date_free || null, respons.meal_card || null, respons.laundry_bag_id || null, respons.used_room || null, respons.camp_id]);
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);", [soldierNewId, soldierName, soldierCountry, respons.date_accommodation || null, respons.date_free || null, respons.meal_card || null, respons.laundry_bag_id || null, respons.used_room || null, respons.camp_id, soldierUpcomeAccom || null, soldierUpcomeRel || null]);
 
                     await Promise.all([
                         client.query("UPDATE movesoldier SET idsoldier = $1 WHERE idsoldier = $2;", [soldierNewId, soldierId]),
@@ -3896,6 +3974,11 @@ class Server {
                         errors.push({ type: 'InvalidFormat', message: `Soldier name '${row.soldierName}' should not end with a space.` });
                         return;
                     }
+
+                    if (row.upcomingReleaseDate && row.upcomingAccommodationDate && new Date(row.upcomingAccommodationDate) > new Date(row.upcomingReleaseDate)) {
+                        errors.push({ type: 'InvalidDate', message: `The date of accommodation cannot be greater than the date of release` });
+                        return;
+                    }
                 }));
 
                 if (errors.length > 0) {
@@ -3904,7 +3987,7 @@ class Server {
                 }
 
                 await Promise.all(data.map(async (row) => {
-                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, NULL, NULL, NULL, $4);", [row.soldierId, row.soldierName, row.soldierCountry, req.session.camp]);
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, NULL, NULL, NULL, $4, $5, $6);", [row.soldierId, row.soldierName, row.soldierCountry, req.session.camp, row.upcomingAccommodationDate || null, row.upcomingReleaseDate || null]);
                 }));
 
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -3931,7 +4014,7 @@ class Server {
             const worksheet = workbook.addWorksheet('Add Multipul Soldiers');
 
             // Add custom column titles for the first sheet
-            const headers = ['soldierId', 'soldierName', 'soldierCountry'];
+            const headers = ['soldierId', 'soldierName', 'soldierCountry', 'upcomingAccommodationDate', 'upcomingReleaseDate'];
             const headerRow = worksheet.addRow(headers);
 
             // Apply styling to the headers
@@ -3948,9 +4031,11 @@ class Server {
 
             // Set column widths for sheet 1
             worksheet.columns = [
-                { width: 12 }, // Soldier ID
-                { width: 20 }, // Soldier Name
-                { width: 25 }, // Soldier Country
+                { width: 12 },
+                { width: 20 },
+                { width: 25 },
+                { width: 25 },
+                { width: 25 },
             ];
 
             // Set the response headers for file download
@@ -7645,6 +7730,319 @@ class Server {
             } catch (error) {
                 console.error('Error generating the report:', error);
                 res.status(500).send('Failed to generate the report.');
+            }
+        });
+
+        this.app.get('/cleanItem', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const result = await client.query(`SELECT id, itemname AS name, total_amount, count_get_item FROM clearitem WHERE camp_id = $1;`, [req.session.camp]);
+
+                await client.query('COMMIT');
+                res.status(200).json(result.rows);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to get clean items' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/addCleanItem', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaAddCleanItem.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { itemName, totalAmount } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const check_exist = await client.query(`SELECT * FROM clearitem WHERE itemname = $1 AND camp_id = $2;`, [itemName, req.session.camp]);
+
+                if (check_exist.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ message: 'This item already exists!' });
+                }
+
+                const uniqueId = crypto.randomBytes(16).toString('hex');
+                await client.query(`INSERT INTO clearitem VALUES ($1, $2, $3, 0, $4);`, [uniqueId, itemName, totalAmount, req.session.camp]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The item was successfully added' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to add item.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/uploadCleanItem/download', async (req, res) => {
+
+            // Create a new Excel workbook
+            const workbook = new excelJS.Workbook();
+
+            // Sheet 1: Soldier Data
+            const worksheet = workbook.addWorksheet('Add Multipul Clean Items');
+
+            // Add custom column titles for the first sheet
+            const headers = ['itemName', 'totalAmount'];
+            const headerRow = worksheet.addRow(headers);
+
+            // Apply styling to the headers
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, size: 12 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+
+            // Set column widths for sheet 1
+            worksheet.columns = [
+                { width: 25 },
+                { width: 20 }
+            ];
+
+            // Set the response headers for file download
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=templateAddCleanItems.xlsx');
+
+            // Write the workbook to the response stream
+            await workbook.xlsx.write(res);
+            res.end(); // End the response
+
+        });
+
+        this.app.post('/uploadCleanItems', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+            const client = await pool.connect();
+            const errors = [];
+
+            try {
+                await client.query('BEGIN');
+
+                if (!req.file) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ error: 'No file uploaded.' });
+                }
+
+                const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet);
+
+                // Set to track unique soldierIds in the file
+                const seenIds = new Set();
+
+                await Promise.all(data.map(async (row, index) => {
+                    const { error } = schemaAddCleanItem.validate(row);
+
+                    if (error) {
+                        errors.push({ type: 'Validation', details: error.details, row, index });
+                        return;
+                    }
+
+                    // Check for duplicates within the file
+                    if (seenIds.has(row.itemName)) {
+                        errors.push({ type: 'DuplicateInFile', row, index, message: `Duplicate item name '${row.itemName}' in the file.` });
+                        return;
+                    }
+                    seenIds.add(row.itemName);
+
+                    // Check for duplicates in the database
+                    const result = await client.query("SELECT * FROM clearitem WHERE itemname = $1;", [row.itemName]);
+                    if (result.rows.length > 0) {
+                        errors.push({ type: 'DuplicateInDB', message: `Item '${row.itemName}' already exists.` });
+                        return;
+                    }
+
+                    if (row.itemName.endsWith(' ')) {
+                        errors.push({ type: 'InvalidFormat', message: `Item name '${row.itemName}' should not end with a space.` });
+                        return;
+                    }
+                }));
+
+                if (errors.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row) => {
+                    const uniqueId = crypto.randomBytes(16).toString('hex');
+                    await client.query("INSERT INTO clearitem VALUES ($1, $2, $3, 0, $4);", [uniqueId, row.itemName, row.totalAmount, req.session.camp]);
+                }));
+
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Add multi clean items`]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'File processed successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ error: 'An error occurred while processing the file.' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/removeCleanItem', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaRemoveCleanItem.validate(req.body);
+            if (error) {
+                return res.status(400).send({ message: error.details[0].message });
+            }
+
+            const { itemId } = req.body;
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                await client.query(`DELETE FROM clearitem WHERE id = $1;`, [itemId]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The item was successfully removed' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to remove item.' });
+
+            } finally {
+                client.release();
+            }
+
+        });
+
+        this.app.post('/changeAmountLargeToSmall', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = changeAmountSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { checkList, moveAmount } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                for (const item of checkList) {
+
+                    const itemId = item.code;
+                    const itemAmount = item.amount;
+
+                    await client.query(`UPDATE clearitem SET total_amount = $1, count_get_item = count_get_item + $2 WHERE id = $3;`,
+                        [itemAmount - moveAmount, moveAmount, itemId]);
+                }
+
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Move item from large to small workhouse`]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'Item amount move succesful' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to move item.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/changeAmountSmallToLarge', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = changeAmountSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { checkList, moveAmount } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                for (const item of checkList) {
+
+                    const itemId = item.code;
+                    const itemAmount = item.amount;
+
+                    await client.query(`UPDATE clearitem SET total_amount = total_amount + $1, count_get_item = $2 WHERE id = $3;`,
+                        [moveAmount, itemAmount - moveAmount, itemId]);
+                }
+
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Move item from small to large workhouse`]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'Item amount move succesful' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to move item.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/editCleanItem', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = editCleanItemSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { itemId, editAmount, isTotalAmound } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                if (isTotalAmound)
+                    await client.query(`UPDATE clearitem SET total_amount = $2 WHERE id = $1;`, [itemId, editAmount]);
+                else
+                    await client.query(`UPDATE clearitem SET count_get_item = $2 WHERE id = $1;`, [itemId, editAmount]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'Item is edit succesful' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to edit item.' });
+
+            } finally {
+                client.release();
             }
         });
     }

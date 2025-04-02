@@ -60,11 +60,11 @@
 
         <!-- Left Navigation Bar -->
         <div class="left-nav">
-            <div class="title-container mb-2 sticky-top w-100 bg-light" <% if(username !='helpDeskNikolay' &&
-                username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
+            <div class="title-container mb-2 sticky-top w-100 bg-light" <% if(username !='helpDeskNikolay' && username != 'helpDeskAngel' && username
+                !='admin' ) { %> style="cursor: not-allowed" <% } %>>
                     <div class="btn-container" style="width: 100%;">
                         <button type="button" id="btnAddDestination"
-                            class="btn-add-destination w-100 <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">
+                            class="btn-add-destination w-100 <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin') { %> disabled-button <% } %>">
                             <i class="bi bi-plus-circle"></i> Add Destination
                         </button>
                         <div class="tooltip-custom">
@@ -82,17 +82,18 @@
                                     <%= item.nameAdd %>
                                 </span>
                         </button>
-                        <div class="button-group" <% if(username !='helpDeskNikolay' && username !='admin' ) { %>
+                        <div class="button-group" <% if(username !='helpDeskNikolay' && username != 'helpDeskAngel' && username !='admin' ) { %>
                             style="cursor: not-allowed" <% } %>>
                                 <button type="button"
-                                    class="btn btn-success btn-sm me-1 btn-add <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
-                                    numberBuild="<%= item.nameBuilding %>" name="<%= item.numBuild %>"><i class="bi bi-plus"></i></button>
+                                    class="btn btn-success btn-sm me-1 btn-add <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin') { %> disabled-button <% } %>"
+                                    numberBuild="<%= item.nameBuilding %>" name="<%= item.numBuild %>"><i
+                                        class="bi bi-plus"></i></button>
                                 <button type="button"
-                                    class="btn btn-danger btn-sm btn-remove <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
+                                    class="btn btn-danger btn-sm btn-remove <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin') { %> disabled-button <% } %>"
                                     name="<%= item.numBuild %>"><i class="bi bi-dash"></i></button>
                                 <% if(item.numBuild) { %>
                                     <button type="button"
-                                        class="btn btn-outline-secondary btn-sm <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>"
+                                        class="btn btn-outline-secondary btn-sm <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin') { %> disabled-button <% } %>"
                                         name="<%= item.numBuild %>" data-name-room="<%= item.name %>">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -144,11 +145,11 @@
                     <label class="virtual-warehouse-label">Free Beds: <%= totalFreeBeds %></label>
                     <label class="virtual-warehouse-label">Occupied Beds: <%= totalOccupiedBeds %></label>
 
-                    <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
+                    <div <% if(username !='helpDeskNikolay' && username != 'helpDeskAngel' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
                             <div class="btn-container w-100 w-md-auto">
                                 <button type="button" id="btnListSoldier"
-                                    class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
+                                    class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
                                     <i class="bi bi-person"></i> List of soldier
                                 </button>
                                 <div class="tooltip-custom">
@@ -157,11 +158,11 @@
                                 </div>
                             </div>
                     </div>
-                    <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
+                    <div <% if(username !='helpDeskNikolay' && username != 'helpDeskAngel' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
                             <div class="btn-container w-100 w-md-auto">
                                 <button type="button" id="btnAccommSoldier"
-                                    class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
+                                    class="btn-add-soldier <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>">
                                     <i class="bi bi-person-fill"></i> Accommodation soldiers
                                 </button>
                                 <div class="tooltip-custom">
@@ -170,11 +171,11 @@
                                 </div>
                             </div>
                     </div>
-                    <div <% if(username !='helpDeskNikolay' && username !='admin' && username !='helpDeskElena' ) { %>
+                    <div <% if(username !='helpDeskNikolay' && username != 'helpDeskAngel' && username !='admin' && username !='helpDeskElena' ) { %>
                         style="cursor: not-allowed" <% } %>>
                             <div class="btn-container w-100 w-md-auto">
                                 <button type="button" id="btnFreeAllRoom"
-                                    class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'admin') { %> disabled-button <% } %>">
+                                    class="btn-free-soldier <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin') { %> disabled-button <% } %>">
                                     <i class="bi bi-building"></i> Release building
                                 </button>
                                 <div class="tooltip-custom">
@@ -261,22 +262,22 @@
             <span class="close-btn">&times;</span>
 
             <h2>List of Keys
-                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='admin' && username
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username != 'helpDeskAngel' && username !='admin' && username
                     !='helpDeskElena' ) { %>
                     style="cursor: not-allowed" <% } %>>
                         <button type="button"
-                            class="btn btn-outline-success btn-sm rounded-circle fw-bold <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            class="btn btn-outline-success btn-sm rounded-circle fw-bold <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
                             id="addKey"><i class="bi bi-plus"></i></button>
                         <div class="tooltip-custom">
                             <i class="bi bi-question-circle"></i>
                             <span class="tooltiptext">Add key</span>
                         </div>
                 </div>
-                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='admin' && username
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username != 'helpDeskAngel' && username !='admin' && username
                     !='helpDeskElena' ) { %>
                     style="cursor: not-allowed" <% } %>>
                         <button type="button"
-                            class="btn btn-outline-primary btn-sm rounded-circle fw-bold <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            class="btn btn-outline-primary btn-sm rounded-circle fw-bold <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
                             id="removeKey"><i class="bi bi-arrow-repeat"></i></button>
                         <div class="tooltip-custom">
                             <i class="bi bi-question-circle"></i>
@@ -356,11 +357,11 @@
 
                 <input type="hidden" id="isAccommodation" value="false">
 
-                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='admin' && username
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username != 'helpDeskAngel' && username !='admin' && username
                     !='helpDeskElena' ) { %>
                     style="cursor: not-allowed" <% } %>>
                         <button type="submit"
-                            class="modal-button <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            class="modal-button <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
                             id="save-button">
                             <i class="bi bi-save"></i> Save
                         </button>
@@ -369,11 +370,11 @@
                             <span class="tooltiptext">Save soldier to the room</span>
                         </div>
                 </div>
-                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='admin' && username
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username != 'helpDeskAngel' && username !='admin' && username
                     !='helpDeskElena' ) { %>
                     style="cursor: not-allowed" <% } %>>
                         <button type="button"
-                            class="modal-button <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            class="modal-button <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
                             id="move-button">
                             <i class="bi bi-arrows-move"></i> Move Soldier
                         </button>
@@ -382,11 +383,11 @@
                             <span class="tooltiptext">Move soldier to another room</span>
                         </div>
                 </div>
-                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='admin' && username
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username != 'helpDeskAngel' && username !='admin' && username
                     !='helpDeskElena' ) { %>
                     style="cursor: not-allowed" <% } %>>
                         <button type="button"
-                            class="modal-button <% if(username != 'helpDeskNikolay' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            class="modal-button <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
                             id="addtional-item-button">
                             <i class="bi bi-plus-circle"></i> Add Additional Item
                         </button>
@@ -642,6 +643,16 @@
                                 <label id="soldier-country-header">Soldier country</label>
                             </th>
 
+                            <th>
+                                <input type="text" class="search-input-soldier" placeholder="Search...">
+                                <label id="soldier-upcomm-accom-header">Upcoming accommodation date</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-soldier" placeholder="Search...">
+                                <label id="soldier-upcomm-release-header">Upcoming release date</label>
+                            </th>
+
                         </tr>
                     </thead>
                     <tbody id="tableBodyModal">
@@ -696,6 +707,21 @@
 
             </div>
 
+            <div class="d-flex align-items-center">
+                <!-- First Soldier Selection -->
+                <div class="mb-3 search-container me-3 w-100">
+                    <label for="edit-upcoming-accommodation" class="form-label text-start d-block">Date of upcoming accommodation</label>
+                    <input type="date" id="edit-upcoming-accommodation" class="form-control">
+                </div>
+
+                <!-- Second Soldier Selection -->
+                <div class="mb-3 search-container w-100">
+                    <label for="edit-upcoming-release" class="form-label text-start d-block">Date of upcoming release</label>
+                    <input type="date" id="edit-upcoming-release" class="form-control">
+                </div>
+            </div>
+
+
             <!-- Buttons for confirming the selection -->
             <div class="button-container">
                 <button type="submit" id="editSoldierButton" class="modal-button">
@@ -744,6 +770,20 @@
                 <div class="invalid-feedback"></div>
                 <div class="valid-feedback"></div>
 
+            </div>
+
+            <div class="d-flex align-items-center">
+                <!-- First Soldier Selection -->
+                <div class="mb-3 search-container me-3 w-100">
+                    <label for="addDate1" class="form-label text-start d-block">Date of upcoming accommodation</label>
+                    <input type="date" id="addDate1" class="form-control">
+                </div>
+
+                <!-- Second Soldier Selection -->
+                <div class="mb-3 search-container w-100">
+                    <label for="addDate2" class="form-label text-start d-block">Date of upcoming release</label>
+                    <input type="date" id="addDate2" class="form-control">
+                </div>
             </div>
 
             <!-- Buttons for confirming the selection -->
@@ -1048,9 +1088,10 @@
 
             <div class="modal-body">
 
-                <button type="button" id="toggleFormButton" class="modal-button"><i class="bi bi-plus-circle me-1"></i>Add Item</button>
+                <button type="button" id="toggleFormButton" class="modal-button"><i
+                        class="bi bi-plus-circle me-1"></i>Add Item</button>
 
-                <form class="form-section" method="POST" action="/accommodation/addAdditionalItems" id="form12">    
+                <form class="form-section" method="POST" action="/accommodation/addAdditionalItems" id="form12">
                     <div class="mb-3 search-container">
                         <label class="form-label" for="additionalItemSoldierCode">Soldier code <span
                                 class="text-danger">*</span></label>
@@ -1133,25 +1174,25 @@
     </div>
 
     <% if(username !='NSPA' ) { %>
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
-            aria-live="assertive" aria-atomic="true">
-            <div class="d-flex align-items-center">
-                <!-- Info Icon -->
-                <i class="bi bi-info-circle-fill toast-icon"></i>
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
+                aria-live="assertive" aria-atomic="true">
+                <div class="d-flex align-items-center">
+                    <!-- Info Icon -->
+                    <i class="bi bi-info-circle-fill toast-icon"></i>
 
-                <!-- Toast Message -->
-                <div class="toast-body flex-grow-1" id="toast-message">
-                    <!-- Message will be inserted here -->
+                    <!-- Toast Message -->
+                    <div class="toast-body flex-grow-1" id="toast-message">
+                        <!-- Message will be inserted here -->
+                    </div>
+
+                    <!-- Close Button -->
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
+                        aria-label="Close"></button>
                 </div>
-
-                <!-- Close Button -->
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
-                    aria-label="Close"></button>
             </div>
         </div>
-    </div>
-    <% } %>
+        <% } %>
 
 </body>
 
@@ -1163,6 +1204,6 @@
 
 <% if(username !='NSPA' ) { %>
     <script src="/java/showPinMessage.js"></script>
-<% } %>
+    <% } %>
 
 </html>

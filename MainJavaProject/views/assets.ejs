@@ -120,6 +120,17 @@
                             </div>
                     </div>
 
+                    <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
+                            <button type="button" id="btnCleaningItem"
+                                class="btn-add-type <% if(username == 'NSPA') { %> disabled-button <% } %>">
+                                <i class="bi bi-bucket"></i> Cleaning Items
+                            </button>
+                            <div class="tooltip-custom">
+                                <i class="bi bi-question-circle"></i>
+                                <span class="tooltiptext">List with all cleaning item</span>
+                            </div>
+                    </div>
+
                     <div class="btn-container">
                         <button id="reportButton" class="btn-add-type">
                             <i class="bi bi-file-earmark-text"></i> <span>Asset archive</span>
@@ -130,10 +141,13 @@
                         </div>
                     </div>
 
-                    <div class="button-container-report" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
-                        <button type="button" class="download-btn <% if(username=='NSPA' ) { %> disabled-button <% } %>" id="downloadRFIDAppBtnAsset">
-                            <i class="bi bi-download"></i> Download App
-                        </button>
+                    <div class="button-container-report" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% }
+                            %>>
+                            <button type="button"
+                                class="download-btn <% if(username=='NSPA' ) { %> disabled-button <% } %>"
+                                id="downloadRFIDAppBtnAsset">
+                                <i class="bi bi-download"></i> Download App
+                            </button>
                     </div>
 
                 </div>
@@ -477,8 +491,7 @@
             <div class="row">
 
                 <div class="col-md-4 mb-3">
-                    <label for="assetAddOwner" class="form-label">Asset owner <span
-                            class="text-danger">*</span></label>
+                    <label for="assetAddOwner" class="form-label">Asset owner <span class="text-danger">*</span></label>
                     <input type="text" id="assetAddOwner" class="form-control" placeholder="Asset owner"
                         pattern="^[a-zA-Z\s]+$" value="Global RTS">
                     <div class="invalid-feedback"></div>
@@ -881,6 +894,245 @@
         </form>
     </div>
 
+    <div id="cleanItemListModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2>Clean Workhouses
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold"
+                        id="addCleanItem"><i class="bi bi-plus"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Add clean item to the system</span>
+                    </div>
+                </div>
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                        id="removeCleanItem"><i class="bi bi-dash"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Remove clean item to the system</span>
+                    </div>
+                </div>
+            </h2>
+
+            <div class="container my-4">
+                <div class="row d-flex align-items-center text-center justify-content-center">
+                    <!-- Large Workhouse Table -->
+                    <div class="col-lg-5 col-md-5 col-12">
+                        <h3>Large Workhouse</h3>
+                        <div class="d-flex justify-content-end mb-2">
+                            <button type="button" id="prevBtnFourth"></button>
+                            <span id="pageNumberFourth"></span>
+                            <button type="button" id="nextBtnFourth"></button>
+                        </div>
+                        <table id="largeWorkhouse" class="table w-100">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th><input name="item_name" type="text" class="search-input-clean-item"
+                                            placeholder="Search...">Item name</th>
+                                    <th><input name="count" type="text" class="search-input-clean-item"
+                                            placeholder="Search...">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody id="largeWorkhouseBody">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Round Buttons - Responsive Layout -->
+                    <div class="col-lg-2 col-md-2 col-12 d-flex justify-content-center align-self-center mb-3">
+                        <div class="d-flex flex-md-column gap-2">
+
+                            <div class="btn-container">
+                                <button id="largeToSmallBtn" class="btn btn-outline-success rounded-circle btn-circle fw-bold">
+                                    <i class="bi bi-chevron-right icon-desktop"></i> <!-- Default for desktop -->
+                                    <i class="bi bi-chevron-down icon-mobile"></i> <!-- Changes on mobile -->
+                                </button>
+                                <div class="tooltip-custom">
+                                    <i class="bi bi-question-circle"></i>
+                                    <span class="tooltiptext">Move amount from large to small workhouse</span>
+                                </div>
+                            </div>
+                            <div class="btn-container">
+                                <button id="smallToLargeBtn" class="btn btn-outline-success rounded-circle btn-circle fw-bold">
+                                    <i class="bi bi-chevron-left icon-desktop"></i> <!-- Default for desktop -->
+                                    <i class="bi bi-chevron-up icon-mobile"></i> <!-- Changes on mobile -->
+                                </button>
+                                <div class="tooltip-custom">
+                                    <i class="bi bi-question-circle"></i>
+                                    <span class="tooltiptext">Return amount from small to large workhouse</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Small Workhouse Table -->
+                    <div class="col-lg-5 col-md-5 col-12">
+                        <h3>Small Workhouse</h3>
+                        <div class="d-flex justify-content-end mb-2">
+                            <button type="button" id="prevBtnFifth"></button>
+                            <span id="pageNumberFifth"></span>
+                            <button type="button" id="nextBtnFifth"></button>
+                        </div>
+                        <table id="smallWorkhouse" class="table w-100">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th><input name="item_name" type="text" class="second-search-input-clean-item"
+                                            placeholder="Search...">Item name</th>
+                                    <th><input name="count" type="text" class="second-search-input-clean-item"
+                                            placeholder="Search...">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody id="smallWorkhouseBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addCleanItemModal" class="modal">
+        <form class="modal-content" action="/addCleanItem" method="POST" id="form7">
+            <span class="close-btn">&times;</span>
+
+            <h2>Add clean item</h2>
+
+            <div class="mb-3">
+                <label for="item-name" class="form-label">Item name <span class="text-danger">*</span></label>
+
+                <input type="text" id="item-name" name="itemName" class="form-control" placeholder="Item name">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
+            </div>
+
+            <div class="mb-3">
+                <label for="total-amount" class="form-label">Total amount <span class="text-danger">*</span></label>
+
+                <input type="number" id="total-amount" min="1" name="totalAmount" class="form-control"
+                    placeholder="Total amount">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
+            </div>
+
+            <div class="col-lg-2 col-md-2 col-12 d-flex justify-content-center align-self-center mb-3 w-100">
+                <div class="d-flex flex-md-row gap-2 w-100">
+
+                    <div class="btn-container w-100">
+                        <button type="submit" id="confirmBtnAddCleanItem" class="modal-button w-100">
+                            <i class="bi bi-plus-circle"></i> Add item
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Add single item</span>
+                        </div>
+                    </div>
+                    <div class="btn-container w-100">
+                        <button type="button" id="confirmBtnAddMultiCleanItem" class="modal-button w-100">
+                            <i class="bi bi-collection"></i> Add multiple items
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Add multiple items</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2 class="mb-3">Add multiple items <a href="/uploadCleanItem/download"><i class="bi bi-download"></i></a>
+            </h2>
+
+            <div class="mb-3">
+                <label for="fileInput" class="form-label">Upload File <span class="text-danger">*</span></label>
+                <input type="file" id="fileInput" class="form-control" accept=".xlsx">
+                <!-- Accept specific file types -->
+            </div>
+
+            <div class="progress-bar">
+                <div class="custom-progress" id="progress">
+                </div>
+            </div>
+
+            <button type="button" id="upload-btn" class="modal-button">
+                <i class="bi bi-upload"></i> Upload
+            </button>
+        </div>
+    </div>
+
+    <div id="removeCleanItemModal" class="modal">
+        <form class="modal-content" action="/removeCleanItem" method="POST" id="form8">
+            <span class="close-btn">&times;</span>
+
+            <h2>Remove clean item</h2>
+
+            <!-- Bike Selection with Custom Search -->
+            <div class="mb-3 search-container">
+                <label for="removeCleanItemSearch" class="form-label">Item name <span
+                        class="text-danger">*</span></label>
+                <input type="text" id="removeCleanItemSearch" class="form-control" placeholder="Item name">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+                <ul id="removeCleanItemDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedRemoveCleanItemId" name="removeCleanItemId" value="">
+                <!-- To store the selected bike ID -->
+            </div>
+
+            <button type="submit" id="confirmRemoveCleanItemBtn" class="modal-button">
+                <i class="bi bi-trash"></i> Remove item
+            </button>
+
+        </form>
+    </div>
+
+    <div id="editCleanItemModal" class="modal">
+        <form class="modal-content" action="/editCleanItem" method="POST" id="form9">
+            <span class="close-btn">&times;</span>
+
+            <h2>Edit item</h2>
+
+            <!-- Bike Selection with Custom Search -->
+            <div class="mb-3 search-container">
+                <label for="editCleanItemSearch" class="form-label">Item name <span
+                        class="text-danger">*</span></label>
+                <input type="text" id="editCleanItemSearch" class="form-control" placeholder="Item name">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+                <ul id="editCleanItemDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                <input type="hidden" id="selectedEditCleanItemId" name="editCleanItemId" value="">
+                <!-- To store the selected bike ID -->
+            </div>
+
+            <div class="mb-3">
+                <label for="editAmount" class="form-label">Amount <span class="text-danger">*</span></label>
+
+                <input type="number" id="editAmount" name="editAmount" class="form-control"
+                    placeholder="Amount">
+
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+
+            </div>
+
+            <button type="submit" id="confirmRemoveCleanItemBtn" class="modal-button">
+                <i class="bi bi-pencil-square"></i> Edit item
+            </button>
+
+        </form>
+    </div>
+
     <!-- The Modal Message -->
     <div id="myMessage" class="modal">
         <div class="modal-content-mess">
@@ -892,25 +1144,25 @@
     </div>
 
     <% if(username !='NSPA' ) { %>
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
-            aria-live="assertive" aria-atomic="true">
-            <div class="d-flex align-items-center">
-                <!-- Info Icon -->
-                <i class="bi bi-info-circle-fill toast-icon"></i>
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
+                aria-live="assertive" aria-atomic="true">
+                <div class="d-flex align-items-center">
+                    <!-- Info Icon -->
+                    <i class="bi bi-info-circle-fill toast-icon"></i>
 
-                <!-- Toast Message -->
-                <div class="toast-body flex-grow-1" id="toast-message">
-                    <!-- Message will be inserted here -->
+                    <!-- Toast Message -->
+                    <div class="toast-body flex-grow-1" id="toast-message">
+                        <!-- Message will be inserted here -->
+                    </div>
+
+                    <!-- Close Button -->
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
+                        aria-label="Close"></button>
                 </div>
-
-                <!-- Close Button -->
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
-                    aria-label="Close"></button>
             </div>
         </div>
-    </div>
-    <% } %>
+        <% } %>
 
 </body>
 
@@ -923,6 +1175,6 @@
 
 <% if(username !='NSPA' ) { %>
     <script src="/java/showPinMessage.js"></script>
-<% } %>
+    <% } %>
 
 </html>
