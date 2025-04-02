@@ -2648,7 +2648,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {
                             closeAddMultiSoldierModal();
-                            showGlobalMess("Error", `Invalid data in row with Id: ${error.row.soldierId}. Check the syntax of ID, name, and country.`);
+                            showGlobalMess("Error", `Invalid data in row with Id: ${error.row.soldierId}. Check the syntax of ID, name, country or dates.`);
                         }
                     });
                 } else {

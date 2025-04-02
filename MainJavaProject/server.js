@@ -434,8 +434,8 @@ const schemaAddSoldier = Joi.object({
     soldierId: Joi.string().alphanum().required(),
     soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
     soldierCountry: Joi.string().alphanum().required(),
-    upcomingAccommodationDate: Joi.date().allow('').iso().required(),
-    upcomingReleaseDate: Joi.date().allow('').iso().required()
+    upcomingAccommodationDate: Joi.date().allow('').iso().optional(),
+    upcomingReleaseDate: Joi.date().allow('').iso().optional()
 });
 
 const schemaEditSoldier = Joi.object({
