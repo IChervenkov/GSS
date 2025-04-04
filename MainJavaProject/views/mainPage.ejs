@@ -65,8 +65,8 @@
         <% if(navItems) { %>
             <div class="left-nav">
 
-                <div class="title-container mb-2 sticky-top w-100 bg-light" <% if(username !='helpDeskNikolay' && username !='helpDeskAngel' &&
-                    username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
+                <div class="title-container mb-2 sticky-top w-100 bg-light" <% if(username !='helpDeskNikolay' &&
+                    username !='helpDeskAngel' && username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
                         <div class="btn-container" style="width: 100%;">
                             <button id="addCampButton"
                                 class="sticky-button <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin') { %> disabled-button <% } %>"
@@ -1034,6 +1034,15 @@
                 <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
                     aria-label="Close"></button>
             </div>
+        </div>
+    </div>
+
+    <div id="toastMessage" class="modal">
+        <div class="modal-content-mess">
+            <span class="close-btn">&times;</span>
+
+            <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-toast-icon">
+            <p id="mess-toast-text"></p>
         </div>
     </div>
 

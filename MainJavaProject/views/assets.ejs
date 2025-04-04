@@ -898,7 +898,7 @@
         <div class="modal-content">
             <span class="close-btn">&times;</span>
 
-            <h2>Clean Workhouses
+            <h2>CLN Warehouse
                 <div class="btn-container">
                     <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold"
                         id="addCleanItem"><i class="bi bi-plus"></i></button>
@@ -921,7 +921,7 @@
                 <div class="row d-flex align-items-center text-center justify-content-center">
                     <!-- Large Workhouse Table -->
                     <div class="col-lg-5 col-md-5 col-12">
-                        <h3>Large Workhouse</h3>
+                        <h3>Large Warehouse</h3>
                         <div class="d-flex justify-content-end mb-2">
                             <button type="button" id="prevBtnFourth"></button>
                             <span id="pageNumberFourth"></span>
@@ -946,23 +946,25 @@
                         <div class="d-flex flex-md-column gap-2">
 
                             <div class="btn-container">
-                                <button id="largeToSmallBtn" class="btn btn-outline-success rounded-circle btn-circle fw-bold">
+                                <button id="largeToSmallBtn"
+                                    class="btn btn-outline-success rounded-circle btn-circle fw-bold">
                                     <i class="bi bi-chevron-right icon-desktop"></i> <!-- Default for desktop -->
                                     <i class="bi bi-chevron-down icon-mobile"></i> <!-- Changes on mobile -->
                                 </button>
                                 <div class="tooltip-custom">
                                     <i class="bi bi-question-circle"></i>
-                                    <span class="tooltiptext">Move amount from large to small workhouse</span>
+                                    <span class="tooltiptext">Move amount from large to small warehouse</span>
                                 </div>
                             </div>
                             <div class="btn-container">
-                                <button id="smallToLargeBtn" class="btn btn-outline-success rounded-circle btn-circle fw-bold">
+                                <button id="smallToLargeBtn"
+                                    class="btn btn-outline-success rounded-circle btn-circle fw-bold">
                                     <i class="bi bi-chevron-left icon-desktop"></i> <!-- Default for desktop -->
                                     <i class="bi bi-chevron-up icon-mobile"></i> <!-- Changes on mobile -->
                                 </button>
                                 <div class="tooltip-custom">
                                     <i class="bi bi-question-circle"></i>
-                                    <span class="tooltiptext">Return amount from small to large workhouse</span>
+                                    <span class="tooltiptext">Return amount from small to large warehouse</span>
                                 </div>
                             </div>
                         </div>
@@ -970,7 +972,7 @@
 
                     <!-- Small Workhouse Table -->
                     <div class="col-lg-5 col-md-5 col-12">
-                        <h3>Small Workhouse</h3>
+                        <h3>Small Warehouse</h3>
                         <div class="d-flex justify-content-end mb-2">
                             <button type="button" id="prevBtnFifth"></button>
                             <span id="pageNumberFifth"></span>
@@ -1105,8 +1107,7 @@
 
             <!-- Bike Selection with Custom Search -->
             <div class="mb-3 search-container">
-                <label for="editCleanItemSearch" class="form-label">Item name <span
-                        class="text-danger">*</span></label>
+                <label for="editCleanItemSearch" class="form-label">Item name <span class="text-danger">*</span></label>
                 <input type="text" id="editCleanItemSearch" class="form-control" placeholder="Item name">
                 <div class="invalid-feedback"></div>
                 <div class="valid-feedback"></div>
@@ -1118,8 +1119,7 @@
             <div class="mb-3">
                 <label for="editAmount" class="form-label">Amount <span class="text-danger">*</span></label>
 
-                <input type="number" id="editAmount" name="editAmount" class="form-control"
-                    placeholder="Amount">
+                <input type="number" id="editAmount" name="editAmount" class="form-control" placeholder="Amount">
 
                 <div class="invalid-feedback"></div>
                 <div class="valid-feedback"></div>
@@ -1160,6 +1160,15 @@
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
                         aria-label="Close"></button>
                 </div>
+            </div>
+        </div>
+
+        <div id="toastMessage" class="modal">
+            <div class="modal-content-mess">
+                <span class="close-btn">&times;</span>
+
+                <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-toast-icon">
+                <p id="mess-toast-text"></p>
             </div>
         </div>
         <% } %>

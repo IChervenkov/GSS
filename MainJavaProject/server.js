@@ -2675,7 +2675,16 @@ class Server {
                 const isRelease = result.rows.some(row => convertDate(row.upcoming_release) === new Date().toISOString().slice(0, 10));
 
                 // Send response
-                return res.status(200).json({ isAccommodation, isRelease });
+                return res.status(200).json({
+                    isAccommodation,
+                    isRelease,
+                    accommodationList: result.rows
+                        .filter(row => convertDate(row.upcoming_accommodation) === new Date().toISOString().slice(0, 10))
+                        .map(row => row.namesoldier), // Assuming soldier has a `name` field
+                    releaseList: result.rows
+                        .filter(row => convertDate(row.upcoming_release) === new Date().toISOString().slice(0, 10))
+                        .map(row => row.namesoldier)
+                });
 
             } catch (error) {
                 await client.query('ROLLBACK');

@@ -150,12 +150,15 @@
                         </div>
                     </div>
 
-                    <div class="button-container-report" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
-                        <button type="button" class="download-btn <% if(username=='NSPA' ) { %> disabled-button <% } %>" id="downloadTabletAppBtn">
-                            <i class="bi bi-download"></i> Download App
-                        </button>
+                    <div class="button-container-report" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% }
+                            %>>
+                            <button type="button"
+                                class="download-btn <% if(username=='NSPA' ) { %> disabled-button <% } %>"
+                                id="downloadTabletAppBtn">
+                                <i class="bi bi-download"></i> Download App
+                            </button>
                     </div>
-                    
+
                 </div>
             </div>
 
@@ -211,25 +214,34 @@
     </div>
 
     <% if(username !='NSPA' ) { %>
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
-            aria-live="assertive" aria-atomic="true">
-            <div class="d-flex align-items-center">
-                <!-- Info Icon -->
-                <i class="bi bi-info-circle-fill toast-icon"></i>
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
+                aria-live="assertive" aria-atomic="true">
+                <div class="d-flex align-items-center">
+                    <!-- Info Icon -->
+                    <i class="bi bi-info-circle-fill toast-icon"></i>
 
-                <!-- Toast Message -->
-                <div class="toast-body flex-grow-1" id="toast-message">
-                    <!-- Message will be inserted here -->
+                    <!-- Toast Message -->
+                    <div class="toast-body flex-grow-1" id="toast-message">
+                        <!-- Message will be inserted here -->
+                    </div>
+
+                    <!-- Close Button -->
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
+                        aria-label="Close"></button>
                 </div>
-
-                <!-- Close Button -->
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
-                    aria-label="Close"></button>
             </div>
         </div>
-    </div>
-    <% } %>
+
+        <div id="toastMessage" class="modal">
+            <div class="modal-content-mess">
+                <span class="close-btn">&times;</span>
+
+                <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-toast-icon">
+                <p id="mess-toast-text"></p>
+            </div>
+        </div>
+        <% } %>
 
 </body>
 
@@ -241,6 +253,6 @@
 
 <% if(username !='NSPA' ) { %>
     <script src="/java/showPinMessage.js"></script>
-<% } %>
+    <% } %>
 
 </html>
