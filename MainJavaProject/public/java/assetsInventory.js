@@ -39,6 +39,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const editCleanItemModal = document.getElementById('editCleanItemModal');
     const editCleanItemModalContent = editCleanItemModal.querySelector('.modal-content');
 
+    const itemTraceabilityModal = document.getElementById('itemTraceabilityModal');
+    const itemTraceabilityModalContent = itemTraceabilityModal.querySelector('.modal-content');
+
     const modalMess = document.getElementById("myMessage");
     const modalMessContent = modalMess.querySelector('.modal-content-mess');
 
@@ -52,6 +55,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const editCleanItemSearchInput = document.getElementById('editCleanItemSearch');
     const editCleanItemSearchDropdown = document.getElementById('editCleanItemDropdown');
     const selectedEditCleanItemId = document.getElementById('selectedEditCleanItemId');
+
+    const selectAllAssetInput = document.getElementById('allAssetSearch');
+    const selectAllAssetDropdown = document.getElementById('allAssetDropdown');
 
     const editAmount = document.getElementById('editAmount');
 
@@ -137,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Maintain the sort priority sequence
     let sortPriority = [];
     let sortPriorityAsset = [];
+    let allAsset = [];
 
     var nameroomSetCount;
     var nameAssetSetCount;
@@ -146,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var uniqueRooms;
     var lostAssetsCode;
     var cleanItems;
-    var isTotalAmound ;
+    var isTotalAmound;
     var lostAssetsLocation;
     var allLostItems;
     var oldEditAssetId = "";
@@ -665,18 +672,134 @@ document.addEventListener('DOMContentLoaded', function () {
 
             toggleInputValidity(editCleanItemSearchInput, true);
 
-            const totalAmound = cleanItems.find(item => item.name === selectedCleanItem.textContent).total_amount;
             const countGetItem = cleanItems.find(item => item.name === selectedCleanItem.textContent).count_get_item;
 
             if (isTotalAmound) {
-                editAmount.value = totalAmound;
                 editAmount.removeAttribute('max');
-                editAmount.min = totalAmound;
+                editAmount.min = 1;
             } else {
                 editAmount.value = countGetItem;
                 editAmount.max = countGetItem;
                 editAmount.min = 1;
             }
+        }
+    });
+
+    fetchAllAsset(); // Fetch all assets when the page loads
+
+    async function fetchAllAsset() {
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+            const responseBike = await fetch(`/getAllAssets`, {
+                method: 'GET'
+            });
+
+            if (!responseBike.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            allAsset = await responseBike.json(); // Store fetched bikes in the global variable
+
+        } catch (error) {
+            console.log(error);
+            showGlobalMess('Error', 'There was a problem with the fetch operation');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
+    // Show filtered key in the dropdown
+    function filterAllAsset(query) {
+        selectAllAssetDropdown.innerHTML = '';
+        const filteredAllAsset = allAsset.filter(asset =>
+            asset.code.toLowerCase().includes(query.toLowerCase())
+        );
+
+        if (filteredAllAsset.length > 0) {
+            selectAllAssetDropdown.style.display = 'block';
+            filteredAllAsset.forEach(asset => {
+                const li = document.createElement('li');
+                li.textContent = `${asset.code}`;
+                li.setAttribute('data-id', asset.id);
+                li.setAttribute('data-code', asset.code);
+                li.setAttribute('data-name', asset.name_assets);
+                li.setAttribute('data-type-id', asset.type_id);
+                li.setAttribute('data-location-room', asset.location_room);
+                li.setAttribute('data-location-key', asset.location_key);
+                li.setAttribute('data-categorie', asset.categorie);
+                li.setAttribute('data-quantity', asset.quantity);
+                li.setAttribute('data-mrah', asset.mrah);
+                li.setAttribute('data-asset-owner', asset.asset_owner);
+                li.setAttribute('data-status', asset.status);
+                li.setAttribute('data-expandable', asset.expandable);
+                li.setAttribute('data-description', asset.description);
+                selectAllAssetDropdown.appendChild(li);
+            });
+        } else {
+            selectAllAssetDropdown.style.display = 'none';
+        }
+    }
+
+    // Handle input change
+    selectAllAssetInput.addEventListener('input', function () {
+        const query = selectAllAssetInput.value;
+        if (query.length > 0) {
+            filterAllAsset(query);
+        } else {
+            selectAllAssetDropdown.style.display = 'none';
+        }
+    });
+
+    // Handle bike selection
+    selectAllAssetDropdown.addEventListener('click', async function (event) {
+
+        const selectedAllAsset = event.target;
+
+        if (selectedAllAsset && selectedAllAsset.dataset.id) {
+
+            const assetCode = selectedAllAsset.getAttribute('data-code');
+            const name = selectedAllAsset.getAttribute('data-name');
+            const typeId = selectedAllAsset.getAttribute('data-type-id');
+            const location = selectedAllAsset.getAttribute('data-location-room');
+            const assetNameKey = selectedAllAsset.getAttribute('data-location-key');
+            const categorie = selectedAllAsset.getAttribute('data-categorie');
+            const quantity = selectedAllAsset.getAttribute('data-quantity');
+            const mrah = selectedAllAsset.getAttribute('data-mrah');
+            const owner = selectedAllAsset.getAttribute('data-asset-owner');
+            const status = selectedAllAsset.getAttribute('data-status');
+            const expandable = selectedAllAsset.getAttribute('data-expandable');
+            const description = selectedAllAsset.getAttribute('data-description');
+
+            fetch(`/assets/getSortedAssets`, {
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // Parse the JSON string into an array of objects
+                    nameAssetSetCount = data;
+
+                    openEditAssetsModal(
+                        assetCode,
+                        name,
+                        assetType.find(item => item.id === Number(typeId)).name,
+                        assetLocation.find(item => item.roomid === location) ? assetLocation.find(item => item.roomid === location).nameroom : '',
+                        assetLocation.find(item => item.id === assetNameKey) ? assetLocation.find(item => item.id === assetNameKey).name : '',
+                        categorie,
+                        quantity,
+                        mrah,
+                        owner,
+                        status,
+                        expandable,
+                        description ? description : ''
+                    );
+                })
+                .catch(error => console.error("Error fetching keys:", error));
+
+            selectAllAssetInput.value = '';
+            selectAllAssetDropdown.style.display = 'none';
         }
     });
 
@@ -1113,10 +1236,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     editAmount.addEventListener('input', () => {
-        console.log(cleanItems.find(item => item.id === selectedEditCleanItemId.value).total_amount);
-        toggleInputValidity(editAmount, editAmount.value !== '' && 
-            ((isTotalAmound && parseInt(editAmount.value) >= parseInt(cleanItems.find(item => item.id === selectedEditCleanItemId.value).total_amount)) || 
-            (!isTotalAmound && parseInt(editAmount.value) <= parseInt(cleanItems.find(item => item.id === selectedEditCleanItemId.value).count_get_item))));
+        if (!isTotalAmound)
+            toggleInputValidity(editAmount, editAmount.value !== '' && parseInt(editAmount.value) <= parseInt(cleanItems.find(item => item.id === selectedEditCleanItemId.value).count_get_item) && editAmount.checkValidity());
+        else
+            toggleInputValidity(editAmount, editAmount.value !== '' && editAmount.checkValidity());
     });
 
     assetMrah.addEventListener('input', () => {
@@ -1999,16 +2122,26 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedEditCleanItemId.value = id;
         editCleanItemSearchInput.value = name;
 
-        editAmount.value = totalAmount ? totalAmount : countGetItem;
+        editAmount.value = totalAmount ? '' : countGetItem;
 
         if (totalAmount) {
+            const secondLabel = editCleanItemModal.querySelectorAll('label')[1];
+            if (secondLabel) {
+                secondLabel.textContent = 'Additional amount';
+            }
             isTotalAmound = true;
             editAmount.removeAttribute('max');
-            editAmount.min = totalAmount;
+            editAmount.min = 1;
+            editAmount.placeholder = 'Additional amount';
         } else {
+            const secondLabel = editCleanItemModal.querySelectorAll('label')[1];
+            if (secondLabel) {
+                secondLabel.textContent = 'Taken amount';
+            }
             isTotalAmound = false;
             editAmount.max = countGetItem;
             editAmount.min = 1;
+            editAmount.placeholder = 'Taken amount';
         }
 
         // Ensure that any 'slide-out' class is removed if it was previously added
@@ -2033,6 +2166,93 @@ document.addEventListener('DOMContentLoaded', function () {
 
             editCleanItemModal.classList.remove('show');
             editCleanItemModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openItemTraceabilityModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        itemTraceabilityModal.classList.add('show');
+        itemTraceabilityModalContent.classList.add('show');
+        itemTraceabilityModalContent.classList.add('slide-in');
+
+        loadingIndicator.style.display = 'flex';
+        const itemTraceabilityTableBody = document.getElementById('itemTraceabilityTable').getElementsByTagName('tbody')[0];
+
+        fetch(`/getItemTraceability`, {
+            method: 'GET'
+        })
+            .then(response => response.json())
+            .then(data => {
+
+                const tbody = document.getElementById('tableBodyItemTraceabilityModal');
+                tbody.innerHTML = '';
+
+                data.forEach(item => {
+                    const row = document.createElement("tr");
+
+                    // Room status cell
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = item.item_name;
+                    row.appendChild(nameCell);
+
+                    // Room status cell
+                    const amountCell = document.createElement("td");
+                    amountCell.textContent = item.amount;
+                    row.appendChild(amountCell);
+
+                    // Room status cell
+                    const dateChangeCell = document.createElement("td");
+                    const date = new Date(item.date_change);
+                    const formattedDate = date.toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                    });
+                    dateChangeCell.textContent = formattedDate;
+                    row.appendChild(dateChangeCell);
+
+                    // Room status cell
+                    const descriptionCell = document.createElement("td");
+                    descriptionCell.textContent = item.description;
+                    row.appendChild(descriptionCell);
+
+                    // Append row to the table body
+                    tbody.appendChild(row);
+                });
+
+                const rowsTable = itemTraceabilityTableBody.getElementsByTagName("tr");
+                firstUpdateTable(rowsTable, 0, 10, 'pageNumberSixth');
+
+                setupTableNavigation("itemTraceabilityTable", "prevBtnSixth", "nextBtnSixth", "pageNumberSixth");
+            })
+            .catch(error => console.error("Error fetching data:", error))
+            .finally(() => {
+                // Hide loading indicator
+                loadingIndicator.style.display = 'none';
+            });
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        itemTraceabilityModalContent.classList.remove('slide-out');
+    }
+
+    function closeItemTraceabilityModal() {
+        // Add the slide-out effect
+        itemTraceabilityModalContent.classList.add('slide-out');
+        itemTraceabilityModalContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('.search-input-traceability').forEach((input) => {
+                input.value = '';
+            });
+
+            itemTraceabilityModal.classList.remove('show');
+            itemTraceabilityModalContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
     }
 
@@ -2365,7 +2585,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[10].onclick = closeAddMultiCleanItemModal;
     document.getElementsByClassName('close-btn')[11].onclick = closeRemoveCleanItemModal;
     document.getElementsByClassName('close-btn')[12].onclick = closeEditCleanItemModal;
-    document.getElementsByClassName('close-btn')[13].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[13].onclick = closeItemTraceabilityModal;
+    document.getElementsByClassName('close-btn')[14].onclick = closeMessModal;
 
     // Close the modal if the user clicks outside of it
     window.onclick = function (event) {
@@ -2397,6 +2618,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case editCleanItemModal:
                 closeEditCleanItemModal();
+                break;
+
+            case itemTraceabilityModal:
+                closeItemTraceabilityModal();
                 break;
 
             case assetsEditModal:
@@ -2470,6 +2695,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!editCleanItemSearchDropdown.contains(event.target) && event.target !== editCleanItemSearchDropdown) {
             editCleanItemSearchDropdown.style.display = 'none';
         }
+
+        if (!selectAllAssetDropdown.contains(event.target) && event.target !== selectAllAssetDropdown) {
+            selectAllAssetDropdown.style.display = 'none';
+        }
     });
 
     // Add event listeners to table headers for sorting
@@ -2532,6 +2761,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('removeCleanItem').addEventListener('click', () => {
         openRemoveCleanItemModal();
+    });
+
+    document.getElementById('btnItemTraceability').addEventListener('click', () => {
+        openItemTraceabilityModal();
     });
 
     document.getElementById('upload-btn').addEventListener("click", function () {
@@ -4055,9 +4288,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const inputsToCheck = [
             { input: editCleanItemSearchInput, condition: selectedEditCleanItemId.value === '' },
-            { input: editAmount, condition: editAmount.value === '' || 
-                ((isTotalAmound && parseInt(editAmount.value) < parseInt(cleanItems.find(item => item.id === selectedEditCleanItemId.value).total_amount)) || 
-                (!isTotalAmound && parseInt(editAmount.value) > parseInt(cleanItems.find(item => item.id === selectedEditCleanItemId.value).count_get_item)))
+            {
+                input: editAmount, condition: editAmount.value === '' ||
+                    (!isTotalAmound && parseInt(editAmount.value) > parseInt(cleanItems.find(item => item.id === selectedEditCleanItemId.value).count_get_item))
             }
         ];
 
@@ -4144,9 +4377,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (isSubmit && !hasError) {
                     closeRemoveCleanItemModal();
-                    showMess('Info', 'The clean item is edit successfully');
+                    showMess('Info', 'The clean item is change successfully');
                 } else if (isSubmit) {
-                    showMess('Error', responseData.message || 'An error occurred while edit the clean item');
+                    showMess('Error', responseData.message || 'An error occurred while change the clean item');
                 }
             }
         });
@@ -4154,7 +4387,7 @@ document.addEventListener('DOMContentLoaded', function () {
         closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
 
         // Show the warning modal
-        showMess('Warnning', 'Are you sure you want to edit this clean item?');
+        showMess('Warnning', 'Are you sure you want to change this clean item?');
     };
 
     lostItemDescription.addEventListener('input', function () {

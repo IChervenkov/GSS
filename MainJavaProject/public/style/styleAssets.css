@@ -501,7 +501,9 @@ td {
 #prevBtnFourth,
 #nextBtnFourth,
 #prevBtnFifth,
-#nextBtnFifth {
+#nextBtnFifth,
+#prevBtnSixth,
+#nextBtnSixth {
     width: 20px;
     height: 20px;
     position: relative;
@@ -523,7 +525,9 @@ td {
 #prevBtnFourth::before,
 #nextBtnFourth::before,
 #prevBtnFifth::before,
-#nextBtnFifth::before {
+#nextBtnFifth::before,
+#prevBtnSixth::before,
+#nextBtnSixth::before {
     content: "";
     width: 50%;
     height: 50%;
@@ -541,7 +545,8 @@ td {
 #nextBtnSecond::before,
 #nextBtnTherd::before,
 #nextBtnFourth::before,
-#nextBtnFifth::before {
+#nextBtnFifth::before,
+#nextBtnSixth::before {
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
@@ -551,7 +556,8 @@ td {
 #prevBtnSecond::before,
 #prevBtnTherd::before,
 #prevBtnFourth::before,
-#prevBtnFifth::before {
+#prevBtnFifth::before,
+#prevBtnSixth::before {
     transform: translate(-50%, -50%) rotate(-135deg);
 }
 
@@ -568,7 +574,9 @@ td {
 #prevBtnFourth:hover::before,
 #nextBtnFourth:hover::before,
 #prevBtnFifth:hover::before,
-#nextBtnFifth:hover::before {
+#nextBtnFifth:hover::before,
+#prevBtnSixth:hover::before,
+#nextBtnSixth:hover::before {
     border-color: #000;
 }
 
@@ -853,7 +861,8 @@ input[type="checkbox"] {
 #lostAssetNameDropdown,
 #assetLocationDropdown,
 #removeCleanItemDropdown,
-#editCleanItemDropdown {
+#editCleanItemDropdown,
+#allAssetDropdown {
     list-style-type: none;
     padding: 0;
     margin: 0;
@@ -878,7 +887,8 @@ input[type="checkbox"] {
 #lostAssetNameDropdown li,
 #assetLocationDropdown li,
 #removeCleanItemDropdown li,
-#editCleanItemDropdown li {
+#editCleanItemDropdown li,
+#allAssetDropdown li {
     padding: 10px;
     cursor: pointer;
 }
@@ -894,7 +904,8 @@ input[type="checkbox"] {
 #lostAssetNameDropdown li:hover,
 #assetLocationDropdown li:hover,
 #removeCleanItemDropdown li:hover,
-#editCleanItemDropdown li:hover {
+#editCleanItemDropdown li:hover,
+#allAssetDropdown li:hover {
     background-color: #218838;
     color: white;
 }
@@ -910,7 +921,8 @@ input[type="checkbox"] {
 #lostAssetNameDropdown.list-group::-webkit-scrollbar,
 #assetLocationDropdown.list-group::-webkit-scrollbar,
 #removeCleanItemDropdown.list-group::-webkit-scrollbar,
-#editCleanItemDropdown.list-group::-webkit-scrollbar {
+#editCleanItemDropdown.list-group::-webkit-scrollbar,
+#allAssetDropdown.list-group::-webkit-scrollbar {
     width: 10px;
 }
 
@@ -925,7 +937,8 @@ input[type="checkbox"] {
 #lostAssetNameDropdown.list-group::-webkit-scrollbar-thumb,
 #assetLocationDropdown.list-group::-webkit-scrollbar-thumb,
 #removeCleanItemDropdown.list-group::-webkit-scrollbar-thumb,
-#editCleanItemDropdown.list-group::-webkit-scrollbar-thumb {
+#editCleanItemDropdown.list-group::-webkit-scrollbar-thumb,
+#allAssetDropdown.list-group::-webkit-scrollbar-thumb {
     background-color: #28a745;
     border-radius: 4px;
 }
@@ -941,7 +954,8 @@ input[type="checkbox"] {
 #lostAssetNameDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #assetLocationDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #removeCleanItemDropdown.list-group::-webkit-scrollbar-thumb:hover,
-#editCleanItemDropdown.list-group::-webkit-scrollbar-thumb:hover {
+#editCleanItemDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#allAssetDropdown.list-group::-webkit-scrollbar-thumb:hover {
     background-color: #1e7e34;
 }
 
@@ -1124,7 +1138,8 @@ input[type="checkbox"] {
     display: none;
 }
 
-#cleanItemListModal .modal-content {
+#cleanItemListModal .modal-content,
+#itemTraceabilityModal .modal-content {
     max-height: 100vh;
     margin-top: 0;
 }
@@ -1224,6 +1239,10 @@ input[type="checkbox"] {
     .visualization-header h3 {
         margin-bottom: 15px;
         text-align: center;
+    }
+
+    #cleanItemListModal .virtual-warehouse-labels {
+        margin-top: 20px;
     }
 
     .virtual-warehouse-labels {
@@ -1514,7 +1533,8 @@ input[type="checkbox"] {
         display: inline;
     }
 
-    #cleanItemListModal .modal-content {
+    #cleanItemListModal .modal-content,
+    #itemTraceabilityModal .modal-content {
         max-height: 200vh;
         height: auto;
         margin-top: 0;
@@ -1558,6 +1578,13 @@ input[type="checkbox"] {
         max-height: 85vh;
         /* Adjust modal width */
         margin-left: 16%;
+    }
+
+    #itemTraceabilityModal .modal-content {
+        max-width: 80%;
+        max-height: 85vh;
+        /* Adjust modal width */
+        margin-left: 12%;
     }
 
     .container {

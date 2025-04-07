@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
         attachPaginationControls('prevBtnTherd', 'nextBtnTherd', 'pageNumberTherd');
         attachPaginationControls('prevBtnFourth', 'nextBtnFourth', 'pageNumberFourth');
         attachPaginationControls('prevBtnFifth', 'nextBtnFifth', 'pageNumberFifth');
+        attachPaginationControls('prevBtnSixth', 'nextBtnSixth', 'pageNumberSixth');
     }
 
     function updateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
@@ -130,4 +131,5 @@ document.addEventListener('DOMContentLoaded', function () {
     attachFilterEvents('helmetTable', 'search-input-helmet', 'pageNumberSecond');
     attachFilterEvents('largeWorkhouse', 'search-input-clean-item', 'pageNumberFourth', 7);
     attachFilterEvents('smallWorkhouse', 'second-search-input-clean-item', 'pageNumberFifth', 7);
+    attachFilterEvents('itemTraceabilityTable', 'search-input-traceability', 'pageNumberSixth');
 });

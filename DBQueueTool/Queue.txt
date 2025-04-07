@@ -225,3 +225,13 @@ CREATE TABLE clearitem (
     camp_id TEXT,
     FOREIGN KEY (camp_id) REFERENCES camps (id)
 );
+
+CREATE TABLE cleanitemtraceability (
+	id TEXT NOT NULL PRIMARY KEY,
+	item_name TEXT,
+	amount NUMERIC,
+	date_change TIMESTAMP,
+	description TEXT,
+	camp_id TEXT,
+	FOREIGN KEY (camp_id) REFERENCES camps(id)
+);

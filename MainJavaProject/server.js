@@ -320,7 +320,7 @@ const schemaSpecialKey = Joi.object({
 });
 
 const schemaSpecialAssets = Joi.object({
-    numRoom: Joi.string().alphanum().allow('').required()
+    numRoom: Joi.string().alphanum().allow('').optional()
 });
 
 const schemaDeleteAsets = Joi.object({
@@ -449,7 +449,7 @@ const schemaEditSoldier = Joi.object({
 
 const schemaAddCleanItem = Joi.object({
     itemName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
-    totalAmount: Joi.number().integer().min(0).required()
+    totalAmount: Joi.number().integer().min(1).required()
 });
 
 const schemaRemoveCleanItem = Joi.object({
@@ -6527,6 +6527,25 @@ class Server {
             }
         });
 
+        this.app.get('/getAllAssets', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+                const result = await client.query(`
+                    SELECT * FROM assets WHERE camp_id = $1`, [req.session.camp]);
+
+                res.status(200).json(result.rows);
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error fetching all assets:', error);
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.post('/asset/keys', async (req, res) => {
 
             const { error } = shemaGetBags.validate(req.body);
@@ -6783,13 +6802,23 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result_get_room = await client.query(`
-                    SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.id AS keyid, k.namekey, categorie, quantity, mrah, asset_owner, status, expandable, description
-                    FROM assets a
-                    LEFT JOIN assetstype t ON t.id = a.type_id
-                    LEFT JOIN rooms r ON r.id = a.location_room
-                    LEFT JOIN key k ON k.id = a.location_key
-                    WHERE location_room = $1;`, [numRoom]);
+                let result_get_room;
+
+                if (numRoom)
+                    result_get_room = await client.query(`
+                        SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.id AS keyid, k.namekey, categorie, quantity, mrah, asset_owner, status, expandable, description
+                        FROM assets a
+                        LEFT JOIN assetstype t ON t.id = a.type_id
+                        LEFT JOIN rooms r ON r.id = a.location_room
+                        LEFT JOIN key k ON k.id = a.location_key
+                        WHERE location_room = $1;`, [numRoom]);
+                else
+                    result_get_room = await client.query(`
+                        SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.id AS keyid, k.namekey, categorie, quantity, mrah, asset_owner, status, expandable, description
+                        FROM assets a
+                        LEFT JOIN assetstype t ON t.id = a.type_id
+                        LEFT JOIN rooms r ON r.id = a.location_room
+                        LEFT JOIN key k ON k.id = a.location_key;`);
 
                 await Promise.all(result_get_room.rows.map(async (row) => {
                     nameAssetSetCount.push({
@@ -7786,7 +7815,9 @@ class Server {
                 }
 
                 const uniqueId = crypto.randomBytes(16).toString('hex');
+                const uniqueId1 = crypto.randomBytes(16).toString('hex');
                 await client.query(`INSERT INTO clearitem VALUES ($1, $2, $3, 0, $4);`, [uniqueId, itemName, totalAmount, req.session.camp]);
+                await client.query(`INSERT INTO cleanitemtraceability VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5);`, [uniqueId1, itemName, totalAmount, 'Added item amount in large warehouse', req.session.camp]);
 
                 await client.query('COMMIT');
                 res.status(200).json({ message: 'The item was successfully added' });
@@ -7896,7 +7927,9 @@ class Server {
 
                 await Promise.all(data.map(async (row) => {
                     const uniqueId = crypto.randomBytes(16).toString('hex');
+                    const uniqueId1 = crypto.randomBytes(16).toString('hex');
                     await client.query("INSERT INTO clearitem VALUES ($1, $2, $3, 0, $4);", [uniqueId, row.itemName, row.totalAmount, req.session.camp]);
+                    await client.query(`INSERT INTO cleanitemtraceability VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5);`, [uniqueId1, row.itemName, row.totalAmount, 'Added item amount in large warehouse', req.session.camp]);
                 }));
 
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -8037,19 +8070,47 @@ class Server {
 
                 await client.query('BEGIN');
 
-                if (isTotalAmound)
-                    await client.query(`UPDATE clearitem SET total_amount = $2 WHERE id = $1;`, [itemId, editAmount]);
-                else
-                    await client.query(`UPDATE clearitem SET count_get_item = $2 WHERE id = $1;`, [itemId, editAmount]);
+                const uniqueId = crypto.randomBytes(16).toString('hex');
+
+                if (isTotalAmound) {
+                    await client.query(`UPDATE clearitem SET total_amount = total_amount + $2 WHERE id = $1;`, [itemId, editAmount]);
+                    await client.query(`INSERT INTO cleanitemtraceability VALUES ($1, (SELECT itemname FROM clearitem WHERE id = $2), $3, CURRENT_TIMESTAMP, $4, $5);`, [uniqueId, itemId, editAmount, 'Added item amount in large warehouse', req.session.camp]);
+                } else {
+                    await client.query(`UPDATE clearitem SET count_get_item = count_get_item - $2 WHERE id = $1;`, [itemId, editAmount]);
+                    await client.query(`INSERT INTO cleanitemtraceability VALUES ($1, (SELECT itemname FROM clearitem WHERE id = $2), $3, CURRENT_TIMESTAMP, $4, $5);`, [uniqueId, itemId, editAmount, 'Taken item amount from small warehouse', req.session.camp]);
+                }
+
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Change item amount with code ${itemId}`]);
 
                 await client.query('COMMIT');
-                res.status(200).json({ message: 'Item is edit succesful' });
+                res.status(200).json({ message: 'Item is change succesful' });
 
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Server error:', error);
-                res.status(500).json({ message: 'Failed to edit item.' });
+                res.status(500).json({ message: 'Failed to change item.' });
 
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/getItemTraceability', this.isLoggedIn.bind(this), async (req, res) => {
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const result = await client.query(`SELECT * FROM cleanitemtraceability WHERE camp_id = $1;`, [req.session.camp]);
+
+                await client.query('COMMIT');
+                res.status(200).json(result.rows);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to get item traceability' });
             } finally {
                 client.release();
             }

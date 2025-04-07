@@ -1426,8 +1426,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 newRow.insertCell().textContent = row.country;
                 newRow.insertCell().textContent = row.type;
                 newRow.insertCell().textContent = row.date_drop_off === row.date_ready_to_pick_up ? 'In the soldier' : row.status;
-                newRow.insertCell().textContent = row.date_drop_off ? row.date_drop_off : 'Not accommodated';
-                newRow.insertCell().textContent = row.date_ready_to_pick_up ? row.date_ready_to_pick_up : 'No departure date';
+                const formattedDropOffDate = row.date_drop_off
+                    ? new Date(row.date_drop_off).toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                    })
+                    : 'Not accommodated';
+                newRow.insertCell().textContent = formattedDropOffDate;
+
+                const formattedReadyToPickUpDate = row.date_ready_to_pick_up
+                    ? new Date(row.date_ready_to_pick_up).toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                    })
+                    : 'No departure date';
+                newRow.insertCell().textContent = formattedReadyToPickUpDate;
             });
 
             data_nationality.forEach(row => {
