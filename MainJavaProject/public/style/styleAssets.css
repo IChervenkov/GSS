@@ -1144,6 +1144,11 @@ input[type="checkbox"] {
     margin-top: 0;
 }
 
+#cleanItemListModal,
+#itemTraceabilityModal {
+    padding-top: 30px;
+}
+
 #cleanItemListModal.modal h2 {
     margin-bottom: 0;
 }
@@ -1224,7 +1229,7 @@ input[type="checkbox"] {
 
     .modal-content {
         width: 100%;
-        max-width: 350px;
+        max-width: 370px;
         margin-left: 5%;
     }
 
