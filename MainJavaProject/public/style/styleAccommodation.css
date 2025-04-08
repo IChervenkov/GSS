@@ -151,7 +151,8 @@ thead th {
     cursor: pointer;
 }
 
-#soldierListModal .modal-content {
+#soldierListModal .modal-content,
+#upcomingActionSoldierListModal .modal-content {
     height: 80vh;
     margin-top: 0;
 }
@@ -392,7 +393,9 @@ thead th input:focus {
 #prevBtnSecond,
 #nextBtnSecond,
 #prevBtnTherd,
-#nextBtnTherd {
+#nextBtnTherd,
+#prevBtnFourth,
+#nextBtnFourth {
     width: 20px;
     height: 20px;
     position: relative;
@@ -410,7 +413,10 @@ thead th input:focus {
 #prevBtnSecond::before,
 #nextBtnSecond::before,
 #prevBtnTherd::before,
-#nextBtnTherd::before {
+#nextBtnTherd::before,
+#prevBtnFourth::before,
+#nextBtnFourth::before
+ {
     content: "";
     width: 50%;
     height: 50%;
@@ -426,7 +432,8 @@ thead th input:focus {
 #nextBtn::before,
 #nextBtnDate::before,
 #nextBtnSecond::before,
-#nextBtnTherd::before {
+#nextBtnTherd::before,
+#nextBtnFourth::before {
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
@@ -434,7 +441,8 @@ thead th input:focus {
 #prevBtn::before,
 #prevBtnDate::before,
 #prevBtnSecond::before,
-#prevBtnTherd::before {
+#prevBtnTherd::before,
+#prevBtnFourth::before {
     transform: translate(-50%, -50%) rotate(-135deg);
 }
 
@@ -447,7 +455,9 @@ thead th input:focus {
 #prevBtnSecond:hover:before,
 #nextBtnSecond:hover:before,
 #prevBtnTherd:hover::before,
-#nextBtnTherd:hover::before {
+#nextBtnTherd:hover::before,
+#prevBtnFourth:hover::before,
+#nextBtnFourth:hover::before {
     border-color: #000;
 }
 
@@ -624,7 +634,8 @@ thead th input:focus {
     margin-bottom: 30px;
 }
 
-#soldierListModal.modal h2 {
+#soldierListModal.modal h2,
+#upcomingActionSoldierListModal.modal h2 {
     margin-bottom: 0;
 }
 
@@ -711,6 +722,8 @@ thead th input:focus {
 #soldierDropdown,
 #soldierDropdownMove,
 #bagDropdown,
+#bagSoldierDropdown,
+#bagEditSoldierDropdown,
 #roomDropdown,
 #keyDropdown,
 #allKeyDropdown,
@@ -733,6 +746,8 @@ thead th input:focus {
 #soldierDropdown li,
 #soldierDropdownMove li,
 #bagDropdown li,
+#bagSoldierDropdown li,
+#bagEditSoldierDropdown li,
 #roomDropdown li,
 #keyDropdown li,
 #allKeyDropdown li,
@@ -746,6 +761,8 @@ thead th input:focus {
 #soldierDropdown li:hover,
 #soldierDropdownMove li:hover,
 #bagDropdown li:hover,
+#bagSoldierDropdown li:hover,
+#bagEditSoldierDropdown li:hover,
 #roomDropdown li:hover,
 #keyDropdown li:hover,
 #allKeyDropdown li:hover,
@@ -941,6 +958,8 @@ thead th input:focus {
 #soldierDropdown.list-group::-webkit-scrollbar,
 #soldierDropdownMove.list-group::-webkit-scrollbar,
 #bagDropdown.list-group::-webkit-scrollbar,
+#bagSoldierDropdown.list-group::-webkit-scrollbar,
+#bagEditSoldierDropdown.list-group::-webkit-scrollbar,
 #roomDropdown.list-group::-webkit-scrollbar,
 #keyDropdown.list-group::-webkit-scrollbar,
 #allKeyDropdown.list-group::-webkit-scrollbar,
@@ -953,6 +972,8 @@ thead th input:focus {
 #soldierDropdown.list-group::-webkit-scrollbar-thumb,
 #soldierDropdownMove.list-group::-webkit-scrollbar-thumb,
 #bagDropdown.list-group::-webkit-scrollbar-thumb,
+#bagSoldierDropdown.list-group::-webkit-scrollbar-thumb,
+#bagEditSoldierDropdown.list-group::-webkit-scrollbar-thumb,
 #roomDropdown.list-group::-webkit-scrollbar-thumb,
 #keyDropdown.list-group::-webkit-scrollbar-thumb,
 #allKeyDropdown.list-group::-webkit-scrollbar-thumb,
@@ -966,6 +987,8 @@ thead th input:focus {
 #soldierDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #soldierDropdownMove.list-group::-webkit-scrollbar-thumb:hover,
 #bagDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#bagSoldierDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#bagEditSoldierDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #roomDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #keyDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #allKeyDropdown.list-group::-webkit-scrollbar-thumb:hover,
@@ -1585,6 +1608,10 @@ thead th input:focus {
     cursor: pointer;
 }
 
+#addSoldierModal .modal-content {
+    margin-top: 0px;
+}
+
 @media screen and (max-width: 1440px) and (min-width: 768px) {
 
     .left-nav {
@@ -1616,7 +1643,8 @@ thead th input:focus {
         margin-left: 25%;
     }
 
-    #soldierListModal .modal-content {
+    #soldierListModal .modal-content,
+    #upcomingActionSoldierListModal .modal-content {
         max-width: 70%;
         /* Adjust modal width */
         margin-left: 16%;
@@ -1641,5 +1669,15 @@ thead th input:focus {
 
     .modal-content-view .table-container {
         max-height: 250px;
+    }
+
+    #roomModal,
+    #addSoldierModal,
+    #editSoldierModal {
+        padding-top: 45px;
+    }
+
+    #additionalItemModal {
+        padding-top: 20px;
     }
 }

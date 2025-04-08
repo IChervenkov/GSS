@@ -1438,16 +1438,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     : 'Not accommodated';
                 newRow.insertCell().textContent = formattedDropOffDate;
 
-                const formattedReadyToPickUpDate = row.date_ready_to_pick_up
-                    ? new Date(row.date_ready_to_pick_up).toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                    })
-                    : 'No departure date';
+                const formattedReadyToPickUpDate = row.date_ready_to_pick_up === 'Remove by user'
+                    ? 'Remove by user' : row.date_ready_to_pick_up
+                        ? new Date(row.date_ready_to_pick_up).toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        })
+                        : 'No departure date';
                 newRow.insertCell().textContent = formattedReadyToPickUpDate;
             });
 

@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalEditSoldier = document.getElementById('editSoldierModal');
     const modalEditSoldierContent = modalEditSoldier.querySelector('.modal-content');
 
+    const modalUpcomingActionSoldierList = document.getElementById('upcomingActionSoldierListModal');
+    const modalUpcomingActionSoldierListContent = modalUpcomingActionSoldierList.querySelector('.modal-content');
+
     const modalAddMultiSoldier = document.getElementById('uploadModal');
     const modalAddMultiSoldierContent = modalAddMultiSoldier.querySelector('.modal-content');
 
@@ -59,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const saveButton = document.getElementById('save-button');
     const moveButton = document.getElementById('move-button');
     const additionalItemButtoon = document.getElementById('addtional-item-button');
+    const additionalItemEditSoldierButtoon = document.getElementById('addtional-item-edit-soldier-button');
     const typeBuild = document.getElementById('typeBuild');
 
     const soldierSearchInput = document.getElementById('soldierSearch');
@@ -84,6 +88,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const bagSearchInput = document.getElementById('laundryBagSearch');
     const bagSearchDropdown = document.getElementById('bagDropdown');
     const selectedBagId = document.getElementById('selectedBagId');
+
+    const bagSoldierSearchInput = document.getElementById('laundryBagSoldierSearch');
+    const bagSoldierSearchDropdown = document.getElementById('bagSoldierDropdown');
+    const selectedBagSoldierId = document.getElementById('selectedBagSoldierId');
+    const mealCardSoldier = document.getElementById('meal-card-soldier-value');
+
+    const bagEditSoldierSearchInput = document.getElementById('laundryBagEditSoldierSearch');
+    const bagEditSoldierSearchDropdown = document.getElementById('bagEditSoldierDropdown');
+    const selectedBagEditSoldierId = document.getElementById('selectedBagEditSoldierId');
+    const mealCardEditSoldier = document.getElementById('meal-card-edit-soldier-value');
 
     const additionBagsSearchInput = document.getElementById('additionalBagCode');
     const additionBagsSearchDropdown = document.getElementById('additionalBagCodeDropdown');
@@ -446,7 +460,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered soldiers in the dropdown
     function filterAdditionalItemSoldiers(query) {
         additionalItemSoldierSearchDropdown.innerHTML = '';
-        const filteredSoldier = soldiers.filter(soldier => (soldier.date_accommodation !== '' && soldier.date_free === '') && soldier.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredSoldier = soldiers.filter(soldier => soldier.name.toLowerCase().includes(query.toLowerCase()));
 
         if (filteredSoldier.length > 0) {
             additionalItemSoldierSearchDropdown.style.display = 'block';
@@ -577,20 +591,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Show filtered soldiers in the dropdown
-    function filterBags(query) {
-        bagSearchDropdown.innerHTML = '';
+    function filterBags(query, dropDownElement) {
+        dropDownElement.innerHTML = '';
         const filteredBag = bags.filter(bag => bag.name.toLowerCase().includes(query.toLowerCase()));
 
         if (filteredBag.length > 0) {
-            bagSearchDropdown.style.display = 'block';
+            dropDownElement.style.display = 'block';
             filteredBag.forEach(bag => {
                 const li = document.createElement('li');
                 li.textContent = bag.name;
                 li.setAttribute('data-id', bag.id);
-                bagSearchDropdown.appendChild(li);
+                dropDownElement.appendChild(li);
             });
         } else {
-            bagSearchDropdown.style.display = 'none';
+            dropDownElement.style.display = 'none';
         }
     }
 
@@ -598,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function () {
     bagSearchInput.addEventListener('input', function () {
         const query = bagSearchInput.value;
         if (query.length > 0) {
-            filterBags(query);
+            filterBags(query, bagSearchDropdown);
         } else {
             bagSearchDropdown.style.display = 'none';
             selectedBagId.value = '';
@@ -613,6 +627,48 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedBagId.value = selectBag.getAttribute('data-id');
             bagSearchDropdown.style.display = 'none';
         }
+    });
+
+    bagSoldierSearchInput.addEventListener('input', function () {
+        const query = bagSoldierSearchInput.value;
+        if (query.length > 0) {
+            filterBags(query, bagSoldierSearchDropdown);
+        } else {
+            bagSoldierSearchDropdown.style.display = 'none';
+            selectedBagSoldierId.value = '';
+        }
+    });
+
+    // Handle bike selection
+    bagSoldierSearchDropdown.addEventListener('click', function (event) {
+        const selectBag = event.target;
+        if (selectBag && selectBag.dataset.id) {
+            bagSoldierSearchInput.value = selectBag.textContent;
+            selectedBagSoldierId.value = selectBag.getAttribute('data-id');
+            bagSoldierSearchDropdown.style.display = 'none';
+        }
+        toggleInputValidity(bagSoldierSearchInput, true);
+    });
+
+    bagEditSoldierSearchInput.addEventListener('input', function () {
+        const query = bagEditSoldierSearchInput.value;
+        if (query.length > 0) {
+            filterBags(query, bagEditSoldierSearchDropdown);
+        } else {
+            bagEditSoldierSearchDropdown.style.display = 'none';
+            selectedBagEditSoldierId.value = '';
+        }
+    });
+
+    // Handle bike selection
+    bagEditSoldierSearchDropdown.addEventListener('click', function (event) {
+        const selectBag = event.target;
+        if (selectBag && selectBag.dataset.id) {
+            bagEditSoldierSearchInput.value = selectBag.textContent;
+            selectedBagEditSoldierId.value = selectBag.getAttribute('data-id');
+            bagEditSoldierSearchDropdown.style.display = 'none';
+        }
+        toggleInputValidity(bagEditSoldierSearchInput, true);
     });
 
     // Show filtered soldiers in the dropdown
@@ -1071,7 +1127,7 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalItemModalContent.classList.add('show');
         additionalItemModalContent.classList.add('slide-in');
 
-        const soldierId = additionalItemButtoon.getAttribute('soldier-id');
+        const soldierId = additionalItemButtoon.getAttribute('soldier-id') || additionalItemEditSoldierButtoon.getAttribute('soldier-id');
         additionalItemSoldierSearchInput.value = soldiers.filter(soldier => soldier.id === soldierId)[0].name;
         additionalItemSelectedSoldierId.value = soldierId;
 
@@ -1333,7 +1389,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalAddSoldierContent.classList.add('slide-out');
         modalAddSoldierContent.classList.remove('slide-in');
 
-        document.querySelectorAll('#soldier-number, #soldier-name, #soldier-country, #addDate1, #addDate2').forEach((input) => {
+        document.querySelectorAll('#soldier-number, #soldier-name, #soldier-country, #addDate1, #addDate2, #laundryBagSoldierSearch, #selectedBagSoldierId, #meal-card-soldier-value').forEach((input) => {
 
             input.classList.remove('is-valid');
             input.classList.remove('is-invalid');
@@ -1463,6 +1519,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     countryCell.textContent = item.country;
                     row.appendChild(countryCell);
 
+                    const bagCodeCell = document.createElement("td");
+                    bagCodeCell.textContent = item.code || "N/A";
+                    row.appendChild(bagCodeCell);
+
+                    const mealCardCell = document.createElement("td");
+                    mealCardCell.textContent = item.meal_card || "N/A";
+                    row.appendChild(mealCardCell);
+
                     const upcoming_accommodation = document.createElement("td");
                     const accommodationDate = new Date(item.upcoming_accommodation);
                     upcoming_accommodation.textContent = item.upcoming_accommodation
@@ -1481,7 +1545,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.addEventListener('click', (event) => {
                         // Check if the clicked element is not the first td in the row
                         if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
-                            openEditSoldierModal(item.id, item.name, item.country, item.upcoming_accommodation, item.upcoming_release);
+                            openEditSoldierModal(item.id, item.name, item.country, item.code, item.etc, item.meal_card, item.upcoming_accommodation, item.upcoming_release);
                         }
                     });
 
@@ -1526,7 +1590,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     }
 
-    function openEditSoldierModal(id, name, country, upcoming_accommodation, upcoming_release) {
+    function openEditSoldierModal(id, name, country, code, etc, meal_card, upcoming_accommodation, upcoming_release) {
 
         function convertDate(date) {
             const dateObj = new Date(date);
@@ -1549,6 +1613,11 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('edit-old-soldier-id').value = id;
         document.getElementById('edit-soldier-name').value = name;
         document.getElementById('edit-soldier-country').value = country === 'None' ? '' : country;
+        document.getElementById('laundryBagEditSoldierSearch').value = code === 'N/A' ? '' : code;
+        document.getElementById('selectedBagEditSoldierId').value = etc;
+        document.getElementById('meal-card-edit-soldier-value').value = meal_card === 'N/A' ? '' : meal_card;
+
+        additionalItemEditSoldierButtoon.setAttribute('soldier-id', id);
 
         const accommodationDate = new Date(upcoming_accommodation);
         const releaseDate = new Date(upcoming_release);
@@ -1562,7 +1631,15 @@ document.addEventListener('DOMContentLoaded', function () {
         modalEditSoldierContent.classList.add('slide-out');
         modalEditSoldierContent.classList.remove('slide-in');
 
-        document.querySelectorAll('#edit-soldier-number, #edit-soldier-name, #edit-soldier-country, #edit-upcoming-accommodation, #edit-upcoming-release').forEach((input) => {
+        document.querySelectorAll(`
+            #edit-soldier-number, 
+            #edit-soldier-name, 
+            #edit-soldier-country, 
+            #edit-upcoming-accommodation, 
+            #edit-upcoming-release, 
+            #laundryBagEditSoldierSearch, 
+            #selectedBagEditSoldierId,
+            #meal-card-edit-soldier-value`).forEach((input) => {
 
             input.classList.remove('is-valid');
             input.classList.remove('is-invalid');
@@ -1571,11 +1648,89 @@ document.addEventListener('DOMContentLoaded', function () {
 
         });
 
+        additionalItemEditSoldierButtoon.removeAttribute('soldier-id');
+
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
             modalEditSoldier.classList.remove('show');
             modalEditSoldierContent.classList.remove('show');
         }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openUpcomingActionSoldierListModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        modalUpcomingActionSoldierList.classList.add('show');
+        modalUpcomingActionSoldierListContent.classList.add('show');
+        modalUpcomingActionSoldierListContent.classList.add('slide-in');
+
+        loadingIndicator.style.display = 'flex';
+
+        fetch(`/getUpcomingAction`, {
+            method: 'GET'
+        })
+            .then(response => response.json())
+            .then(data => {
+
+                const upcomingActionData = data;
+
+                const tbody = document.getElementById('upcomingActionTableBodyModal');
+                const upcomingActionTableBody = document.getElementById('upcomingActionTable').getElementsByTagName('tbody')[0];
+                tbody.innerHTML = '';
+
+                upcomingActionData.forEach(item => {
+                    const row = document.createElement("tr");
+                    row.classList.add('data-upcoming-action');
+
+                    // Room status cell
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = item.name;
+                    row.appendChild(nameCell);
+
+                    const upcoming_accommodation = document.createElement("td");
+                    const accommodationDate = new Date(item.upcoming_accommodation);
+                    upcoming_accommodation.textContent = item.upcoming_accommodation
+                        ? accommodationDate.toLocaleDateString()
+                        : 'N/A';
+                    row.appendChild(upcoming_accommodation);
+
+                    const upcoming_release = document.createElement("td");
+                    const releaseDate = new Date(item.upcoming_release);
+                    upcoming_release.textContent = item.upcoming_release
+                        ? releaseDate.toLocaleDateString()
+                        : 'N/A';
+                    row.appendChild(upcoming_release);
+
+                    // Append row to the table body
+                    tbody.appendChild(row);
+                });
+
+                const rowsTable = upcomingActionTableBody.getElementsByTagName("tr");
+                firstUpdateTable(rowsTable, 0, 10, 'pageNumberFourth');
+
+                setupTableNavigation("upcomingActionTable", "prevBtnFourth", "nextBtnFourth", "pageNumberFourth");
+
+            })
+            .catch(error => console.error("Error fetching keys:", error))
+            .finally(() => {
+                loadingIndicator.style.display = 'none';
+            });
+
+            // Ensure that any 'slide-out' class is removed if it was previously added
+            modalUpcomingActionSoldierListContent.classList.remove('slide-out');
+    }
+
+    function closeUpcomingActionSoldierListModal() {
+        // Add the slide-out effect
+        modalUpcomingActionSoldierListContent.classList.add('slide-out');
+        modalUpcomingActionSoldierListContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            modalUpcomingActionSoldierList.classList.remove('show');
+            modalUpcomingActionSoldierListContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+
     }
 
     function openAddMultiSoldierModal() {
@@ -1914,6 +2069,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalContent.classList.remove('slide-in');
 
         bagSearchDropdown.style.display = 'none';
+        additionalItemButtoon.removeAttribute('soldier-id');
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
@@ -1958,18 +2114,19 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[3].onclick = closeViewModal;
     document.getElementsByClassName('close-btn')[4].onclick = closeMoveModal;
     document.getElementsByClassName('close-btn')[5].onclick = closeSoldierListModal;
-    document.getElementsByClassName('close-btn')[6].onclick = closeEditSoldierModal;
-    document.getElementsByClassName('close-btn')[7].onclick = closeAddSoldierModal;
-    document.getElementsByClassName('close-btn')[8].onclick = closeAddMultiSoldierModal;
-    document.getElementsByClassName('close-btn')[9].onclick = closeUploadMultiSoldierModal;
-    document.getElementsByClassName('close-btn')[10].onclick = closeDeleteModal;
-    document.getElementsByClassName('close-btn')[11].onclick = closeModalDest;
-    document.getElementsByClassName('close-btn')[12].onclick = closeModalAddRoom;
-    document.getElementsByClassName('close-btn')[13].onclick = closeModalRemoveRoom;
-    document.getElementsByClassName('close-btn')[14].onclick = closeModalAddKey;
-    document.getElementsByClassName('close-btn')[15].onclick = closeModalRemoveKey;
-    document.getElementsByClassName('close-btn')[16].onclick = closeAdditionalItemModal;
-    document.getElementsByClassName('close-btn')[17].onclick = closeGlobalMessModal;
+    document.getElementsByClassName('close-btn')[6].onclick = closeUpcomingActionSoldierListModal;
+    document.getElementsByClassName('close-btn')[7].onclick = closeEditSoldierModal;
+    document.getElementsByClassName('close-btn')[8].onclick = closeAddSoldierModal;
+    document.getElementsByClassName('close-btn')[9].onclick = closeAddMultiSoldierModal;
+    document.getElementsByClassName('close-btn')[10].onclick = closeUploadMultiSoldierModal;
+    document.getElementsByClassName('close-btn')[11].onclick = closeDeleteModal;
+    document.getElementsByClassName('close-btn')[12].onclick = closeModalDest;
+    document.getElementsByClassName('close-btn')[13].onclick = closeModalAddRoom;
+    document.getElementsByClassName('close-btn')[14].onclick = closeModalRemoveRoom;
+    document.getElementsByClassName('close-btn')[15].onclick = closeModalAddKey;
+    document.getElementsByClassName('close-btn')[16].onclick = closeModalRemoveKey;
+    document.getElementsByClassName('close-btn')[17].onclick = closeAdditionalItemModal;
+    document.getElementsByClassName('close-btn')[18].onclick = closeGlobalMessModal;
 
     // Hide dropdown if clicked outside
     window.addEventListener('click', function (event) {
@@ -2184,6 +2341,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case modalEditSoldier:
                 closeEditSoldierModal();
+                break;
+
+            case modalUpcomingActionSoldierList:
+                closeUpcomingActionSoldierListModal();
                 break;
 
             case modalAddMultiSoldier:
@@ -2491,6 +2652,10 @@ document.addEventListener('DOMContentLoaded', function () {
         showGlobalMess('Warning', 'Are you sure you want to remove the selected soldiers, this action will remove all data for the selected soldiers?');
     });
 
+    document.getElementById("listUpcomingSoldierAction").addEventListener("click", function () {
+        openUpcomingActionSoldierListModal();
+    });
+
     // Open the add multi soldier modal when the Add soldier button is clicked
     document.getElementById("confirmReportBtnAddMultiSoldier").addEventListener("click", function () {
         openAddMultiSoldierModal();
@@ -2600,6 +2765,10 @@ document.addEventListener('DOMContentLoaded', function () {
         openAdditionalItemModal();
     });
 
+    additionalItemEditSoldierButtoon.addEventListener("click", function () {
+        openAdditionalItemModal();
+    });
+
     document.getElementById('upload-btn').addEventListener("click", function () {
 
         const fileInput = document.getElementById("fileInput");
@@ -2643,7 +2812,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
-                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'InvalidDate') {
+                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'InvalidDate' || error.type === 'CheckBag') {
                             closeAddMultiSoldierModal();
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {
@@ -2752,6 +2921,8 @@ document.addEventListener('DOMContentLoaded', function () {
             { input: soldierId, condition: soldierId.value === "" },
             { input: soldierName, condition: soldierName.value === "" || !soldierNamePattern.test(soldierName.value) },
             { input: soldierCountry, condition: soldierCountry.value === "" },
+            { input: bagSoldierSearchInput, condition: false },
+            { input: mealCardSoldier, condition: false },
             { input: soldierDate1, condition: false },
             { input: soldierDate2, condition: false }
         ];
@@ -2775,6 +2946,8 @@ document.addEventListener('DOMContentLoaded', function () {
             soldierId: soldierId.value,
             soldierName: soldierName.value,
             soldierCountry: soldierCountry.value,
+            soldierBag: selectedBagSoldierId.value,
+            soldierMealCard: mealCardSoldier.value,
             upcomingAccommodationDate: soldierDate1.value,
             upcomingReleaseDate: soldierDate2.value
         };
@@ -3658,6 +3831,8 @@ document.addEventListener('DOMContentLoaded', function () {
             { input: editSoldierId, condition: editSoldierId.value === "" },
             { input: editSoldierName, condition: editSoldierName.value === "" || !soldierNamePattern.test(editSoldierName.value) },
             { input: editSoldierCountry, condition: editSoldierCountry.value === "" },
+            { input: bagEditSoldierSearchInput, condition: false },
+            { input: mealCardEditSoldier, condition: false },
             { input: editSoldierUpcomeAccom, condition: false },
             { input: editSoldierUpcomeRel, condition: false }
         ];
@@ -3682,6 +3857,8 @@ document.addEventListener('DOMContentLoaded', function () {
             soldierNewId: editSoldierId.value,
             soldierName: editSoldierName.value,
             soldierCountry: editSoldierCountry.value,
+            soldierBag: selectedBagEditSoldierId.value,
+            soldierMealCard: mealCardEditSoldier.value,
             soldierUpcomeAccom: editSoldierUpcomeAccom.value,
             soldierUpcomeRel: editSoldierUpcomeRel.value
         };
@@ -4309,6 +4486,14 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             toggleInputValidity(newKeyName, true);
         }
+    });
+
+    mealCardSoldier.addEventListener('input', function () {
+        toggleInputValidity(mealCardSoldier, /^[a-zA-Z0-9]*$/.test(mealCardSoldier.value));
+    });
+
+    mealCardEditSoldier.addEventListener('input', function () {
+        toggleInputValidity(mealCardEditSoldier, /^[a-zA-Z0-9]*$/.test(mealCardEditSoldier.value));
     });
 
     document.getElementById("toggleFormButton").addEventListener("click", function () {

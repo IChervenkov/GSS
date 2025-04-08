@@ -620,6 +620,14 @@
                         <span class="tooltiptext">Remove soldier to the system</span>
                     </div>
                 </div>
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold"
+                        id="listUpcomingSoldierAction"><i class="bi bi-person-lines-fill"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Shows all soldiers for whom actions are pending</span>
+                    </div>
+                </div>
             </h2>
 
             <div class="d-flex justify-content-end mt-2 mb-2">
@@ -649,6 +657,16 @@
 
                             <th>
                                 <input type="text" class="search-input-soldier" placeholder="Search...">
+                                <label id="soldier-bag-header">Bag code</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-soldier" placeholder="Search...">
+                                <label id="soldier-meal-card-header">Meal card</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-soldier" placeholder="Search...">
                                 <label id="soldier-upcomm-accom-header">Upcoming accommodation date</label>
                             </th>
 
@@ -660,6 +678,46 @@
                         </tr>
                     </thead>
                     <tbody id="tableBodyModal">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="upcomingActionSoldierListModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2>List of Upcoming Actions for Soldiers</h2>
+
+            <div class="d-flex justify-content-end mt-2 mb-2">
+                <button type="button" id="prevBtnFourth"></button>
+                <span id="pageNumberFourth"></span>
+                <button type="button" id="nextBtnFourth"></button>
+            </div>
+
+            <div class="table-container">
+                <table id="upcomingActionTable">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="text" class="search-input-upcoming-action" placeholder="Search...">
+                                <label id="upcoming-action-soldier-name-header">Soldier name</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-upcoming-action" placeholder="Search...">
+                                <label id="upcoming-action-soldier-accom-header">Upcoming accommodation date</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-upcoming-action" placeholder="Search...">
+                                <label id="upcoming-action-soldier-release-header">Upcoming release date</label>
+                            </th>
+
+                        </tr>
+                    </thead>
+                    <tbody id="upcomingActionTableBodyModal">
                     </tbody>
                 </table>
             </div>
@@ -687,28 +745,53 @@
 
             </div>
 
-            <div class="mb-3">
-                <label for="edit-soldier-name" class="form-label">Soldier Name <span
-                        class="text-danger">*</span></label>
+            <div class="d-flex align-items-center">
 
-                <input type="text" id="edit-soldier-name" name="editSoldierName" class="form-control"
-                    placeholder="Soldier Name">
+                <div class="mb-3 me-3 w-100">
+                    <label for="edit-soldier-name" class="form-label">Soldier Name <span
+                            class="text-danger">*</span></label>
 
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
+                    <input type="text" id="edit-soldier-name" name="editSoldierName" class="form-control"
+                        placeholder="Soldier Name">
 
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+
+                </div>
+
+                <div class="mb-3 w-100">
+                    <label for="edit-soldier-country" class="form-label">Soldier Country <span
+                            class="text-danger">*</span></label>
+
+                    <input type="text" id="edit-soldier-country" name="editSoldierCountry" class="form-control"
+                        placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label for="edit-soldier-country" class="form-label">Soldier Country <span
-                        class="text-danger">*</span></label>
+            <div class="d-flex align-items-center">
+                <!-- First Soldier Selection -->
+                <div class="mb-3 search-container me-3 w-100" id="search-edit-laundry-bag-container">
+                    <label for="laundryBagEditSoldierSearch" class="form-label">Laundry Bag:</label>
 
-                <input type="text" id="edit-soldier-country" name="editSoldierCountry" class="form-control"
-                    placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
+                    <input type="text" id="laundryBagEditSoldierSearch" class="form-control" placeholder="Laundry Bag">
 
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
+                    <ul id="bagEditSoldierDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedBagEditSoldierId" name="bagId" value="">
+                    <!-- To store the selected soldier ID -->
+                </div>
 
+                <!-- Second Soldier Selection -->
+                <div class="mb-3 w-100" id="input-meal-card">
+                    <label for="meal-card-edit-soldier-value" class="form-label">Meal card:</label>
+
+                    <input type="text" id="meal-card-edit-soldier-value" name="mealCardId" class="form-control"
+                        placeholder="Meal card" value="">
+
+                </div>
             </div>
 
             <div class="d-flex align-items-center">
@@ -727,12 +810,25 @@
                 </div>
             </div>
 
+            <div class="d-flex align-items-center">
 
-            <!-- Buttons for confirming the selection -->
-            <div class="button-container">
-                <button type="submit" id="editSoldierButton" class="modal-button">
-                    <i class="bi bi-pencil-square"></i> Edit
-                </button>
+                <!-- Buttons for confirming the selection -->
+                <div class="btn-container mb-3 me-3 w-100">
+                    <button type="submit" id="editSoldierButton" class="modal-button">
+                        <i class="bi bi-pencil-square"></i> Edit
+                    </button>
+                </div>
+
+                <div class="btn-container mb-3 w-100">
+                    <button type="button" class="modal-button" id="addtional-item-edit-soldier-button">
+                        <i class="bi bi-plus-circle"></i> Add Additional Item
+                    </button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Add additional items or bags to the soldier</span>
+                    </div>
+                </div>
+
             </div>
 
         </form>
@@ -756,26 +852,51 @@
 
             </div>
 
-            <div class="mb-3">
-                <label for="soldier-name" class="form-label">Soldier Name <span class="text-danger">*</span></label>
+            <div class="d-flex align-items-center">
+                <div class="mb-3 me-3 w-100">
+                    <label for="soldier-name" class="form-label">Soldier Name <span class="text-danger">*</span></label>
 
-                <input type="text" id="soldier-name" name="soldierName" class="form-control" placeholder="Soldier Name">
+                    <input type="text" id="soldier-name" name="soldierName" class="form-control"
+                        placeholder="Soldier Name">
 
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
 
+                </div>
+
+                <div class="mb-3 w-100">
+                    <label for="soldier-country" class="form-label">Soldier Country <span
+                            class="text-danger">*</span></label>
+
+                    <input type="text" id="soldier-country" name="soldierCountry" class="form-control"
+                        placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label for="soldier-country" class="form-label">Soldier Country <span
-                        class="text-danger">*</span></label>
+            <div class="d-flex align-items-center">
+                <!-- First Soldier Selection -->
+                <div class="mb-3 search-container me-3 w-100" id="search-laundry-bag-container">
+                    <label for="laundryBagSoldierSearch" class="form-label">Laundry Bag:</label>
 
-                <input type="text" id="soldier-country" name="soldierCountry" class="form-control"
-                    placeholder="Soldier Country" pattern="^[A-Za-z\s]+$">
+                    <input type="text" id="laundryBagSoldierSearch" class="form-control" placeholder="Laundry Bag">
 
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
+                    <ul id="bagSoldierDropdown" class="list-group"></ul> <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedBagSoldierId" name="bagId" value="">
+                    <!-- To store the selected soldier ID -->
+                </div>
 
+                <!-- Second Soldier Selection -->
+                <div class="mb-3 w-100" id="input-meal-card">
+                    <label for="meal-card-soldier-value" class="form-label">Meal card:</label>
+
+                    <input type="text" id="meal-card-soldier-value" name="mealCardId" class="form-control"
+                        placeholder="Meal card" value="">
+
+                </div>
             </div>
 
             <div class="d-flex align-items-center">
@@ -1202,7 +1323,7 @@
         <div id="toastMessage" class="modal">
             <div class="modal-content-mess">
                 <span class="close-btn">&times;</span>
-    
+
                 <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-toast-icon">
                 <p id="mess-toast-text"></p>
             </div>

@@ -434,6 +434,8 @@ const schemaAddSoldier = Joi.object({
     soldierId: Joi.string().alphanum().required(),
     soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
     soldierCountry: Joi.string().alphanum().required(),
+    soldierBag: Joi.string().alphanum().allow('').required(),
+    soldierMealCard: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).allow('').required(),
     upcomingAccommodationDate: Joi.date().allow('').iso().optional(),
     upcomingReleaseDate: Joi.date().allow('').iso().optional()
 });
@@ -443,12 +445,14 @@ const schemaEditSoldier = Joi.object({
     soldierNewId: Joi.string().alphanum().required(),
     soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
     soldierCountry: Joi.string().alphanum().required(),
+    soldierBag: Joi.string().alphanum().allow('').required(),
+    soldierMealCard: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).allow('').required(),
     soldierUpcomeAccom: Joi.date().allow('').iso().required(),
     soldierUpcomeRel: Joi.date().allow('').iso().required()
 });
 
 const schemaAddCleanItem = Joi.object({
-    itemName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    itemName: Joi.string().pattern(/^[a-zA-Z0-9\s.,\/\-:;]+$/).required(),
     totalAmount: Joi.number().integer().min(1).required()
 });
 
@@ -2645,6 +2649,38 @@ class Server {
     // Section Accommodation
     defineRoutesAccommodation() {
 
+        this.app.get('/getUpcomingAction', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const result = await client.query(`
+                    SELECT 
+                        namesoldier AS name,
+                        upcoming_accommodation,
+                        upcoming_release
+                    FROM soldier
+                    WHERE camp_id = $1 AND
+                        (upcoming_accommodation >= CURRENT_DATE AND upcoming_release IS NULL) 
+                        OR (upcoming_release >= CURRENT_DATE AND upcoming_accommodation IS NULL) 
+                        OR (upcoming_accommodation >= CURRENT_DATE AND upcoming_release >= CURRENT_DATE)
+                    ORDER BY 
+                        upcoming_accommodation, upcoming_release DESC;`, [req.session.camp]);
+
+                await client.query('COMMIT');
+                res.status(200).json(result.rows);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing request:', error.message);
+                return res.status(500).json({ message: 'An internal error occurred while processing your request.' });
+            } finally {
+                client.release();
+            }
+        });
+
         this.app.get('/checkUpcomingDate', this.isLoggedIn.bind(this), async (req, res) => {
             const client = await pool.connect();
 
@@ -2780,11 +2816,17 @@ class Server {
                 const result_all_bags = await client.query(`
                     SELECT * 
                     FROM laundrybags l 
-                    WHERE l.id NOT IN (SELECT l.id FROM laundrybags l
-										LEFT JOIN additionalitem ai ON ai.bag_id = l.id
-                                        LEFT JOIN soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
-                                        WHERE s.date_accommodation IS NOT NULL AND s.date_free IS NULL)
-                    AND l.camp_id = $1;`, [req.session.camp]);
+                    WHERE l.id NOT IN (SELECT DISTINCT l.id
+											FROM laundrybags l
+											LEFT JOIN additionalitem ai ON ai.bag_id = l.id
+											LEFT JOIN soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
+											WHERE
+											    s.id IS NOT NULL AND (
+											        s.date_accommodation IS NULL
+											        OR
+											        (s.date_accommodation IS NOT NULL AND s.date_free IS NULL)
+											    )
+					) AND l.camp_id = $1;`, [req.session.camp]);
 
                 result_all_bags.rows.forEach(element => {
                     optionAllBag.push({ id: element.id, name: element.code, status: element.status });
@@ -3780,7 +3822,7 @@ class Server {
                 return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
             }
 
-            const { soldierId, soldierName, soldierCountry, upcomingAccommodationDate, upcomingReleaseDate } = req.body;
+            const { soldierId, soldierName, soldierCountry, soldierBag, soldierMealCard,upcomingAccommodationDate, upcomingReleaseDate } = req.body;
             const client = await pool.connect();
 
             if (upcomingAccommodationDate && upcomingReleaseDate && new Date(upcomingAccommodationDate) > new Date(upcomingReleaseDate))
@@ -3805,7 +3847,7 @@ class Server {
                 }
 
                 await Promise.all([
-                    client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, NULL, NULL, NULL, $4, $5, $6);", [soldierId, soldierName, soldierCountry, req.session.camp, upcomingAccommodationDate || null, upcomingReleaseDate || null]),
+                    client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, $4, $5, NULL, $6, $7, $8);", [soldierId, soldierName, soldierCountry, soldierMealCard || null, soldierBag || null, req.session.camp, upcomingAccommodationDate || null, upcomingReleaseDate || null]),
                     client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)", [req.session.username, `Add soldier ${soldierName}`])
                 ]);
 
@@ -3874,7 +3916,7 @@ class Server {
                 return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
             }
 
-            const { soldierId, soldierNewId, soldierName, soldierCountry, soldierUpcomeAccom, soldierUpcomeRel } = req.body;
+            const { soldierId, soldierNewId, soldierName, soldierCountry, soldierBag, soldierMealCard, soldierUpcomeAccom, soldierUpcomeRel } = req.body;
             const client = await pool.connect();
 
             if (soldierUpcomeAccom && soldierUpcomeRel && new Date(soldierUpcomeAccom) > new Date(soldierUpcomeRel))
@@ -3897,12 +3939,12 @@ class Server {
                 }
 
                 if (soldierId === soldierNewId) {
-                    await client.query("UPDATE soldier SET namesoldier = $1, country = $2, upcoming_accommodation = $4, upcoming_release = $5 WHERE id = $3;", [soldierName, soldierCountry, soldierId, soldierUpcomeAccom || null, soldierUpcomeRel || null]);
+                    await client.query("UPDATE soldier SET namesoldier = $1, country = $2, meal_card = $6, laundry_bag_id = $7, upcoming_accommodation = $4, upcoming_release = $5 WHERE id = $3;", [soldierName, soldierCountry, soldierId, soldierUpcomeAccom || null, soldierUpcomeRel || null, soldierMealCard || null, soldierBag || null]);
                 } else {
                     const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [soldierId]);
                     const respons = result.rows[0];
 
-                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);", [soldierNewId, soldierName, soldierCountry, respons.date_accommodation || null, respons.date_free || null, respons.meal_card || null, respons.laundry_bag_id || null, respons.used_room || null, respons.camp_id, soldierUpcomeAccom || null, soldierUpcomeRel || null]);
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);", [soldierNewId, soldierName, soldierCountry, respons.date_accommodation || null, respons.date_free || null, soldierMealCard || null, soldierBag || null, respons.used_room || null, respons.camp_id, soldierUpcomeAccom || null, soldierUpcomeRel || null]);
 
                     await Promise.all([
                         client.query("UPDATE movesoldier SET idsoldier = $1 WHERE idsoldier = $2;", [soldierNewId, soldierId]),
@@ -3935,6 +3977,7 @@ class Server {
         this.app.post('/accommodation/uploadSoldier', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
             const client = await pool.connect();
             const errors = [];
+            const bagSet = [];
 
             try {
                 await client.query('BEGIN');
@@ -3988,6 +4031,32 @@ class Server {
                         errors.push({ type: 'InvalidDate', message: `The date of accommodation cannot be greater than the date of release` });
                         return;
                     }
+
+                    if (!row.soldierBag) {
+                        return;
+                    }
+
+                    const [result_check_bag, result_check_bag_soldier] = await Promise.all([
+                        client.query("SELECT * FROM laundrybags WHERE code = $1 AND camp_id = $2;", [row.soldierBag, req.session.camp]),
+                        client.query(`
+                            SELECT * FROM soldier s 
+							LEFT JOIN additionalitem ai ON s.id = ai.soldier_id
+                            LEFT JOIN laundrybags l ON s.laundry_bag_id = l.id OR l.id = ai.bag_id
+                            WHERE l.code = $1 AND (
+                                s.id IS NOT NULL 
+                                AND (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND date_free IS NULL))) AND l.camp_id = $2;`, [row.soldierBag, req.session.camp])
+                    ]);
+
+                    if (result_check_bag.rows.length === 0) {
+                        errors.push({ type: 'CheckBag', message: `The bag with number '${row.soldierBag}' is not exists.` });
+                        return;
+
+                    } else if (result_check_bag_soldier.rows.length > 0) {
+                        errors.push({ type: 'CheckBag', message: `The bag with number '${row.soldierBag}' has already been taken by someone.` });
+                        return;
+                    } else {
+                        bagSet.push({ id: result_check_bag.rows[0].id, code: result_check_bag.rows[0].code });
+                    }
                 }));
 
                 if (errors.length > 0) {
@@ -3996,7 +4065,13 @@ class Server {
                 }
 
                 await Promise.all(data.map(async (row) => {
-                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, NULL, NULL, NULL, $4, $5, $6);", [row.soldierId, row.soldierName, row.soldierCountry, req.session.camp, row.upcomingAccommodationDate || null, row.upcomingReleaseDate || null]);
+
+                    const mealCardValue = row.soldierMealCard ? row.soldierMealCard : null;
+                    const laundryBagValue = row.soldierBag
+                        ? bagSet.find(code => code.code === row.soldierBag)?.id
+                        : null;
+                        
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, $4, $5, NULL, $6, $7, $8);", [row.soldierId, row.soldierName, row.soldierCountry, mealCardValue, laundryBagValue, req.session.camp, row.upcomingAccommodationDate || null, row.upcomingReleaseDate || null]);
                 }));
 
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -4023,7 +4098,7 @@ class Server {
             const worksheet = workbook.addWorksheet('Add Multipul Soldiers');
 
             // Add custom column titles for the first sheet
-            const headers = ['soldierId', 'soldierName', 'soldierCountry', 'upcomingAccommodationDate', 'upcomingReleaseDate'];
+            const headers = ['soldierId', 'soldierName', 'soldierCountry', 'soldierBag', 'soldierMealCard', 'upcomingAccommodationDate', 'upcomingReleaseDate'];
             const headerRow = worksheet.addRow(headers);
 
             // Apply styling to the headers
@@ -4043,7 +4118,9 @@ class Server {
                 { width: 12 },
                 { width: 20 },
                 { width: 25 },
-                { width: 25 },
+                { width: 20 },
+                { width: 20 },
+                { width: 30 },
                 { width: 25 },
             ];
 
@@ -4195,7 +4272,9 @@ class Server {
                             SELECT * FROM soldier s 
 							LEFT JOIN additionalitem ai ON s.id = ai.soldier_id
                             LEFT JOIN laundrybags l ON s.laundry_bag_id = l.id OR l.id = ai.bag_id
-                            WHERE l.code = $1 AND s.date_accommodation IS NOT NULL AND date_free IS NULL AND l.camp_id = $2;`, [row.laundrybag, req.session.camp])
+                            WHERE l.code = $1 AND (
+                                s.id IS NOT NULL 
+                                AND (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND date_free IS NULL))) AND l.camp_id = $2;`, [row.laundrybag, req.session.camp])
                     ]);
 
                     if (result_check_bag.rows.length === 0) {
@@ -4775,10 +4854,12 @@ class Server {
             try {
                 await client.query('BEGIN');
 
+                const uniqueId = crypto.randomBytes(16).toString('hex');
+
                 if (bagId !== '') {
                     await Promise.all([
                         client.query(`
-                            INSERT INTO additionalitem (id, soldier_id, description, bag_id, quantity) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM additionalitem), $1, $2, $3, $4);`, [soldierId, description, bagId, quantity]),
+                            INSERT INTO additionalitem (id, soldier_id, description, bag_id, quantity) VALUES ($5, $1, $2, $3, $4);`, [soldierId, description, bagId, quantity, uniqueId]),
                         client.query(`
                             UPDATE laundrybags SET soldier_id = $1 WHERE id = $2;`, [soldierId, bagId]),
                         client.query(`
@@ -4788,7 +4869,7 @@ class Server {
                 } else {
                     await Promise.all([
                         client.query(`
-                            INSERT INTO additionalitem (id, soldier_id, description, bag_id, quantity) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM additionalitem), $1, $2, NULL, $3);`, [soldierId, description, quantity]),
+                            INSERT INTO additionalitem (id, soldier_id, description, bag_id, quantity) VALUES ($4, $1, $2, NULL, $3);`, [soldierId, description, quantity, uniqueId]),
                         client.query(`
                             INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2);`,
                             [req.session.username, `Add additional item to soldier ${soldierId}`])
@@ -5615,10 +5696,14 @@ class Server {
                 const [result, resultCount] = await Promise.all([
                     client.query(`
                         SELECT l.code, s.namesoldier, l.status, l.laundrycount
-                        FROM laundrybags l
-						LEFT JOIN additionalitem ai ON ai.bag_id = l.id
-                        LEFT JOIN soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
-                        WHERE s.date_accommodation IS NOT NULL AND s.date_free IS NULL AND l.id = $1;`, [code]),
+                            FROM laundrybags l
+                            LEFT JOIN additionalitem ai ON ai.bag_id = l.id
+                            LEFT JOIN soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
+                            WHERE l.id = $1 AND
+                            s.id IS NOT NULL
+                            AND (
+                                s.date_accommodation IS NULL 
+                                OR (s.date_accommodation IS NOT NULL AND s.date_free IS NULL));`, [code]),
                     client.query(`
                         SELECT COUNT(*) AS count
                         FROM laundryreport
@@ -5682,7 +5767,8 @@ class Server {
                     FROM laundrybags l
 					LEFT JOIN additionalitem ai ON ai.bag_id = l.id
                     LEFT JOIN soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
-                    WHERE s.date_accommodation IS NOT NULL AND s.date_free IS NULL AND l.status = $1 AND l.camp_id = $2;`, [prev_destination, campId]);
+                    WHERE s.id IS NOT NULL AND (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND s.date_free IS NULL))
+                    AND l.status = $1 AND l.camp_id = $2;`, [prev_destination, campId]);
 
                 const bag = result.rows;
 
@@ -5721,7 +5807,7 @@ class Server {
                     FROM laundrybags l
 					LEFT JOIN additionalitem ai ON ai.bag_id = l.id
                     LEFT JOIN soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
-                    WHERE s.date_accommodation IS NOT NULL AND s.date_free IS NULL AND l.id = $1;`, [code]);
+                    WHERE s.id IS NOT NULL AND (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND s.date_free IS NULL)) AND l.id = $1;`, [code]);
 
                 if (result.rows.length === 0) {
                     await client.query('ROLLBACK');
@@ -5846,7 +5932,7 @@ class Server {
 
                 if (status !== '') {
                     result = await client.query(`
-                        WITH query1 AS (SELECT
+                        SELECT 
                             l.id,
                             l.code, 
                             TO_CHAR(l.timein, 'YYYY-MM-DD HH24:MI') AS timein, 
@@ -5858,70 +5944,32 @@ class Server {
                         FROM 
                             laundrybags l
                         LEFT JOIN 
-                            soldier s ON s.laundry_bag_id = l.id
+                            additionalitem ai ON ai.bag_id = l.id
+                        LEFT JOIN 
+                            soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
                         WHERE 
-                            s.date_accommodation IS NOT NULL AND
-                            s.date_free IS NULL AND 
                             l.status = $1 AND
-                            l.camp_id = $2
+                            l.camp_id = $2 AND
+                            (
+                                s.namesoldier IS NOT NULL AND s.date_accommodation IS NULL
+                                OR 
+                                (s.namesoldier IS NOT NULL AND s.date_accommodation IS NOT NULL AND s.date_free IS NULL)
+                            )
                         ORDER BY 
-                        islate ASC),
-                        query2 AS (SELECT
-                            l.id,
-                            l.code, 
-                            TO_CHAR(l.timein, 'YYYY-MM-DD HH24:MI') AS timein, 
-                            s.namesoldier, 
-                            CASE 
-                                WHEN l.status = 'Ready to pick up' AND l.timein < NOW() - INTERVAL '1 week' THEN TRUE
-                                ELSE FALSE
-                            END AS islate
-                        FROM 
-                            laundrybags l
-                        LEFT JOIN 
-                            soldier s ON l.soldier_id = s.id
-                        WHERE 
-                            s.date_accommodation IS NOT NULL AND
-                            s.date_free IS NULL AND 
-                            l.status = $1 AND 
-                            l.camp_id = $2
-                        ORDER BY 
-                        islate ASC)
-						SELECT * FROM query1
-						UNION ALL
-						SELECT * FROM query2
-						WHERE NOT EXISTS (SELECT 1 FROM query1);`, [status, req.session.camp]);
+                            islate ASC;`, [status, req.session.camp]);
                 } else {
                     result = await client.query(`
-                        WITH query1 AS (SELECT
-                            l.id,
-                            l.code
-                        FROM 
-                            laundrybags l
-                        LEFT JOIN 
-                            additionalitem ai ON ai.bag_id = l.id
-                        LEFT JOIN 
-                            soldier s ON s.laundry_bag_id = l.id
-                        WHERE 
-                            s.date_accommodation IS NOT NULL AND
-                            s.date_free IS NULL
-                            AND l.camp_id = $1),
-                        query2 AS (SELECT
-                            l.id,
-                            l.code
-                        FROM 
-                            laundrybags l
-                        LEFT JOIN 
-                            additionalitem ai ON ai.bag_id = l.id
-                        LEFT JOIN 
-                            soldier s ON ai.soldier_id = s.id
-                        WHERE 
-                            s.date_accommodation IS NOT NULL AND
-                            s.date_free IS NULL
-                            AND l.camp_id = $1)
-						SELECT * FROM query1
-						UNION ALL
-						SELECT * FROM query2
-						WHERE NOT EXISTS (SELECT 1 FROM query1);`, [req.session.camp]);
+                        SELECT DISTINCT l.id, l.code
+                            FROM laundrybags l
+                            LEFT JOIN additionalitem ai ON ai.bag_id = l.id
+                            LEFT JOIN soldier s1 ON l.id = s1.laundry_bag_id
+                            LEFT JOIN soldier s2 ON ai.soldier_id = s2.id
+                            WHERE l.camp_id = $1
+                            AND (
+                                (s1.id IS NOT NULL AND (s1.date_accommodation IS NULL OR s1.date_free IS NULL))
+                                OR
+                                (s2.id IS NOT NULL AND (s2.date_accommodation IS NULL OR s2.date_free IS NULL))
+                            );`, [req.session.camp]);
                 }
 
                 await client.query('COMMIT');

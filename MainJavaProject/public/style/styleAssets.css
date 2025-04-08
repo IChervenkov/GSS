@@ -1591,4 +1591,13 @@ input[type="checkbox"] {
         width: 100%;
         overflow-y: auto;
     }
+
+    #reportViewModal,
+    #editAssetsModal {
+        padding-top: 40px;
+    }
+
+    #lostAssetsModal {
+        padding-top: 20px;
+    }
 }

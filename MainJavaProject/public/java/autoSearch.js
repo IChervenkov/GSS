@@ -123,6 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
     attachFilterEvents('bikeTotalsTable', 'search-input-view-total-bike', 'pageNumberDate');
     attachFilterEvents('assetTable', 'asset-search-input', 'pageNumberSecond');
     attachFilterEvents('soldierTable', 'search-input-soldier', 'pageNumberSecond');
+    attachFilterEvents('upcomingActionTable', 'search-input-upcoming-action', 'pageNumberFourth');
     attachFilterEvents('bagsTable', 'laundry-search-input', 'pageNumberSecond');
     attachFilterEvents('assetsTable', 'search-input-view-assets', 'pageNumber');
     attachFilterEvents('assetDateTable', 'search-input-view-assets-second', 'pageNumberDate');

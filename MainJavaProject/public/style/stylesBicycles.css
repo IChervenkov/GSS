@@ -1166,7 +1166,7 @@ tbody tr:nth-child(even) {
 
   .btn-container:hover .tooltip-custom {
     display: none;
-}
+  }
 }
 
 
@@ -1359,5 +1359,9 @@ thead th input:focus {
     max-width: 50%;
     /* Adjust modal width */
     margin-left: 25%;
+  }
+
+  .modal-content-view {
+    margin-top: 40px;
   }
 }

@@ -1225,4 +1225,8 @@ input[type="checkbox"] {
         height: calc(100vh - 230px);
         /* Adjust height */
     }
+
+    #reportViewModal {
+        padding-top: 40px;
+    }
 }

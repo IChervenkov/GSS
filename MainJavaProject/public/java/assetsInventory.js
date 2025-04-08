@@ -1334,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     cleanItemName.addEventListener('input', () => {
-        const regex = /^[a-zA-Z0-9\s]+$/;
+        const regex = /^[a-zA-Z0-9\s.,\/\-:;]+$/;
         const isValid = regex.test(cleanItemName.value);
         toggleInputValidity(cleanItemName, isValid);
     });
@@ -4081,7 +4081,7 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault(); // Prevent default form submission
 
         const inputsToCheck = [
-            { input: cleanItemName, condition: !/^[a-zA-Z0-9\s]+$/.test(cleanItemName.value) },
+            { input: cleanItemName, condition: !/^[a-zA-Z0-9\s.,\/\-:;]+$/.test(cleanItemName.value) },
             { input: cleanItemTotalAmount, condition: cleanItemTotalAmount.value === '' }
         ];
 
