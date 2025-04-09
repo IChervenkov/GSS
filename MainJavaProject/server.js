@@ -2667,7 +2667,24 @@ class Server {
                         OR (upcoming_release >= CURRENT_DATE AND upcoming_accommodation IS NULL) 
                         OR (upcoming_accommodation >= CURRENT_DATE AND upcoming_release >= CURRENT_DATE)
                     ORDER BY 
-                        upcoming_accommodation, upcoming_release DESC;`, [req.session.camp]);
+                        CASE 
+                            WHEN upcoming_accommodation IS NOT NULL AND upcoming_release IS NOT NULL THEN 1
+                            WHEN upcoming_accommodation IS NOT NULL THEN 2
+                            WHEN upcoming_release IS NOT NULL THEN 3
+                            ELSE 4
+                        END,
+                        CASE 
+                            WHEN upcoming_accommodation IS NOT NULL AND upcoming_release IS NOT NULL THEN upcoming_accommodation 
+                        END DESC,
+                        CASE 
+                            WHEN upcoming_accommodation IS NOT NULL AND upcoming_release IS NOT NULL THEN upcoming_release 
+                        END ASC,
+                        CASE 
+                            WHEN upcoming_accommodation IS NOT NULL AND upcoming_release IS NULL THEN upcoming_accommodation 
+                        END DESC,
+                        CASE 
+                            WHEN upcoming_release IS NOT NULL AND upcoming_accommodation IS NULL THEN upcoming_release 
+                        END ASC;`, [req.session.camp]);
 
                 await client.query('COMMIT');
                 res.status(200).json(result.rows);

@@ -58,6 +58,12 @@ document.addEventListener('DOMContentLoaded', () => {
             toastElement.style.display = 'block';
             isToastVisible = true;
 
+            if (type === 'accommodation' || type === 'release') {
+                toastElement.style.cursor = 'pointer';
+            } else {
+                toastElement.style.cursor = 'default';
+            }
+
             setTimeout(() => toastElement.classList.add('show'), 10);
             notificationSound.play().catch(error => console.error('Error playing sound:', error));
 
@@ -86,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
     closeToastButton.addEventListener('click', (event) => {
         event.stopPropagation(); // Prevent toast click from firing
         hideToast();
-    });    
+    });
 
     toastElement.addEventListener('click', () => {
         if (currentToastType === 'accommodation' && currentToastNames.length > 0) {
