@@ -19,44 +19,54 @@
         android:textColor="@android:color/black"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="HardcodedText" />
 
     <Button
         android:id="@+id/buttonAddAsset"
-        android:layout_width="200dp"
+        android:layout_width="160dp"
         android:layout_height="50dp"
         android:layout_marginTop="60dp"
         android:backgroundTint="@android:color/holo_green_dark"
         android:text="Add asset"
-        android:textColor="@android:color/white"
+        android:drawableLeft="@drawable/ic_add"
+        android:drawablePadding="10dp"
+        android:drawableTint="@android:color/white"
         android:textStyle="bold"
         app:layout_constraintTop_toBottomOf="@id/titleText"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        tools:ignore="HardcodedText,RtlHardcoded" />
 
     <Button
         android:id="@+id/buttonEditAsset"
-        android:layout_width="200dp"
+        android:layout_width="160dp"
         android:layout_height="50dp"
         android:layout_marginTop="40dp"
         android:backgroundTint="@android:color/holo_green_dark"
         android:text="Edit asset"
-        android:textColor="@android:color/white"
+        android:drawableLeft="@drawable/ic_edit"
+        android:drawablePadding="10dp"
+        android:drawableTint="@android:color/white"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/buttonAddAsset" />
+        app:layout_constraintTop_toBottomOf="@id/buttonAddAsset"
+        tools:ignore="HardcodedText, RtlHardcoded" />
 
     <Button
         android:id="@+id/buttonDeleteAsset"
-        android:layout_width="200dp"
+        android:layout_width="160dp"
         android:layout_height="50dp"
         android:layout_marginTop="40dp"
         android:backgroundTint="@android:color/holo_green_dark"
         android:text="Delete asset"
-        android:textColor="@android:color/white"
+        android:drawableLeft="@drawable/ic_delete"
+        android:drawablePadding="10dp"
+        android:drawableTint="@android:color/white"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/buttonEditAsset" />
+        app:layout_constraintTop_toBottomOf="@id/buttonEditAsset"
+        tools:ignore="HardcodedText, RtlHardcoded" />
 </androidx.constraintlayout.widget.ConstraintLayout>

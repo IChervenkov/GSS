@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="20dp"
@@ -10,7 +11,8 @@
         android:layout_height="wrap_content"
         android:text="Select Camp"
         android:textSize="18sp"
-        android:textStyle="bold"/>
+        android:textStyle="bold"
+        tools:ignore="HardcodedText" />
 
     <Spinner
         android:id="@+id/campSpinner"
@@ -25,7 +27,8 @@
         android:text="Adjust Scaner Power"
         android:textSize="18sp"
         android:textStyle="bold"
-        android:layout_marginBottom="20dp"/>
+        android:layout_marginBottom="20dp"
+        tools:ignore="HardcodedText" />
 
     <SeekBar
         android:id="@+id/powerSeekBar"
@@ -42,7 +45,8 @@
         android:layout_height="wrap_content"
         android:text="1"
         android:textSize="16sp"
-        android:layout_marginBottom="20dp"/>
+        android:layout_marginBottom="20dp"
+        tools:ignore="HardcodedText" />
 
     <Button
         android:id="@+id/saveButton"
@@ -50,6 +54,17 @@
         android:layout_height="wrap_content"
         android:text="Save Settings"
         android:backgroundTint="@color/green"
-        android:textColor="@android:color/white"/>
+        android:textColor="@android:color/white"
+        tools:ignore="HardcodedText" />
+
+    <Button
+        android:id="@+id/btnUpdate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Check for Upgrade"
+        android:backgroundTint="@color/green"
+        android:textColor="@android:color/white"
+        tools:ignore="HardcodedText" />
 
 </LinearLayout>

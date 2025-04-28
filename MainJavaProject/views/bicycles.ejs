@@ -15,6 +15,9 @@
 </head>
 
 <body>
+
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
   <!-- Horizontal Navigation Bar -->
   <div class="horizontal-nav">
     <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
@@ -497,6 +500,8 @@
               </th>
               <th><input name="namesoldier" type="text" class="search-input-view-bike" placeholder="Search...">Soldier
                 Name</th>
+              <th><input name="country" type="text" class="search-input-view-bike" placeholder="Search...">Country
+              </th>
               <th><input name="helmet_code" type="text" class="search-input-view-bike" placeholder="Search...">Helmet
                 Code</th>
               <th><input name="date_from" type="text" class="search-input-view-bike" placeholder="Search...">Date From
@@ -559,6 +564,7 @@
               <th>Id</th>
               <th>Bike Name</th>
               <th>Hired by</th>
+              <th>Rented date</th>
             </tr>
           </thead>
           <% if (data) { %>
@@ -573,6 +579,9 @@
                   </td>
                   <td>
                     <%= item.hiredby %>
+                  </td>
+                  <td>
+                    <%= item.datefrom %>
                   </td>
                 </tr>
                 <% } %>
@@ -594,7 +603,6 @@
             <tr>
               <th>Id</th>
               <th>Bike Name</th>
-              <th>Hired by</th>
             </tr>
           </thead>
           <% if (data) { %>
@@ -606,9 +614,6 @@
                   </td>
                   <td>
                     <%= item.name %>
-                  </td>
-                  <td>
-                    <%= item.hiredby %>
                   </td>
                 </tr>
                 <% } %>
@@ -631,6 +636,7 @@
               <th>Id</th>
               <th>Bike Name</th>
               <th>Hired by</th>
+              <th>Rented date</th>
             </tr>
           </thead>
           <% if (data) { %>
@@ -645,6 +651,9 @@
                   </td>
                   <td>
                     <%= item.hiredby %>
+                  </td>
+                  <td>
+                    <%= item.datefrom %>
                   </td>
                 </tr>
                 <% } %>
@@ -667,6 +676,7 @@
               <th>Id</th>
               <th>Bike Name</th>
               <th>Hired by</th>
+              <th>Rented date</th>
             </tr>
           </thead>
           <% if (data) { %>
@@ -681,6 +691,9 @@
                   </td>
                   <td>
                     <%= item.hiredby %>
+                  </td>
+                  <td>
+                    <%= item.datefrom %>
                   </td>
                 </tr>
                 <% } %>
@@ -703,6 +716,7 @@
               <th>Id</th>
               <th>Bike Name</th>
               <th>Hired by</th>
+              <th>Rented date</th>
             </tr>
           </thead>
           <% if (data) { %>
@@ -717,6 +731,9 @@
                   </td>
                   <td>
                     <%= item.hiredby %>
+                  </td>
+                  <td>
+                    <%= item.datefrom %>
                   </td>
                 </tr>
                 <% } %>
@@ -821,7 +838,7 @@
 
   <!-- The Modal for Add Soldier -->
   <div id="removeBikeModal" class="modal">
-    <form class="modal-content" action="/bicycles/removeBike" method="POST" id="form4">
+    <form class="modal-content" action="/bicycles/removeBike" method="DELETE" id="form4">
       <span class="close">&times;</span>
 
       <h2>Remove bike</h2>
@@ -873,7 +890,7 @@
   </div>
 
   <div id="bikeEditModal" class="modal">
-    <form action="/bicycles/editBike" method="POST" class="modal-content" id="form5">
+    <form action="/bicycles/editBike" method="PATCH" class="modal-content" id="form5">
       <span class="close">&times;</span>
 
       <h2>Edit Bike</h2>

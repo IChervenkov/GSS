@@ -42,6 +42,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const itemTraceabilityModal = document.getElementById('itemTraceabilityModal');
     const itemTraceabilityModalContent = itemTraceabilityModal.querySelector('.modal-content');
 
+    const inventoryModal = document.getElementById("inventoryModal");
+    const inventoryModalContent = inventoryModal.querySelector('.modal-content');
+
     const modalMess = document.getElementById("myMessage");
     const modalMessContent = modalMess.querySelector('.modal-content-mess');
 
@@ -66,10 +69,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedLostAssetId = document.getElementById('selectedLostAssetNameId');
 
     const lostAssetQuantity = document.getElementById('lostAssetQuantity');
-
-    const lostAssetLocationSearchInput = document.getElementById('assetLocation');
-    const lostAssetLocationSearchDropdown = document.getElementById('assetLocationDropdown');
-    const selectedLostAssetLocationId = document.getElementById('selectedAssetLocationId');
 
     const assetSearchInput = document.getElementById('assetSearch');
     const assetSearchDropdown = document.getElementById('assetDropdown');
@@ -126,6 +125,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const lostItemDescription = document.getElementById('assetDescription');
 
+    const dropdownButton = document.getElementById('typeDropdownMenuButton');
+    const dropdownMenu = document.querySelector('.dropdown-menu');
+
     // Track sort order and priority for each column
     let sortOrder = {
         nameroom: true, // true means ascending, false means descending
@@ -169,13 +171,15 @@ document.addEventListener('DOMContentLoaded', function () {
         input.classList.toggle('is-invalid', !isValid);
     };
 
+    const csrfToken = document.getElementsByName('_csrf')[0].value;
+
     // Show loading indicator
     const loadingIndicator = document.getElementById('loadingIndicator');
 
     loadingIndicator.style.display = 'flex';
 
     fetch(`/assets/getSortedRoom`, {
-        method: 'POST'
+        method: 'GET'
     })
         .then(response => response.json())
         .then(data => {
@@ -185,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(error => console.error("Error fetching room:", error));
 
     fetch(`/assets/getAllType`, {
-        method: 'POST'
+        method: 'GET'
     })
         .then(response => response.json())
         .then(data => {
@@ -195,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(error => console.error("Error fetching keys:", error));
 
     fetch(`/allAssets`, {
-        method: 'POST'
+        method: 'GET'
     })
         .then(response => response.json())
         .then(data => {
@@ -227,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(error => console.error("Error fetching keys:", error));
 
     fetch(`/asset/keys`, {
-        method: 'POST'
+        method: 'GET'
     })
         .then(response => response.json())
         .then(data => {
@@ -735,7 +739,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 li.setAttribute('data-asset-owner', asset.asset_owner);
                 li.setAttribute('data-status', asset.status);
                 li.setAttribute('data-expandable', asset.expandable);
-                li.setAttribute('data-description', asset.description);
+                li.setAttribute('data-description', asset.description || '');
                 selectAllAssetDropdown.appendChild(li);
             });
         } else {
@@ -774,7 +778,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const description = selectedAllAsset.getAttribute('data-description');
 
             fetch(`/assets/getSortedAssets`, {
-                method: 'POST'
+                method: 'GET'
             })
                 .then(response => response.json())
                 .then(data => {
@@ -793,7 +797,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         owner,
                         status,
                         expandable,
-                        description ? description : ''
+                        description
                     );
                 })
                 .catch(error => console.error("Error fetching keys:", error));
@@ -848,48 +852,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             toggleInputValidity(lostAssetSearchInput, true);
             toggleInputValidity(lostAssetQuantity, true);
-        }
-    });
-
-    function filterLostAssetLocation(query) {
-        lostAssetLocationSearchDropdown.innerHTML = '';
-        const filteredAssetLocation = lostAssetsLocation.filter(asset => asset.name.toLowerCase().includes(query.toLowerCase()));
-
-        if (filteredAssetLocation.length > 0) {
-            lostAssetLocationSearchDropdown.style.display = 'block';
-            filteredAssetLocation.forEach(asset => {
-                const li = document.createElement('li');
-                li.textContent = asset.name;
-                li.setAttribute('data-id', asset.id);
-                lostAssetLocationSearchDropdown.appendChild(li);
-            });
-        } else {
-            lostAssetLocationSearchDropdown.style.display = 'none';
-        }
-    }
-
-    // Handle input change
-    lostAssetLocationSearchInput.addEventListener('input', function () {
-        const query = lostAssetLocationSearchInput.value;
-        if (query.length > 0) {
-            filterLostAssetLocation(query);
-        } else {
-            lostAssetLocationSearchDropdown.style.display = 'none';
-            selectedLostAssetLocationId.value = '';
-
-            toggleInputValidity(lostAssetLocationSearchInput, false);
-        }
-    });
-
-    // Handle bike selection
-    lostAssetLocationSearchDropdown.addEventListener('click', function (event) {
-        const selectedAssetLocation = event.target;
-        if (selectedAssetLocation && selectedAssetLocation.dataset.id) {
-            lostAssetLocationSearchInput.value = selectedAssetLocation.textContent;
-            selectedLostAssetLocationId.value = selectedAssetLocation.getAttribute('data-id');
-            lostAssetLocationSearchDropdown.style.display = 'none';
-
-            toggleInputValidity(lostAssetLocationSearchInput, true);
         }
     });
 
@@ -1512,10 +1474,6 @@ document.addEventListener('DOMContentLoaded', function () {
             nameCell.textContent = item.nameItem;
             row.appendChild(nameCell);
 
-            const soldierCell = document.createElement('td');
-            soldierCell.textContent = item.soldierName;
-            row.appendChild(soldierCell);
-
             const descriptionCell = document.createElement('td');
             descriptionCell.textContent = item.description ? item.description : 'No description';
             row.appendChild(descriptionCell);
@@ -1565,8 +1523,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         const response = await fetch('/assets/restorLostAsset', {
                             method: 'POST',
+                            credentials: 'include',
                             headers: {
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'CSRF-Token': csrfToken
                             },
                             body: JSON.stringify(data)
                         });
@@ -1667,7 +1627,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             lostAssetSearchDropdown.style.display = 'none';
-            lostAssetLocationSearchDropdown.style.display = 'none';
 
             lostAssetsModal.classList.remove('show');
             lostAssetsModalContent.classList.remove('show');
@@ -2256,6 +2215,134 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    function openInventoryModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        inventoryModal.classList.add('show');
+        inventoryModalContent.classList.add('show');
+        inventoryModalContent.classList.add('slide-in');
+
+        loadingIndicator.style.display = 'flex';
+
+        fetch(`/getInventoryData`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'CSRF-Token': csrfToken
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+
+                const allBuilding = data.allBuilding;
+                const allRooms = data.allRooms;
+                const allAssets = data.allAssets;
+
+                const mainAccordion = document.getElementById('mainAccordion');
+                mainAccordion.innerHTML = '';
+
+                allBuilding.forEach(build => {
+                    const accordionItem = document.createElement('div');
+                    accordionItem.className = 'accordion-item';
+
+                    const accordionHeader = document.createElement('button');
+                    accordionHeader.className = 'accordion-header';
+                    accordionHeader.innerHTML = `
+                        <span>${build.inventory_status === 'unfinished' ? '❌' :
+                            build.inventory_status === 'actions' ? '⏳' : '✅'} ${build.namebuilding}</span>
+                        <span class="arrow">&#9656;</span>`;
+
+                    const accordionBody = document.createElement('div');
+                    accordionBody.className = 'accordion-body';
+
+                    allRooms.forEach(room => {
+                        if (room.buildid === build.id) {
+                            const subAccordion = document.createElement('div');
+                            subAccordion.className = 'accordion sub-accordion';
+
+                            const subAccordionItem = document.createElement('div');
+                            subAccordionItem.className = 'accordion-item';
+
+                            const subAccordionHeader = document.createElement('button');
+                            subAccordionHeader.className = 'accordion-header';
+                            subAccordionHeader.innerHTML = `
+                                <span>${room.inventory_status === 'unfinished' ? '❌' :
+                                    room.inventory_status === 'actions' ? '⏳' : '✅'} ${room.nameroom}</span>
+                                <span class="arrow">&#9656;</span>`;
+
+                            const subAccordionBody = document.createElement('div');
+                            subAccordionBody.className = 'accordion-body';
+
+                            const subAccordionList = document.createElement('ul');
+                            subAccordionList.className = 'list-group';
+
+                            allAssets.forEach(asset => {
+                                if (asset.location_room === room.id) {
+                                    const subAccordionListItem = document.createElement('li');
+                                    subAccordionListItem.className = 'list-group-item';
+                                    subAccordionListItem.textContent = `${asset.inventory_status === 'undiscovered' ? '❌' :
+                                        asset.inventory_status === 'edited' ? '✏️' : '✅'} ${asset.code} (${asset.name_assets})`;
+                                    subAccordionList.appendChild(subAccordionListItem);
+                                }
+                            });
+
+                            subAccordionBody.appendChild(subAccordionList);
+                            subAccordionItem.appendChild(subAccordionHeader);
+                            subAccordionItem.appendChild(subAccordionBody);
+                            subAccordion.appendChild(subAccordionItem);
+                            accordionBody.appendChild(subAccordion);
+                        }
+                    });
+
+                    accordionItem.appendChild(accordionHeader);
+                    accordionItem.appendChild(accordionBody);
+                    mainAccordion.appendChild(accordionItem);
+                });
+
+                setupAccordion(mainAccordion);
+            })
+            .catch(error => console.error("Error fetching data:", error))
+            .finally(() => {
+                // Hide loading indicator
+                loadingIndicator.style.display = 'none';
+            });
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        inventoryModalContent.classList.remove('slide-out');
+    }
+
+    function closeInventoryModal() {
+        // Start slide-out animation
+        inventoryModalContent.classList.add('slide-out');
+        inventoryModalContent.classList.remove('slide-in');
+
+        // Close all accordions (trigger transition)
+        const openBodies = inventoryModal.querySelectorAll('.accordion-body.open');
+        const activeHeaders = inventoryModal.querySelectorAll('.accordion-header.active');
+
+        openBodies.forEach(body => {
+            body.classList.remove('open'); // triggers transition (max-height, opacity)
+        });
+
+        activeHeaders.forEach(header => {
+            header.classList.remove('active');
+        });
+
+        // Hide modal after animation ends
+        setTimeout(() => {
+            inventoryModal.classList.remove('show');
+            inventoryModalContent.classList.remove('show', 'slide-out');
+
+            // Optional: Reset all accordion-body styles if needed
+            const bodies = inventoryModal.querySelectorAll('.accordion-body');
+            bodies.forEach(body => {
+                body.style.maxHeight = null;
+            });
+
+        }, 500); // Wait for accordion and slide-out transitions to finish
+    }
+
     function openRemoveAssetsTypeModal() {
         // Add the slide-in effect by adding the necessary classes
         removeAssetsTypeModal.classList.add('show');
@@ -2322,7 +2409,7 @@ document.addEventListener('DOMContentLoaded', function () {
         assetOwner.value = owner;
         assetEditStatus.value = status;
         assetExpandable.value = expandable;
-        assetDescription.value = description;
+        assetDescription.value = description || '';
 
         // Add the slide-in effect by adding the necessary classes
         assetsEditModal.classList.add('show');
@@ -2403,7 +2490,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const assetTableBody = document.getElementById('assetTable').getElementsByTagName('tbody')[0];
 
         fetch(`/assets/getSortedAssets?numRoom=${rowId}`, {
-            method: 'POST'
+            method: 'GET'
         })
             .then(response => response.json())
             .then(data => {
@@ -2586,7 +2673,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[11].onclick = closeRemoveCleanItemModal;
     document.getElementsByClassName('close-btn')[12].onclick = closeEditCleanItemModal;
     document.getElementsByClassName('close-btn')[13].onclick = closeItemTraceabilityModal;
-    document.getElementsByClassName('close-btn')[14].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[14].onclick = closeInventoryModal;
+    document.getElementsByClassName('close-btn')[15].onclick = closeMessModal;
 
     // Close the modal if the user clicks outside of it
     window.onclick = function (event) {
@@ -2622,6 +2710,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case itemTraceabilityModal:
                 closeItemTraceabilityModal();
+                break;
+
+            case inventoryModal:
+                closeInventoryModal();
                 break;
 
             case assetsEditModal:
@@ -2699,6 +2791,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!selectAllAssetDropdown.contains(event.target) && event.target !== selectAllAssetDropdown) {
             selectAllAssetDropdown.style.display = 'none';
         }
+
+        if (!dropdownButton.contains(event.target) && !dropdownMenu.contains(event.target)) {
+            dropdownMenu.style.display = 'none'; // Hide the dropdown if clicked outside
+        }
     });
 
     // Add event listeners to table headers for sorting
@@ -2732,10 +2828,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Add event listeners to the buttons
     document.getElementById('btnAddTypeAsset').addEventListener('click', () => {
+        document.getElementById('selectTypeDropdown').style.display = 'none';
         openAddAssetsTypeModal();
     });
 
     document.getElementById('btnRemoveTypeAsset').addEventListener('click', () => {
+        document.getElementById('selectTypeDropdown').style.display = 'none';
         openRemoveAssetsTypeModal();
     });
 
@@ -2767,6 +2865,10 @@ document.addEventListener('DOMContentLoaded', function () {
         openItemTraceabilityModal();
     });
 
+    document.getElementById('inventoryButton').addEventListener('click', () => {
+        openInventoryModal();
+    });
+
     document.getElementById('upload-btn').addEventListener("click", function () {
 
         const fileInput = document.getElementById("fileInput");
@@ -2792,6 +2894,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Use XMLHttpRequest to track upload progress
         const xhr = new XMLHttpRequest();
         xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('CSRF-Token', csrfToken);
 
         xhr.upload.onprogress = function (event) {
             if (event.lengthComputable) {
@@ -2882,8 +2986,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const response = await fetch('/changeAmountLargeToSmall', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -2997,8 +3103,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const response = await fetch('/changeAmountSmallToLarge', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3064,6 +3172,91 @@ document.addEventListener('DOMContentLoaded', function () {
         showMess('Warnning', 'Are you sure you want to move this item from large to small workhouse?\nPlease enter the quantity of items you want to move.');
     });
 
+    document.getElementById('btnRestartInventory').addEventListener('click', function () {
+
+        const submitButton = document.createElement('button');
+        var isSubmit = false;
+        let hasError = false;
+        var responseData = {};
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+
+        submitButton.addEventListener('click', async () => {
+
+            hasError = false;
+            isSubmit = true;
+
+            loadingIndicator.style.display = 'flex';
+
+            try {
+
+                const response = await fetch('/restorInventory', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    }
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+
+                responseData = await response.json();
+
+                closeMessModal();
+
+            } catch (error) {
+                hasError = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+
+        modalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMess.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                if (isSubmit && !hasError) {
+                    showMess('Info', 'The inventory is restor succesful');
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || 'An error occurred while restor inventory');
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', 'The current inventory sequence will be lost, are you sure you want to restor inventor.');
+    });
+
+    // Toggle dropdown on button click
+    dropdownButton.addEventListener('click', function () {
+        const isExpanded = dropdownMenu.style.display === 'block';
+        // Close the dropdown if it is open, or open it if it's closed
+        dropdownMenu.style.display = isExpanded ? 'none' : 'block';
+    });
+
     function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
         for (let i = 0; i < rows.length; i++) {
             rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
@@ -3080,12 +3273,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
 
-            const response = await fetch(`/assets/viewReport`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ selectedDate1: selectDate1, selectedDate2: selectDate2 }),
+            const response = await fetch(`/assets/viewReport?selectedDate1=${selectDate1}&selectedDate2=${selectDate2}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -3230,7 +3419,7 @@ document.addEventListener('DOMContentLoaded', function () {
             loadingIndicator.style.display = 'flex';
 
             fetch(`/assets/getSortedRoom?numBuild=${id}`, {
-                method: 'POST'
+                method: 'GET'
             })
                 .then(response => response.json())
                 .then(data => {
@@ -3307,10 +3496,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 for (const data of allCheckedRow) {
                     const checkResponse = await fetch('/assets/checkDeleteAsset', {
                         method: 'POST',
+                        credentials: 'include',
                         headers: {
                             'Content-Type': 'application/json',
+                            'CSRF-Token': csrfToken
                         },
-                        body: JSON.stringify(data),
+                        body: JSON.stringify(data)
                     });
 
                     if (!checkResponse.ok) {
@@ -3323,11 +3514,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!hasError) {
                     for (const data of allCheckedRow) {
                         const deleteResponse = await fetch('/assets/deleteAsset', {
-                            method: 'POST',
+                            method: 'DELETE',
+                            credentials: 'include',
                             headers: {
                                 'Content-Type': 'application/json',
+                                'CSRF-Token': csrfToken
                             },
-                            body: JSON.stringify(data),
+                            body: JSON.stringify(data)
                         });
 
                         if (!deleteResponse.ok) {
@@ -3498,9 +3691,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 const response = await fetch(this.action, {
-                    method: 'POST',
+                    method: 'PATCH',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3624,8 +3819,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3726,8 +3923,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3827,9 +4026,11 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
 
                 const response = await fetch(this.action, {
-                    method: 'POST',
+                    method: 'DELETE',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3892,7 +4093,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const inputsToCheck = [
             { input: lostAssetSearchInput, condition: selectedLostAssetId.value === '' },
             { input: lostItemDescription, condition: !/^[a-zA-Z0-9\s]*$/.test(lostItemDescription.value) },
-            { input: lostAssetLocationSearchInput, condition: selectedLostAssetLocationId.value === '' },
             { input: lostAssetQuantity, condition: lostAssetQuantity.value === '' || !lostAssetQuantity.checkValidity() }
         ];
 
@@ -3914,7 +4114,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = {
             itemName: lostAssetSearchInput.value,
             description: lostItemDescription.value,
-            soldierId: selectedLostAssetLocationId.value,
             lostQuantity: lostAssetQuantity.value
         };
 
@@ -3936,8 +4135,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -4051,7 +4252,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const response = await fetch(document.getElementById('form6').action, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'CSRF-Token': csrfToken
+                },
                 body: JSON.stringify({ result: data, result_nationality: data_1, filtersAssets: filtersAssets, filtersAssetsData: filtersAssetsData })
             });
 
@@ -4123,8 +4328,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -4224,9 +4431,11 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
 
                 const response = await fetch(this.action, {
-                    method: 'POST',
+                    method: 'DELETE',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -4332,9 +4541,11 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
 
                 const response = await fetch(this.action, {
-                    method: 'POST',
+                    method: 'PATCH',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -4443,4 +4654,35 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
+
+    function setupAccordion(scope = document) {
+        const headers = scope.querySelectorAll('.accordion-header');
+
+        headers.forEach(header => {
+            header.addEventListener('click', () => {
+                const body = header.nextElementSibling;
+                const isOpen = body.classList.contains('open');
+
+                headers.forEach(h => {
+                    const b = h.nextElementSibling;
+                    if (h !== header && h.closest('.accordion') === header.closest('.accordion')) {
+                        h.classList.remove('active');
+                        b.classList.remove('open');
+                        b.style.maxHeight = null;
+                    }
+                });
+
+                if (isOpen) {
+                    header.classList.remove('active');
+                    body.classList.remove('open');
+                    body.style.maxHeight = null;
+                } else {
+                    header.classList.add('active');
+                    body.classList.add('open');
+                    body.style.maxHeight = body.scrollHeight + 'px';
+                }
+            });
+        });
+    }
+
 });

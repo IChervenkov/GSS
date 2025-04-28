@@ -18,6 +18,8 @@
 
 <body>
 
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
     <!-- Horizontal Navigation Bar -->
     <div class="horizontal-nav">
         <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
@@ -308,7 +310,7 @@
                         <% } %>
 
                         <div id="reportViewModal" class="modal">
-                            <form class="modal-content-report" action="/laundry/report" method="GET" id="form1">
+                            <form class="modal-content-report" action="/laundry/report" method="POST" id="form1">
                                 <span class="close-btn">&times;</span>
                                 <h2>Reports View</h2>
 
@@ -532,7 +534,7 @@
                                         </div>
 
                                         <div id="editBagModal" class="modal">
-                                            <form class="modal-content" action="/laundry/editBag" method="POST"
+                                            <form class="modal-content" action="/laundry/editBag" method="PUT"
                                                 id="form7">
                                                 <span class="close-btn">&times;</span>
 

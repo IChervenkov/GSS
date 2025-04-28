@@ -35,6 +35,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedStatus = document.getElementById('statusSelect');
     const selectedBike = document.getElementById('editBikeSearch');
     const editDateFrom = document.getElementById('editDateFrom');
+
+    const csrfToken = document.getElementsByName('_csrf')[0].value;
+    
     var editBikeSearchId;
 
     // Get the modal
@@ -379,10 +382,7 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         fetch(`/helmets`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            method: 'GET'
         })
             .then(response => response.json())
             .then(data => {
@@ -521,10 +521,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const responseBike = await fetch(`/bikes`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                method: 'GET'
             });
 
             if (!responseBike.ok) {
@@ -533,10 +530,7 @@ document.addEventListener('DOMContentLoaded', function () {
             bikes = await responseBike.json(); // Store fetched bikes in the global variable
 
             const responseHelmets = await fetch(`/helmets`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                method: 'GET'
             });
 
             if (!responseHelmets.ok) {
@@ -563,12 +557,8 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBike = await fetch(`/getHelmetByBike`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ bikeId: bikeId })
+            const responseBike = await fetch(`/getHelmetByBike?bikeId=${bikeId}`, {
+                method: 'GET'
             });
 
             if (!responseBike.ok) {
@@ -984,12 +974,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 // Fetch bike status
-                const response = await fetch(`/checkBike`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ bikeId: selectedBikeId.value })
+                const response = await fetch(`/checkBike?bikeId=${selectedBikeId.value}`, {
+                    method: 'GET'
                 });
 
                 if (!response.ok) {
@@ -1320,12 +1306,8 @@ document.addEventListener('DOMContentLoaded', function () {
             loadingIndicator.style.display = 'flex';
 
             // Fetch bike data from server
-            fetch(`/searchBikes`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id: bikeId })
+            fetch(`/searchBikes?id=${bikeId}`, {
+                method: 'GET'
             })
                 .then(response => response.json())
                 .then(data => {
@@ -1386,12 +1368,8 @@ document.addEventListener('DOMContentLoaded', function () {
             loadingIndicator.style.display = 'flex';
 
             // Fetch bike data from server
-            fetch(`/searchClient`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id: clientId })
+            fetch(`/searchClient?id=${clientId}`, {
+                method: 'GET'
             })
                 .then(response => response.json())
                 .then(data => {
@@ -1452,12 +1430,8 @@ document.addEventListener('DOMContentLoaded', function () {
             loadingIndicator.style.display = 'flex';
 
             // Fetch bike data from server
-            fetch(`/searchHelmet`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id: helmetId })
+            fetch(`/searchHelmet?id=${helmetId}`, {
+                method: 'GET'
             })
                 .then(response => response.json())
                 .then(data => {
@@ -1531,9 +1505,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 isRemove = true;
 
                 const response = await fetch('/bicycles/removeHelmet', {
-                    method: 'POST',
+                    method: 'DELETE',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data),
                 });
@@ -1600,12 +1576,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectedDate1 = document.getElementById('selectedDate1').value;
             const selectedDate2 = document.getElementById('selectedDate2').value;
 
-            const response = await fetch(`/bicycles/viewReport`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ selectedDate1: selectedDate1, selectedDate2: selectedDate2 })
+            const response = await fetch(`/bicycles/viewReport?selectedDate1=${selectedDate1}&selectedDate2=${selectedDate2}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -1623,6 +1595,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const newRow = bikeUsageTableBody.insertRow();
                 newRow.insertCell().textContent = row.namebike;
                 newRow.insertCell().textContent = row.namesoldier;
+                newRow.insertCell().textContent = row.country;
                 newRow.insertCell().textContent = row.helmet_code || 'N/A';
                 newRow.insertCell().textContent = row.date_from;
                 newRow.insertCell().textContent = row.date_to;
@@ -1686,8 +1659,10 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const response = await fetch(this.action, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'CSRF-Token': csrfToken
                 },
                 body: JSON.stringify(data)
             });
@@ -1743,7 +1718,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const response = await fetch(document.getElementById('form2').action, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'CSRF-Token': csrfToken
+                },
                 body: JSON.stringify({ selectedDate1: selectDate1, selectedDate2: selectDate2, filtersBike: filtersBike, filtersBikeDate: filtersBikeDate })
             });
 
@@ -1821,8 +1800,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -1961,9 +1942,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 const response = await fetch(this.action, {
-                    method: 'POST',
+                    method: 'PATCH',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -2085,8 +2068,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -2274,9 +2259,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 const response = await fetch(this.action, {
-                    method: 'POST',
+                    method: 'DELETE',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -2377,6 +2364,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Use XMLHttpRequest to track upload progress
         const xhr = new XMLHttpRequest();
         xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('CSRF-Token', csrfToken);
 
         xhr.upload.onprogress = function (event) {
             if (event.lengthComputable) {
@@ -2478,6 +2467,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Use XMLHttpRequest to track upload progress
         const xhr = new XMLHttpRequest();
         xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('CSRF-Token', csrfToken);
 
         xhr.upload.onprogress = function (event) {
             if (event.lengthComputable) {

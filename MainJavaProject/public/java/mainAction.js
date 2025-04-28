@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const toastMessage = document.getElementById('toast-message');
     const closeToastButton = document.getElementById('close-toast');
 
+    const csrfToken = document.getElementsByName('_csrf')[0].value;
+
     const toggleInputValidity = (input, isValid) => {
         input.classList.toggle('is-valid', isValid);
         input.classList.toggle('is-invalid', !isValid);
@@ -138,8 +140,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch('/setCampValue', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify({ campId: campId })
                 });
@@ -210,8 +214,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });

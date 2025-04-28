@@ -1,9 +1,11 @@
 package com.example.rfidlaundryasset;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
@@ -22,12 +24,16 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -36,13 +42,16 @@ import okhttp3.Response;
 
 public class AddAsset extends AppCompatActivity {
 
-    private OkHttpClient client; // Reuse a single OkHttpClient instance
+    private final CookieManager cookieManager = new CookieManager();
+    private final OkHttpClient client = new OkHttpClient.Builder()
+            .cookieJar(new JavaNetCookieJar(cookieManager))
+            .build();
+    private String csrfToken = null;
     private String epc = "";
-    private Button submitButton;
     private EditText assetCodeText;
     private EditText assetNameText;
-    private ArrayList<String> typeList = new ArrayList<>();
-    private Map<String, String> typeIdMap = new HashMap<>();
+    private final ArrayList<String> typeList = new ArrayList<>();
+    private final Map<String, String> typeIdMap = new HashMap<>();
     private String typeAssetId = "";
     private String locationAssetId = "";
     private String subLocationAssetId = "";
@@ -58,17 +67,50 @@ public class AddAsset extends AppCompatActivity {
     private EditText assetOwnerText;
     private Spinner assetStatusText;
     private EditText assetDescriptionText;
-    private ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
+    private final ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
 
+    private void fetchCsrfToken() {
+        Dialog loadingDialog = new Dialog(AddAsset.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        executorService.execute(() -> {
+            try {
+                String baseUrl = getString(R.string.base_url);
+                Request request = new Request.Builder()
+                        .url(baseUrl + "/csrf-token")
+                        .build();
+
+                Response response = client.newCall(request).execute();
+                if (response.isSuccessful() && response.body() != null) {
+                    String responseBody = response.body().string();
+                    JSONObject jsonObject = new JSONObject(responseBody);
+                    csrfToken = jsonObject.getString("csrfToken");
+
+                } else {
+                    runOnUiThread(() -> Toast.makeText(AddAsset.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(AddAsset.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
+            }
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_asset);
 
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+
+        fetchCsrfToken();
+
         // Initialize OkHttpClient (single instance)
-        client = new OkHttpClient();
-        submitButton = findViewById(R.id.addButton);
+        Button submitButton = findViewById(R.id.addButton);
         assetCodeText = findViewById(R.id.assetCodeText);
         assetNameText = findViewById(R.id.assetNameText);
         assetTypeTextList = findViewById(R.id.assetTypeAutoCompleteTextView);
@@ -145,7 +187,7 @@ public class AddAsset extends AppCompatActivity {
 
             Toast.makeText(AddAsset.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("AddAsset", "Error: " + e.getMessage());
             Toast.makeText(AddAsset.this, "Error initializing RFID Reader", Toast.LENGTH_SHORT).show();
         }
 
@@ -171,23 +213,23 @@ public class AddAsset extends AppCompatActivity {
             String assetDescription = assetDescriptionText.getText().toString().trim();
 
             // Validation
-            if (!isValidText(assetCode, "Asset code", assetCodeText, "^[a-zA-Z0-9]+$")) return;
-            if (!isValidText(assetName, "Asset name", assetNameText, "^[a-zA-Z0-9\\s]+$")) return;
-            if (!isValidSelection(assetType, "asset type")) return;
-            if (!isValidSelection(assetLocation, "asset location")) return;
+            if (isValidText(assetCode, "Asset code", assetCodeText, "^[a-zA-Z0-9]+$")) return;
+            if (isValidText(assetName, "Asset name", assetNameText, "^[a-zA-Z0-9\\s]+$")) return;
+            if (isValidSelection(assetType, "asset type")) return;
+            if (isValidSelection(assetLocation, "asset location")) return;
             if (assetSubLocationText.isEnabled() && assetSubLocation.isEmpty()) {
                 assetSubLocationText.requestFocus();
                 Toast.makeText(this, "Please select an asset sub-location!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (!isValidText(assetCategory, "Asset category", assetCategoriesText, "^[a-zA-Z\\s]+$")) return;
+            if (isValidText(assetCategory, "Asset category", assetCategoriesText, "^[a-zA-Z\\s]+$")) return;
             if (assetExpandable.isEmpty()) {
                 Toast.makeText(this, "Please select a asset expandable", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (!isValidText(assetQuantity, "Asset quantity", assetQuantityText, "^[0-9]+$")) return;
-            if (!isValidText(assetMrah, "Asset MRAH", assetMrahText, "^[a-zA-Z\\s]+$")) return;
-            if (!isValidText(assetOwner, "Asset owner", assetOwnerText, "^[a-zA-Z\\s]+$")) return;
+            if (isValidText(assetQuantity, "Asset quantity", assetQuantityText, "^[0-9]+$")) return;
+            if (isValidText(assetMrah, "Asset MRAH", assetMrahText, "^[a-zA-Z\\s]+$")) return;
+            if (isValidText(assetOwner, "Asset owner", assetOwnerText, "^[a-zA-Z\\s]+$")) return;
             if (assetStatus.isEmpty()) {
                 Toast.makeText(this, "Please select a asset status", Toast.LENGTH_SHORT).show();
                 return;
@@ -208,23 +250,23 @@ public class AddAsset extends AppCompatActivity {
         if (input.isEmpty()) {
             field.requestFocus();
             Toast.makeText(this, "Please enter " + fieldName + "!", Toast.LENGTH_SHORT).show();
-            return false;
+            return true;
         }
         if (!input.matches(regex)) {
             field.requestFocus();
             Toast.makeText(this, fieldName + " is invalid!", Toast.LENGTH_SHORT).show();
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     // Helper method to validate selection fields
     private boolean isValidSelection(String input, String fieldName) {
         if (input.isEmpty()) {
             Toast.makeText(this, "Please select " + fieldName + "!", Toast.LENGTH_SHORT).show();
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     // Method to send EPC to the server using the persistent OkHttpClient connection
@@ -234,7 +276,7 @@ public class AddAsset extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(AddAsset.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         executorService.execute(() -> {
@@ -257,15 +299,17 @@ public class AddAsset extends AppCompatActivity {
                 payload.put("campId", GlobalVariable.getCamp(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
-                RequestBody body = RequestBody.create(JSON, payload.toString());
+                RequestBody body = RequestBody.create(payload.toString(), JSON);
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/assets/addAsset")
+                        .url(baseUrl + "/assets/addAsset")
+                        .addHeader("X-CSRF-Token", csrfToken)
                         .post(body)
                         .build();
 
                 Response response = client.newCall(request).execute();
                 if (response.isSuccessful()) {
-                    String responseData = response.body().string();
+                    String responseData = Objects.requireNonNull(response.body()).string();
                     response.body().close(); // Ensure the response is closed
 
                     JSONObject jsonResponse = new JSONObject(responseData);
@@ -278,8 +322,8 @@ public class AddAsset extends AppCompatActivity {
                     handleError(response);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
+                Log.e("AddAsset", "Error: " + e.getMessage());
+                runOnUiThread(() -> showPopupWindow("Error sending EPCs to server: " + e.getMessage()));
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
@@ -302,10 +346,10 @@ public class AddAsset extends AppCompatActivity {
                 errorMessage = errorJson.optString("message", "Internal server error");
             }
             String finalErrorMessage = errorMessage;
-            runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
+            runOnUiThread(() -> showPopupWindow(finalErrorMessage));
         } catch (Exception e) {
-            e.printStackTrace();
-            runOnUiThread(() -> showPopupWindow("Error", "Failed to process error response: " + e.getMessage()));
+            Log.e("AddAsset", "Error: " + e.getMessage());
+            runOnUiThread(() -> showPopupWindow("Failed to process error response: " + e.getMessage()));
         } finally {
             if (response.body() != null) {
                 response.body().close(); // Ensure the response body is closed
@@ -343,8 +387,9 @@ public class AddAsset extends AppCompatActivity {
     // Method to check if the server is active
     private boolean isServerActive() throws JSONException {
 
+        String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url("https://bunker.bg")
+                .url(baseUrl)
                 .get()
                 .build();
 
@@ -352,7 +397,7 @@ public class AddAsset extends AppCompatActivity {
             Response response = client.newCall(request).execute(); // Reuse the OkHttpClient instance
             return response.isSuccessful();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("AddAsset", "Error: " + e.getMessage());
             return false;
         }
     }
@@ -366,11 +411,11 @@ public class AddAsset extends AppCompatActivity {
 
             executorService.execute(() -> {
 
-                while (isInventory) {
+                while (isInventory && !Thread.currentThread().isInterrupted()) {
                     UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
                     if (uhftagInfo == null) {
                         try {
-                            Thread.sleep(20);
+                            Thread.sleep(50);
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt(); // Properly interrupt the thread
                             break;
@@ -402,15 +447,16 @@ public class AddAsset extends AppCompatActivity {
     }
 
     // Method to update the TextView with the EPC code
+    @SuppressLint("SetTextI18n")
     private void updateEpcTextView(String epcCode) {
         TextView epcTextView = findViewById(R.id.epcTextView); // Get reference to the TextView
         epcTextView.setText("EPC code: " + epcCode); // Set the EPC code as the text of the TextView
     }
 
     // Method to show the EPC code in a popup window
-    private void showPopupWindow(String title, String message) {
+    private void showPopupWindow(String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(title);
+        builder.setTitle("Error");
         builder.setMessage(message);
         builder.setPositiveButton("OK", (dialog, which) -> {
             // Optionally, reset or perform other actions after closing the dialog
@@ -424,21 +470,15 @@ public class AddAsset extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(AddAsset.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(Objects.requireNonNull(loadingDialog.getWindow())).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         executorService.execute(() -> {
             try {
 
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                JSONObject payload = new JSONObject();
-
-                payload.put("isValidCode", GlobalVariable.getVariable(this));
-
-                RequestBody body = RequestBody.create(JSON, payload.toString());
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/assets/getAllType")
-                        .post(body)
+                        .url(baseUrl + "/assets/getAllType?isValidCode=" + GlobalVariable.getVariable(this))
                         .build();
 
                 Response response = client.newCall(request).execute();
@@ -487,24 +527,15 @@ public class AddAsset extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(AddAsset.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         executorService.execute(() -> {
             try {
-                // Define the media type for the JSON payload
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
-                // Prepare the request payload
-                JSONObject payload = new JSONObject();
-                payload.put("isValidCode", GlobalVariable.getVariable(this));
-                payload.put("campId", GlobalVariable.getCamp(this));
-
-                // Create the request body
-                RequestBody body = RequestBody.create(JSON, payload.toString());
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/asset/keys")
-                        .post(body)
+                        .url(baseUrl + "/asset/keys?isValidCode=" + GlobalVariable.getVariable(this) + "&campId=" + GlobalVariable.getCamp(this))
                         .build();
 
                 // Execute the network call
@@ -538,7 +569,7 @@ public class AddAsset extends AppCompatActivity {
                         }
 
                         if (subLocationGroupedByLocation.containsKey(roomId)) {
-                            subLocationGroupedByLocation.get(roomId).add(namekey);
+                            Objects.requireNonNull(subLocationGroupedByLocation.get(roomId)).add(namekey);
                             subLocationIdMap.put(namekey, keyId);
                         }
                     }

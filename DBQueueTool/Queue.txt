@@ -22,8 +22,10 @@ CREATE TABLE Soldier (
 	camp_id TEXT,
 	upcoming_accommodation DATE,
 	upcoming_release DATE,
+	upcoming_accommodation_key TEXT,
 	FOREIGN KEY(laundry_bag_id) REFERENCES laundrybags(id),
-	FOREIGN KEY(camp_id) REFERENCES camps(id)
+	FOREIGN KEY(camp_id) REFERENCES camps(id),
+	FOREIGN KEY (upcoming_accommodation_key) REFERENCES key(id)
 );
 
 CREATE TABLE bicycles (
@@ -52,6 +54,7 @@ CREATE TABLE buildings (
 	nameBuilding TEXT,
 	type TEXT,
 	camp_id TEXT,
+	inventory_status TEXT DEFAULT 'unfinished',
 	FOREIGN KEY(camp_id) REFERENCES camps(id)
 );
 
@@ -64,7 +67,8 @@ CREATE TABLE key (
 
 CREATE TABLE rooms (
 	id TEXT NOT NULL PRIMARY KEY,
-	nameRoom TEXT
+	nameRoom TEXT,
+	inventory_status TEXT DEFAULT 'unfinished'
 );
 
 CREATE TABLE roomsKey (
@@ -153,6 +157,7 @@ CREATE TABLE assets (
 	expandable TEXT,
 	description TEXT,
 	camp_id TEXT,
+	inventory_status TEXT DEFAULT 'undiscovered',
 	FOREIGN KEY(type_id) REFERENCES assetstype(id),
 	FOREIGN KEY(location_room) REFERENCES rooms(id),
 	FOREIGN KEY(location_key) REFERENCES key(id),
@@ -172,7 +177,6 @@ CREATE TABLE lostItem (
 	id TEXT NOT NULL PRIMARY KEY,
 	nameItem TEXT,
 	description TEXT,
-	soldier_id TEXT,
 	lost_quantity TEXT,
 	item_id TEXT,
 	item_name TEXT,
@@ -186,8 +190,9 @@ CREATE TABLE lostItem (
 	item_expandable TEXT,
 	item_description TEXT,
 	camp_id TEXT,
-	FOREIGN KEY(soldier_id) REFERENCES soldier(id),
-	FOREIGN KEY(camp_id) REFERENCES camps(id)
+	upcoming_accommodation_key TEXT,
+	FOREIGN KEY(camp_id) REFERENCES camps(id),
+	FOREIGN KEY(upcoming_accommodation_key) REFERENCES key(id)
 );
 
 CREATE TABLE asset_actions (

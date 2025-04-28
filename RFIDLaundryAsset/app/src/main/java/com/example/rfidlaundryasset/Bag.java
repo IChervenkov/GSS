@@ -1,9 +1,9 @@
 package com.example.rfidlaundryasset;
 
 public class Bag {
-    private String id;
-    private String type;
-    private String maxWash;
+    private final String id;
+    private final String type;
+    private final String maxWash;
 
     public Bag(String id, String type, String maxWash) {
         this.id = id;

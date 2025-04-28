@@ -4,11 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 public class Assets extends AppCompatActivity {
 
@@ -17,28 +13,19 @@ public class Assets extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_assets);
 
-        findViewById(R.id.buttonAddAsset).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(Assets.this, AddAsset.class);
-                startActivity(intent);
-            }
+        findViewById(R.id.buttonAddAsset).setOnClickListener(v -> {
+            Intent intent = new Intent(Assets.this, AddAsset.class);
+            startActivity(intent);
         });
 
-        findViewById(R.id.buttonEditAsset).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(Assets.this, EditAsset.class);
-                startActivity(intent);
-            }
+        findViewById(R.id.buttonEditAsset).setOnClickListener(v -> {
+            Intent intent = new Intent(Assets.this, EditAsset.class);
+            startActivity(intent);
         });
 
-        findViewById(R.id.buttonDeleteAsset).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(Assets.this, DeleteAsset.class);
-                startActivity(intent);
-            }
+        findViewById(R.id.buttonDeleteAsset).setOnClickListener(v -> {
+            Intent intent = new Intent(Assets.this, DeleteAsset.class);
+            startActivity(intent);
         });
     }
 }

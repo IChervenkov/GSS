@@ -17,7 +17,8 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="100dp"/>
+        android:layout_marginTop="100dp"
+        tools:ignore="HardcodedText" />
 
     <GridLayout
         android:id="@+id/emojiGrid"
@@ -41,7 +42,8 @@
             android:drawableTop="@drawable/emoji_angry"
             android:padding="10dp"
             android:text="😞"
-            android:textSize="32sp" />
+            android:textSize="32sp"
+            tools:ignore="HardcodedText" />
 
         <Button
             android:id="@+id/btnNeutral"
@@ -54,7 +56,8 @@
             android:drawableTop="@drawable/emoji_neutral"
             android:padding="10dp"
             android:text="😐"
-            android:textSize="32sp" />
+            android:textSize="32sp"
+            tools:ignore="HardcodedText,TextContrastCheck" />
 
         <Button
             android:id="@+id/btnVeryHappy"
@@ -66,7 +69,8 @@
             android:drawableTop="@drawable/emoji_very_happy"
             android:padding="10dp"
             android:text="😁"
-            android:textSize="32sp" />
+            android:textSize="32sp"
+            tools:ignore="HardcodedText" />
     </GridLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

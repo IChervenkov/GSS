@@ -1,5 +1,6 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -14,41 +15,46 @@
             android:text="NFC code: None"
             android:textSize="24sp"
             android:layout_marginTop="250dp"
-            android:layout_centerHorizontal="true" />
+            android:layout_centerHorizontal="true"
+            tools:ignore="HardcodedText" />
 
         <EditText
             android:id="@+id/bikeNameEditText"
-            android:layout_width="650px"
+            android:layout_width="260dp"
             android:layout_height="wrap_content"
             android:layout_below="@id/nfcTextView"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
+            android:autofillHints="Enter name"
             android:hint="Enter name"
             android:minHeight="48dp"
             android:padding="10dp"
-            android:textSize="18sp" />
+            android:textSize="18sp"
+            tools:ignore="HardcodedText,TextFields,TextContrastCheck" />
 
         <Button
             android:id="@+id/addButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Add bike"
             android:layout_below="@id/bikeNameEditText"
-            android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:backgroundTint="@android:color/holo_green_dark"
+            android:text="Add bike"
             android:textColor="@android:color/white"
-            android:backgroundTint="@android:color/holo_green_dark"/>
+            tools:ignore="HardcodedText,TextContrastCheck" />
 
         <Button
             android:id="@+id/addHelmetButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Add helmet"
             android:layout_below="@id/addButton"
-            android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:backgroundTint="@android:color/holo_green_dark"
+            android:text="Add helmet"
             android:textColor="@android:color/white"
-            android:backgroundTint="@android:color/holo_green_dark"/>
+            tools:ignore="HardcodedText,TextContrastCheck" />
 
     </RelativeLayout>
 </ScrollView>

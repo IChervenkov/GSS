@@ -1,9 +1,8 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools">
+    android:layout_height="match_parent">
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -17,7 +16,8 @@
             android:textSize="24sp"
             android:layout_marginTop="50dp"
             android:layout_centerHorizontal="true"
-            android:gravity="center" />
+            android:gravity="center"
+            tools:ignore="HardcodedText" />
 
         <GridLayout
             android:id="@+id/inputGridLayout"
@@ -35,11 +35,13 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
+                android:autofillHints="Enter asset code"
                 android:hint="Enter asset code"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="18sp" />
+                android:textSize="18sp"
+                tools:ignore="HardcodedText,TextFields" />
 
             <EditText
                 android:id="@+id/assetNameText"
@@ -47,11 +49,13 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
+                android:autofillHints="Enter asset name"
                 android:hint="Enter asset name"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="18sp" />
+                android:textSize="18sp"
+                tools:ignore="HardcodedText,TextFields" />
 
             <AutoCompleteTextView
                 android:id="@+id/assetTypeAutoCompleteTextView"
@@ -62,7 +66,8 @@
                 android:hint="Select type"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
-                android:padding="10dp" />
+                android:padding="10dp"
+                tools:ignore="HardcodedText" />
 
             <AutoCompleteTextView
                 android:id="@+id/assetLocationAutoCompleteTextView"
@@ -73,7 +78,8 @@
                 android:hint="Select location"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
-                android:padding="10dp" />
+                android:padding="10dp"
+                tools:ignore="HardcodedText" />
 
             <AutoCompleteTextView
                 android:id="@+id/assetSubLocationAutoCompleteTextView"
@@ -84,7 +90,8 @@
                 android:hint="Select sub location"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
-                android:padding="10dp" />
+                android:padding="10dp"
+                tools:ignore="HardcodedText" />
 
             <EditText
                 android:id="@+id/assetCategoriesText"
@@ -92,11 +99,13 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
+                android:autofillHints="Enter category"
                 android:hint="Enter category"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="18sp" />
+                android:textSize="18sp"
+                tools:ignore="HardcodedText,TextFields" />
 
             <EditText
                 android:id="@+id/assetQuantityText"
@@ -104,6 +113,7 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
+                android:autofillHints="Asset quantity"
                 android:hint="Asset quantity"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
@@ -112,7 +122,8 @@
                 android:inputType="number"
                 android:text="1"
                 android:focusable="false"
-                android:clickable="false"/>
+                android:clickable="false"
+                tools:ignore="HardcodedText,TextFields" />
 
             <EditText
                 android:id="@+id/assetMrahText"
@@ -120,12 +131,14 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
+                android:autofillHints="Enter MRAH"
                 android:hint="Enter MRAH"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
                 android:padding="10dp"
                 android:textSize="18sp"
-                android:text="Global RTS"/>
+                android:text="Global RTS"
+                tools:ignore="HardcodedText,TextFields" />
 
             <EditText
                 android:id="@+id/assetOwnerText"
@@ -133,12 +146,14 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
+                android:autofillHints="Enter owner"
                 android:hint="Enter owner"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
                 android:padding="10dp"
                 android:textSize="18sp"
-                android:text="Global RTS"/>
+                android:text="Global RTS"
+                tools:ignore="HardcodedText,TextFields" />
 
             <Spinner
                 android:id="@+id/assetStatusText"
@@ -177,11 +192,13 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="2"
                 android:layout_columnWeight="2"
+                android:autofillHints="Asset description"
                 android:hint="Asset description"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="18sp" />
+                android:textSize="18sp"
+                tools:ignore="HardcodedText,TextFields" />
 
         </GridLayout>
 
@@ -194,7 +211,8 @@
             android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
             android:textColor="@android:color/white"
-            android:backgroundTint="@android:color/holo_green_dark" />
+            android:backgroundTint="@android:color/holo_green_dark"
+            tools:ignore="HardcodedText" />
 
     </RelativeLayout>
 </ScrollView>

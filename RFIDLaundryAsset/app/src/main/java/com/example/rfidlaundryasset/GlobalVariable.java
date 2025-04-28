@@ -2,45 +2,69 @@ package com.example.rfidlaundryasset;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
+
+import androidx.security.crypto.MasterKey;
+import androidx.security.crypto.EncryptedSharedPreferences;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 public class GlobalVariable {
-    private static final String PREF_NAME = "app_preferences";
+    private static final String PREF_NAME = "secure_app_preferences";
     private static final String KEY_DESTINATION = "destination";
     private static final String KEY_CAMP = "camp";
 
-    /**
-     * Save a variable to SharedPreferences.
-     */
+    private static SharedPreferences getEncryptedSharedPreferences(Context context)
+            throws GeneralSecurityException, IOException {
+        MasterKey masterKey = new MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build();
+
+        return EncryptedSharedPreferences.create(
+                context,
+                PREF_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        );
+    }
+
     public static void saveVariable(Context context, boolean value) {
-        SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putBoolean(KEY_DESTINATION, value);
-        editor.apply();
+        try {
+            SharedPreferences sharedPreferences = getEncryptedSharedPreferences(context);
+            sharedPreferences.edit().putBoolean(KEY_DESTINATION, value).apply();
+        } catch (GeneralSecurityException | IOException e) {
+            Log.e("GlobalVariable", "Error: " + e.getMessage()); // Consider better error handling in production
+        }
     }
 
-    /**
-     * Get the saved variable from SharedPreferences.
-     */
     public static boolean getVariable(Context context) {
-        SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        return sharedPreferences.getBoolean(KEY_DESTINATION, false);  // Default value if not found
+        try {
+            SharedPreferences sharedPreferences = getEncryptedSharedPreferences(context);
+            return sharedPreferences.getBoolean(KEY_DESTINATION, false);
+        } catch (GeneralSecurityException | IOException e) {
+            Log.e("GlobalVariable", "Error: " + e.getMessage());
+            return false;
+        }
     }
 
-    /**
-     * Save camp as well (if needed).
-     */
     public static void saveCamp(Context context, String campId) {
-        SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(KEY_CAMP, campId);
-        editor.apply();
+        try {
+            SharedPreferences sharedPreferences = getEncryptedSharedPreferences(context);
+            sharedPreferences.edit().putString(KEY_CAMP, campId).apply();
+        } catch (GeneralSecurityException | IOException e) {
+            Log.e("GlobalVariable", "Error: " + e.getMessage());
+        }
     }
 
-    /**
-     * Get the saved previous destination.
-     */
     public static String getCamp(Context context) {
-        SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        return sharedPreferences.getString(KEY_CAMP, "");  // Default value if not found
+        try {
+            SharedPreferences sharedPreferences = getEncryptedSharedPreferences(context);
+            return sharedPreferences.getString(KEY_CAMP, "");
+        } catch (GeneralSecurityException | IOException e) {
+            Log.e("GlobalVariable", "Error: " + e.getMessage());
+            return "";
+        }
     }
 }

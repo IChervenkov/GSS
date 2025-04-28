@@ -17,7 +17,8 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="200dp"/>
+        android:layout_marginTop="200dp"
+        tools:ignore="HardcodedText" />
 
     <!-- Submit Button with Green Background -->
     <AutoCompleteTextView
@@ -33,7 +34,7 @@
         app:layout_constraintTop_toBottomOf="@+id/questionText"
         app:layout_constraintVertical_bias="0.505"
         android:layout_marginTop="25dp"
-        tools:ignore="MissingConstraints"
+        tools:ignore="HardcodedText,MissingConstraints"
         tools:text="Enter your ID number" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

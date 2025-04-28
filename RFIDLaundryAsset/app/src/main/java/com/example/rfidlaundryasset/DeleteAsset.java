@@ -3,9 +3,9 @@ package com.example.rfidlaundryasset;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.Button;
 import android.widget.TextView;
@@ -20,11 +20,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -35,20 +39,57 @@ public class DeleteAsset extends AppCompatActivity {
 
     private RFIDWithUHFUART rfidReader;
     private boolean isInventory = false;
-    private Button submitButton;
     private TextView assetEpcText;
-    private OkHttpClient client = new OkHttpClient();
-    private Map<String, String> assetInfoMap = new HashMap<>();
+    private final CookieManager cookieManager = new CookieManager();
+    private final OkHttpClient client = new OkHttpClient.Builder()
+            .cookieJar(new JavaNetCookieJar(cookieManager))
+            .build();
+    private String csrfToken = null;
+    private final Map<String, String> assetInfoMap = new HashMap<>();
     private String epc = "";
-    private ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
+    private final ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
 
+    private void fetchCsrfToken() {
+        Dialog loadingDialog = new Dialog(DeleteAsset.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        executorService.execute(() -> {
+            try {
+                String baseUrl = getString(R.string.base_url);
+                Request request = new Request.Builder()
+                        .url(baseUrl + "/csrf-token")
+                        .build();
+
+                Response response = client.newCall(request).execute();
+                if (response.isSuccessful() && response.body() != null) {
+                    String responseBody = response.body().string();
+                    JSONObject jsonObject = new JSONObject(responseBody);
+                    csrfToken = jsonObject.getString("csrfToken");
+
+                } else {
+                    runOnUiThread(() -> Toast.makeText(DeleteAsset.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(DeleteAsset.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
+            }
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_delete_asset);
 
-        submitButton = findViewById(R.id.deleteButton);
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+
+        fetchCsrfToken();
+
+        Button submitButton = findViewById(R.id.deleteButton);
         assetEpcText = findViewById(R.id.epcTextView);
 
         // Fetch asset from the server
@@ -61,7 +102,7 @@ public class DeleteAsset extends AppCompatActivity {
 
             Toast.makeText(DeleteAsset.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("DeleteAsset", "Error: " + e.getMessage());
             Toast.makeText(DeleteAsset.this, "Error initializing RFID Reader", Toast.LENGTH_SHORT).show();
         }
 
@@ -91,22 +132,15 @@ public class DeleteAsset extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(DeleteAsset.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         executorService.execute(() -> {
             try {
 
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                JSONObject payload = new JSONObject();
-
-                payload.put("isValidCode", GlobalVariable.getVariable(this));
-                payload.put("campId", GlobalVariable.getCamp(this));
-
-                RequestBody body = RequestBody.create(JSON, payload.toString());
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/allAssets")
-                        .post(body)
+                        .url(baseUrl + "/allAssets?isValidCode=" + GlobalVariable.getVariable(this) + "&campId=" + GlobalVariable.getCamp(this))
                         .build();
 
                 Response response = client.newCall(request).execute();
@@ -175,8 +209,9 @@ public class DeleteAsset extends AppCompatActivity {
     // Method to check if the server is active
     private boolean isServerActive() throws JSONException {
 
+        String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url("https://bunker.bg")
+                .url(baseUrl)
                 .get()
                 .build();
 
@@ -184,7 +219,7 @@ public class DeleteAsset extends AppCompatActivity {
             Response response = client.newCall(request).execute(); // Reuse the OkHttpClient instance
             return response.isSuccessful();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("DeleteAsset", "Error: " + e.getMessage());
             return false;
         }
     }
@@ -196,7 +231,7 @@ public class DeleteAsset extends AppCompatActivity {
         if (rfidReader.startInventoryTag()) {
             isInventory = true;
 
-            while (isInventory) {
+            while (isInventory && !Thread.currentThread().isInterrupted()) {
                 UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
                 if (uhftagInfo == null) {
                     try {
@@ -238,16 +273,16 @@ public class DeleteAsset extends AppCompatActivity {
             String selectedBag = assetInfoMap.get(epcCode);
             assetEpcText.setText("Asset code: " + selectedBag); // Set the EPC code as the text of the TextView
         } else {
-            showPopupWindow("Error", "Asset not found!");
+            showPopupWindow("Asset not found!");
             assetEpcText.setText("Asset code: None");
             epc = "";
         }
     }
 
     // Method to show the EPC code in a popup window
-    private void showPopupWindow(String title, String message) {
+    private void showPopupWindow(String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(title);
+        builder.setTitle("Error");
         builder.setMessage(message);
         builder.setPositiveButton("OK", (dialog, which) -> {
             // Optionally, reset or perform other actions after closing the dialog
@@ -262,7 +297,7 @@ public class DeleteAsset extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(DeleteAsset.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         executorService.execute(() -> {
@@ -273,15 +308,17 @@ public class DeleteAsset extends AppCompatActivity {
                 payload.put("campId", GlobalVariable.getCamp(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
-                RequestBody body = RequestBody.create(JSON, payload.toString());
+                RequestBody body = RequestBody.create(payload.toString(), JSON);
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/assets/deleteAsset")
-                        .post(body)
+                        .url(baseUrl + "/assets/deleteAsset")
+                        .addHeader("X-CSRF-Token", csrfToken)
+                        .delete(body)
                         .build();
 
                 Response response = client.newCall(request).execute();
                 if (response.isSuccessful()) {
-                    String responseData = response.body().string();
+                    String responseData = Objects.requireNonNull(response.body()).string();
                     response.body().close(); // Ensure the response is closed
 
                     JSONObject jsonResponse = new JSONObject(responseData);
@@ -294,8 +331,8 @@ public class DeleteAsset extends AppCompatActivity {
                     handleError(response);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
+                Log.e("DeleteAsset", "Error: " + e.getMessage());
+                runOnUiThread(() -> showPopupWindow("Error sending EPCs to server: " + e.getMessage()));
             } finally {
                 runOnUiThread(loadingDialog::dismiss);
             }
@@ -318,10 +355,10 @@ public class DeleteAsset extends AppCompatActivity {
                 errorMessage = errorJson.optString("message", "Internal server error");
             }
             String finalErrorMessage = errorMessage;
-            runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
+            runOnUiThread(() -> showPopupWindow(finalErrorMessage));
         } catch (Exception e) {
-            e.printStackTrace();
-            runOnUiThread(() -> showPopupWindow("Error", "Failed to process error response: " + e.getMessage()));
+            Log.e("DeleteAsset", "Error: " + e.getMessage());
+            runOnUiThread(() -> showPopupWindow("Failed to process error response: " + e.getMessage()));
         } finally {
             if (response.body() != null) {
                 response.body().close(); // Ensure the response body is closed

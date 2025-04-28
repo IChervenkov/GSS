@@ -18,6 +18,7 @@
 
 <body>
 
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <input type="hidden" id="curent-dest" value="<%= numBuild %>">
 
     <!-- Horizontal Navigation Bar -->
@@ -233,8 +234,8 @@
                                             <%= item.nameroom %>
                                         </td>
 
-                                        <td class="<%= item.countFreeBeds != 0 ? 'undefined-data' : '' %>">
-                                            <%= item.countFreeBeds !=0 ? 'Free' : 'Occupied' %>
+                                        <td class="<%= item.countAllBeds == item.countFreeBeds || item.countFreeBeds != 0 ? 'undefined-data' : '' %>">
+                                            <%= item.countAllBeds == item.countFreeBeds ? 'Completely free' : item.countFreeBeds !=0 ? 'Free' : 'Occupied' %>
                                         </td>
 
                                         <td>
@@ -308,7 +309,7 @@
         </div>
     </div>
 
-    <form id="form1" action="/saveKey" method="post">
+    <form id="form1" action="/saveKey" method="POST">
 
         <!-- Modal Structure -->
 
@@ -657,6 +658,11 @@
 
                             <th>
                                 <input type="text" class="search-input-soldier" placeholder="Search...">
+                                <label id="soldier-upcoming-key-header">Upcoming key</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-soldier" placeholder="Search...">
                                 <label id="soldier-bag-header">Bag code</label>
                             </th>
 
@@ -707,6 +713,21 @@
 
                             <th>
                                 <input type="text" class="search-input-upcoming-action" placeholder="Search...">
+                                <label id="upcoming-action-soldier-bag-header">Bag code</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-upcoming-action" placeholder="Search...">
+                                <label id="upcoming-action-soldier-meal-card-header">Meal card</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-upcoming-action" placeholder="Search...">
+                                <label id="upcoming-action-soldier-accom-header">Upcoming key</label>
+                            </th>
+
+                            <th>
+                                <input type="text" class="search-input-upcoming-action" placeholder="Search...">
                                 <label id="upcoming-action-soldier-accom-header">Upcoming accommodation date</label>
                             </th>
 
@@ -726,28 +747,28 @@
 
     <!-- The Modal for Add Soldier -->
     <div id="editSoldierModal" class="modal">
-        <form class="modal-content" action="/accommodation/editSoldier" method="POST" id="form11">
+        <form class="modal-content" action="/accommodation/editSoldier" method="PUT" id="form11">
             <span class="close-btn">&times;</span>
 
             <h2>Edit soldier</h2>
 
             <input type="hidden" id="edit-old-soldier-id" name="oldSoldierId" value="">
 
-            <div class="mb-3">
-                <label for="edit-soldier-number" class="form-label">Soldier Number <span
-                        class="text-danger">*</span></label>
-
-                <input type="text" id="edit-soldier-number" name="editSoldierId" class="form-control"
-                    placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
-
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
-
-            </div>
-
             <div class="d-flex align-items-center">
 
                 <div class="mb-3 me-3 w-100">
+                    <label for="edit-soldier-number" class="form-label">Soldier Number <span
+                            class="text-danger">*</span></label>
+
+                    <input type="text" id="edit-soldier-number" name="editSoldierId" class="form-control"
+                        placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+
+                </div>
+
+                <div class="mb-3 w-100">
                     <label for="edit-soldier-name" class="form-label">Soldier Name <span
                             class="text-danger">*</span></label>
 
@@ -758,8 +779,11 @@
                     <div class="valid-feedback"></div>
 
                 </div>
+            </div>
 
-                <div class="mb-3 w-100">
+            <div class="d-flex align-items-center">
+
+                <div class="mb-3 me-3 w-100">
                     <label for="edit-soldier-country" class="form-label">Soldier Country <span
                             class="text-danger">*</span></label>
 
@@ -770,6 +794,22 @@
                     <div class="valid-feedback"></div>
 
                 </div>
+
+                <div class="mb-3 w-100 search-container">
+                    <label for="editUpcomingAccommodationRoom" class="form-label">Upcoming accommodation key</label>
+
+                    <input type="text" id="editUpcomingAccommodationRoom" name="editUpcomingAccommodationRoom"
+                        class="form-control" placeholder="Upcoming accommodation key">
+
+                    <ul id="editUpcomingAccommodationRoomDropdown" class="list-group"></ul>
+                    <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedEditUpcomingAccommodationRoomId" name="editUpcomingAccommodationRoomId"
+                        value="">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
             </div>
 
             <div class="d-flex align-items-center">
@@ -841,19 +881,20 @@
 
             <h2>Add soldier</h2>
 
-            <div class="mb-3">
-                <label for="soldier-number" class="form-label">Soldier Number <span class="text-danger">*</span></label>
-
-                <input type="text" id="soldier-number" name="soldierId" class="form-control"
-                    placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
-
-                <div class="invalid-feedback"></div>
-                <div class="valid-feedback"></div>
-
-            </div>
-
             <div class="d-flex align-items-center">
                 <div class="mb-3 me-3 w-100">
+                    <label for="soldier-number" class="form-label">Soldier Number <span
+                            class="text-danger">*</span></label>
+
+                    <input type="text" id="soldier-number" name="soldierId" class="form-control"
+                        placeholder="Soldier Number" pattern="^[A-Za-z0-9]+$">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+
+                </div>
+
+                <div class="mb-3 w-100">
                     <label for="soldier-name" class="form-label">Soldier Name <span class="text-danger">*</span></label>
 
                     <input type="text" id="soldier-name" name="soldierName" class="form-control"
@@ -863,8 +904,11 @@
                     <div class="valid-feedback"></div>
 
                 </div>
+            </div>
 
-                <div class="mb-3 w-100">
+            <div class="d-flex align-items-center">
+
+                <div class="mb-3 me-3 w-100">
                     <label for="soldier-country" class="form-label">Soldier Country <span
                             class="text-danger">*</span></label>
 
@@ -874,6 +918,21 @@
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
 
+                </div>
+
+                <div class="mb-3 w-100 search-container">
+                    <label for="upcomingAccommodationRoom" class="form-label">Upcoming accommodation key</label>
+
+                    <input type="text" id="upcomingAccommodationRoom" name="upcomingAccommodationRoom"
+                        class="form-control" placeholder="Upcoming accommodation key">
+
+                    <ul id="upcomingAccommodationRoomDropdown" class="list-group"></ul>
+                    <!-- Custom dropdown for search -->
+                    <input type="hidden" id="selectedUpcomingAccommodationRoomId" name="upcomingAccommodationRoomId"
+                        value="">
+
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
                 </div>
             </div>
 
@@ -978,7 +1037,7 @@
 
     <!-- Modal Structure -->
     <div id="deleteModal" class="modal">
-        <form class="modal-content" action="/accommodation/deleteSoldier" method="get" id="form5">
+        <form class="modal-content" action="/accommodation/deleteSoldier" method="POST" id="form5">
             <span class="close-btn">&times;</span>
 
             <h2>⚠ Release building ⚠</h2>
@@ -1019,7 +1078,7 @@
 
     <!-- Modal Structure -->
     <div id="destinationModal" class="modal">
-        <form class="modal-content" action="/accommodation/addDestination" method="post" id="form6">
+        <form class="modal-content" action="/accommodation/addDestination" method="POST" id="form6">
             <span class="close-btn">&times;</span>
 
             <h2>Add destination</h2>
@@ -1063,7 +1122,7 @@
 
     <!-- Modal Structure -->
     <div id="roomAddModal" class="modal">
-        <form class="modal-content" action="/accommodation/addRoomToDestination" method="post" id="form7">
+        <form class="modal-content" action="/accommodation/addRoomToDestination" method="POST" id="form7">
             <span class="close-btn">&times;</span>
 
             <h2>Add Room</h2>
@@ -1103,7 +1162,7 @@
 
     <!-- Modal Structure -->
     <div id="roomRemoveModal" class="modal">
-        <form class="modal-content" action="/accommodation/removeRoomToDestination" method="post" id="form8">
+        <form class="modal-content" action="/accommodation/removeRoomToDestination" method="DELETE" id="form8">
             <span class="close-btn">&times;</span>
 
             <h2>Remove Room</h2>
@@ -1134,7 +1193,7 @@
 
     <!-- Modal Structure -->
     <div id="keyAddModal" class="modal">
-        <form class="modal-content" action="/accommodation/addKeyToRoom" method="post" id="form9">
+        <form class="modal-content" action="/accommodation/addKeyToRoom" method="POST" id="form9">
             <span class="close-btn">&times;</span>
 
             <h2>Add Key</h2>
@@ -1168,7 +1227,7 @@
 
     <!-- Modal Structure -->
     <div id="keyRemoveModal" class="modal">
-        <form class="modal-content" action="/accommodation/removeKeyToRoom" method="post" id="form10">
+        <form class="modal-content" action="/accommodation/removeKeyToRoom" method="POST" id="form10">
             <span class="close-btn">&times;</span>
 
             <h2>Replace Key</h2>

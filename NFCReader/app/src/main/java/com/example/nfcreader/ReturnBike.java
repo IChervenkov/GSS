@@ -1,16 +1,17 @@
 package com.example.nfcreader;
 
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.app.PendingIntent;
-import android.app.ProgressDialog;
+
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.nfc.NdefMessage;
-import android.nfc.NdefRecord;
+
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.Parcelable;
+
 import android.util.Log;
 import android.widget.Button;
 import android.widget.DatePicker;
@@ -18,26 +19,28 @@ import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
+
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
+import java.util.Objects;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -51,21 +54,59 @@ public class ReturnBike extends AppCompatActivity {
     private TextView nfcHelmetTextView;
     private DatePicker datePicker;
     private TimePicker timePicker;
-    private Button submitButton;
     private String nfcContent = "";
+    private final CookieManager cookieManager = new CookieManager();
+    private final OkHttpClient client = new OkHttpClient.Builder()
+            .cookieJar(new JavaNetCookieJar(cookieManager))
+            .build();
+    private String csrfToken = null;
 
-    private OkHttpClient client = new OkHttpClient();
+    private void fetchCsrfToken() {
 
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> {
+                    Toast.makeText(ReturnBike.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+
+                if (response.isSuccessful() && response.body() != null) {
+                    try {
+                        String responseBody = response.body().string();
+                        JSONObject jsonObject = new JSONObject(responseBody);
+                        csrfToken = jsonObject.getString("csrfToken");
+                    } catch (JSONException e) {
+                        runOnUiThread(() -> Toast.makeText(ReturnBike.this, "Error parsing token", Toast.LENGTH_SHORT).show());
+                    }
+                } else {
+                    runOnUiThread(() -> Toast.makeText(ReturnBike.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+                }
+            }
+        });
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_return_bike);
 
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+
         nfcTextView = findViewById(R.id.nfcTextView);
         nfcHelmetTextView = findViewById(R.id.nfcHelmetTextView);
         datePicker = findViewById(R.id.datePicker);
         timePicker = findViewById(R.id.timePicker);
-        submitButton = findViewById(R.id.submitButton);
+        Button submitButton = findViewById(R.id.submitButton);
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
@@ -91,11 +132,9 @@ public class ReturnBike extends AppCompatActivity {
                 String time = (hour < 10 ? "0" + hour : hour) + ":" + (minute < 10 ? "0" + minute : minute);
 
                 if (isPastDateTime(date, time)) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(ReturnBike.this, "The selected date is already passed or is invalid with rented date!", Toast.LENGTH_SHORT).show();
-                    });
+                    runOnUiThread(() -> Toast.makeText(ReturnBike.this, "The selected date is already passed or is invalid with rented date!", Toast.LENGTH_SHORT).show());
                 } else {
-                    // Send data to the server
+                    fetchCsrfToken();
                     sendDataToServer(nfcContent, date, time);
                 }
 
@@ -121,7 +160,7 @@ public class ReturnBike extends AppCompatActivity {
 
             return parsedDate != null && parsedDate.before(currentDate);
         } catch (ParseException e) {
-            e.printStackTrace();
+            Log.e("ReturnBike", "Error: " + e.getMessage());
             return false;
         }
     }
@@ -143,14 +182,16 @@ public class ReturnBike extends AppCompatActivity {
         nfcAdapter.disableForegroundDispatch(this);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
-    protected void onNewIntent(Intent intent) {
+    protected void onNewIntent(@NonNull Intent intent) {
         super.onNewIntent(intent);
         handleIntent(intent);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     private void handleIntent(Intent intent) {
-        Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+        Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag.class);
         if (tag != null) {
             // Get the NFC ID (UID)
             byte[] tagId = tag.getId();
@@ -172,43 +213,35 @@ public class ReturnBike extends AppCompatActivity {
 
     // Method to call the API endpoint
     private void readBikeDataFromServer(String nfcData) {
-        // Reuse existing OkHttpClient
-        JSONObject json = new JSONObject();
-        try {
-            json.put("nfcData", nfcData);
-            json.put("isValidCode", GlobalVariable.getVariable(this));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
 
-        RequestBody body = RequestBody.create(json.toString(), MediaType.get("application/json; charset=utf-8"));
+        String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url("https://bunker.bg/readBikeNfc")
-                .post(body)
+                .url(baseUrl + "/readBikeNfc?nfcData=" + nfcData + "&isValidCode=" + GlobalVariable.getVariable(this))
                 .build();
 
         Dialog loadingDialog = new Dialog(ReturnBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(Objects.requireNonNull(loadingDialog.getWindow())).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e("ReturnBike", "Error: " + e.getMessage());
                 runOnUiThread(() -> {
                     loadingDialog.dismiss(); // Ensure the dialog is dismissed
                     Toast.makeText(ReturnBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
                 });
             }
 
+            @SuppressLint("SetTextI18n")
             @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 loadingDialog.dismiss(); // Dismiss the dialog
 
                 if (response.isSuccessful()) {
-                    String responseData = response.body().string();
+                    String responseData = Objects.requireNonNull(response.body()).string();
                     try {
                         JSONObject jsonResponse = new JSONObject(responseData);
                         final String bikeName = jsonResponse.getString("namebike");
@@ -217,7 +250,7 @@ public class ReturnBike extends AppCompatActivity {
                         if(!bikeName.isEmpty() && !helmetCode.isEmpty()) {
                             runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
                             runOnUiThread(() -> nfcHelmetTextView.setText("Helmet code: " + helmetCode));
-                        } else if (!bikeName.isEmpty() && helmetCode.isEmpty()) {
+                        } else if (!bikeName.isEmpty()) {
                             runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
                             runOnUiThread(() -> nfcHelmetTextView.setText("Helmet code: None"));
                         } else {
@@ -226,12 +259,10 @@ public class ReturnBike extends AppCompatActivity {
                         }
 
                     } catch (JSONException e) {
-                        e.printStackTrace();
+                        Log.e("ReturnBike", "Error: " + e.getMessage());
                     }
                 } else {
-                    runOnUiThread(() -> {
-                        Toast.makeText(ReturnBike.this, "Bike not found", Toast.LENGTH_SHORT).show();
-                    });
+                    runOnUiThread(() -> Toast.makeText(ReturnBike.this, "Bike not found", Toast.LENGTH_SHORT).show());
                 }
             }
         });
@@ -245,7 +276,7 @@ public class ReturnBike extends AppCompatActivity {
             jsonData.put("time", time);
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e("ReturnBike", "Error: " + e.getMessage());
             runOnUiThread(() ->
                     Toast.makeText(ReturnBike.this, "JSON Error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
             );
@@ -253,8 +284,10 @@ public class ReturnBike extends AppCompatActivity {
         }
 
         RequestBody body = RequestBody.create(jsonData.toString(), MediaType.get("application/json; charset=utf-8"));
+        String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url("https://bunker.bg/nfcReturn")
+                .url(baseUrl + "/nfcReturn")
+                .addHeader("X-CSRF-Token", csrfToken)
                 .post(body)
                 .build();
 
@@ -262,13 +295,13 @@ public class ReturnBike extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(ReturnBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e("ReturnBike", "Error: " + e.getMessage());
                 runOnUiThread(() -> {
                     loadingDialog.dismiss();
                     Toast.makeText(ReturnBike.this, "Network Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -276,10 +309,10 @@ public class ReturnBike extends AppCompatActivity {
             }
 
             @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 loadingDialog.dismiss();
                 if (response.isSuccessful()) {
-                    String responseData = response.body().string();
+                    String responseData = Objects.requireNonNull(response.body()).string();
                     runOnUiThread(() -> {
                         Toast.makeText(ReturnBike.this, "Success: " + responseData, Toast.LENGTH_SHORT).show();
 

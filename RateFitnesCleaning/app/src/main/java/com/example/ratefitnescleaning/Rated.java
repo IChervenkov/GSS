@@ -5,19 +5,21 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+
+import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import okhttp3.FormBody;
+import okhttp3.JavaNetCookieJar;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -25,16 +27,46 @@ import okhttp3.Response;
 
 public class Rated extends AppCompatActivity {
 
-    private final OkHttpClient client = HttpClientSingleton.getInstance();
+    private final CookieManager cookieManager = new CookieManager();
+    private final OkHttpClient client = new OkHttpClient.Builder()
+            .cookieJar(new JavaNetCookieJar(cookieManager))
+            .build();
+    private String csrfToken = null;
     private String selectedEmoji = null;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable timeoutRunnable = this::onTimeout;
-    private ExecutorService executorService = Executors.newFixedThreadPool(3);
+    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+
+    private void fetchCsrfToken() {
+
+        try {
+            String baseUrl = getString(R.string.base_url);
+            Request request = new Request.Builder()
+                    .url(baseUrl + "/csrf-token")
+                    .build();
+
+            Response response = client.newCall(request).execute();
+            if (response.isSuccessful() && response.body() != null) {
+                String responseBody = response.body().string();
+                JSONObject jsonObject = new JSONObject(responseBody);
+                csrfToken = jsonObject.getString("csrfToken");
+
+            } else {
+                runOnUiThread(() -> Toast.makeText(Rated.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+            }
+        } catch (Exception e) {
+            runOnUiThread(() -> Toast.makeText(Rated.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_rated);
+
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+
+        fetchCsrfToken();
 
         // Set emoji button click listeners
         findViewById(R.id.btnAngry).setOnClickListener(v -> onEmojiSelected("😡"));
@@ -64,8 +96,10 @@ public class Rated extends AppCompatActivity {
                         .build();
 
                 // Make the request to the server
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/sendEmojiData") // Replace with your endpoint
+                        .url(baseUrl + "/sendEmojiData") // Replace with your endpoint
+                        .addHeader("X-CSRF-Token", csrfToken)
                         .post(body)
                         .build();
 
@@ -73,29 +107,25 @@ public class Rated extends AppCompatActivity {
                 if (response.isSuccessful()) {
                     // Handle success
                     runOnUiThread(() -> {
-                        showSuccessDialog("Thank you for your time, your response is important to us");
+                        showSuccessDialog();
                         clearOldData();
                     });
                 } else {
                     // Handle failure
-                    runOnUiThread(() -> {
-                        showErrorDialog("Failed to send your reaction. Try again");
-                    });
+                    runOnUiThread(() -> showErrorDialog("Failed to send your reaction. Try again"));
                 }
             } catch (IOException e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    showErrorDialog("Error: " + e.getMessage());
-                });
+                Log.e("Rated", "Error: " + e.getMessage());
+                runOnUiThread(() -> showErrorDialog("Error: " + e.getMessage()));
             }
         });
     }
 
     // Method to show success dialog
-    private void showSuccessDialog(String message) {
+    private void showSuccessDialog() {
         new AlertDialog.Builder(Rated.this)
                 .setTitle("Success")
-                .setMessage(message)
+                .setMessage("Thank you for your time, your response is important to us")
                 .setPositiveButton("OK", (dialog, which) -> {
                     // Do something when OK is clicked (if needed)
                     Intent intent = new Intent(Rated.this, MainActivity.class);

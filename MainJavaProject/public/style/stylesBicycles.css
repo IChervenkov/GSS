@@ -349,6 +349,9 @@ tbody tr:nth-child(even) {
   /* Enable vertical scrolling */
   overflow-x: auto;
   /* Enable horizontal scrolling */
+  scrollbar-width: auto;
+  /* Firefox */
+  scrollbar-color: #28a745 transparent;
 }
 
 .table-container::-webkit-scrollbar {
@@ -474,11 +477,11 @@ tbody tr:nth-child(even) {
 
 .modal-content-view {
   margin-top: 80px;
-  margin-left: 20%;
+  margin-left: 10%;
   background-color: #fefefe;
   padding: 20px;
   border: 1px solid #888;
-  max-width: 60%;
+  max-width: 80%;
   /* Ensure it doesn't overflow on small screens */
   border-radius: 10px;
   text-align: center;
@@ -781,6 +784,9 @@ tbody tr:nth-child(even) {
   border: 1px solid #ddd;
   max-height: 200px;
   overflow-y: auto;
+  scrollbar-width: auto;
+  /* Firefox */
+  scrollbar-color: #28a745 transparent;
   display: none;
   position: absolute;
   z-index: 1000;

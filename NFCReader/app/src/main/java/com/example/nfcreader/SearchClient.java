@@ -8,7 +8,9 @@ import android.content.IntentFilter;
 import android.graphics.Typeface;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
@@ -17,6 +19,8 @@ import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.json.JSONArray;
@@ -24,28 +28,29 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class SearchClient extends AppCompatActivity {
 
-    private OkHttpClient client = new OkHttpClient();
-    private ArrayList<BikeInfo> ownerList = new ArrayList<>();
-    private Map<BikeInfo, String> clientIdMap = new HashMap<>();
-    private Map<BikeInfo, String> keyIdMap = new HashMap<>();
+    private final OkHttpClient client = new OkHttpClient();
+    private final ArrayList<BikeInfo> ownerList = new ArrayList<>();
+    private final Map<BikeInfo, String> clientIdMap = new HashMap<>();
+    private final Map<BikeInfo, String> keyIdMap = new HashMap<>();
     private final Map<String, String> keyIdCountMap = new HashMap<>();
     private AutoCompleteTextView clientAutoCompleteTextView;
     private NfcAdapter nfcAdapter;
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,7 +64,7 @@ public class SearchClient extends AppCompatActivity {
             finish();
             return;
         }
-
+                
         // Fetch client from the server
         fetchAvailableBikes();
 
@@ -75,16 +80,16 @@ public class SearchClient extends AppCompatActivity {
             String selectClientCount = keyIdCountMap.get(selectedClientKeyId);
 
             if (selectClientCount != null && Integer.parseInt(selectClientCount) > 0) {
-                showPopup("Soldier Information", "Soldier: " + selectedBikeInfo + "\nNumber of bikes taken: " + selectClientCount);
+                showPopup("Soldier: " + selectedBikeInfo + "\nNumber of bikes taken: " + selectClientCount);
             }
 
             loadBikeData(selectedClientId);
         });
     }
 
-    private void showPopup(String title, String message) {
+    private void showPopup(String message) {
         new AlertDialog.Builder(this)
-                .setTitle(title)
+                .setTitle("Soldier Information")
                 .setMessage(message)
                 .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
                 .setCancelable(false)
@@ -96,30 +101,17 @@ public class SearchClient extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(SearchClient.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-        JSONObject jsonData = new JSONObject();
-        try {
-            jsonData.put("campId", GlobalVariable.getCamp(this));
-            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
-        } catch (JSONException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Error creating JSON: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        RequestBody body = RequestBody.create(jsonData.toString(), JSON);
-
+        String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url("https://bunker.bg/getClient")
-                .post(body)
+                .url(baseUrl + "/getClient?campId=" + GlobalVariable.getCamp(this) + "&isValidCode=" + GlobalVariable.getVariable(this))
                 .build();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) {
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 runOnUiThread(() -> {
                     loadingDialog.dismiss();
                     Toast.makeText(SearchClient.this, "Error fetching client: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -127,7 +119,7 @@ public class SearchClient extends AppCompatActivity {
             }
 
             @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 loadingDialog.dismiss();
                 if (response.isSuccessful() && response.body() != null) {
                     String responseData = response.body().string();
@@ -135,7 +127,7 @@ public class SearchClient extends AppCompatActivity {
                         try {
                             populateBikeAutoComplete(new JSONArray(responseData));
                         } catch (JSONException e) {
-                            e.printStackTrace();
+                            Log.e("SearchClient", "Error: " + e.getMessage());
                             Toast.makeText(SearchClient.this, "JSON Parsing Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
@@ -175,36 +167,23 @@ public class SearchClient extends AppCompatActivity {
     }
 
     private void loadBikeData(String bikeId) {
-        // Create JSON object with the bike ID to send to the server
-        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-        JSONObject jsonData = new JSONObject();
-        try {
-            jsonData.put("id", bikeId);
-            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
-        } catch (JSONException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Error creating JSON: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        RequestBody body = RequestBody.create(jsonData.toString(), JSON);
 
         // Make network request to your server endpoint
+        String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url("https://bunker.bg/searchClient")
-                .post(body)
+                .url(baseUrl + "/searchClient?id=" + bikeId + "&isValidCode=" + GlobalVariable.getVariable(this))
                 .build();
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(SearchClient.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) {
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 runOnUiThread(() -> {
                     loadingDialog.dismiss();
                     Toast.makeText(SearchClient.this, "Error fetching data from server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -212,7 +191,7 @@ public class SearchClient extends AppCompatActivity {
             }
 
             @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
 
                 runOnUiThread(loadingDialog::dismiss);
 
@@ -222,7 +201,7 @@ public class SearchClient extends AppCompatActivity {
                         JSONArray bikesArray = new JSONArray(responseData);
                         runOnUiThread(() -> updateTableLayout(bikesArray));
                     } catch (JSONException e) {
-                        e.printStackTrace();
+                        Log.e("SearchClient", "Error: " + e.getMessage());
                         runOnUiThread(() ->
                                 Toast.makeText(SearchClient.this, "Error parsing data: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                         );
@@ -259,7 +238,7 @@ public class SearchClient extends AppCompatActivity {
 
             }
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e("SearchClient", "Error: " + e.getMessage());
             Toast.makeText(this, "Error updating UI: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
@@ -308,14 +287,16 @@ public class SearchClient extends AppCompatActivity {
         nfcAdapter.disableForegroundDispatch(this);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
-    protected void onNewIntent(Intent intent) {
+    protected void onNewIntent(@NonNull Intent intent) {
         super.onNewIntent(intent);
         handleIntent(intent);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     private void handleIntent(Intent intent) {
-        Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+        Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag.class);
         if (tag != null) {
             // Get the NFC ID (UID)
             byte[] tagId = tag.getId();
@@ -345,7 +326,7 @@ public class SearchClient extends AppCompatActivity {
             String selectedClientId = clientIdMap.get(selectedClientInfoId);
 
             if (selectedClientCount != null && Integer.parseInt(selectedClientCount) > 0) {
-                showPopup("Soldier Information", "Soldier: " + selectedClientName + "\nNumber of bikes taken: " + selectedClientCount);
+                showPopup("Soldier: " + selectedClientName + "\nNumber of bikes taken: " + selectedClientCount);
             }
 
             // Call the server with the NFC data

@@ -1,5 +1,6 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -14,29 +15,32 @@
             android:text="Item code: None"
             android:textSize="24sp"
             android:layout_marginTop="250dp"
-            android:layout_centerHorizontal="true" />
+            android:layout_centerHorizontal="true"
+            tools:ignore="HardcodedText" />
 
         <Button
             android:id="@+id/removeButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_below="@id/nfcTextView"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
             android:backgroundTint="@android:color/holo_green_dark"
             android:text="Remove bike"
             android:textColor="@android:color/white"
-            android:layout_below="@id/nfcTextView"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="20dp" />
+            tools:ignore="HardcodedText,TextContrastCheck" />
 
         <Button
             android:id="@+id/removeHelmetButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_below="@id/removeButton"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
             android:backgroundTint="@android:color/holo_green_dark"
             android:text="Remove helmet"
             android:textColor="@android:color/white"
-            android:layout_below="@id/removeButton"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="20dp" />
+            tools:ignore="HardcodedText,TextContrastCheck" />
 
 
     </RelativeLayout>

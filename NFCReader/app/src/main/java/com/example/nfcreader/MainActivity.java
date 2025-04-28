@@ -2,32 +2,28 @@ package com.example.nfcreader;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.app.PendingIntent;
+import android.app.Dialog;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.nfc.NdefMessage;
-import android.nfc.NdefRecord;
-import android.nfc.NfcAdapter;
+
 import android.os.Bundle;
-import android.os.Parcelable;
-import android.view.View;
+
+import android.util.Log;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.TextView;
+
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import org.json.JSONObject;
 
-import java.nio.charset.StandardCharsets;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -35,11 +31,44 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity {
-
-    private OkHttpClient client; // Reuse a single OkHttpClient instance
+    private final CookieManager cookieManager = new CookieManager();
+    private final OkHttpClient client = new OkHttpClient.Builder()
+            .cookieJar(new JavaNetCookieJar(cookieManager))
+            .build();
     private boolean isValidCode;
-    private ImageButton settingsButton;
-    private ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
+    private String csrfToken = null;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
+
+    private void fetchCsrfToken() {
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        executorService.execute(() -> {
+            try {
+                String baseUrl = getString(R.string.base_url);
+                Request request = new Request.Builder()
+                        .url(baseUrl + "/csrf-token")
+                        .build();
+
+                Response response = client.newCall(request).execute();
+                if (response.isSuccessful() && response.body() != null) {
+                    String responseBody = response.body().string();
+                    JSONObject jsonObject = new JSONObject(responseBody);
+                    csrfToken = jsonObject.getString("csrfToken");
+
+                } else {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
+            }
+        });
+    }
 
     @SuppressLint("MissingInflatedId")
     @Override
@@ -47,7 +76,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        client = new OkHttpClient();
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+
+        fetchCsrfToken();
+
         isValidCode = GlobalVariable.getVariable(this);
 
         if(!isValidCode) {
@@ -65,63 +97,47 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        findViewById(R.id.buttonPage1).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, RentedBike.class);
-                startActivity(intent);
-            }
+        findViewById(R.id.buttonPage1).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, RentedBike.class);
+            startActivity(intent);
         });
 
-        findViewById(R.id.buttonPage2).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, ReturnBike.class);
-                startActivity(intent);
-            }
+        findViewById(R.id.buttonPage2).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, ReturnBike.class);
+            startActivity(intent);
         });
 
-        findViewById(R.id.buttonSearchBike).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, SearchBike.class);
-                startActivity(intent);
-            }
+        findViewById(R.id.buttonSearchBike).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, SearchBike.class);
+            startActivity(intent);
         });
 
-        findViewById(R.id.buttonSearchClient).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, SearchClient.class);
-                startActivity(intent);
-            }
+        findViewById(R.id.buttonSearchClient).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, SearchClient.class);
+            startActivity(intent);
         });
 
-        findViewById(R.id.buttonAddBike).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, AddBike.class);
-                startActivity(intent);
-            }
+        findViewById(R.id.buttonAddBike).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, AddBike.class);
+            startActivity(intent);
         });
 
-        findViewById(R.id.buttonRemoveBike).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, RemoveBike.class);
-                startActivity(intent);
-            }
+        findViewById(R.id.buttonRemoveBike).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, RemoveBike.class);
+            startActivity(intent);
         });
 
-        findViewById(R.id.buttonEditBike).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, EditBike.class);
-                startActivity(intent);
-            }
+        findViewById(R.id.buttonEditBike).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, EditBike.class);
+            startActivity(intent);
         });
 
-        settingsButton = findViewById(R.id.buttonSettings);
+        findViewById(R.id.buttonSearchHelmet).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, SearchHelmet.class);
+            startActivity(intent);
+        });
+
+        ImageButton settingsButton = findViewById(R.id.buttonSettings);
 
         settingsButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
@@ -154,18 +170,16 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog dialog = builder.create();
 
         // Override "OK" button behavior
-        dialog.setOnShowListener(d -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String code = input.getText().toString();
-                if (!code.isEmpty()) {
-                    checkDataToServer(code, input, dialog);
-                    if(isValidCode)
-                        dialog.dismiss(); // Close the dialog
-                } else {
-                    input.setError("Code cannot be empty");
-                }
-            });
-        });
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String code = input.getText().toString();
+            if (!code.isEmpty()) {
+                checkDataToServer(code, input, dialog);
+                if(isValidCode)
+                    dialog.dismiss(); // Close the dialog
+            } else {
+                input.setError("Code cannot be empty");
+            }
+        }));
 
         // Handle dialog dismissal
         dialog.setOnDismissListener(dialogInterface -> {
@@ -181,19 +195,22 @@ public class MainActivity extends AppCompatActivity {
     private void checkDataToServer(String code, EditText input, AlertDialog dialog) {
         executorService.execute(() -> {
             try {
+
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
                 payload.put("code", code);
 
-                RequestBody body = RequestBody.create(JSON, payload.toString());
+                RequestBody body = RequestBody.create(payload.toString(), JSON);
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/checkCodeProduct")
+                        .url(baseUrl + "/checkCodeProduct")
+                        .addHeader("X-CSRF-Token", csrfToken)
                         .post(body)
                         .build();
 
                 try (Response response = client.newCall(request).execute()) {
                     if (response.isSuccessful()) {
-                        String responseData = response.body().string();
+                        String responseData = Objects.requireNonNull(response.body()).string();
                         JSONObject jsonResponse = new JSONObject(responseData);
                         boolean isValidGetCode = jsonResponse.optBoolean("success", false);
                         GlobalVariable.saveVariable(this, isValidGetCode);
@@ -211,8 +228,8 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
+                Log.e("MainActivity", "Error: " + e.getMessage());
+                runOnUiThread(() -> showPopupWindow("Error sending EPCs to server: " + e.getMessage()));
             }
         });
     }
@@ -228,7 +245,7 @@ public class MainActivity extends AppCompatActivity {
             String finalErrorMessage = errorMessage;
             runOnUiThread(() -> input.setError(finalErrorMessage));
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("MainActivity", "Error: " + e.getMessage());
             runOnUiThread(() -> input.setError("Failed to process error response: " + e.getMessage()));
         } finally {
             if (response.body() != null) {
@@ -237,9 +254,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void showPopupWindow(String title, String message) {
+    private void showPopupWindow(String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(title);
+        builder.setTitle("Error");
         builder.setMessage(message);
         builder.setPositiveButton("OK", (dialog, which) -> {
             // Optionally, reset or perform other actions after closing the dialog

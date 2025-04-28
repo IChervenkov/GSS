@@ -1,5 +1,6 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -14,7 +15,8 @@
             android:text="Bike code: None"
             android:textSize="24sp"
             android:layout_marginTop="50dp"
-            android:layout_centerHorizontal="true" />
+            android:layout_centerHorizontal="true"
+            tools:ignore="HardcodedText" />
 
         <TextView
             android:id="@+id/nfcHelmetTextView"
@@ -24,7 +26,8 @@
             android:text="Helmet code: None"
             android:textSize="24sp"
             android:layout_marginTop="24dp"
-            android:layout_centerHorizontal="true" />
+            android:layout_centerHorizontal="true"
+            tools:ignore="HardcodedText" />
 
         <!-- DatePicker -->
         <DatePicker
@@ -57,6 +60,7 @@
             android:layout_marginTop="20dp"
             android:layout_marginBottom="20dp"
             android:textColor="@android:color/white"
-            android:backgroundTint="@android:color/holo_green_dark"/>
+            android:backgroundTint="@android:color/holo_green_dark"
+            tools:ignore="HardcodedText" />
     </RelativeLayout>
 </ScrollView>

@@ -316,6 +316,8 @@ tbody tr:nth-child(even) {
     /* Enable vertical scrolling */
     overflow-x: auto;
     /* Enable horizontal scrolling */
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #28a745 transparent;
 }
 
 .table-container::-webkit-scrollbar {

@@ -18,6 +18,8 @@
 
 <body>
 
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
     <!-- Horizontal Navigation Bar -->
     <div class="horizontal-nav">
         <button type="button" class="menu-toggle" aria-label="Toggle horizontal navigation">&#9776; Menu</button>
@@ -101,25 +103,15 @@
                     </div>
 
                     <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
-                            <button type="button" id="btnAddTypeAsset"
-                                class="btn-add-type <% if(username == 'NSPA') { %> disabled-button <% } %>">
-                                <i class="bi bi-plus-circle"></i> Add Type
+                            <button
+                                class="btn-add-type dropdown-toggle <% if(username == 'NSPA') { %> disabled-button <% } %>"
+                                type="button" id="typeDropdownMenuButton" aria-expanded="false">
+                                <i class="bi bi-gear"></i> Asset Type
                             </button>
-                            <div class="tooltip-custom">
-                                <i class="bi bi-question-circle"></i>
-                                <span class="tooltiptext">Add a new type of asset to the list.</span>
-                            </div>
-                    </div>
-
-                    <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
-                            <button type="button" id="btnRemoveTypeAsset"
-                                class="btn-add-type <% if(username == 'NSPA') { %> disabled-button <% } %>">
-                                <i class="bi bi-dash-circle"></i> Remove Type
-                            </button>
-                            <div class="tooltip-custom">
-                                <i class="bi bi-question-circle"></i>
-                                <span class="tooltiptext">Remove a type of asset from the list.</span>
-                            </div>
+                            <ul class="dropdown-menu" aria-labelledby="typeDropdownMenuButton" id="selectTypeDropdown">
+                                <li id="btnAddTypeAsset">Add Type</li>
+                                <li id="btnRemoveTypeAsset">Remove Type</li>
+                            </ul>
                     </div>
 
                     <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
@@ -142,6 +134,16 @@
                                 <i class="bi bi-question-circle"></i>
                                 <span class="tooltiptext">List with all cleaning item</span>
                             </div>
+                    </div>
+
+                    <div class="btn-container">
+                        <button id="inventoryButton" class="btn-add-type">
+                            <i class="bi bi-list-check"></i> <span>Inventory</span>
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Track the inventory process.</span>
+                        </div>
                     </div>
 
                     <div class="btn-container">
@@ -278,7 +280,7 @@
     </div>
 
     <div id="editAssetsModal" class="modal">
-        <form class="modal-content" method="POST" action="/assets/editAsset" id="form1">
+        <form class="modal-content" method="PATCH" action="/assets/editAsset" id="form1">
             <span class="close-btn">&times;</span>
 
             <h2 class="mb-4">Asset information</h2>
@@ -568,7 +570,7 @@
     </div>
 
     <div id="removeAssetsTypeModal" class="modal">
-        <form class="modal-content" method="POST" , action="/assets/removeTypeAsset" id="form4">
+        <form class="modal-content" method="DELETE" , action="/assets/removeTypeAsset" id="form4">
             <span class="close-btn">&times;</span>
 
             <h2 class="mb-4">Remove asset type</h2>
@@ -626,18 +628,6 @@
                         <div class="valid-feedback"></div>
                     </div>
 
-                    <div class="mb-3 search-container">
-                        <label class="form-label" for="assetLocation">Last Known Person <span
-                                class="text-danger">*</span></label>
-                        <input type="text" id="assetLocation" name="assetLocation" class="form-control"
-                            placeholder="Last Known Person">
-                        <div class="invalid-feedback"></div>
-                        <div class="valid-feedback"></div>
-                        <ul id="assetLocationDropdown" class="list-group"></ul>
-                        <!-- Custom dropdown for search -->
-                        <input type="hidden" id="selectedAssetLocationId" name="assetLocationId" value="">
-                    </div>
-
                     <div class="mb-3">
                         <label for="lostAssetQuantity" class="form-label">Asset quantity <span
                                 class="text-danger">*</span></label>
@@ -656,8 +646,6 @@
                             <tr>
                                 <th><input type="text" class="lost-item-search-input" placeholder="Search...">Item Name
                                 </th>
-                                <th><input type="text" class="lost-item-search-input" placeholder="Search...">Last Known
-                                    Person</th>
                                 <th><input type="text" class="lost-item-search-input"
                                         placeholder="Search...">Description</th>
                                 <th><input type="text" class="lost-item-search-input" placeholder="Search...">Lost
@@ -739,7 +727,7 @@
     </div>
 
     <div id="reportViewModal" class="modal">
-        <form class="modal-content-report" action="/assets/report" method="GET" id="form6">
+        <form class="modal-content-report" action="/assets/report" method="POST" id="form6">
             <span class="close-btn">&times;</span>
             <h2 class="d-flex align-items-center justify-content-center w-100">
                 Archive View
@@ -934,7 +922,8 @@
                                 </div>
                             </div>
                             <div class="btn-container">
-                                <button type="button" id="btnItemTraceability" class="btn btn-outline-primary btn-sm rounded-circle fw-bold">
+                                <button type="button" id="btnItemTraceability"
+                                    class="btn btn-outline-primary btn-sm rounded-circle fw-bold">
                                     <i class="bi bi-subtract"></i></button>
                                 <div class="tooltip-custom">
                                     <i class="bi bi-question-circle"></i>
@@ -1104,7 +1093,7 @@
     </div>
 
     <div id="removeCleanItemModal" class="modal">
-        <form class="modal-content" action="/removeCleanItem" method="POST" id="form8">
+        <form class="modal-content" action="/removeCleanItem" method="DELETE" id="form8">
             <span class="close-btn">&times;</span>
 
             <h2>Remove clean item</h2>
@@ -1129,7 +1118,7 @@
     </div>
 
     <div id="editCleanItemModal" class="modal">
-        <form class="modal-content" action="/editCleanItem" method="POST" id="form9">
+        <form class="modal-content" action="/editCleanItem" method="PATCH" id="form9">
             <span class="close-btn">&times;</span>
 
             <h2>Edit item</h2>
@@ -1204,6 +1193,26 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <div id="inventoryModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h4 class="mb-3">Inventory Sections
+                <div class="btn-container">
+                    <button type="button" id="btnRestartInventory"
+                        class="btn btn-outline-primary btn-sm rounded-circle fw-bold">
+                        <i class="bi bi-arrow-repeat"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Restart inventory</span>
+                    </div>
+                </div>
+            </h4>
+
+            <div class="accordion" id="mainAccordion"></div>
         </div>
     </div>
 

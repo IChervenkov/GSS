@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const total_percent_very_happy = document.getElementById('percentVeryHappy');
 
     const loadingIndicator = document.getElementById('loadingIndicator');
+    const csrfToken = document.getElementsByName('_csrf')[0].value;
 
     function showMess(type, message) {
 
@@ -101,12 +102,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const formattedDate2 = date2 ? formatDate(date2) : formatDate(now);
 
         // Fetch data from the backend
-        const response = await fetch(`/getAllEmoji`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ date1: formattedDate1, date2: formattedDate2 })
+        const response = await fetch(`/getAllEmoji?date1=${formattedDate1}&date2=${formattedDate2}`, {
+            method: 'GET'
         });
 
         const fullData = await response.json();
@@ -189,8 +186,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const response = await fetch(`/fitness/report`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({ data: data })
             });

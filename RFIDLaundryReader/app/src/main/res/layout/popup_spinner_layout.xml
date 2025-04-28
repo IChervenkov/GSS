@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -10,11 +11,13 @@
         android:layout_height="wrap_content"
         android:text="Select Bag:"
         android:textSize="16sp"
-        android:paddingBottom="8dp" />
+        android:paddingBottom="8dp"
+        tools:ignore="HardcodedText" />
 
     <Spinner
         android:id="@+id/bagSpinner"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        tools:ignore="TouchTargetSizeCheck" />
 
 </LinearLayout>

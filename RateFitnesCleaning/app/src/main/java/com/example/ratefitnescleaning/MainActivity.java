@@ -4,21 +4,16 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
-import android.os.Bundle;
-import android.view.View;
+import android.util.Log;
+
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
-import com.google.android.material.button.MaterialButton;
 
 import okhttp3.FormBody;
+import okhttp3.JavaNetCookieJar;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -28,27 +23,60 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.IOException;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
     private String clientId = null;
-    private final OkHttpClient client = HttpClientSingleton.getInstance();
-    private ArrayList<String> ownerList = new ArrayList<>();
-    private Map<String, String> clientIdMap = new HashMap<>();
+    private final CookieManager cookieManager = new CookieManager();
+    private final OkHttpClient client = new OkHttpClient.Builder()
+            .cookieJar(new JavaNetCookieJar(cookieManager))
+            .build();
+    private String csrfToken = null;
+    private final ArrayList<String> ownerList = new ArrayList<>();
+    private final Map<String, String> clientIdMap = new HashMap<>();
     private AutoCompleteTextView clientAutoCompleteTextView;
-    private ExecutorService executorService = Executors.newFixedThreadPool(3);
+    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+
+    private void fetchCsrfToken() {
+
+        try {
+            String baseUrl = getString(R.string.base_url);
+            Request request = new Request.Builder()
+                    .url(baseUrl + "/csrf-token")
+                    .build();
+
+            Response response = client.newCall(request).execute();
+            if (response.isSuccessful() && response.body() != null) {
+                String responseBody = response.body().string();
+                JSONObject jsonObject = new JSONObject(responseBody);
+                csrfToken = jsonObject.getString("csrfToken");
+
+            } else {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+            }
+        } catch (Exception e) {
+            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+
         clientAutoCompleteTextView = findViewById(R.id.clientAutoCompleteTextView);
+
+        fetchCsrfToken();
 
         // Fetch client from the server
         fetchAvailableBikes();
@@ -81,8 +109,10 @@ public class MainActivity extends AppCompatActivity {
                         .build();
 
                 // Make the request to the server
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/sendClientData") // Replace with your endpoint
+                        .url(baseUrl + "/sendClientData") // Replace with your endpoint
+                        .addHeader("X-CSRF-Token", csrfToken)
                         .post(body)
                         .build();
 
@@ -97,15 +127,11 @@ public class MainActivity extends AppCompatActivity {
                     });
                 } else {
                     // Handle failure
-                    runOnUiThread(() -> {
-                        showErrorDialog("Failed to send your data. Try again");
-                    });
+                    runOnUiThread(() -> showErrorDialog("Failed to send your data. Try again"));
                 }
             } catch (IOException e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    showErrorDialog("Error: " + e.getMessage());
-                });
+                Log.e("MainActivity", "Error: " + e.getMessage());
+                runOnUiThread(() -> showErrorDialog("Error: " + e.getMessage()));
             }
         });
     }
@@ -125,30 +151,27 @@ public class MainActivity extends AppCompatActivity {
     private void fetchAvailableBikes() {
         executorService.execute(() -> {
             try {
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/getClient")
+                        .url(baseUrl + "/getClient")
                         .build();
 
                 Response response = client.newCall(request).execute();
                 if (response.isSuccessful()) {
-                    final String responseData = response.body().string();
+                    final String responseData = Objects.requireNonNull(response.body()).string();
                     runOnUiThread(() -> {
                         try {
                             populateBikeAutoComplete(new JSONArray(responseData));
                         } catch (JSONException e) {
-                            e.printStackTrace();
+                            Log.e("MainActivity", "Error: " + e.getMessage());
                         }
                     });
                 } else {
-                    runOnUiThread(() -> {
-                        Toast.makeText(MainActivity.this, "Error fetching client", Toast.LENGTH_SHORT).show();
-                    });
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Error fetching client", Toast.LENGTH_SHORT).show());
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    Toast.makeText(MainActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                Log.e("MainActivity", "Error: " + e.getMessage());
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         });
     }

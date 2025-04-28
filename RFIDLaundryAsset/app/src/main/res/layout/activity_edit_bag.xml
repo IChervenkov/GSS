@@ -11,16 +11,17 @@
 
         <AutoCompleteTextView
             android:id="@+id/bagAutoCompleteTextView"
-            android:layout_width="650px"
+            android:layout_width="260dp"
             android:layout_height="wrap_content"
-            android:hint="Select Code"
+            android:layout_centerHorizontal="true"
             android:layout_marginTop="250dp"
-            tools:ignore="MissingConstraints"
-            tools:text="Select Bag Code"
-            app:layout_constraintStart_toStartOf="parent"
+            android:hint="Select Code"
+            android:minHeight="48dp"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            android:layout_centerHorizontal="true"/>
+            tools:ignore="HardcodedText,MissingConstraints"
+            tools:text="Select Bag Code" />
 
         <TextView
             android:id="@+id/epcTextView"
@@ -31,55 +32,63 @@
             android:textSize="24sp"
             android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
-            android:gravity="center" />
+            android:gravity="center"
+            tools:ignore="HardcodedText" />
 
         <EditText
             android:id="@+id/bagCodeEditText"
-            android:layout_width="650px"
+            android:layout_width="260dp"
             android:layout_height="wrap_content"
             android:layout_below="@id/epcTextView"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
             android:hint="Enter bag code"
+            android:autofillHints="Enter bag code"
             android:minHeight="48dp"
             android:padding="10dp"
-            android:textSize="18sp" />
+            android:textSize="18sp"
+            tools:ignore="HardcodedText,TextContrastCheck,TextFields" />
 
         <EditText
             android:id="@+id/bagTypeEditText"
-            android:layout_width="650px"
+            android:layout_width="260dp"
             android:layout_height="wrap_content"
             android:layout_below="@id/bagCodeEditText"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
             android:hint="Enter bag type"
+            android:autofillHints="Enter bag type"
             android:minHeight="48dp"
             android:padding="10dp"
-            android:textSize="18sp" />
+            android:textSize="18sp"
+            tools:ignore="HardcodedText,TextContrastCheck,TextFields" />
 
         <EditText
             android:id="@+id/bagMaxWashEditText"
-            android:layout_width="650px"
+            android:layout_width="260dp"
             android:layout_height="wrap_content"
             android:layout_below="@id/bagTypeEditText"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
+            android:autofillHints="Enter maximum number of washes"
             android:hint="Enter maximum number of washes"
+            android:inputType="number"
             android:minHeight="48dp"
             android:padding="10dp"
             android:textSize="18sp"
-            android:inputType="number" />
+            tools:ignore="HardcodedText,TextContrastCheck" />
 
         <Button
             android:id="@+id/editButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Edit bag"
             android:layout_below="@id/bagMaxWashEditText"
-            android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:backgroundTint="@android:color/holo_green_dark"
+            android:text="Edit bag"
             android:textColor="@android:color/white"
-            android:backgroundTint="@android:color/holo_green_dark"/>
+            tools:ignore="HardcodedText,TextContrastCheck" />
 
     </RelativeLayout>
 </ScrollView>

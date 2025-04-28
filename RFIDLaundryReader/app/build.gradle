@@ -18,7 +18,7 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
 
@@ -41,6 +41,10 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
+
+        tasks.withType(JavaCompile).configureEach {
+            options.compilerArgs += ["-Xlint:unchecked", "-Xlint:deprecation"]
+        }
     }
 }
 
@@ -57,6 +61,9 @@ dependencies {
     implementation libs.retrofit
     implementation libs.converter.gson
     implementation(libs.preference.ktx)
+
+    implementation "androidx.security:security-crypto:1.1.0-alpha06"
+    implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.12.0'
 
     //noinspection GradlePath
     implementation files("C:/Users/ivajl/Desktop/GSS/API_Ver20231208/DeviceAPI_20231208/DeviceAPI_ver20231208_release.aar")

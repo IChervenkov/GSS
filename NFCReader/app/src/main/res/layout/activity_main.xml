@@ -16,7 +16,8 @@
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="HardcodedText" />
 
     <Button
         android:id="@+id/buttonPage1"
@@ -31,7 +32,8 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.129"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/titleText" />
+        app:layout_constraintTop_toBottomOf="@+id/titleText"
+        tools:ignore="HardcodedText,RtlHardcoded,TextContrastCheck" />
 
     <Button
         android:id="@+id/buttonPage2"
@@ -39,14 +41,15 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="44dp"
         android:backgroundTint="@android:color/holo_green_dark"
-        android:text="Return Bike"
-        android:drawableTint="@android:color/white"
         android:drawableLeft="@drawable/ic_return"
         android:drawablePadding="8dp"
+        android:drawableTint="@android:color/white"
+        android:text="Return Bike"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.652"
         app:layout_constraintStart_toEndOf="@+id/buttonPage1"
-        app:layout_constraintTop_toBottomOf="@+id/titleText" />
+        app:layout_constraintTop_toBottomOf="@+id/titleText"
+        tools:ignore="HardcodedText,RtlHardcoded,TextContrastCheck" />
 
     <Button
         android:id="@+id/buttonSearchBike"
@@ -61,7 +64,8 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.109"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/buttonPage1" />
+        app:layout_constraintTop_toBottomOf="@+id/buttonPage1"
+        tools:ignore="HardcodedText,RtlHardcoded,TextContrastCheck" />
 
     <Button
         android:id="@+id/buttonSearchClient"
@@ -69,57 +73,77 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:backgroundTint="@android:color/holo_green_dark"
-        android:text="Search Client"
-        android:drawableTint="@android:color/white"
         android:drawableLeft="@drawable/ic_search_client"
         android:drawablePadding="8dp"
+        android:drawableTint="@android:color/white"
+        android:text="Search Client"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.699"
         app:layout_constraintStart_toEndOf="@+id/buttonSearchBike"
-        app:layout_constraintTop_toBottomOf="@+id/buttonPage2" />
+        app:layout_constraintTop_toBottomOf="@+id/buttonPage2"
+        tools:ignore="HardcodedText,RtlHardcoded,TextContrastCheck" />
+
+    <Button
+        android:id="@+id/buttonSearchHelmet"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="36dp"
+        android:backgroundTint="@android:color/holo_green_dark"
+        android:drawableLeft="@drawable/ic_search_helmet"
+        android:drawablePadding="8dp"
+        android:drawableTint="@android:color/white"
+        android:text="Search Helmet"
+        app:layout_constraintEnd_toStartOf="@+id/buttonAddBike"
+        app:layout_constraintTop_toBottomOf="@+id/buttonSearchBike"
+        tools:ignore="HardcodedText,RtlHardcoded,TextContrastCheck" />
 
     <Button
         android:id="@+id/buttonAddBike"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="24dp"
         android:backgroundTint="@android:color/holo_green_dark"
         android:drawableLeft="@drawable/ic_add_bike"
         android:drawablePadding="8dp"
         android:drawableTint="@android:color/white"
         android:text="Add Bike"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.138"
+        app:layout_constraintHorizontal_bias="0.934"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/buttonSearchBike" />
+        app:layout_constraintTop_toBottomOf="@+id/buttonSearchClient"
+        tools:ignore="HardcodedText,RtlHardcoded,TextContrastCheck" />
 
     <Button
         android:id="@+id/buttonRemoveBike"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="24dp"
         android:backgroundTint="@android:color/holo_green_dark"
-        android:text="Remove Bike"
-        android:drawableTint="@android:color/white"
         android:drawableLeft="@drawable/ic_remove_bike"
         android:drawablePadding="8dp"
+        android:drawableTint="@android:color/white"
+        android:text="Remove Bike"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.715"
-        app:layout_constraintStart_toEndOf="@+id/buttonAddBike"
-        app:layout_constraintTop_toBottomOf="@+id/buttonSearchClient" />
+        app:layout_constraintHorizontal_bias="0.631"
+        app:layout_constraintStart_toEndOf="@+id/buttonEditBike"
+        app:layout_constraintTop_toBottomOf="@+id/buttonAddBike"
+        tools:ignore="HardcodedText,RtlHardcoded,TextContrastCheck" />
 
     <Button
         android:id="@+id/buttonEditBike"
         android:layout_width="138dp"
         android:layout_height="48dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="24dp"
         android:backgroundTint="@android:color/holo_green_dark"
         android:drawableLeft="@drawable/ic_edit_bike"
         android:drawableTint="@android:color/white"
         android:text="Edit Bike"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.128"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/buttonAddBike" />
+        app:layout_constraintTop_toBottomOf="@+id/buttonSearchHelmet"
+        tools:ignore="HardcodedText,RtlHardcoded,TextContrastCheck" />
 
     <ImageButton
         android:id="@+id/buttonSettings"

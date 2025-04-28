@@ -1,8 +1,8 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:padding="16dp">
 
     <RelativeLayout
@@ -18,7 +18,8 @@
             android:hint="Select Code"
             android:minHeight="48dp"
             android:padding="10dp"
-            android:textSize="18sp" />
+            android:textSize="18sp"
+            tools:ignore="HardcodedText,TextContrastCheck,VisualLintTextFieldSize" />
 
         <!-- EPC Code Display -->
         <TextView
@@ -30,7 +31,8 @@
             android:layout_below="@id/assetAutoCompleteTextView"
             android:layout_marginTop="12dp"
             android:layout_centerHorizontal="true"
-            android:gravity="center" />
+            android:gravity="center"
+            tools:ignore="HardcodedText" />
 
         <!-- Grid Layout for Inputs -->
         <GridLayout
@@ -49,10 +51,12 @@
                 android:layout_height="wrap_content"
                 android:layout_columnWeight="1"
                 android:layout_margin="8dp"
+                android:autofillHints="Enter asset code"
                 android:hint="Enter asset code"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                tools:ignore="HardcodedText,TextFields,TextContrastCheck" />
 
             <!-- Asset Name -->
             <EditText
@@ -61,10 +65,12 @@
                 android:layout_height="wrap_content"
                 android:layout_columnWeight="1"
                 android:layout_margin="8dp"
+                android:autofillHints="Enter asset name"
                 android:hint="Enter asset name"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                tools:ignore="HardcodedText,TextFields,TextContrastCheck" />
 
             <!-- Asset Type -->
             <AutoCompleteTextView
@@ -76,7 +82,8 @@
                 android:hint="Select type"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                tools:ignore="HardcodedText,TextContrastCheck" />
 
             <!-- Asset Location -->
             <AutoCompleteTextView
@@ -88,7 +95,8 @@
                 android:hint="Select location"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                tools:ignore="HardcodedText,TextContrastCheck" />
 
             <!-- Asset Sub-location -->
             <AutoCompleteTextView
@@ -100,7 +108,8 @@
                 android:hint="Select sub-location"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                tools:ignore="HardcodedText,TextContrastCheck" />
 
             <EditText
                 android:id="@+id/assetCategoriesText"
@@ -108,11 +117,13 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
-                android:hint="Enter category"
                 android:layout_margin="8dp"
+                android:autofillHints="Enter category"
+                android:hint="Enter category"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="18sp" />
+                android:textSize="18sp"
+                tools:ignore="HardcodedText,TextFields,TextContrastCheck" />
 
             <EditText
                 android:id="@+id/assetQuantityText"
@@ -120,6 +131,7 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
+                android:autofillHints="Asset quantity"
                 android:hint="Asset quantity"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
@@ -128,7 +140,8 @@
                 android:inputType="number"
                 android:text="1"
                 android:focusable="false"
-                android:clickable="false"/>
+                android:clickable="false"
+                tools:ignore="HardcodedText" />
 
             <EditText
                 android:id="@+id/assetMrahText"
@@ -136,12 +149,15 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
-                android:hint="Enter MRAH"
                 android:layout_margin="8dp"
+                android:autofillHints="Enter MRAH"
+                android:hint="Enter MRAH"
+                android:importantForAutofill="no"
                 android:minHeight="48dp"
                 android:padding="10dp"
+                android:text="Global RTS"
                 android:textSize="18sp"
-                android:text="Global RTS"/>
+                tools:ignore="HardcodedText,TextFields,DuplicateSpeakableTextCheck" />
 
             <EditText
                 android:id="@+id/assetOwnerText"
@@ -149,12 +165,14 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="1"
                 android:layout_columnWeight="1"
+                android:autofillHints="Enter MRAH"
                 android:hint="Enter MRAH"
                 android:layout_margin="8dp"
                 android:minHeight="48dp"
                 android:padding="10dp"
                 android:textSize="18sp"
-                android:text="Global RTS"/>
+                android:text="Global RTS"
+                tools:ignore="HardcodedText,TextFields" />
 
             <Spinner
                 android:id="@+id/assetStatusText"
@@ -193,11 +211,13 @@
                 android:layout_height="wrap_content"
                 android:layout_columnSpan="2"
                 android:layout_columnWeight="2"
-                android:hint="Asset description"
                 android:layout_margin="8dp"
+                android:autofillHints="Asset description"
+                android:hint="Asset description"
                 android:minHeight="48dp"
                 android:padding="10dp"
-                android:textSize="18sp" />
+                android:textSize="18sp"
+                tools:ignore="HardcodedText,TextFields,TextContrastCheck" />
 
         </GridLayout>
 
@@ -206,14 +226,15 @@
             android:id="@+id/editButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Edit bag"
             android:layout_below="@id/inputGridLayout"
-            android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
-            android:textColor="@android:color/white"
+            android:layout_marginTop="20dp"
             android:backgroundTint="@android:color/holo_green_dark"
             android:paddingHorizontal="24dp"
-            android:paddingVertical="12dp" />
+            android:paddingVertical="12dp"
+            android:text="Edit bag"
+            android:textColor="@android:color/white"
+            tools:ignore="HardcodedText,TextContrastCheck" />
 
     </RelativeLayout>
 </ScrollView>

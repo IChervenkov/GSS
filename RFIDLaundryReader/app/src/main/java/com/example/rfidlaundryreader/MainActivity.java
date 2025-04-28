@@ -1,11 +1,11 @@
 package com.example.rfidlaundryreader;
 
-
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -27,17 +27,21 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.InterruptedIOException;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -51,14 +55,48 @@ public class MainActivity extends AppCompatActivity {
     private String destination;
     private String prev_destination;
     private String campId;
-    private int perm_count = 1;
+    private final int perm_count = 1;
     private TextView title;
     private Boolean isSuccesful;
-    private HashSet<String> uniqueEpcSet = new HashSet<>();
+    private final HashSet<String> uniqueEpcSet = new HashSet<>();
     private TableLayout tableLayout;
-    private OkHttpClient client; // Reuse a single OkHttpClient instance
-    private ImageButton settingsButton;
+    private final CookieManager cookieManager = new CookieManager();
+    private final OkHttpClient client = new OkHttpClient.Builder()
+            .cookieJar(new JavaNetCookieJar(cookieManager))
+            .build();
+    private String csrfToken = null;
     private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+
+    private void fetchCsrfToken() {
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        executorService.execute(() -> {
+            try {
+                String baseUrl = getString(R.string.base_url);
+                Request request = new Request.Builder()
+                        .url(baseUrl + "/csrf-token")
+                        .build();
+
+                Response response = client.newCall(request).execute();
+                if (response.isSuccessful() && response.body() != null) {
+                    String responseBody = response.body().string();
+                    JSONObject jsonObject = new JSONObject(responseBody);
+                    csrfToken = jsonObject.getString("csrfToken");
+
+                } else {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(loadingDialog::dismiss);
+            }
+        });
+    }
 
     @SuppressLint("WrongViewCast")
     @Override
@@ -66,7 +104,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        settingsButton = findViewById(R.id.settingsButton);
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+
+        ImageButton settingsButton = findViewById(R.id.settingsButton);
 
         settingsButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
@@ -95,11 +135,10 @@ public class MainActivity extends AppCompatActivity {
         ImageButton menuButton = findViewById(R.id.menuButton);
 
         // Set an OnClickListener to show the PopupMenu
-        menuButton.setOnClickListener(view -> showPopupMenu(view));
+        menuButton.setOnClickListener(this::showPopupMenu);
         tableLayout = findViewById(R.id.tableLayout);
 
-        // Initialize OkHttpClient (single instance)
-        client = new OkHttpClient();
+        fetchCsrfToken();
 
         // Initialize RFID reader
         try {
@@ -109,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
 
             Toast.makeText(MainActivity.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("MainActivity", "Error: " + e.getMessage());
             Toast.makeText(MainActivity.this, "Error initializing RFID Reader", Toast.LENGTH_SHORT).show();
         }
     }
@@ -137,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
 
         } else if (keyCode == 139) {
-            runOnUiThread(() -> showPopupWindowService("Linen Exchange additional service"));
+            runOnUiThread(this::showPopupWindowService);
             return true;
         }
         return super.onKeyDown(keyCode, event);
@@ -145,8 +184,9 @@ public class MainActivity extends AppCompatActivity {
 
     // Method to check if the server is active
     private boolean isServerActive() {
+        String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url("https://bunker.bg")
+                .url(baseUrl)
                 .get()
                 .build();
 
@@ -154,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
             Response response = client.newCall(request).execute(); // Reuse the OkHttpClient instance
             return response.isSuccessful();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("MainActivity", "Error: " + e.getMessage());
             return false;
         }
     }
@@ -172,13 +212,13 @@ public class MainActivity extends AppCompatActivity {
 
                 final Set<String> invalidEpcSet = Collections.synchronizedSet(new HashSet<>()); // To store invalid EPCs
 
-                    while (isInventory) {
+                    while (isInventory && !Thread.currentThread().isInterrupted()) {
                         UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
                         if (uhftagInfo == null) {
                             try {
                                 Thread.sleep(0); // Wait for 0 milliseconds before reading the next tag
                             } catch (InterruptedException e) {
-                                e.printStackTrace();
+                                Log.e("MainActivity", "Error: " + e.getMessage());
                                 if (Thread.interrupted()) {
                                     return; // Exit the thread if it's interrupted
                                 }
@@ -214,21 +254,23 @@ public class MainActivity extends AppCompatActivity {
                                         jsonPayload.put("destination", destination);
                                         jsonPayload.put("permCount", perm_count);
                                     } catch (JSONException e) {
-                                        e.printStackTrace();
+                                        Log.e("MainActivity", "Error: " + e.getMessage());
                                     }
 
                                     String jsonData = jsonPayload.toString();
-                                    RequestBody body = RequestBody.create(JSON, jsonData);
+                                    RequestBody body = RequestBody.create(jsonData, JSON);
 
+                                    String baseUrl = getString(R.string.base_url);
                                     Request request = new Request.Builder()
-                                            .url("https://bunker.bg/checkScaningCode")
+                                            .url(baseUrl + "/checkScaningCode")
+                                            .addHeader("X-CSRF-Token", csrfToken)
                                             .post(body)
                                             .build();
 
                                     Response response = client.newCall(request).execute();
 
                                     if (response.isSuccessful()) {
-                                        String responseData = response.body().string();
+                                        String responseData = Objects.requireNonNull(response.body()).string();
                                         JSONObject jsonResponse = new JSONObject(responseData);
                                         String code = jsonResponse.getString("code");
                                         String soldierId = jsonResponse.getString("soldierId");
@@ -253,7 +295,7 @@ public class MainActivity extends AppCompatActivity {
                                                 errorMessage = errorJson.optString("message", "Internal server error");
                                             }
                                         } catch (Exception e) {
-                                            e.printStackTrace();
+                                            Log.e("MainActivity", "Error: " + e.getMessage());
                                         }
 
                                         // Mark the EPC as invalid and skip it in future scans
@@ -267,9 +309,9 @@ public class MainActivity extends AppCompatActivity {
 
                                 } catch (InterruptedIOException e) {
                                     // Log the error or handle it as needed
-                                    e.printStackTrace();
+                                    Log.e("MainActivity", "Error: " + e.getMessage());
                                 } catch (Exception e) {
-                                    e.printStackTrace();
+                                    Log.e("MainActivity", "Error: " + e.getMessage());
                                     runOnUiThread(() -> showPopupWindow("Error", "Error checking bag code: " + e.getMessage()));
 
                                     // Mark the EPC as invalid and skip it in future scans
@@ -324,7 +366,7 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 loadingDialog.setContentView(R.layout.progress_dialog);
                 loadingDialog.setCancelable(false);
-                loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+                Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
                 loadingDialog.show();
             });
 
@@ -336,10 +378,12 @@ public class MainActivity extends AppCompatActivity {
                 payload.put("prev_destination", prev_destination);
                 payload.put("campId", campId);
 
-                RequestBody body = RequestBody.create(JSON, payload.toString());
+                RequestBody body = RequestBody.create(payload.toString(), JSON);
 
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/checkCountScanningCodes")
+                        .url(baseUrl + "/checkCountScanningCodes")
+                        .addHeader("X-CSRF-Token", csrfToken)
                         .post(body)
                         .build();
 
@@ -376,9 +420,6 @@ public class MainActivity extends AppCompatActivity {
 
     // Method to show popup window with total found EPC codes
     private void showPopupWindow(String title, String message) {
-//        if (title.equalsIgnoreCase("Error")) {
-//            stopInventoryThread();
-//        }
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(title);
         builder.setMessage(message);
@@ -392,20 +433,15 @@ public class MainActivity extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(MainActivity.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         executorService.execute(() -> {
             try {
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                JSONObject payload = new JSONObject();
-                payload.put("isValidCode", true);
-                payload.put("campId", campId);
 
-                RequestBody body = RequestBody.create(JSON, payload.toString());
+                String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url("https://bunker.bg/bags")
-                        .post(body)
+                        .url(baseUrl + "/bags?isValidCode=" + true + "&campId=" + campId)
                         .build();
 
                 Response response = client.newCall(request).execute();
@@ -432,28 +468,34 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void showPopupWindowService(String title) {
+    private void showPopupWindowService() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
         // Inflate the custom view
         View customView = getLayoutInflater().inflate(R.layout.popup_spinner_layout, null);
         Spinner bagSpinner = customView.findViewById(R.id.bagSpinner);
 
-        builder.setTitle(title)
+        builder.setTitle("Linen Exchange additional service")
                 .setView(customView)
                 .setPositiveButton("OK", (dialog, which) -> {
                     String selectedBagCode = (String) bagSpinner.getSelectedItem();
-                    Map<String, String> bagIdMap = (Map<String, String>) bagSpinner.getTag();
+                    Object tag = bagSpinner.getTag();
+                    if (tag instanceof Map<?, ?>) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, String> bagIdMap = (Map<String, String>) tag;
 
-                    destination = "Linen Exchange service";
-                    uniqueEpcSet.clear();
+                        destination = "Linen Exchange service";
+                        uniqueEpcSet.clear();
 
-                    if (selectedBagCode != null && bagIdMap != null) {
-                        String selectedBagId = bagIdMap.get(selectedBagCode);
-                        uniqueEpcSet.add(selectedBagId);
-                        sendAllEpcsToServer(uniqueEpcSet);
-                        dialog.dismiss();
-                        showPopupWindow("Information", "Operation completed successfully");
+                        if (selectedBagCode != null) {
+                            String selectedBagId = bagIdMap.get(selectedBagCode);
+                            uniqueEpcSet.add(selectedBagId);
+                            sendAllEpcsToServer(uniqueEpcSet);
+                            dialog.dismiss();
+                            showPopupWindow("Information", "Operation completed successfully");
+                        }
+                    } else {
+                        Log.w("MainActivity", "Unexpected tag type: " + tag.getClass().getSimpleName());
                     }
                 })
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
@@ -508,21 +550,23 @@ public class MainActivity extends AppCompatActivity {
             try {
                 jsonPayload.put("code", epc);
             } catch (JSONException e) {
-                e.printStackTrace();
+                Log.e("MainActivity", "Error: " + e.getMessage());
             }
             String jsonData = jsonPayload.toString();
 
-            RequestBody body = RequestBody.create(JSON, jsonData);
+            RequestBody body = RequestBody.create(jsonData, JSON);
 
+            String baseUrl = getString(R.string.base_url);
             Request request = new Request.Builder()
-                    .url("https://bunker.bg/check-bag") // Use the new endpoint
+                    .url(baseUrl + "/check-bag") // Use the new endpoint
+                    .addHeader("X-CSRF-Token", csrfToken)
                     .post(body)
                     .build();
 
             Response response = client.newCall(request).execute();
 
             if (response.isSuccessful()) {
-                String responseData = response.body().string();
+                String responseData = Objects.requireNonNull(response.body()).string();
                 JSONObject jsonResponse = new JSONObject(responseData);
                 return jsonResponse.getBoolean("exists");
             } else {
@@ -535,7 +579,7 @@ public class MainActivity extends AppCompatActivity {
                         errorMessage = errorJson.optString("message", "Internal server error");
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    Log.e("MainActivity", "Error: " + e.getMessage());
                 }
 
                 String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
@@ -544,11 +588,11 @@ public class MainActivity extends AppCompatActivity {
 
         } catch (InterruptedIOException e) {
             // Log the error or handle it as needed
-            e.printStackTrace();
+            Log.e("MainActivity", "Error: " + e.getMessage());
             return false;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("MainActivity", "Error: " + e.getMessage());
             runOnUiThread(() -> showPopupWindow("Error", "Error checking bag code: " + e.getMessage()));
         }
 
@@ -576,17 +620,19 @@ public class MainActivity extends AppCompatActivity {
                 payload.put("campId", campId);
 
                 String url;
+                String baseUrl = getString(R.string.base_url);
 
                 if("Linen Exchange service".equals(destination)) {
-                    url = "https://bunker.bg/changeEndToEndStatus";
+                    url = baseUrl + "/changeEndToEndStatus";
                 } else {
-                    url = "https://bunker.bg/changeStatusBulk";
+                    url = baseUrl + "/changeStatusBulk";
                 }
 
-                RequestBody body = RequestBody.create(JSON, payload.toString());
+                RequestBody body = RequestBody.create(payload.toString(), JSON);
 
                 Request request = new Request.Builder()
                         .url(url)
+                        .addHeader("X-CSRF-Token", csrfToken)
                         .post(body)
                         .build();
 
@@ -607,7 +653,7 @@ public class MainActivity extends AppCompatActivity {
                     success[0] = false;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e("MainActivity", "Error: " + e.getMessage());
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
                 success[0] = false;
             }

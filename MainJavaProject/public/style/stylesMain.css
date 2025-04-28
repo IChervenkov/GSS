@@ -35,6 +35,8 @@ body {
     padding-top: 0px;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #28a745 transparent;
     max-height: calc(100vh - 50px);
 }
 
@@ -152,6 +154,8 @@ td {
     max-height: 80vh;
     overflow-y: auto;
     overflow-x: auto;
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #28a745 transparent;
 }
 
 .table-container::-webkit-scrollbar {
@@ -268,6 +272,8 @@ thead th {
     height: calc(100vh - 200px);
     /* Adjust based on your layout */
     overflow-y: auto;
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #28a745 transparent;
     border: 1px solid #ddd;
     padding: 20px;
     scroll-behavior: smooth;

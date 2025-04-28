@@ -69,6 +69,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const soldierSearchDropdown = document.getElementById('soldierDropdown');
     const selectedSoldierId = document.getElementById('selectedSoldierId');
 
+    const soldierAccommodationRoomSearchInput = document.getElementById('upcomingAccommodationRoom');
+    const soldierAccommodationRoomSearchDropdown = document.getElementById('upcomingAccommodationRoomDropdown');
+    const selectedSoldierAccommodationRoomId = document.getElementById('selectedUpcomingAccommodationRoomId');
+
+    const editSoldierAccommodationRoomSearchInput = document.getElementById('editUpcomingAccommodationRoom');
+    const editSoldierAccommodationRoomSearchDropdown = document.getElementById('editUpcomingAccommodationRoomDropdown');
+    const editSelectedSoldierAccommodationRoomId = document.getElementById('selectedEditUpcomingAccommodationRoomId');
+
     const additionalItemSoldierSearchInput = document.getElementById('additionalItemSoldierCode');
     const additionalItemSoldierSearchDropdown = document.getElementById('additionalItemSoldierDropdown');
     const additionalItemSelectedSoldierId = document.getElementById('selectedAdditionalItemSoldierId');
@@ -147,6 +155,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const isAccommodation = document.getElementById('isAccommodation');
     const loadingIndicator = document.getElementById('loadingIndicator');
 
+    const csrfToken = document.getElementsByName('_csrf')[0].value;
+
     let soldiers = [];
     let rooms = [];
     let bags = [];
@@ -172,12 +182,8 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBike = await fetch(`/specialRooms`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ numBuild: numBuild })
+            const responseBike = await fetch(`/specialRooms?numBuild=${numBuild}`, {
+                method: 'GET'
             });
 
             if (!responseBike.ok) {
@@ -245,12 +251,8 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBike = await fetch(`/specialKeys`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ numRoom: numRoom })
+            const responseBike = await fetch(`/specialKeys?numRoom=${numRoom}`, {
+                method: 'GET'
             });
 
             if (!responseBike.ok) {
@@ -394,12 +396,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             loadingIndicator.style.display = 'flex';
 
-            const response = await fetch('/getKeyBuildigType', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ keyId: keycode })
+            const response = await fetch(`/getKeyBuildigType?keyId=${keycode}`, {
+                method: 'GET'
             })
                 .finally(() => {
                     loadingIndicator.style.display = 'none';
@@ -546,6 +544,68 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    function filterUpcomingKey(query, dropDown) {
+        dropDown.innerHTML = '';
+        const filteredKey = allKeys.filter(key => key.name.toLowerCase().includes(query.toLowerCase()));
+
+        if (filteredKey.length > 0) {
+            dropDown.style.display = 'block';
+            filteredKey.forEach(key => {
+                const li = document.createElement('li');
+                li.textContent = key.name;
+                li.setAttribute('data-id', key.id);
+                dropDown.appendChild(li);
+            });
+        } else {
+            dropDown.style.display = 'none';
+        }
+    }
+
+    // Handle input change
+    soldierAccommodationRoomSearchInput.addEventListener('input', function () {
+        const query = soldierAccommodationRoomSearchInput.value;
+        if (query.length > 0) {
+            filterUpcomingKey(query, soldierAccommodationRoomSearchDropdown);
+        } else {
+            soldierAccommodationRoomSearchDropdown.style.display = 'none';
+            selectedSoldierAccommodationRoomId.value = '';
+        }
+    });
+
+    // Handle bike selection
+    soldierAccommodationRoomSearchDropdown.addEventListener('click', function (event) {
+        const selectedKey = event.target;
+        if (selectedKey && selectedKey.dataset.id) {
+            soldierAccommodationRoomSearchInput.value = selectedKey.textContent;
+            selectedSoldierAccommodationRoomId.value = selectedKey.getAttribute('data-id');
+            soldierAccommodationRoomSearchDropdown.style.display = 'none';
+        }
+
+        toggleInputValidity(soldierAccommodationRoomSearchInput, true);
+    });
+
+    editSoldierAccommodationRoomSearchInput.addEventListener('input', function () {
+        const query = editSoldierAccommodationRoomSearchInput.value;
+        if (query.length > 0) {
+            filterUpcomingKey(query, editSoldierAccommodationRoomSearchDropdown);
+        } else {
+            editSoldierAccommodationRoomSearchDropdown.style.display = 'none';
+            editSelectedSoldierAccommodationRoomId.value = '';
+        }
+    });
+
+    // Handle bike selection
+    editSoldierAccommodationRoomSearchDropdown.addEventListener('click', function (event) {
+        const selectedKey = event.target;
+        if (selectedKey && selectedKey.dataset.id) {
+            editSoldierAccommodationRoomSearchInput.value = selectedKey.textContent;
+            editSelectedSoldierAccommodationRoomId.value = selectedKey.getAttribute('data-id');
+            editSoldierAccommodationRoomSearchDropdown.style.display = 'none';
+        }
+
+        toggleInputValidity(editSoldierAccommodationRoomSearchInput, true);
+    });
+
     // Function to fetch soldier from the server
     async function fetchFreeBag() {
 
@@ -574,7 +634,10 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBag = await fetch(`/bags`, { method: "POST" });
+            const responseBag = await fetch(`/bags`, {
+                method: "GET"
+            });
+
             if (!responseBag.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -852,12 +915,8 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedSoldierMoveId.value = selectedSoldier.getAttribute('data-id');
             soldierSearchMoveDropdown.style.display = 'none';
 
-            const responseSoldier = await fetch(`/move/getSoldier`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ keyId: selectedSoldierMoveId.value })
+            const responseSoldier = await fetch(`/move/getSoldier?keyId=${selectedSoldierMoveId.value}`, {
+                method: 'GET'
             })
                 .finally(() => {
                     loadingIndicator.style.display = 'none';
@@ -1001,14 +1060,8 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         // Fetch and display keys only for the specific room using POST request with body
-        fetch('/getRoomKeys', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                roomNumber: cleanedRoomNumber
-            })
+        fetch(`/getRoomKeys?roomNumber=${cleanedRoomNumber}`, {
+            method: 'GET'
         })
             .then(response => response.json())
             .then(data => {
@@ -1194,8 +1247,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         const response = await fetch('/accommodation/returnAddtionalItem', {
                             method: 'POST',
+                            credentials: 'include',
                             headers: {
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'CSRF-Token': csrfToken
                             },
                             body: JSON.stringify(data)
                         });
@@ -1389,7 +1444,17 @@ document.addEventListener('DOMContentLoaded', function () {
         modalAddSoldierContent.classList.add('slide-out');
         modalAddSoldierContent.classList.remove('slide-in');
 
-        document.querySelectorAll('#soldier-number, #soldier-name, #soldier-country, #addDate1, #addDate2, #laundryBagSoldierSearch, #selectedBagSoldierId, #meal-card-soldier-value').forEach((input) => {
+        document.querySelectorAll(`
+            #soldier-number, 
+            #soldier-name, 
+            #soldier-country,
+            #upcomingAccommodationRoom,
+            #selectedUpcomingAccommodationRoomId,
+            #addDate1, 
+            #addDate2, 
+            #laundryBagSoldierSearch, 
+            #selectedBagSoldierId, 
+            #meal-card-soldier-value`).forEach((input) => {
 
             input.classList.remove('is-valid');
             input.classList.remove('is-invalid');
@@ -1397,6 +1462,8 @@ document.addEventListener('DOMContentLoaded', function () {
             input.value = '';
 
         });
+
+        soldierAccommodationRoomSearchDropdown.style.display = 'none';
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
@@ -1519,6 +1586,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     countryCell.textContent = item.country;
                     row.appendChild(countryCell);
 
+                    const upcomingKeyCell = document.createElement("td");
+                    upcomingKeyCell.textContent = item.upcoming_key || "N/A";
+                    row.appendChild(upcomingKeyCell);
+
                     const bagCodeCell = document.createElement("td");
                     bagCodeCell.textContent = item.code || "N/A";
                     row.appendChild(bagCodeCell);
@@ -1545,7 +1616,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.addEventListener('click', (event) => {
                         // Check if the clicked element is not the first td in the row
                         if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
-                            openEditSoldierModal(item.id, item.name, item.country, item.code, item.etc, item.meal_card, item.upcoming_accommodation, item.upcoming_release);
+                            openEditSoldierModal(item.id, item.name, item.country, item.upcoming_key, item.code, item.etc, item.meal_card, item.upcoming_accommodation, item.upcoming_release);
                         }
                     });
 
@@ -1590,7 +1661,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     }
 
-    function openEditSoldierModal(id, name, country, code, etc, meal_card, upcoming_accommodation, upcoming_release) {
+    function openEditSoldierModal(id, name, country, upcommig_key, code, etc, meal_card, upcoming_accommodation, upcoming_release) {
 
         function convertDate(date) {
             const dateObj = new Date(date);
@@ -1613,6 +1684,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('edit-old-soldier-id').value = id;
         document.getElementById('edit-soldier-name').value = name;
         document.getElementById('edit-soldier-country').value = country === 'None' ? '' : country;
+        document.getElementById('editUpcomingAccommodationRoom').value = upcommig_key === 'N/A' ? '' : upcommig_key;
+        document.getElementById('selectedEditUpcomingAccommodationRoomId').value = allKeys.find(key => key.name === upcommig_key) ? allKeys.find(key => key.name === upcommig_key).id : '';
         document.getElementById('laundryBagEditSoldierSearch').value = code === 'N/A' ? '' : code;
         document.getElementById('selectedBagEditSoldierId').value = etc;
         document.getElementById('meal-card-edit-soldier-value').value = meal_card === 'N/A' ? '' : meal_card;
@@ -1639,7 +1712,9 @@ document.addEventListener('DOMContentLoaded', function () {
             #edit-upcoming-release, 
             #laundryBagEditSoldierSearch, 
             #selectedBagEditSoldierId,
-            #meal-card-edit-soldier-value`).forEach((input) => {
+            #meal-card-edit-soldier-value,
+            #editUpcomingAccommodationRoom,
+            #selectedEditUpcomingAccommodationRoomId`).forEach((input) => {
 
             input.classList.remove('is-valid');
             input.classList.remove('is-invalid');
@@ -1648,6 +1723,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         });
 
+        editSoldierAccommodationRoomSearchDropdown.style.display = 'none';
         additionalItemEditSoldierButtoon.removeAttribute('soldier-id');
 
         // Delay hiding the modal to allow the animation to finish
@@ -1687,6 +1763,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     nameCell.textContent = item.name;
                     row.appendChild(nameCell);
 
+                    const bagCell = document.createElement("td");
+                    bagCell.textContent = item.code || 'N/A';
+                    row.appendChild(bagCell);
+
+                    const mealCardCell = document.createElement("td");
+                    mealCardCell.textContent = item.meal_card || 'N/A';
+                    row.appendChild(mealCardCell);
+
+                    const upcoming_key = document.createElement("td");
+                    upcoming_key.textContent = allKeys.find(key => key.id === item.upcoming_accommodation_key)
+                        ? allKeys.find(key => key.id === item.upcoming_accommodation_key).name
+                        : 'N/A';
+                    row.appendChild(upcoming_key);
+
                     const upcoming_accommodation = document.createElement("td");
                     const accommodationDate = new Date(item.upcoming_accommodation);
                     upcoming_accommodation.textContent = item.upcoming_accommodation
@@ -1716,8 +1806,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 loadingIndicator.style.display = 'none';
             });
 
-            // Ensure that any 'slide-out' class is removed if it was previously added
-            modalUpcomingActionSoldierListContent.classList.remove('slide-out');
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalUpcomingActionSoldierListContent.classList.remove('slide-out');
     }
 
     function closeUpcomingActionSoldierListModal() {
@@ -2244,10 +2334,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(nameroomCell);
 
                         const statusCell = document.createElement("td");
-                        if (item.countFreeBeds != 0) {
+                        if (item.countAllBeds == item.countFreeBeds || item.countFreeBeds != 0) {
                             statusCell.classList.add('undefined-data');
                         }
-                        statusCell.textContent = item.countFreeBeds != 0 ? 'Free' : 'Occupied';
+                        statusCell.textContent = item.countAllBeds == item.countFreeBeds ? 'Completely free' : item.countFreeBeds != 0 ? 'Free' : 'Occupied';
                         row.appendChild(statusCell);
 
                         const quantityCell = document.createElement("td");
@@ -2408,12 +2498,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
 
-            const response = await fetch(`/accommodation/viewReport`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ selectedDate1: selectDate1, selectedDate2: selectDate2 }),
+            const response = await fetch(`/accommodation/viewReport?selectedDate1=${selectDate1}&selectedDate2=${selectDate2}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -2606,11 +2692,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 isRemove = true;
 
                 const response = await fetch('/accommodation/removeSoldier', {
-                    method: 'POST',
+                    method: 'DELETE',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
-                    body: JSON.stringify(data),
+                    body: JSON.stringify(data)
                 });
 
                 if (!response.ok) {
@@ -2718,7 +2806,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const response = await fetch(document.getElementById('form2').action, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'CSRF-Token': csrfToken
+                },
                 body: JSON.stringify({ result: data, result_nationality: data_1, filtersSoldier: filtersSoldier, filtersSoldierMove: filtersSoldierMove })
             });
 
@@ -2794,6 +2886,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Use XMLHttpRequest to track upload progress
         const xhr = new XMLHttpRequest();
         xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('CSRF-Token', csrfToken);
 
         xhr.upload.onprogress = function (event) {
             if (event.lengthComputable) {
@@ -2812,12 +2906,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
-                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'InvalidDate' || error.type === 'CheckBag') {
+                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'InvalidDate' || error.type === 'CheckBag' || error.type === 'CheckKey') {
                             closeAddMultiSoldierModal();
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {
                             closeAddMultiSoldierModal();
-                            showGlobalMess("Error", `Invalid data in row with Id: ${error.row.soldierId}. Check the syntax of ID, name, country or dates.`);
+                            showGlobalMess("Error", `Invalid data in row with Id: ${error.row.soldierId}. Check the syntax of data in this roows.`);
                         }
                     });
                 } else {
@@ -2861,6 +2955,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Use XMLHttpRequest to track upload progress
         const xhr = new XMLHttpRequest();
         xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('CSRF-Token', csrfToken);
 
         xhr.upload.onprogress = function (event) {
             if (event.lengthComputable) {
@@ -2921,6 +3017,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { input: soldierId, condition: soldierId.value === "" },
             { input: soldierName, condition: soldierName.value === "" || !soldierNamePattern.test(soldierName.value) },
             { input: soldierCountry, condition: soldierCountry.value === "" },
+            { input: soldierAccommodationRoomSearchInput, condition: false },
             { input: bagSoldierSearchInput, condition: false },
             { input: mealCardSoldier, condition: false },
             { input: soldierDate1, condition: false },
@@ -2946,6 +3043,7 @@ document.addEventListener('DOMContentLoaded', function () {
             soldierId: soldierId.value,
             soldierName: soldierName.value,
             soldierCountry: soldierCountry.value,
+            upcomingKey: selectedSoldierAccommodationRoomId.value,
             soldierBag: selectedBagSoldierId.value,
             soldierMealCard: mealCardSoldier.value,
             upcomingAccommodationDate: soldierDate1.value,
@@ -2969,8 +3067,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3118,8 +3218,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3213,8 +3315,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3329,8 +3433,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
 
@@ -3455,10 +3561,12 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
-                    body: JSON.stringify(data),
+                    body: JSON.stringify(data)
                 });
 
                 responseData = await response.json();
@@ -3544,9 +3652,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 const response = await fetch(this.action, {
-                    method: 'POST',
+                    method: 'DELETE',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3659,8 +3769,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3764,8 +3876,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3831,6 +3945,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { input: editSoldierId, condition: editSoldierId.value === "" },
             { input: editSoldierName, condition: editSoldierName.value === "" || !soldierNamePattern.test(editSoldierName.value) },
             { input: editSoldierCountry, condition: editSoldierCountry.value === "" },
+            { input: editSoldierAccommodationRoomSearchInput, condition: false },
             { input: bagEditSoldierSearchInput, condition: false },
             { input: mealCardEditSoldier, condition: false },
             { input: editSoldierUpcomeAccom, condition: false },
@@ -3857,6 +3972,7 @@ document.addEventListener('DOMContentLoaded', function () {
             soldierNewId: editSoldierId.value,
             soldierName: editSoldierName.value,
             soldierCountry: editSoldierCountry.value,
+            soldierUpcomingKey: editSelectedSoldierAccommodationRoomId.value,
             soldierBag: selectedBagEditSoldierId.value,
             soldierMealCard: mealCardEditSoldier.value,
             soldierUpcomeAccom: editSoldierUpcomeAccom.value,
@@ -3879,9 +3995,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 const response = await fetch(this.action, {
-                    method: 'POST',
+                    method: 'PUT',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -3988,8 +4106,10 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(this.action, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(data)
                 });
@@ -4094,7 +4214,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (moveList.length > 0) {
                             await fetch('/accommodation/moveSoldier', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'CSRF-Token': csrfToken
+                                },
                                 body: JSON.stringify({ moves: moveList })
                             });
                             showGlobalMess('Info', 'Soldier(s) moved successfully!');
@@ -4114,7 +4238,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (moveList.length > 0) {
                             await fetch('/accommodation/moveSoldier', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'CSRF-Token': csrfToken
+                                },
                                 body: JSON.stringify({ moves: moveList })
                             });
                             showGlobalMess('Info', 'Soldier(s) moved successfully!');
@@ -4141,92 +4269,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         handleSoldierRelocation();
-
-        // const keyId = document.getElementById('previewKey').value;
-        // const soldId = document.getElementById('previewSoldier').value;
-        // const keyMoveId = document.getElementById('selectedKeyMoveId').value;
-        // const soldMoveId = document.getElementById('selectedSoldMoveId').value;
-
-        // const data = {
-        //     keyId: keyId,
-        //     soldId: soldId,
-        //     keyMoveId: keyMoveId,
-        //     soldMoveId: soldMoveId
-        // };
-
-        // const submitButton = document.createElement('button');
-        // var isSubmit = false;
-        // let hasError = false;
-        // var responseData = {};
-
-        // submitButton.textContent = 'Yes';
-        // submitButton.classList.add('btn', 'btn-success');
-
-        // submitButton.addEventListener('click', async () => {
-        //     hasError = false;
-        //     isSubmit = true;
-
-        //     loadingIndicator.style.display = 'flex';
-
-        //     try {
-        //         const response = await fetch(this.action, {
-        //             method: 'POST',
-        //             headers: {
-        //                 'Content-Type': 'application/json',
-        //             },
-        //             body: JSON.stringify(data)
-        //         });
-
-        //         responseData = await response.json();
-
-        //         if (!response.ok) {
-        //             hasError = true;
-        //         }
-
-        //         closeGlobalMessModal();
-
-        //     } catch (error) {
-        //         hasError = true;
-
-        //     } finally {
-        //         loadingIndicator.style.display = 'none';
-        //     }
-        // });
-
-        // modalGlobalMessContent.appendChild(submitButton);
-
-        // // Wait for the modal to close, then check if the submit button was clicked
-        // const observer = new MutationObserver(() => {
-        //     if (!modalGlobalMess.classList.contains('show') && isSubmit) {
-        //         observer.disconnect();
-
-        //         if (modalGlobalMessContent.contains(submitButton)) {
-        //             // Check if the button is still a child before removing
-        //             modalGlobalMessContent.removeChild(submitButton);
-        //         }
-        //     }
-        // });
-
-        // observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
-
-        // // Close the warning modal and show appropriate messages based on the result
-        // const closeWarningObserver = new MutationObserver(() => {
-        //     if (!modalGlobalMess.classList.contains('show')) {
-        //         closeWarningObserver.disconnect();
-
-        //         if (isSubmit && !hasError) {
-        //             closeModalRemoveKey();
-        //             showGlobalMess('Info', 'Soldier moved successfully');
-        //         } else if (isSubmit) {
-        //             showGlobalMess('Error', responseData.message || 'An error occurred while moving the soldier');
-        //         }
-        //     }
-        // });
-
-        // closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
-
-        // // Show the warning modal
-        // showGlobalMess('Warning', 'Are you sure you want to move this soldier?');
     };
 
     // Track sort order and priority for each column
@@ -4293,8 +4335,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     valA = a.nameroom.toLowerCase();
                     valB = b.nameroom.toLowerCase();
                 } else if (col === 'status') {
-                    valA = a.countFreeBeds != 0 ? "Free" : "Occupied";
-                    valB = b.countFreeBeds != 0 ? "Free" : "Occupied";
+                    valA = a.countAllBeds == a.countFreeBeds ? 'Completely free' : a.countFreeBeds != 0 ? "Free" : "Occupied";
+                    valB = b.countAllBeds == b.countFreeBeds ? 'Completely free' : b.countFreeBeds != 0 ? "Free" : "Occupied";
                 } else if (col === 'countFreeBeds') {
                     valA = a.countFreeBeds;
                     valB = b.countFreeBeds;
@@ -4323,10 +4365,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Room status cell
             const statusCell = document.createElement("td");
-            if (item.countFreeBeds != 0) {
+            if (item.countAllBeds == item.countFreeBeds || item.countFreeBeds != 0) {
                 statusCell.classList.add('undefined-data');
             }
-            statusCell.textContent = item.countFreeBeds != 0 ? 'Free' : 'Occupied';
+            statusCell.textContent = item.countAllBeds == item.countFreeBeds ? 'Completely free' : item.countFreeBeds != 0 ? 'Free' : 'Occupied';
             row.appendChild(statusCell);
 
             // Count free beds cell
@@ -4412,9 +4454,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 try {
                     if (document.getElementById('curent-dest').value !== numBuild) {
                         const response = await fetch(`/accommodation/removeDestination`, {
-                            method: 'POST',
+                            method: 'DELETE',
+                            credentials: 'include',
                             headers: {
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'CSRF-Token': csrfToken
                             },
                             body: JSON.stringify({ buildId: numBuild })
                         });

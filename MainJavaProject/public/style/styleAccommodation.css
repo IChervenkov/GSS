@@ -34,6 +34,8 @@ body {
     padding-top: 0px;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #28a745 transparent;
     height: calc(100vh - 50px);
 }
 
@@ -224,6 +226,8 @@ thead th input:focus {
     max-height: 78vh;
     overflow-y: auto;
     overflow-x: auto;
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #28a745 transparent;
 }
 
 .table-container::-webkit-scrollbar {
@@ -729,7 +733,9 @@ thead th input:focus {
 #allKeyDropdown,
 #buildDropdown,
 #additionalItemSoldierDropdown,
-#additionalBagCodeDropdown {
+#additionalBagCodeDropdown,
+#upcomingAccommodationRoomDropdown,
+#editUpcomingAccommodationRoomDropdown {
     list-style-type: none;
     padding: 0;
     margin: 0;
@@ -737,6 +743,8 @@ thead th input:focus {
     border: 1px solid #ddd;
     max-height: 200px;
     overflow-y: auto;
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #28a745 transparent;
     display: none;
     position: absolute;
     z-index: 1000;
@@ -753,7 +761,9 @@ thead th input:focus {
 #allKeyDropdown li,
 #buildDropdown li,
 #additionalItemSoldierDropdown li,
-#additionalBagCodeDropdown li {
+#additionalBagCodeDropdown li,
+#upcomingAccommodationRoomDropdown li,
+#editUpcomingAccommodationRoomDropdown li {
     padding: 10px;
     cursor: pointer;
 }
@@ -768,7 +778,9 @@ thead th input:focus {
 #allKeyDropdown li:hover,
 #buildDropdown li:hover,
 #additionalItemSoldierDropdown li:hover,
-#additionalBagCodeDropdown li:hover {
+#additionalBagCodeDropdown li:hover,
+#upcomingAccommodationRoomDropdown li:hover,
+#editUpcomingAccommodationRoomDropdown li:hover {
     background-color: #218838;
     color: white;
 }
@@ -965,7 +977,9 @@ thead th input:focus {
 #allKeyDropdown.list-group::-webkit-scrollbar,
 #buildDropdown.list-group::-webkit-scrollbar,
 #additionalItemSoldierDropdown.list-group::-webkit-scrollbar,
-#additionalBagCodeDropdown.list-group::-webkit-scrollbar {
+#additionalBagCodeDropdown.list-group::-webkit-scrollbar,
+#upcomingAccommodationRoomDropdown.list-group::-webkit-scrollbar,
+#editUpcomingAccommodationRoomDropdown.list-group::-webkit-scrollbar {
     width: 10px;
 }
 
@@ -979,7 +993,9 @@ thead th input:focus {
 #allKeyDropdown.list-group::-webkit-scrollbar-thumb,
 #buildDropdown.list-group::-webkit-scrollbar-thumb,
 #additionalItemSoldierDropdown.list-group::-webkit-scrollbar-thumb,
-#additionalBagCodeDropdown.list-group::-webkit-scrollbar-thumb {
+#additionalBagCodeDropdown.list-group::-webkit-scrollbar-thumb,
+#upcomingAccommodationRoomDropdown.list-group::-webkit-scrollbar-thumb,
+#editUpcomingAccommodationRoomDropdown.list-group::-webkit-scrollbar-thumb {
     background-color: #28a745;
     border-radius: 4px;
 }
@@ -994,7 +1010,9 @@ thead th input:focus {
 #allKeyDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #buildDropdown.list-group::-webkit-scrollbar-thumb:hover,
 #additionalItemSoldierDropdown.list-group::-webkit-scrollbar-thumb:hover,
-#additionalBagCodeDropdown.list-group::-webkit-scrollbar-thumb:hover {
+#additionalBagCodeDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#upcomingAccommodationRoomDropdown.list-group::-webkit-scrollbar-thumb:hover,
+#editUpcomingAccommodationRoomDropdown.list-group::-webkit-scrollbar-thumb:hover {
     background-color: #1e7e34;
 }
 
@@ -1645,9 +1663,9 @@ thead th input:focus {
 
     #soldierListModal .modal-content,
     #upcomingActionSoldierListModal .modal-content {
-        max-width: 70%;
+        max-width: 90%;
         /* Adjust modal width */
-        margin-left: 16%;
+        margin-left: 5%;
     }
 
     .virtual-warehouse-labels {

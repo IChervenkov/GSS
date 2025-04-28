@@ -74,6 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show loading indicator
     const loadingIndicator = document.getElementById('loadingIndicator');
 
+    const csrfToken = document.getElementsByName('_csrf')[0].value;
+
     let bags = [];
     let allBags = [];
     let allCheckedRow = [];
@@ -98,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
 
             const response = await fetch(`/bags`, {
-                method: 'POST'
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -169,12 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (bags.length > 0)
                 bags = [];
 
-            const response = await fetch(`/getBagsByStatus`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status: status })
+            const response = await fetch(`/getBagsByStatus?status=${status}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -954,12 +952,8 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingIndicator.style.display = 'flex';
 
             try {
-                const result = await fetch('/getBagsByStatus', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ status: clickStatus }),
+                const result = await fetch(`/getBagsByStatus?status=${clickStatus}`, {
+                    method: 'GET'
                 });
 
                 if (!result.ok) {
@@ -1150,11 +1144,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 isRemove = true;
 
                 const response = await fetch('/laundry/deleteBag', {
-                    method: 'POST',
+                    method: 'DELETE',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
                     },
-                    body: JSON.stringify(data),
+                    body: JSON.stringify(data)
                 });
 
                 if (!response.ok) {
@@ -1226,10 +1222,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const response = await fetch('/changeStatusConsole', {
                         method: 'POST',
+                        credentials: 'include',
                         headers: {
                             'Content-Type': 'application/json',
+                            'CSRF-Token': csrfToken
                         },
-                        body: JSON.stringify(data),
+                        body: JSON.stringify(data)
                     });
 
                     result = await response.json();
@@ -1298,10 +1296,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const response = await fetch('/changeStatusConsole', {
                         method: 'POST',
+                        credentials: 'include',
                         headers: {
                             'Content-Type': 'application/json',
+                            'CSRF-Token': csrfToken
                         },
-                        body: JSON.stringify(data),
+                        body: JSON.stringify(data)
                     });
 
                     result = await response.json();
@@ -1395,12 +1395,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
 
-            const response = await fetch(`/laundry/viewReport`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ selectedDate1: selectDate1, selectedDate2: selectDate2 }),
+            const response = await fetch(`/laundry/viewReport?selectedDate1=${selectDate1}&selectedDate2=${selectDate2}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -1523,7 +1519,11 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(document.getElementById(formId).action, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    },
                     body: JSON.stringify(data)
                 });
 
@@ -1645,8 +1645,12 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(document.getElementById('form6').action, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data),
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify(data)
                 });
 
                 responseData = await response.json();
@@ -1740,8 +1744,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const response = await fetch(document.getElementById('form7').action, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    },
                     body: JSON.stringify(data)
                 });
 
@@ -1863,7 +1871,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const response = await fetch(document.getElementById('form1').action, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'CSRF-Token': csrfToken
+                },
                 body: JSON.stringify({ result: data, result_nationality: data_1, filtersBags: filtersBags, filtersNationalBags: filtersNationalBags })
             });
 

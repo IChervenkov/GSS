@@ -261,6 +261,8 @@ body {
     max-height: 30vh;
     overflow-y: auto;
     overflow-x: auto;
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #28a745 transparent;
 }
 
 .modal.show {
@@ -570,6 +572,8 @@ body {
     max-height: 78vh;
     overflow-y: auto;
     overflow-x: auto;
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #28a745 transparent;
 }
 
 .table-container::-webkit-scrollbar {
@@ -699,6 +703,8 @@ thead th input:focus {
     border: 1px solid #ddd;
     max-height: 200px;
     overflow-y: auto;
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #28a745 transparent;
     display: none;
     position: absolute;
     z-index: 1000;

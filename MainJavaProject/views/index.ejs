@@ -18,6 +18,7 @@
         <div class="login-box">
             <img src="/icon/logologin.png" alt="img/png" class="logo-login">
             <form id="loginForm" action="/login" method="POST"> <!-- Adding action and method for form submission -->
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <div class="input-group">
                     <label for="username">Username <span class="text-danger">*</span></label>
                     <input type="text" id="username" name="username" placeholder="Enter Username" required>

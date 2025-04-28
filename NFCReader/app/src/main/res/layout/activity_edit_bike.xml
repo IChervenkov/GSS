@@ -19,7 +19,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:ignore="MissingConstraints"
+            tools:ignore="HardcodedText,MissingConstraints"
             tools:text="Sample Item" />
 
         <!-- Second TextView -->
@@ -31,43 +31,48 @@
             android:text="New NFC code: None"
             android:textSize="20sp"
             android:layout_marginTop="20dp"
-            android:layout_centerHorizontal="true" />
+            android:layout_centerHorizontal="true"
+            tools:ignore="HardcodedText" />
 
         <!-- EditText -->
         <EditText
             android:id="@+id/bikeNameEditText"
-            android:layout_width="650px"
+            android:layout_width="260dp"
             android:layout_height="wrap_content"
             android:layout_below="@id/newNfcTextView"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
+            android:autofillHints="Enter name"
             android:hint="Enter name"
             android:minHeight="48dp"
             android:padding="10dp"
-            android:textSize="18sp" />
+            android:textSize="18sp"
+            tools:ignore="HardcodedText,TextFields,TextContrastCheck" />
 
         <!-- Button -->
         <Button
             android:id="@+id/editButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Edit bike"
             android:layout_below="@id/bikeNameEditText"
-            android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:backgroundTint="@android:color/holo_green_dark"
+            android:text="Edit bike"
             android:textColor="@android:color/white"
-            android:backgroundTint="@android:color/holo_green_dark" />
+            tools:ignore="HardcodedText,TextContrastCheck" />
 
         <Button
             android:id="@+id/editHelmetButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Edit helmet"
             android:layout_below="@id/editButton"
-            android:layout_marginTop="20dp"
             android:layout_centerHorizontal="true"
+            android:layout_marginTop="20dp"
+            android:backgroundTint="@android:color/holo_green_dark"
+            android:text="Edit helmet"
             android:textColor="@android:color/white"
-            android:backgroundTint="@android:color/holo_green_dark" />
+            tools:ignore="HardcodedText,TextContrastCheck" />
 
     </RelativeLayout>
 </ScrollView>

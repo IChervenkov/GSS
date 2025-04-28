@@ -11,6 +11,7 @@ const multer = require('multer');
 const XLSX = require('xlsx');
 const hpp = require('hpp');
 const moment = require('moment');
+const csurf = require('csurf');
 
 // const RedisStore = require('connect-redis').default;
 // const redis = require('redis');
@@ -54,7 +55,7 @@ const schemaAddCamp = Joi.object({
 
 const schemaLogIn = Joi.object({
     username: Joi.string().alphanum().required(),
-    password: Joi.string().alphanum().required()
+    password: Joi.string().alphanum().required(),
 });
 
 // Define the schema
@@ -320,7 +321,9 @@ const schemaSpecialKey = Joi.object({
 });
 
 const schemaSpecialAssets = Joi.object({
-    numRoom: Joi.string().alphanum().allow('').optional()
+    numRoom: Joi.string().alphanum().allow('').optional(),
+    campId: Joi.string().alphanum().optional(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaDeleteAsets = Joi.object({
@@ -344,7 +347,6 @@ const schemaCheckAppCode = Joi.object({
 const schemaLostItems = Joi.object({
     itemName: Joi.string().alphanum().required(),
     description: Joi.string().allow('').pattern(/^[a-zA-Z0-9\s]*$/).required(),
-    soldierId: Joi.string().alphanum().required(),
     lostQuantity: Joi.number().required()
 });
 
@@ -434,8 +436,9 @@ const schemaAddSoldier = Joi.object({
     soldierId: Joi.string().alphanum().required(),
     soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
     soldierCountry: Joi.string().alphanum().required(),
-    soldierBag: Joi.string().alphanum().allow('').required(),
-    soldierMealCard: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).allow('').required(),
+    upcomingKey: Joi.string().pattern(/^[0-9]+\/[0-9]+\/[0-9]+$|^[a-zA-Z0-9]+$/).optional(),
+    soldierBag: Joi.string().alphanum().allow('').optional(),
+    soldierMealCard: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).allow('').optional(),
     upcomingAccommodationDate: Joi.date().allow('').iso().optional(),
     upcomingReleaseDate: Joi.date().allow('').iso().optional()
 });
@@ -445,6 +448,7 @@ const schemaEditSoldier = Joi.object({
     soldierNewId: Joi.string().alphanum().required(),
     soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
     soldierCountry: Joi.string().alphanum().required(),
+    soldierUpcomingKey: Joi.string().alphanum().allow('').required(),
     soldierBag: Joi.string().alphanum().allow('').required(),
     soldierMealCard: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).allow('').required(),
     soldierUpcomeAccom: Joi.date().allow('').iso().required(),
@@ -555,10 +559,8 @@ class Server {
         this.app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
         // Middleware to parse JSON bodies (bodyParser is already included in Express)
-        this.app.use(bodyParser.json());
         this.app.set("view engine", "ejs");
         this.app.use(express.static(path.join(__dirname, 'public')));
-        this.app.use(express.urlencoded({ extended: false }))
 
         // Set security headers
         this.app.use((req, res, next) => {
@@ -608,12 +610,23 @@ class Server {
             resave: false,
             saveUninitialized: false,
             cookie: {
-                secure: false,
+                secure: false, // true if use HTTPS
                 httpOnly: true,
                 sameSite: 'strict',
                 maxAge: 8 * 60 * 60 * 1000
             }
         }));
+
+        this.app.use(csurf({ cookie: false }));
+
+        this.app.use((req, res, next) => {
+            res.locals.csrfToken = req.csrfToken();
+            next();
+        });
+
+        this.app.get('/csrf-token', (req, res) => {
+            res.json({ csrfToken: req.csrfToken() });
+        });
 
         // Global error handler
         this.app.use((err, req, res, next) => {
@@ -910,7 +923,7 @@ class Server {
         // POST route for login with brute-force protection
         this.app.post('/login', async (req, res) => {
 
-            const { error } = schemaLogIn.validate(req.body);
+            const { error } = schemaLogIn.validate(req.body, { allowUnknown: true });
             if (error) {
                 return res.render('index', { title: 'LogIn', errorMessage: 'Invalid username or password, username and password must contain only a-z, A-Z, 0-9 symbols' });
             }
@@ -1033,9 +1046,9 @@ class Server {
 
 
         // POST route to handle RFID codes (only accessible after login)
-        this.app.post('/rfid', (req, res) => {
+        this.app.get('/rfid', (req, res) => {
 
-            const { code } = req.body;
+            const { code } = req.query;
 
             if (code) {
                 res.status(200).send('Code received');
@@ -1048,17 +1061,17 @@ class Server {
     defineRoutesNFC() {
         // Section NFC App
 
-        this.app.post('/readBikeNfc', async (req, res) => {
+        this.app.get('/readBikeNfc', async (req, res) => {
 
-            const { error } = schemaNFCBikeRead.validate(req.body);
+            const { error } = schemaNFCBikeRead.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.body.isValidCode)
+            if (!req.query.isValidCode)
                 return res.status(400).json({ message: "Invalid product code!" });
 
-            const { nfcData } = req.body;
+            const { nfcData } = req.query;
 
             const client = await pool.connect();
 
@@ -1103,17 +1116,17 @@ class Server {
         });
 
         // Endpoint to get all available bikes
-        this.app.post('/getClient', async (req, res) => {
+        this.app.get('/getClient', async (req, res) => {
 
-            const { error } = shemaClientNfc.validate(req.body);
+            const { error } = shemaClientNfc.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.body.isValidCode)
+            if (!req.query.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { campId } = req.body;
+            const { campId } = req.query;
             const client = await pool.connect();
 
             try {
@@ -1272,7 +1285,7 @@ class Server {
             }
         });
 
-        this.app.post('/editParameturBike', async (req, res) => {
+        this.app.patch('/editParameturBike', async (req, res) => {
 
             const { error } = schemaEditParameturBike.validate(req.body);
             if (error) {
@@ -1335,7 +1348,7 @@ class Server {
             }
         });
 
-        this.app.post('/editParameturHelmet', async (req, res) => {
+        this.app.patch('/editParameturHelmet', async (req, res) => {
 
             const { error } = schemaEditParameturHelmet.validate(req.body);
             if (error) {
@@ -1402,7 +1415,7 @@ class Server {
     defineRoutesBicycles() {
 
         // Serve APK file from local directory
-        this.app.get('/download-apk-bike', this.isLoggedIn.bind(this), (req, res) => {
+        this.app.get('/download-apk-bike', (req, res) => {
             const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.0-release.apk');
 
             // Check APK file existence and legality
@@ -1419,6 +1432,10 @@ class Server {
                     res.status(500).send('Error downloading the file');
                 }
             });
+        });
+
+        this.app.get('/apk-bike-version', (req, res) => {
+            res.json({ version: "1.0", apkUrl: "/download-apk-bike" });
         });
 
         // Section bicycles
@@ -1698,6 +1715,7 @@ class Server {
                         `SELECT DISTINCT
                         b.namebike, 
                         COALESCE(s.namesoldier, 'N/A') AS namesoldier,
+                        COALESCE(s.country, 'N/A') AS country,
                         COALESCE(h.code, 'N/A') AS helmet_code,
                         COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
                         COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_to,
@@ -1711,6 +1729,7 @@ class Server {
                         END AS duration,
                         CASE
                             WHEN dateto IS NOT NULL AND (dateto - datefrom) > INTERVAL '24 hours' AND status_bike <> 'Repair' AND status_bike <> 'Long term' THEN 'Late'
+                            WHEN dateto IS NULL THEN status_bike
                             ELSE 'On time'
                             END AS status
                         FROM bikesoldier bs 
@@ -1751,7 +1770,7 @@ class Server {
                 const worksheet1 = workbook.addWorksheet('Bike Usage Data');
 
                 // Add custom column titles for the first sheet
-                const headers1 = ['Bike Name', 'Soldier Name', 'Helmet Code', 'Date From', 'Date To', 'Duration', 'Status', 'Overdue Status'];
+                const headers1 = ['Bike Name', 'Soldier Name', 'Country', 'Helmet Code', 'Date From', 'Date To', 'Duration', 'Status', 'Overdue Status'];
                 const headerRow1 = worksheet1.addRow(headers1);
 
                 // Apply styling to the headers
@@ -1768,12 +1787,13 @@ class Server {
 
                 // Set column widths for sheet 1
                 worksheet1.columns = [
-                    { width: 20 }, // Bike Name
-                    { width: 25 }, // Soldier Name
-                    { width: 20 }, // Date From
-                    { width: 20 }, // Date To
-                    { width: 25 }, // Duration
-                    { width: 15 }, // Status
+                    { width: 20 },
+                    { width: 25 },
+                    { width: 20 },
+                    { width: 20 },
+                    { width: 20 },
+                    { width: 25 },
+                    { width: 30 },
                     { width: 20 },
                     { width: 25 }
                 ];
@@ -1784,13 +1804,13 @@ class Server {
 
                     // Check if the status is "Late" and add a ⚠️ icon
                     if (row.status === 'Late') {
-                        dataRow.getCell(8).value = '⚠️';
+                        dataRow.getCell(9).value = '⚠️';
                     } else {
-                        dataRow.getCell(8).value = '';
+                        dataRow.getCell(9).value = '';
                     }
 
                     // Center align the "Status" column (8th column)
-                    dataRow.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+                    dataRow.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' };
 
                     // Apply borders and alternating row color
                     dataRow.eachCell((cell) => {
@@ -1888,21 +1908,21 @@ class Server {
 
         });
 
-        this.app.post('/bikes', async (req, res) => {
+        this.app.get('/bikes', async (req, res) => {
 
-            const { error } = shemaClientNfc.validate(req.body);
+            const { error } = shemaClientNfc.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session.username)
+            if (!req.query.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
             var optionBike = [];
 
             const client = await pool.connect();
 
-            const campId = req.session.username ? req.session.camp : req.body.campId;
+            const campId = req.session.username ? req.session.camp : req.query.campId;
 
             try {
                 await client.query('BEGIN');
@@ -1925,21 +1945,21 @@ class Server {
 
         });
 
-        this.app.post('/helmets', async (req, res) => {
+        this.app.get('/helmets', async (req, res) => {
 
-            const { error } = shemaClientNfc.validate(req.body);
+            const { error } = shemaClientNfc.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session.username)
+            if (!req.query.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
             var optionsHelmets = [];
 
             const client = await pool.connect();
 
-            const campId = req.session.username ? req.session.camp : req.body.campId;
+            const campId = req.session.username ? req.session.camp : req.query.campId;
 
             try {
                 await client.query('BEGIN');
@@ -1971,17 +1991,17 @@ class Server {
 
         });
 
-        this.app.post('/getHelmetByBike', async (req, res) => {
+        this.app.get('/getHelmetByBike', async (req, res) => {
 
-            const { error } = shemaHelmetBike.validate(req.body);
+            const { error } = shemaHelmetBike.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session.username)
+            if (!req.query.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { bikeId } = req.body;
+            const { bikeId } = req.query;
             const client = await pool.connect();
 
             try {
@@ -2007,14 +2027,14 @@ class Server {
 
         });
 
-        this.app.post('/bicycles/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/bicycles/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemaReport.validate(req.body);
+            const { error } = schemaReport.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            let { selectedDate1, selectedDate2 } = req.body;
+            let { selectedDate1, selectedDate2 } = req.query;
 
             if (selectedDate1 !== "None" && selectedDate2 !== "None") {
 
@@ -2033,6 +2053,7 @@ class Server {
                             `SELECT DISTINCT
                                 b.namebike, 
                                 s.namesoldier,
+                                s.country,
                                 h.code AS helmet_code,
                                 COALESCE(TO_CHAR(datefrom, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_from,
                                 COALESCE(TO_CHAR(dateto, 'FMMonth DD, YYYY HH24:MI'), 'Still in use') AS date_to, 
@@ -2183,7 +2204,7 @@ class Server {
             }
         });
 
-        this.app.post('/bicycles/removeHelmet', async (req, res) => {
+        this.app.delete('/bicycles/removeHelmet', async (req, res) => {
 
             const { error } = schemaRemoveHelmet.validate(req.body);
             if (error) {
@@ -2228,7 +2249,7 @@ class Server {
             }
         });
 
-        this.app.post('/bicycles/removeBike', async (req, res) => {
+        this.app.delete('/bicycles/removeBike', async (req, res) => {
 
             const { error } = schemaRemoveBike.validate(req.body);
             if (error) {
@@ -2360,6 +2381,12 @@ class Server {
                 // Create a Set to track unique bike IDs within the data array
                 const uniqueBikeId = new Set();
 
+                if (sheetName !== 'Bicycles Multipul Bike') {
+                    await client.query('ROLLBACK');
+                    errors.push({ type: 'CheckExist', message: `Invalid template` });
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
                 await Promise.all(data.map(async (row) => {
 
                     if (!row.id) {
@@ -2447,6 +2474,12 @@ class Server {
                 // Create a Set to track unique bike IDs within the data array
                 const uniqueHelmetId = new Set();
 
+                if (sheetName !== 'Helmets Multipul Bike') {
+                    await client.query('ROLLBACK');
+                    errors.push({ type: 'CheckExist', message: `Invalid template` });
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
                 await Promise.all(data.map(async (row) => {
 
                     if (!row.id) {
@@ -2513,17 +2546,17 @@ class Server {
             }
         });
 
-        this.app.post('/checkBike', async (req, res) => {
+        this.app.get('/checkBike', async (req, res) => {
 
-            const { error } = schemaCheckBike.validate(req.body);
+            const { error } = schemaCheckBike.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session.username)
+            if (!req.query.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { bikeId } = req.body;
+            const { bikeId } = req.query;
 
             const client = await pool.connect();
 
@@ -2576,7 +2609,9 @@ class Server {
                 await client.query('BEGIN');
 
                 const result_client = await client.query(`
-                    SELECT s.id, namesoldier, country, upcoming_accommodation, upcoming_release, namekey, l.id as etc, l.code, s.meal_card, s.date_free, s.date_accommodation, k.id AS keyid
+                    SELECT s.id, namesoldier, country, upcoming_accommodation, upcoming_release, namekey,
+                    l.id as etc, l.code, s.meal_card, s.date_free, s.date_accommodation, k.id AS keyid,
+                    (SELECT namekey FROM key WHERE id = s.upcoming_accommodation_key) AS upcoming_key
                     FROM soldier s
                     LEFT JOIN key k ON k.soldierid = s.id
                     LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id
@@ -2595,7 +2630,8 @@ class Server {
                         code: element.code ? element.code : '',
                         meal_card: element.meal_card ? element.meal_card : '',
                         date_free: element.date_free ? element.date_free : '',
-                        date_accommodation: element.date_accommodation ? element.date_accommodation : ''
+                        date_accommodation: element.date_accommodation ? element.date_accommodation : '',
+                        upcoming_key: element.upcoming_key ? element.upcoming_key : ''
                     });
                 });
 
@@ -2612,7 +2648,7 @@ class Server {
             }
         });
 
-        this.app.post('/bicycles/editBike', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.patch('/bicycles/editBike', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaEditBike.validate(req.body);
             if (error) {
@@ -2658,32 +2694,36 @@ class Server {
 
                 const result = await client.query(`
                     SELECT 
-                        namesoldier AS name,
-                        upcoming_accommodation,
-                        upcoming_release
-                    FROM soldier
-                    WHERE camp_id = $1 AND
-                        (upcoming_accommodation >= CURRENT_DATE AND upcoming_release IS NULL) 
-                        OR (upcoming_release >= CURRENT_DATE AND upcoming_accommodation IS NULL) 
-                        OR (upcoming_accommodation >= CURRENT_DATE AND upcoming_release >= CURRENT_DATE)
+                        s.namesoldier AS name,
+                        l.code,
+                        s.meal_card,
+                        s.upcoming_accommodation_key,
+                        s.upcoming_accommodation,
+                        s.upcoming_release
+                    FROM soldier s
+                    LEFT JOIN laundrybags l ON l.id =  s.laundry_bag_id
+                    WHERE s.camp_id = $1 AND
+                        (s.upcoming_accommodation >= CURRENT_DATE AND s.upcoming_release IS NULL) 
+                        OR (s.upcoming_release >= CURRENT_DATE AND s.upcoming_accommodation IS NULL) 
+                        OR (s.upcoming_accommodation >= CURRENT_DATE AND s.upcoming_release >= CURRENT_DATE)
                     ORDER BY 
                         CASE 
-                            WHEN upcoming_accommodation IS NOT NULL AND upcoming_release IS NOT NULL THEN 1
-                            WHEN upcoming_accommodation IS NOT NULL THEN 2
-                            WHEN upcoming_release IS NOT NULL THEN 3
+                            WHEN s.upcoming_accommodation IS NOT NULL AND s.upcoming_release IS NOT NULL THEN 1
+                            WHEN s.upcoming_accommodation IS NOT NULL THEN 2
+                            WHEN s.upcoming_release IS NOT NULL THEN 3
                             ELSE 4
                         END,
                         CASE 
-                            WHEN upcoming_accommodation IS NOT NULL AND upcoming_release IS NOT NULL THEN upcoming_accommodation 
+                            WHEN s.upcoming_accommodation IS NOT NULL AND s.upcoming_release IS NOT NULL THEN s.upcoming_accommodation 
                         END DESC,
                         CASE 
-                            WHEN upcoming_accommodation IS NOT NULL AND upcoming_release IS NOT NULL THEN upcoming_release 
+                            WHEN s.upcoming_accommodation IS NOT NULL AND s.upcoming_release IS NOT NULL THEN s.upcoming_release 
                         END ASC,
                         CASE 
-                            WHEN upcoming_accommodation IS NOT NULL AND upcoming_release IS NULL THEN upcoming_accommodation 
+                            WHEN s.upcoming_accommodation IS NOT NULL AND s.upcoming_release IS NULL THEN s.upcoming_accommodation 
                         END DESC,
                         CASE 
-                            WHEN upcoming_release IS NOT NULL AND upcoming_accommodation IS NULL THEN upcoming_release 
+                            WHEN s.upcoming_release IS NOT NULL AND s.upcoming_accommodation IS NULL THEN s.upcoming_release 
                         END ASC;`, [req.session.camp]);
 
                 await client.query('COMMIT');
@@ -2704,39 +2744,69 @@ class Server {
             try {
                 await client.query('BEGIN');
 
-                // Combine both queries into one
                 const query = `
                     SELECT *
-                    FROM soldier
-                    WHERE camp_id = $1 
-                        AND (upcoming_accommodation = CURRENT_DATE OR upcoming_release = CURRENT_DATE);`;
-                const result = await client.query(query, [req.session.camp]);
+                        FROM soldier
+                        WHERE camp_id = $1
+                        AND NOT (date_accommodation IS NOT NULL AND date_free IS NULL)
+                        AND (
+                            (upcoming_accommodation IS NOT NULL AND CURRENT_DATE BETWEEN upcoming_accommodation - INTERVAL '1 day' AND upcoming_accommodation)
+                            OR
+                            (upcoming_release IS NOT NULL AND CURRENT_DATE BETWEEN upcoming_release - INTERVAL '1 day' AND upcoming_release)
+                        );
+                    `;
 
+                const result = await client.query(query, [req.session.camp]);
                 await client.query('COMMIT');
 
-                function convertDate(date) {
+                const convertDate = (date) => {
                     const dateObj = new Date(date);
                     const year = dateObj.getFullYear();
                     const month = String(dateObj.getMonth() + 1).padStart(2, "0");
                     const day = String(dateObj.getDate()).padStart(2, "0");
-
                     return `${year}-${month}-${day}`;
-                }
+                };
 
-                // Determine accommodations and releases
-                const isAccommodation = result.rows.some(row => convertDate(row.upcoming_accommodation) === new Date().toISOString().slice(0, 10));
-                const isRelease = result.rows.some(row => convertDate(row.upcoming_release) === new Date().toISOString().slice(0, 10));
+                const todayStr = convertDate(new Date());
+                const oneDayMs = 86400000;
 
-                // Send response
+                const isAccommodation = result.rows.some(row => {
+                    const date = new Date(row.upcoming_accommodation);
+                    const dateStr = convertDate(date);
+                    const yesterdayStr = convertDate(new Date(date.getTime() - oneDayMs));
+                    return todayStr === dateStr || todayStr === yesterdayStr;
+                });
+
+                const isRelease = result.rows.some(row => {
+                    const date = new Date(row.upcoming_release);
+                    const dateStr = convertDate(date);
+                    const yesterdayStr = convertDate(new Date(date.getTime() - oneDayMs));
+                    return todayStr === dateStr || todayStr === yesterdayStr;
+                });
+
+                const accommodationList = result.rows
+                    .filter(row => {
+                        const date = new Date(row.upcoming_accommodation);
+                        const dateStr = convertDate(date);
+                        const yesterdayStr = convertDate(new Date(date.getTime() - oneDayMs));
+                        return todayStr === dateStr || todayStr === yesterdayStr;
+                    })
+                    .map(row => row.namesoldier);
+
+                const releaseList = result.rows
+                    .filter(row => {
+                        const date = new Date(row.upcoming_release);
+                        const dateStr = convertDate(date);
+                        const yesterdayStr = convertDate(new Date(date.getTime() - oneDayMs));
+                        return todayStr === dateStr || todayStr === yesterdayStr;
+                    })
+                    .map(row => row.namesoldier);
+
                 return res.status(200).json({
                     isAccommodation,
                     isRelease,
-                    accommodationList: result.rows
-                        .filter(row => convertDate(row.upcoming_accommodation) === new Date().toISOString().slice(0, 10))
-                        .map(row => row.namesoldier), // Assuming soldier has a `name` field
-                    releaseList: result.rows
-                        .filter(row => convertDate(row.upcoming_release) === new Date().toISOString().slice(0, 10))
-                        .map(row => row.namesoldier)
+                    accommodationList,
+                    releaseList
                 });
 
             } catch (error) {
@@ -2782,19 +2852,19 @@ class Server {
             }
         });
 
-        this.app.post('/bags', async (req, res) => {
+        this.app.get('/bags', async (req, res) => {
 
-            const { error } = shemaGetBags.validate(req.body);
+            const { error, value } = shemaGetBags.validate(req.query);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session.username)
+            if (!req.session?.username && !value.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
             var optionAllBag = [];
 
-            const campId = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
+            const campId = req.session?.username ? req.session.camp : value.campId;
             const client = await pool.connect();
 
             try {
@@ -2891,14 +2961,14 @@ class Server {
             }
         });
 
-        this.app.post('/move/getSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/move/getSoldier', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemaGetSoldier.validate(req.body);
+            const { error } = schemaGetSoldier.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            const keyId = req.body.keyId;
+            const keyId = req.query.keyId;
 
             const client = await pool.connect();
 
@@ -2927,17 +2997,17 @@ class Server {
             }
         });
 
-        this.app.post('/searchBikes', async (req, res) => {
+        this.app.get('/searchBikes', async (req, res) => {
 
-            const { error } = schemaSearchBike.validate(req.body);
+            const { error } = schemaSearchBike.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session.username)
+            if (!req.query.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const selectBike = req.body.id;
+            const selectBike = req.query.id;
             var allBikeInfo = [];
 
             const client = await pool.connect();
@@ -2976,17 +3046,17 @@ class Server {
             }
         });
 
-        this.app.post('/searchClient', async (req, res) => {
+        this.app.get('/searchClient', async (req, res) => {
 
-            const { error } = schemaSearchBike.validate(req.body);
+            const { error } = schemaSearchBike.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session.username)
+            if (!req.query.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const selectClient = req.body.id;
+            const selectClient = req.query.id;
             var allClientInfo = [];
 
             const client = await pool.connect();
@@ -3025,17 +3095,17 @@ class Server {
             }
         });
 
-        this.app.post('/searchHelmet', async (req, res) => {
+        this.app.get('/searchHelmet', async (req, res) => {
 
-            const { error } = schemaSearchBike.validate(req.body);
+            const { error } = schemaSearchBike.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session.username)
+            if (!req.query.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { id } = req.body;
+            const { id } = req.query;
             var allHelmetInfo = [];
 
             const client = await pool.connect();
@@ -3097,6 +3167,7 @@ class Server {
             var selectBuildType;
 
             let roomCounts = {}; // Object to hold counts for each nameroom
+            let roomAllCounts = {};
 
             // Get a client from the pool
             const client = await pool.connect();
@@ -3109,7 +3180,8 @@ class Server {
 
                     const resultData = await client.query(`
                     SELECT nameroom,
-                           COUNT(CASE WHEN namesoldier IS NULL THEN 1 END) as unassigned_count
+                           COUNT(CASE WHEN namesoldier IS NULL THEN 1 END) as unassigned_count,
+                           COUNT(1) as all_bed_count
                     FROM rooms r
                     LEFT JOIN roomskey rk ON r.id = rk.roomid
                     LEFT JOIN key k ON k.id = rk.keyid
@@ -3125,6 +3197,7 @@ class Server {
                     resultData.rows.forEach(row => {
                         nameroomSet.add(row.nameroom);
                         roomCounts[row.nameroom] = row.unassigned_count || 0;
+                        roomAllCounts[row.nameroom] = row.all_bed_count || 0;
                     });
 
                     type = numBuild === 'E' ? "Entrance" : "Dryer";
@@ -3148,7 +3221,8 @@ class Server {
                                 WHEN s.id IS NULL
                                 THEN k.id
                             END
-                        ) AS count_without_location
+                        ) AS count_without_location,
+                        COUNT(k.id) AS all_bed_count
                     FROM 
                         rooms r
                     LEFT JOIN 
@@ -3179,6 +3253,7 @@ class Server {
                     resultData.rows.forEach(row => {
                         nameroomSet.add(row.nameroom);
                         roomCounts[row.nameroom] = type === 'Accommodation' ? row.count_with_location || 0 : row.count_without_location || 0;
+                        roomAllCounts[row.nameroom] = row.all_bed_count;
                     });
 
                     const countFreeBedsResult = await client.query(`
@@ -3201,7 +3276,8 @@ class Server {
                     const resultData = await client.query(`
                     SELECT 
                         nameroom,
-                        COUNT(CASE WHEN a.location_key IS NOT NULL AND k.soldierid IS NULL THEN k.id END) AS unassigned_count
+                        COUNT(CASE WHEN a.location_key IS NOT NULL AND k.soldierid IS NULL THEN k.id END) AS unassigned_count,
+                        COUNT(CASE WHEN a.location_key IS NOT NULL THEN k.id END) AS all_bed_count
                     FROM 
                         rooms r
                     LEFT JOIN 
@@ -3229,6 +3305,7 @@ class Server {
                     resultData.rows.forEach(row => {
                         nameroomSet.add(row.nameroom);
                         roomCounts[row.nameroom] = row.unassigned_count || 0;
+                        roomAllCounts[row.nameroom] = row.all_bed_count || 0;
                     });
 
                     title = "Accommodation"
@@ -3305,7 +3382,7 @@ class Server {
                 let nameroomSetCount = [];
 
                 nameroomSet.forEach(room => {
-                    nameroomSetCount.push({ nameroom: room, countFreeBeds: roomCounts[room] });
+                    nameroomSetCount.push({ nameroom: room, countFreeBeds: roomCounts[room], countAllBeds: roomAllCounts[room] });
                 });
 
                 if (isFirstTime) {
@@ -3355,15 +3432,15 @@ class Server {
             }
         });
 
-        this.app.post('/getKeyBuildigType', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/getKeyBuildigType', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemaRemoveKey.validate(req.body);
+            const { error } = schemaRemoveKey.validate(req.query);
 
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            const { keyId } = req.body;
+            const { keyId } = req.query;
 
             const client = await pool.connect();
 
@@ -3399,15 +3476,15 @@ class Server {
             }
         });
 
-        this.app.post('/getRoomKeys', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/getRoomKeys', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemaViewKey.validate(req.body);
+            const { error } = schemaViewKey.validate(req.query);
 
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            const roomNumber = req.body.roomNumber;
+            const roomNumber = req.query.roomNumber;
             const client = await pool.connect();
 
             try {
@@ -3586,14 +3663,14 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/accommodation/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemaReport.validate(req.body);
+            const { error } = schemaReport.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            let { selectedDate1, selectedDate2 } = req.body;
+            let { selectedDate1, selectedDate2 } = req.query;
 
             const client = await pool.connect();
 
@@ -3839,7 +3916,7 @@ class Server {
                 return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
             }
 
-            const { soldierId, soldierName, soldierCountry, soldierBag, soldierMealCard,upcomingAccommodationDate, upcomingReleaseDate } = req.body;
+            const { soldierId, soldierName, soldierCountry, upcomingKey, soldierBag, soldierMealCard, upcomingAccommodationDate, upcomingReleaseDate } = req.body;
             const client = await pool.connect();
 
             if (upcomingAccommodationDate && upcomingReleaseDate && new Date(upcomingAccommodationDate) > new Date(upcomingReleaseDate))
@@ -3864,7 +3941,7 @@ class Server {
                 }
 
                 await Promise.all([
-                    client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, $4, $5, NULL, $6, $7, $8);", [soldierId, soldierName, soldierCountry, soldierMealCard || null, soldierBag || null, req.session.camp, upcomingAccommodationDate || null, upcomingReleaseDate || null]),
+                    client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, $4, $5, NULL, $6, $7, $8, $9);", [soldierId, soldierName, soldierCountry, soldierMealCard || null, soldierBag || null, req.session.camp, upcomingAccommodationDate || null, upcomingReleaseDate || null, upcomingKey || null]),
                     client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)", [req.session.username, `Add soldier ${soldierName}`])
                 ]);
 
@@ -3880,7 +3957,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/removeSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/accommodation/removeSoldier', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaRemoveSoldier.validate(req.body);
             if (error) {
@@ -3903,7 +3980,6 @@ class Server {
                 await Promise.all([
                     client.query("DELETE FROM movesoldier WHERE idsoldier = $1;", [code]),
                     client.query("UPDATE laundrybags SET soldier_id = NULL WHERE soldier_id = $1", [code]),
-                    client.query("DELETE FROM lostitem WHERE soldier_id = $1", [code]),
                     client.query("UPDATE key SET soldierid = NULL WHERE soldierid = $1;", [code]),
                     client.query("DELETE FROM fitness WHERE soldierid = $1", [code]),
                     client.query("DELETE FROM bikesoldier WHERE soldierid = $1", [code]),
@@ -3926,14 +4002,14 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/editSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.put('/accommodation/editSoldier', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaEditSoldier.validate(req.body);
             if (error) {
                 return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
             }
 
-            const { soldierId, soldierNewId, soldierName, soldierCountry, soldierBag, soldierMealCard, soldierUpcomeAccom, soldierUpcomeRel } = req.body;
+            const { soldierId, soldierNewId, soldierName, soldierCountry, soldierUpcomingKey, soldierBag, soldierMealCard, soldierUpcomeAccom, soldierUpcomeRel } = req.body;
             const client = await pool.connect();
 
             if (soldierUpcomeAccom && soldierUpcomeRel && new Date(soldierUpcomeAccom) > new Date(soldierUpcomeRel))
@@ -3956,19 +4032,19 @@ class Server {
                 }
 
                 if (soldierId === soldierNewId) {
-                    await client.query("UPDATE soldier SET namesoldier = $1, country = $2, meal_card = $6, laundry_bag_id = $7, upcoming_accommodation = $4, upcoming_release = $5 WHERE id = $3;", [soldierName, soldierCountry, soldierId, soldierUpcomeAccom || null, soldierUpcomeRel || null, soldierMealCard || null, soldierBag || null]);
+                    await client.query("UPDATE soldier SET namesoldier = $1, country = $2, upcoming_accommodation_key = $8, meal_card = $6, laundry_bag_id = $7, upcoming_accommodation = $4, upcoming_release = $5 WHERE id = $3;", [soldierName, soldierCountry, soldierId, soldierUpcomeAccom || null, soldierUpcomeRel || null, soldierMealCard || null, soldierBag || null, soldierUpcomingKey || null]);
                 } else {
                     const result = await client.query("SELECT * FROM soldier WHERE id = $1;", [soldierId]);
                     const respons = result.rows[0];
 
-                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);", [soldierNewId, soldierName, soldierCountry, respons.date_accommodation || null, respons.date_free || null, soldierMealCard || null, soldierBag || null, respons.used_room || null, respons.camp_id, soldierUpcomeAccom || null, soldierUpcomeRel || null]);
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
+                        [soldierNewId, soldierName, soldierCountry, respons.date_accommodation || null, respons.date_free || null, soldierMealCard || null, soldierBag || null, respons.used_room || null, respons.camp_id, soldierUpcomeAccom || null, soldierUpcomeRel || null, soldierUpcomingKey || null]);
 
                     await Promise.all([
                         client.query("UPDATE movesoldier SET idsoldier = $1 WHERE idsoldier = $2;", [soldierNewId, soldierId]),
                         client.query("UPDATE key SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]),
                         client.query("UPDATE fitness SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]),
                         client.query("UPDATE bikesoldier SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]),
-                        client.query("UPDATE lostitem SET soldier_id = $1 WHERE soldier_id = $2;", [soldierNewId, soldierId]),
                         client.query("UPDATE laundrybags SET soldier_id = $1 WHERE soldier_id = $2;", [soldierNewId, soldierId]),
                         client.query("UPDATE additionalItem SET soldier_id = $1 WHERE soldier_id = $2;", [soldierNewId, soldierId]),
                         client.query("DELETE FROM soldier WHERE id = $1;", [soldierId])
@@ -3995,6 +4071,7 @@ class Server {
             const client = await pool.connect();
             const errors = [];
             const bagSet = [];
+            const keySet = [];
 
             try {
                 await client.query('BEGIN');
@@ -4011,6 +4088,12 @@ class Server {
 
                 // Set to track unique soldierIds in the file
                 const seenIds = new Set();
+
+                if (sheetName !== 'Add Multipul Soldiers') {
+                    await client.query('ROLLBACK');
+                    errors.push({ type: 'InvalidDate', message: `Invalid template` });
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
 
                 await Promise.all(data.map(async (row, index) => {
                     const { error } = schemaAddSoldier.validate(row);
@@ -4049,30 +4132,44 @@ class Server {
                         return;
                     }
 
-                    if (!row.soldierBag) {
+                    if (!row.soldierBag && !row.upcomingKey) {
                         return;
                     }
 
-                    const [result_check_bag, result_check_bag_soldier] = await Promise.all([
-                        client.query("SELECT * FROM laundrybags WHERE code = $1 AND camp_id = $2;", [row.soldierBag, req.session.camp]),
-                        client.query(`
-                            SELECT * FROM soldier s 
-							LEFT JOIN additionalitem ai ON s.id = ai.soldier_id
-                            LEFT JOIN laundrybags l ON s.laundry_bag_id = l.id OR l.id = ai.bag_id
-                            WHERE l.code = $1 AND (
-                                s.id IS NOT NULL 
-                                AND (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND date_free IS NULL))) AND l.camp_id = $2;`, [row.soldierBag, req.session.camp])
-                    ]);
+                    if (row.soldierBag) {
 
-                    if (result_check_bag.rows.length === 0) {
-                        errors.push({ type: 'CheckBag', message: `The bag with number '${row.soldierBag}' is not exists.` });
-                        return;
+                        const [result_check_bag, result_check_bag_soldier] = await Promise.all([
+                            client.query("SELECT * FROM laundrybags WHERE code = $1 AND camp_id = $2;", [row.soldierBag, req.session.camp]),
+                            client.query(`
+                                SELECT * FROM soldier s 
+                                LEFT JOIN additionalitem ai ON s.id = ai.soldier_id
+                                LEFT JOIN laundrybags l ON s.laundry_bag_id = l.id OR l.id = ai.bag_id
+                                WHERE l.code = $1 AND (
+                                    s.id IS NOT NULL 
+                                    AND (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND date_free IS NULL))) AND l.camp_id = $2;`, [row.soldierBag, req.session.camp])
+                        ]);
 
-                    } else if (result_check_bag_soldier.rows.length > 0) {
-                        errors.push({ type: 'CheckBag', message: `The bag with number '${row.soldierBag}' has already been taken by someone.` });
-                        return;
-                    } else {
-                        bagSet.push({ id: result_check_bag.rows[0].id, code: result_check_bag.rows[0].code });
+                        if (result_check_bag.rows.length === 0) {
+                            errors.push({ type: 'CheckBag', message: `The bag with number '${row.soldierBag}' is not exists.` });
+                            return;
+
+                        } else if (result_check_bag_soldier.rows.length > 0) {
+                            errors.push({ type: 'CheckBag', message: `The bag with number '${row.soldierBag}' has already been taken by someone.` });
+                            return;
+                        } else {
+                            bagSet.push({ id: result_check_bag.rows[0].id, code: result_check_bag.rows[0].code });
+                        }
+                    }
+
+                    if (row.upcomingKey) {
+                        const result_check_key = await client.query("SELECT * FROM key WHERE namekey = $1;", [row.upcomingKey]);
+
+                        if (result_check_key.rows.length === 0) {
+                            errors.push({ type: 'CheckKey', message: `The key with name '${row.upcomingKey}' is not exists.` });
+                            return;
+                        }
+
+                        keySet.push({ id: result_check_key.rows[0].id, name: result_check_key.rows[0].namekey });
                     }
                 }));
 
@@ -4087,8 +4184,12 @@ class Server {
                     const laundryBagValue = row.soldierBag
                         ? bagSet.find(code => code.code === row.soldierBag)?.id
                         : null;
-                        
-                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, $4, $5, NULL, $6, $7, $8);", [row.soldierId, row.soldierName, row.soldierCountry, mealCardValue, laundryBagValue, req.session.camp, row.upcomingAccommodationDate || null, row.upcomingReleaseDate || null]);
+
+                    const keyValue = row.upcomingKey
+                        ? keySet.find(key => key.name === row.upcomingKey)?.id
+                        : null;
+
+                    await client.query("INSERT INTO soldier VALUES ($1, $2, $3, NULL, NULL, $4, $5, NULL, $6, $7, $8, $9);", [row.soldierId, row.soldierName, row.soldierCountry, mealCardValue, laundryBagValue, req.session.camp, row.upcomingAccommodationDate || null, row.upcomingReleaseDate || null, keyValue]);
                 }));
 
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -4115,7 +4216,7 @@ class Server {
             const worksheet = workbook.addWorksheet('Add Multipul Soldiers');
 
             // Add custom column titles for the first sheet
-            const headers = ['soldierId', 'soldierName', 'soldierCountry', 'soldierBag', 'soldierMealCard', 'upcomingAccommodationDate', 'upcomingReleaseDate'];
+            const headers = ['soldierId', 'soldierName', 'soldierCountry', 'upcomingKey', 'soldierBag', 'soldierMealCard', 'upcomingAccommodationDate', 'upcomingReleaseDate'];
             const headerRow = worksheet.addRow(headers);
 
             // Apply styling to the headers
@@ -4135,6 +4236,7 @@ class Server {
                 { width: 12 },
                 { width: 20 },
                 { width: 25 },
+                { width: 20 },
                 { width: 20 },
                 { width: 20 },
                 { width: 30 },
@@ -4240,6 +4342,12 @@ class Server {
                 // Create a Set to track unique soldier IDs within the data array
                 const uniqueSoldierIds = new Set();
 
+                if (sheetName !== 'Accommodation Multipul Soldiers') {
+                    await client.query('ROLLBACK');
+                    errors.push({ type: 'CheckExist', message: `Invalid template` });
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
                 await Promise.all(data.map(async (row) => {
 
                     if (!row.soldierid) {
@@ -4287,11 +4395,14 @@ class Server {
                         client.query("SELECT * FROM laundrybags WHERE code = $1 AND camp_id = $2;", [row.laundrybag, req.session.camp]),
                         client.query(`
                             SELECT * FROM soldier s 
-							LEFT JOIN additionalitem ai ON s.id = ai.soldier_id
+                            LEFT JOIN additionalitem ai ON s.id = ai.soldier_id
                             LEFT JOIN laundrybags l ON s.laundry_bag_id = l.id OR l.id = ai.bag_id
-                            WHERE l.code = $1 AND (
-                                s.id IS NOT NULL 
-                                AND (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND date_free IS NULL))) AND l.camp_id = $2;`, [row.laundrybag, req.session.camp])
+                            WHERE l.code = $1 
+                            AND l.camp_id = $2
+                            AND s.id IS NOT NULL 
+                            AND (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND s.date_free IS NULL))
+                            AND s.id != $3;
+                        `, [row.laundrybag, req.session.camp, row.soldierid])
                     ]);
 
                     if (result_check_bag.rows.length === 0) {
@@ -4466,7 +4577,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/removeDestination', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/accommodation/removeDestination', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaRemoveDestination.validate(req.body);
             if (error) {
@@ -4560,14 +4671,14 @@ class Server {
             }
         });
 
-        this.app.post('/specialRooms', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/specialRooms', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemaSpecialRoom.validate(req.body);
+            const { error } = schemaSpecialRoom.validate(req.query);
             if (error) {
                 return res.status(400).send({ message: error.details[0].message });
             }
 
-            const { numBuild } = req.body;
+            const { numBuild } = req.query;
 
             const client = await pool.connect();
 
@@ -4613,15 +4724,15 @@ class Server {
             }
         });
 
-        this.app.post('/specialKeys', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/specialKeys', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemaSpecialKey.validate(req.body);
+            const { error } = schemaSpecialKey.validate(req.query);
             if (error) {
                 console.error(error);
                 return res.status(400).send({ message: error.details[0].message });
             }
 
-            const { numRoom } = req.body;
+            const { numRoom } = req.query;
 
             const client = await pool.connect();
 
@@ -4706,7 +4817,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/removeRoomToDestination', async (req, res) => {
+        this.app.delete('/accommodation/removeRoomToDestination', async (req, res) => {
 
             const { error } = schemaRemoveRoom.validate(req.body);
             if (error) {
@@ -5004,7 +5115,7 @@ class Server {
     defineRoutesFitnes() {
 
         // Serve APK file from local directory
-        this.app.get('/download-apk-gym', this.isLoggedIn.bind(this), (req, res) => {
+        this.app.get('/download-apk-gym', (req, res) => {
             // Path to your APK file
             const apkFilePath = path.join(__dirname, 'androidApp', 'RateFitnesCleaning-1.0-release.apk');
 
@@ -5173,14 +5284,14 @@ class Server {
             }
         });
 
-        this.app.post('/getAllEmoji', this.isLoggedIn.bind(this), async (req, res) => {
-            const { error } = getAllEmojiSchema.validate(req.body);
+        this.app.get('/getAllEmoji', this.isLoggedIn.bind(this), async (req, res) => {
+            const { error } = getAllEmojiSchema.validate(req.query);
 
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { date1, date2 } = req.body;
+            const { date1, date2 } = req.query;
             const client = await pool.connect();
 
             try {
@@ -5331,7 +5442,7 @@ class Server {
         }
 
         // Serve APK file from local directory
-        this.app.get('/download-apk-laundry', this.isLoggedIn.bind(this), (req, res) => {
+        this.app.get('/download-apk-laundry', (req, res) => {
             // Path to your APK file
             const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.0-release.apk');
 
@@ -5351,6 +5462,10 @@ class Server {
                     res.status(500).send('Error downloading the file');
                 }
             });
+        });
+
+        this.app.get('/apk-laundry-version', (req, res) => {
+            res.json({ version: "1.0", apkUrl: "/download-apk-laundry" });
         });
 
         this.app.get('/laundry', this.isLoggedIn.bind(this), async (req, res) => {
@@ -5931,14 +6046,14 @@ class Server {
             }
         });
 
-        this.app.post('/getBagsByStatus', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/getBagsByStatus', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemaGetBagsByStatus.validate(req.body);
+            const { error } = schemaGetBagsByStatus.validate(req.query);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { status } = req.body;
+            const { status } = req.query;
 
             const client = await pool.connect();
             let result;
@@ -6002,14 +6117,14 @@ class Server {
             }
         });
 
-        this.app.post('/laundry/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/laundry/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
 
-            const { error } = schemaReport.validate(req.body);
+            const { error } = schemaReport.validate(req.query);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            let { selectedDate1, selectedDate2 } = req.body;
+            let { selectedDate1, selectedDate2 } = req.query;
 
             const client = await pool.connect();
 
@@ -6310,7 +6425,7 @@ class Server {
             }
         });
 
-        this.app.post('/laundry/deleteBag', async (req, res) => {
+        this.app.delete('/laundry/deleteBag', async (req, res) => {
 
             const { error } = schemaRemoveBag.validate(req.body);
             if (error) {
@@ -6364,7 +6479,7 @@ class Server {
             }
         });
 
-        this.app.post('/laundry/editBag', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.put('/laundry/editBag', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaEditBag.validate(req.body);
             if (error) {
@@ -6401,7 +6516,7 @@ class Server {
             }
         });
 
-        this.app.post('/laundry/editPhoneBag', async (req, res) => {
+        this.app.put('/laundry/editPhoneBag', async (req, res) => {
 
             const { error } = schemaEditPhoneBag.validate(req.body);
             if (error) {
@@ -6483,7 +6598,7 @@ class Server {
     defineRoutesAssets() {
 
         // Serve APK file from local directory
-        this.app.get('/download-apk-asset', this.isLoggedIn.bind(this), (req, res) => {
+        this.app.get('/download-apk-asset', (req, res) => {
             // Path to your APK file
             const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.0-release.apk');
 
@@ -6505,19 +6620,23 @@ class Server {
             });
         });
 
-        this.app.post('/allAssets', async (req, res) => {
-            const { error } = shemaGetBags.validate(req.body);
+        this.app.get('/apk-asset-version', (req, res) => {
+            res.json({ version: "1.0", apkUrl: "/download-apk-asset" });
+        });
+
+        this.app.get('/allAssets', async (req, res) => {
+            const { error, value } = shemaGetBags.validate(req.query);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session?.username) {
+            if (!req.session?.username && !value.isValidCode) {
                 return res.status(401).json({ message: "Unauthorized access: Invalid product code or session." });
             }
 
             const client = await pool.connect();
 
-            const camp_id = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
+            const camp_id = req.session?.username ? req.session.camp : value.campId;
 
             try {
                 // Optional transaction for consistent reads
@@ -6530,8 +6649,7 @@ class Server {
                     client.query(`
                         SELECT id, namesoldier AS name FROM soldier WHERE date_accommodation IS NOT NULL AND date_free IS NULL AND camp_id = $1;`, [camp_id]),
                     client.query(`
-                        SELECT nameitem, description, namesoldier, lost_quantity FROM lostitem l
-                        LEFT JOIN soldier s ON s.id = l.soldier_id
+                        SELECT nameitem, description, lost_quantity FROM lostitem l
                         WHERE l.camp_id = $1;`, [camp_id])
                 ]);
 
@@ -6566,7 +6684,6 @@ class Server {
                 const allLostItem = resultAllLostItem.rows.map(row => ({
                     nameItem: row.nameitem,
                     description: row.description,
-                    soldierName: row.namesoldier,
                     lostQuantity: row.lost_quantity
                 }));
 
@@ -6611,14 +6728,14 @@ class Server {
             }
         });
 
-        this.app.post('/asset/keys', async (req, res) => {
+        this.app.get('/asset/keys', async (req, res) => {
 
-            const { error } = shemaGetBags.validate(req.body);
+            const { error, value } = shemaGetBags.validate(req.body);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session.username)
+            if (!req.session?.username && !value.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
             const client = await pool.connect();
@@ -6626,7 +6743,7 @@ class Server {
             try {
 
                 await client.query('BEGIN');
-                const camp_id = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
+                const camp_id = req.session.username ? req.session.camp : value.campId;
 
                 const result = await client.query(`
                         SELECT k.id, k.namekey, r.nameroom, r.id AS roomid, camp_id
@@ -6794,7 +6911,7 @@ class Server {
             }
         });
 
-        this.app.post('/assets/getSortedRoom', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/assets/getSortedRoom', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaAccommodation.validate(req.query);
             if (error) {
@@ -6850,7 +6967,7 @@ class Server {
             }
         });
 
-        this.app.post('/assets/getSortedAssets', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/assets/getSortedAssets', async (req, res) => {
 
             const { error } = schemaSpecialAssets.validate(req.query);
             if (error) {
@@ -6885,7 +7002,7 @@ class Server {
                         LEFT JOIN rooms r ON r.id = a.location_room
                         LEFT JOIN key k ON k.id = a.location_key;`);
 
-                await Promise.all(result_get_room.rows.map(async (row) => {
+                result_get_room.rows.forEach(row => {
                     nameAssetSetCount.push({
                         id: row.id,
                         code: row.code,
@@ -6902,7 +7019,7 @@ class Server {
                         expandable: row.expandable,
                         description: row.description
                     });
-                }));
+                });
 
                 await client.query('COMMIT');
                 res.status(200).json(nameAssetSetCount);
@@ -6917,14 +7034,49 @@ class Server {
             }
         });
 
-        this.app.post('/assets/getAllType', async (req, res) => {
-
-            const { error } = shemaGetBags.validate(req.body);
+        this.app.get('/getInventoryLocation', async (req, res) => {
+            const { error, value } = shemaGetBags.validate(req.query);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            if (!req.body.isValidCode && !req.session.username)
+            if (!value.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await pool.query(`
+                    SELECT id, nameroom FROM rooms WHERE camp_id = $1;`, [req.session.camp]);
+                    
+                const result_location = result.rows.map(row => ({
+                    id: row.id,
+                    name: row.nameroom
+                }));
+
+                await client.query('COMMIT');
+                res.status(200).json(result_location);
+                
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to get location.' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/assets/getAllType', async (req, res) => {
+
+            const { error, value } = shemaGetBags.validate(req.query);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            if (!req.session?.username && !value.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
             const client = await pool.connect();
@@ -6951,7 +7103,7 @@ class Server {
             }
         });
 
-        this.app.post('/assets/editAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.patch('/assets/editAsset', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaEditAsset.validate(req.body);
             if (error) {
@@ -7254,7 +7406,7 @@ class Server {
             }
         });
 
-        this.app.post('/assets/deleteAsset', async (req, res) => {
+        this.app.delete('/assets/deleteAsset', async (req, res) => {
 
             const { error } = schemaDeleteAsets.validate(req.body);
             if (error) {
@@ -7383,7 +7535,7 @@ class Server {
             }
         });
 
-        this.app.post('/assets/removeTypeAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/assets/removeTypeAsset', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaRemoveAsetsType.validate(req.body);
             if (error) {
@@ -7434,7 +7586,7 @@ class Server {
                 return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
             }
 
-            const { itemName, description, soldierId, lostQuantity } = req.body;
+            const { itemName, description, lostQuantity } = req.body;
 
             const client = await pool.connect();
 
@@ -7453,11 +7605,10 @@ class Server {
                     queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2 AND camp_id = $3;`, [lostQuantity, itemName, req.session.camp]));
                 } else {
                     queries.push(client.query(`INSERT INTO lostitem VALUES (
-                        (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);`,
+                        (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`,
                         [
                             itemName,
                             description !== '' ? description : null,
-                            soldierId,
                             lostQuantity,
                             item_into.id,
                             item_into.name_assets,
@@ -7581,13 +7732,13 @@ class Server {
             }
         });
 
-        this.app.post('/assets/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
-            const { error } = schemaReport.validate(req.body);
+        this.app.get('/assets/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+            const { error } = schemaReport.validate(req.query);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            let { selectedDate1, selectedDate2 } = req.body;
+            let { selectedDate1, selectedDate2 } = req.query;
 
             // Ensure the dates are formatted correctly
             selectedDate1 = moment(selectedDate1).startOf('day').format('YYYY-MM-DD HH:mm:ss');
@@ -7957,6 +8108,12 @@ class Server {
                 // Set to track unique soldierIds in the file
                 const seenIds = new Set();
 
+                if (sheetName !== 'Add Multipul Clean Items') {
+                    await client.query('ROLLBACK');
+                    errors.push({ type: 'InvalidFormat', message: `Invalid template` });
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
                 await Promise.all(data.map(async (row, index) => {
                     const { error } = schemaAddCleanItem.validate(row);
 
@@ -8012,7 +8169,7 @@ class Server {
             }
         });
 
-        this.app.post('/removeCleanItem', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/removeCleanItem', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = schemaRemoveCleanItem.validate(req.body);
             if (error) {
@@ -8120,7 +8277,7 @@ class Server {
             }
         });
 
-        this.app.post('/editCleanItem', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.patch('/editCleanItem', this.isLoggedIn.bind(this), async (req, res) => {
 
             const { error } = editCleanItemSchema.validate(req.body);
             if (error) {
@@ -8176,6 +8333,93 @@ class Server {
                 await client.query('ROLLBACK');
                 console.error('Server error:', error);
                 res.status(500).json({ message: 'Failed to get item traceability' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/getInventoryData', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const [result_building, result_rooms, result_assets] = await Promise.all([
+                    client.query('SELECT * FROM buildings WHERE camp_id = $1 ORDER BY namebuilding', [req.session.camp]),
+                    client.query(`SELECT r.*, br.buildid FROM rooms r
+                        LEFT JOIN buildroom br ON br.roomid = r.id
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE b.camp_id = $1 
+                        AND r.nameroom NOT SIMILAR TO '[0-9]+/[0-9]+/E[0-9]+'
+                        ORDER BY r.nameroom;`, [req.session.camp]),
+                    client.query('SELECT * FROM assets WHERE camp_id = $1;', [req.session.camp])
+                ]);
+
+                for (const room of result_rooms.rows) {
+
+                    const assetsInRoom = result_assets.rows.filter(asset => asset.location_room === room.id);
+                    const hasAllInventory = assetsInRoom.every(asset => asset.inventory_status === 'discovered' || asset.inventory_status === 'edited');
+                    const hasInventory = assetsInRoom.some(asset => asset.inventory_status !== 'undiscovered');
+
+                    await client.query(`UPDATE rooms SET inventory_status = $1 WHERE id = $2;`,
+                        [hasAllInventory ? 'finished' : hasInventory ? 'actions' : 'unfinished', room.id]);
+                }
+
+                const updated_rooms = await client.query(`
+                    SELECT r.*, br.buildid FROM rooms r
+                    LEFT JOIN buildroom br ON br.roomid = r.id
+                    LEFT JOIN buildings b ON b.id = br.buildid
+                    WHERE b.camp_id = $1 
+                    AND r.nameroom NOT SIMILAR TO '[0-9]+/[0-9]+/E[0-9]+'
+                    ORDER BY r.nameroom;`, [req.session.camp])
+
+                for (const building of result_building.rows) {
+
+                    const roomsInBuilding = updated_rooms.rows.filter(room => room.buildid === building.id);
+                    const hasAllInventory = roomsInBuilding.every(room => room.inventory_status === 'finished');
+                    const hasInventory = roomsInBuilding.some(room => room.inventory_status !== 'unfinished');
+
+                    await client.query(`UPDATE buildings SET inventory_status = $1 WHERE id = $2;`,
+                        [hasAllInventory ? 'finished' : hasInventory ? 'actions' : 'unfinished', building.id]);
+                }
+
+                const updated_buildings = await client.query('SELECT * FROM buildings WHERE camp_id = $1 ORDER BY namebuilding', [req.session.camp]);
+
+                await client.query('COMMIT');
+                res.status(200).json({
+                    allBuilding: updated_buildings.rows,
+                    allRooms: updated_rooms.rows,
+                    allAssets: result_assets.rows
+                });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to get inventory data' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/restorInventory', this.isLoggedIn.bind(this), async (req, res) => {
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                await client.query(`UPDATE assets SET inventory_status = 'undiscovered' WHERE camp_id = $1;`, [req.session.camp]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The inventory restor sucesful' })
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to restart inventory' });
             } finally {
                 client.release();
             }

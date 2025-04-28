@@ -1,13 +1,15 @@
 package com.example.nfcreader;
 
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.app.PendingIntent;
-import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -15,6 +17,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.json.JSONArray;
@@ -22,13 +26,17 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -41,25 +49,72 @@ public class EditBike extends AppCompatActivity {
     private String oldNfcContent = "";
     private String newNfcContent = "";
     private TextView newNfcTextView;
-    private Button submitButton;
-    private Button submitHelmetButton;
     private EditText bikeNameText;
-    private OkHttpClient client = new OkHttpClient();
-    private ArrayList<String> ownerList = new ArrayList<>();
-    private Map<String, String> bikeIdMap = new HashMap<>();
+    private final CookieManager cookieManager = new CookieManager();
+    private final OkHttpClient client = new OkHttpClient.Builder()
+            .cookieJar(new JavaNetCookieJar(cookieManager))
+            .build();
+    private String csrfToken = null;
+    private final ArrayList<String> ownerList = new ArrayList<>();
+    private final Map<String, String> bikeIdMap = new HashMap<>();
     private AutoCompleteTextView bikeAutoCompleteTextView;
 
+    private void fetchCsrfToken() {
+        Dialog loadingDialog = new Dialog(EditBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    Toast.makeText(EditBike.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                runOnUiThread(loadingDialog::dismiss); // Always dismiss dialog first
+
+                if (response.isSuccessful() && response.body() != null) {
+                    try {
+                        String responseBody = response.body().string();
+                        JSONObject jsonObject = new JSONObject(responseBody);
+                        csrfToken = jsonObject.getString("csrfToken");
+                    } catch (JSONException e) {
+                        runOnUiThread(() -> Toast.makeText(EditBike.this, "Error parsing token", Toast.LENGTH_SHORT).show());
+                    }
+                } else {
+                    runOnUiThread(() -> Toast.makeText(EditBike.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+                }
+            }
+        });
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_edit_bike);
 
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+
         bikeAutoCompleteTextView = findViewById(R.id.bikeAutoCompleteTextView);
 
         newNfcTextView = findViewById(R.id.newNfcTextView);
-        submitButton = findViewById(R.id.editButton);
-        submitHelmetButton = findViewById(R.id.editHelmetButton);
+        Button submitButton = findViewById(R.id.editButton);
+        Button submitHelmetButton = findViewById(R.id.editHelmetButton);
         bikeNameText = findViewById(R.id.bikeNameEditText);
+
+        fetchCsrfToken();
 
         // Fetch bike from the server
         try {
@@ -70,8 +125,7 @@ public class EditBike extends AppCompatActivity {
 
         bikeAutoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> {
             String selectedBikeName = (String) parent.getItemAtPosition(position);
-            String bikeId = bikeIdMap.get(selectedBikeName);
-            oldNfcContent = bikeId;
+            oldNfcContent = bikeIdMap.get(selectedBikeName);
             bikeNameText.setText(selectedBikeName);
         });
 
@@ -128,25 +182,16 @@ public class EditBike extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(EditBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-        JSONObject jsonData = new JSONObject();
-
-        jsonData.put("campId", GlobalVariable.getCamp(this));
-        jsonData.put("isValidCode", GlobalVariable.getVariable(this));
-
-        RequestBody body = RequestBody.create(JSON, jsonData.toString());
-
+        String baseUrl = getString(R.string.base_url);
         Request bikeRequest = new Request.Builder()
-                .url("https://bunker.bg/bikes")
-                .post(body)
+                .url(baseUrl + "/bikes?campId=" + GlobalVariable.getCamp(this) + "&isValidCode=" + GlobalVariable.getVariable(this))
                 .build();
 
         Request helmetRequest = new Request.Builder()
-                .url("https://bunker.bg/helmets")
-                .post(body)
+                .url(baseUrl + "/helmets?campId=" + GlobalVariable.getCamp(this) + "&isValidCode=" + GlobalVariable.getVariable(this))
                 .build();
 
         AtomicInteger pendingRequests = new AtomicInteger(2); // Track pending requests
@@ -154,7 +199,7 @@ public class EditBike extends AppCompatActivity {
 
         Callback commonCallback = new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) {
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 runOnUiThread(() -> {
                     Toast.makeText(EditBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     if (pendingRequests.decrementAndGet() == 0) {
@@ -164,9 +209,9 @@ public class EditBike extends AppCompatActivity {
             }
 
             @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            public void onResponse(@NonNull Call call, Response response) throws IOException {
                 if (response.isSuccessful()) {
-                    final String responseData = response.body().string();
+                    final String responseData = Objects.requireNonNull(response.body()).string();
                     runOnUiThread(() -> {
                         try {
                             JSONArray dataArray = new JSONArray(responseData);
@@ -176,7 +221,7 @@ public class EditBike extends AppCompatActivity {
                                 }
                             }
                         } catch (JSONException e) {
-                            e.printStackTrace();
+                            Log.e("EditBike", "Error: " + e.getMessage());
                         }
                         if (pendingRequests.decrementAndGet() == 0) {
                             // Once both requests complete, process combined result
@@ -226,7 +271,7 @@ public class EditBike extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(EditBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -238,15 +283,17 @@ public class EditBike extends AppCompatActivity {
             jsonData.put("campId", GlobalVariable.getCamp(this));
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 
-            RequestBody body = RequestBody.create(JSON, jsonData.toString());
+            RequestBody body = RequestBody.create(jsonData.toString(), JSON);
+            String baseUrl = getString(R.string.base_url);
             Request request = new Request.Builder()
-                    .url("https://bunker.bg/editParameturBike")
-                    .post(body)
+                    .url(baseUrl + "/editParameturBike")
+                    .addHeader("X-CSRF-Token", csrfToken)
+                    .patch(body)
                     .build();
 
             client.newCall(request).enqueue(new Callback() {
                 @Override
-                public void onFailure(Call call, IOException e) {
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
                     runOnUiThread(() -> {
                         Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         loadingDialog.dismiss();
@@ -254,7 +301,7 @@ public class EditBike extends AppCompatActivity {
                 }
 
                 @Override
-                public void onResponse(Call call, Response response) throws IOException {
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (response.body() != null) {
                         String responseData = response.body().string();
                         try {
@@ -270,15 +317,11 @@ public class EditBike extends AppCompatActivity {
                                 });
                             } else {
                                 String error = jsonResponse.optString("error", "Server error occurred.");
-                                runOnUiThread(() -> {
-                                    Toast.makeText(EditBike.this, "Error: " + error, Toast.LENGTH_SHORT).show();
-                                });
+                                runOnUiThread(() -> Toast.makeText(EditBike.this, "Error: " + error, Toast.LENGTH_SHORT).show());
                             }
                         } catch (JSONException e) {
-                            e.printStackTrace();
-                            runOnUiThread(() -> {
-                                Toast.makeText(EditBike.this, "Error processing response", Toast.LENGTH_SHORT).show();
-                            });
+                            Log.e("EditBike", "Error: " + e.getMessage());
+                            runOnUiThread(() -> Toast.makeText(EditBike.this, "Error processing response", Toast.LENGTH_SHORT).show());
                         }
                     } else {
                         runOnUiThread(() -> {
@@ -289,7 +332,7 @@ public class EditBike extends AppCompatActivity {
                 }
             });
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e("EditBike", "Error: " + e.getMessage());
             runOnUiThread(() -> {
                 Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 loadingDialog.dismiss();
@@ -302,7 +345,7 @@ public class EditBike extends AppCompatActivity {
         Dialog loadingDialog = new Dialog(EditBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false); // Prevent dismissal
-        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -314,15 +357,17 @@ public class EditBike extends AppCompatActivity {
             jsonData.put("campId", GlobalVariable.getCamp(this));
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 
-            RequestBody body = RequestBody.create(JSON, jsonData.toString());
+            RequestBody body = RequestBody.create(jsonData.toString(), JSON);
+            String baseUrl = getString(R.string.base_url);
             Request request = new Request.Builder()
-                    .url("https://bunker.bg/editParameturHelmet")
-                    .post(body)
+                    .url(baseUrl + "/editParameturHelmet")
+                    .addHeader("X-CSRF-Token", csrfToken)
+                    .patch(body)
                     .build();
 
             client.newCall(request).enqueue(new Callback() {
                 @Override
-                public void onFailure(Call call, IOException e) {
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
                     runOnUiThread(() -> {
                         Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         loadingDialog.dismiss();
@@ -330,7 +375,7 @@ public class EditBike extends AppCompatActivity {
                 }
 
                 @Override
-                public void onResponse(Call call, Response response) throws IOException {
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (response.body() != null) {
                         String responseData = response.body().string();
                         try {
@@ -346,15 +391,11 @@ public class EditBike extends AppCompatActivity {
                                 });
                             } else {
                                 String error = jsonResponse.optString("error", "Server error occurred.");
-                                runOnUiThread(() -> {
-                                    Toast.makeText(EditBike.this, "Error: " + error, Toast.LENGTH_SHORT).show();
-                                });
+                                runOnUiThread(() -> Toast.makeText(EditBike.this, "Error: " + error, Toast.LENGTH_SHORT).show());
                             }
                         } catch (JSONException e) {
-                            e.printStackTrace();
-                            runOnUiThread(() -> {
-                                Toast.makeText(EditBike.this, "Error processing response", Toast.LENGTH_SHORT).show();
-                            });
+                            Log.e("EditBike", "Error: " + e.getMessage());
+                            runOnUiThread(() -> Toast.makeText(EditBike.this, "Error processing response", Toast.LENGTH_SHORT).show());
                         }
                     } else {
                         runOnUiThread(() -> {
@@ -365,7 +406,7 @@ public class EditBike extends AppCompatActivity {
                 }
             });
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e("EditBike", "Error: " + e.getMessage());
             runOnUiThread(() -> {
                 Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 loadingDialog.dismiss();
@@ -389,14 +430,17 @@ public class EditBike extends AppCompatActivity {
         nfcAdapter.disableForegroundDispatch(this);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
-    protected void onNewIntent(Intent intent) {
+    protected void onNewIntent(@NonNull Intent intent) {
         super.onNewIntent(intent);
         handleIntent(intent);
     }
 
+    @SuppressLint("SetTextI18n")
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     private void handleIntent(Intent intent) {
-        Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+        Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag.class);
         if(tag != null) {
             // Get the NFC ID (UID)
             byte[] tagId = tag.getId();
