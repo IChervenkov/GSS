@@ -1910,19 +1910,19 @@ class Server {
 
         this.app.get('/bikes', async (req, res) => {
 
-            const { error } = shemaClientNfc.validate(req.query);
+            const { error, value } = shemaClientNfc.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.query.isValidCode && !req.session.username)
+            if (!req.session?.username && !value.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
             var optionBike = [];
 
             const client = await pool.connect();
 
-            const campId = req.session.username ? req.session.camp : req.query.campId;
+            const campId = req.session.username ? req.session.camp : value.campId;
 
             try {
                 await client.query('BEGIN');
@@ -1947,19 +1947,19 @@ class Server {
 
         this.app.get('/helmets', async (req, res) => {
 
-            const { error } = shemaClientNfc.validate(req.query);
+            const { error, value } = shemaClientNfc.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.query.isValidCode && !req.session.username)
+            if (!req.session?.username && !value.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
             var optionsHelmets = [];
 
             const client = await pool.connect();
 
-            const campId = req.session.username ? req.session.camp : req.query.campId;
+            const campId = req.session.username ? req.session.camp : value.campId;
 
             try {
                 await client.query('BEGIN');
@@ -1993,15 +1993,15 @@ class Server {
 
         this.app.get('/getHelmetByBike', async (req, res) => {
 
-            const { error } = shemaHelmetBike.validate(req.query);
+            const { error, value } = shemaHelmetBike.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.query.isValidCode && !req.session.username)
+            if (!req.session.username && !value.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { bikeId } = req.query;
+            const bikeId = value.bikeId;
             const client = await pool.connect();
 
             try {
@@ -2548,15 +2548,15 @@ class Server {
 
         this.app.get('/checkBike', async (req, res) => {
 
-            const { error } = schemaCheckBike.validate(req.query);
+            const { error, value } = schemaCheckBike.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.query.isValidCode && !req.session.username)
+            if (!req.session.username && !value.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { bikeId } = req.query;
+            const bikeId = value.bikeId;
 
             const client = await pool.connect();
 
@@ -2999,15 +2999,15 @@ class Server {
 
         this.app.get('/searchBikes', async (req, res) => {
 
-            const { error } = schemaSearchBike.validate(req.query);
+            const { error, value } = schemaSearchBike.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.query.isValidCode && !req.session.username)
+            if (!req.session.username && !value.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const selectBike = req.query.id;
+            const selectBike = value.id;
             var allBikeInfo = [];
 
             const client = await pool.connect();
@@ -3048,15 +3048,15 @@ class Server {
 
         this.app.get('/searchClient', async (req, res) => {
 
-            const { error } = schemaSearchBike.validate(req.query);
+            const { error, value } = schemaSearchBike.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.query.isValidCode && !req.session.username)
+            if (!req.session.username && !value.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const selectClient = req.query.id;
+            const selectClient = value.id;
             var allClientInfo = [];
 
             const client = await pool.connect();
@@ -3097,15 +3097,15 @@ class Server {
 
         this.app.get('/searchHelmet', async (req, res) => {
 
-            const { error } = schemaSearchBike.validate(req.query);
+            const { error, value } = schemaSearchBike.validate(req.query);
             if (error) {
                 return res.status(400).send({ error: error.details[0].message });
             }
 
-            if (!req.query.isValidCode && !req.session.username)
+            if (!req.session.username && !value.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { id } = req.query;
+            const id = value.id;
             var allHelmetInfo = [];
 
             const client = await pool.connect();
@@ -6159,10 +6159,10 @@ class Server {
                                 END AS status,
                                 ls.namesoldier, 
                                 ls.country,
-                                TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH:MI') AS date_drop_off, 
+                                TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off, 
                                 CASE 
                                     WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
-                                    ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH:MI')
+                                    ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
                                 END AS date_ready_to_pick_up
                             FROM laundrybags l
                             JOIN laundryreport lr ON lr.bag_id = l.id
@@ -6179,10 +6179,10 @@ class Server {
                                 END AS status,
                                 s.namesoldier, 
                                 s.country,
-                                TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH:MI') AS date_drop_off, 
+                                TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off, 
                                 CASE 
                                     WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
-                                    ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH:MI')
+                                    ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
                                 END AS date_ready_to_pick_up
                             FROM laundrybags l
                             JOIN laundryreport lr ON lr.bag_id = l.id
@@ -6730,7 +6730,7 @@ class Server {
 
         this.app.get('/asset/keys', async (req, res) => {
 
-            const { error, value } = shemaGetBags.validate(req.body);
+            const { error, value } = shemaGetBags.validate(req.query);
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
@@ -6969,14 +6969,18 @@ class Server {
 
         this.app.get('/assets/getSortedAssets', async (req, res) => {
 
-            const { error } = schemaSpecialAssets.validate(req.query);
+            const { error, value } = schemaSpecialAssets.validate(req.query);
             if (error) {
-                return res.status(400).send({ message: error.details[0].message });
+                return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { numRoom } = req.query;
+            if (!req.session?.username && !value.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const numRoom = value.numRoom;
 
             const client = await pool.connect();
+            const campId = req.session?.username ? req.session.camp : value.campId;
 
             let nameAssetSetCount = [];
 
@@ -7000,7 +7004,8 @@ class Server {
                         FROM assets a
                         LEFT JOIN assetstype t ON t.id = a.type_id
                         LEFT JOIN rooms r ON r.id = a.location_room
-                        LEFT JOIN key k ON k.id = a.location_key;`);
+                        LEFT JOIN key k ON k.id = a.location_key
+                        WHERE a.camp_id = $1;`, [campId]);
 
                 result_get_room.rows.forEach(row => {
                     nameAssetSetCount.push({
@@ -7050,7 +7055,7 @@ class Server {
                 await client.query('BEGIN');
 
                 const result = await pool.query(`
-                    SELECT id, nameroom FROM rooms WHERE camp_id = $1;`, [req.session.camp]);
+                    SELECT id, nameroom FROM rooms WHERE camp_id = $1;`, [value.campId]);
                     
                 const result_location = result.rows.map(row => ({
                     id: row.id,

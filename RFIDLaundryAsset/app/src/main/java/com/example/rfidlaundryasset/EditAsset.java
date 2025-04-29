@@ -628,7 +628,7 @@ public class EditAsset extends AppCompatActivity {
 
                 String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url(baseUrl + "/allAssets?isValidCode=" + GlobalVariable.getVariable(this) + "&campId" + GlobalVariable.getCamp(this))
+                        .url(baseUrl + "/allAssets?isValidCode=" + GlobalVariable.getVariable(this) + "&campId=" + GlobalVariable.getCamp(this))
                         .build();
 
                 Response response = client.newCall(request).execute();
