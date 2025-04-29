@@ -613,7 +613,7 @@ class Server {
                 secure: false, // true if use HTTPS
                 httpOnly: true,
                 sameSite: 'strict',
-                maxAge: 8 * 60 * 60 * 1000
+                // maxAge: 8 * 60 * 60 * 1000
             }
         }));
 
@@ -3222,7 +3222,7 @@ class Server {
                                 THEN k.id
                             END
                         ) AS count_without_location,
-                        COUNT(k.id) AS all_bed_count
+                        COUNT(CASE WHEN a.location_key IS NOT NULL THEN k.id END) AS all_bed_count
                     FROM 
                         rooms r
                     LEFT JOIN 
