@@ -1201,9 +1201,9 @@
             <span class="close-btn">&times;</span>
 
             <h4 class="mb-3">Inventory Sections
-                <div class="btn-container">
+                <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
                     <button type="button" id="btnRestartInventory"
-                        class="btn btn-outline-primary btn-sm rounded-circle fw-bold">
+                        class="btn btn-outline-primary btn-sm rounded-circle fw-bold <% if(username == 'NSPA') { %> disabled-button <% } %>">
                         <i class="bi bi-arrow-repeat"></i></button>
                     <div class="tooltip-custom">
                         <i class="bi bi-question-circle"></i>

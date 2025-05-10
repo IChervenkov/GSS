@@ -11,18 +11,22 @@ import android.util.Log;
 import android.widget.EditText;
 import android.widget.ImageButton;
 
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -37,7 +41,6 @@ public class MainActivity extends AppCompatActivity {
             .build();
     private boolean isValidCode;
     private String csrfToken = null;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
 
     private void fetchCsrfToken() {
         Dialog loadingDialog = new Dialog(MainActivity.this);
@@ -46,26 +49,35 @@ public class MainActivity extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        executorService.execute(() -> {
-            try {
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/csrf-token")
-                        .build();
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
 
-                Response response = client.newCall(request).execute();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    Toast.makeText(MainActivity.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                runOnUiThread(loadingDialog::dismiss); // Always dismiss dialog first
+
                 if (response.isSuccessful() && response.body() != null) {
-                    String responseBody = response.body().string();
-                    JSONObject jsonObject = new JSONObject(responseBody);
-                    csrfToken = jsonObject.getString("csrfToken");
-
+                    try {
+                        String responseBody = response.body().string();
+                        JSONObject jsonObject = new JSONObject(responseBody);
+                        csrfToken = jsonObject.getString("csrfToken");
+                    } catch (JSONException e) {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Error parsing token", Toast.LENGTH_SHORT).show());
+                    }
                 } else {
                     runOnUiThread(() -> Toast.makeText(MainActivity.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
                 }
-            } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
             }
         });
     }
@@ -83,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         isValidCode = GlobalVariable.getVariable(this);
 
         if(!isValidCode) {
-            showCodeEntryDialog();
+            showLoginDialog();
             return;
         }
 
@@ -145,113 +157,127 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void showCodeEntryDialog() {
+    private void showLoginDialog() {
         // Create an AlertDialog builder
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Product Code");
+        builder.setTitle("\uD83D\uDD12Login");
 
-        // Create an EditText for user input
-        final EditText input = new EditText(this);
-        input.setHint("Enter product code");
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        // Create a LinearLayout to hold the username and password fields
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 40, 50, 10);
 
-        // Add the EditText to the dialog
-        builder.setView(input);
+        // Username input
+        final EditText usernameInput = new EditText(this);
+        usernameInput.setHint("Username");
+        usernameInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        layout.addView(usernameInput);
 
-        // Set the "OK" button
-        builder.setPositiveButton("OK", null); // We'll override the click listener later
+        // Password input
+        final EditText passwordInput = new EditText(this);
+        passwordInput.setHint("Password");
+        passwordInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        layout.addView(passwordInput);
 
-        // Set the "Cancel" button
+        builder.setView(layout);
+
+        // "Login" button
+        builder.setPositiveButton("Login", null); // We'll override the click listener later
+
+        // "Cancel" button
         builder.setNegativeButton("Cancel", (dialog, which) -> {
             finish(); // Close the app
         });
 
-        // Create and show the dialog
         AlertDialog dialog = builder.create();
 
-        // Override "OK" button behavior
+        // Override "Login" button behavior
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String code = input.getText().toString();
-            if (!code.isEmpty()) {
-                checkDataToServer(code, input, dialog);
-                if(isValidCode)
-                    dialog.dismiss(); // Close the dialog
-            } else {
-                input.setError("Code cannot be empty");
+            String username = usernameInput.getText().toString().trim();
+            String password = passwordInput.getText().toString().trim();
+
+            boolean valid = true;
+
+            if (username.isEmpty()) {
+                usernameInput.setError("Username cannot be empty");
+                valid = false;
+            }
+
+            if (password.isEmpty()) {
+                passwordInput.setError("Password cannot be empty");
+                valid = false;
+            }
+
+            if (valid) {
+                checkLoginToServer(usernameInput, passwordInput, username, password, dialog);
             }
         }));
 
-        // Handle dialog dismissal
         dialog.setOnDismissListener(dialogInterface -> {
-            // If no code is entered, close the app
             if (!isValidCode) {
-                finish(); // Close the app
+                finish(); // Close the app if login fails or is canceled
             }
         });
 
         dialog.show();
     }
 
-    private void checkDataToServer(String code, EditText input, AlertDialog dialog) {
-        executorService.execute(() -> {
+    private void checkLoginToServer(EditText usernameInput, EditText passwordInput, String username, String password, AlertDialog dialog) {
+
             try {
 
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
-                payload.put("code", code);
+                payload.put("username", username);
+                payload.put("password", password);
 
                 RequestBody body = RequestBody.create(payload.toString(), JSON);
                 String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url(baseUrl + "/checkCodeProduct")
+                        .url(baseUrl + "/checkLogInApp")
                         .addHeader("X-CSRF-Token", csrfToken)
                         .post(body)
                         .build();
 
-                try (Response response = client.newCall(request).execute()) {
-                    if (response.isSuccessful()) {
-                        String responseData = Objects.requireNonNull(response.body()).string();
-                        JSONObject jsonResponse = new JSONObject(responseData);
-                        boolean isValidGetCode = jsonResponse.optBoolean("success", false);
-                        GlobalVariable.saveVariable(this, isValidGetCode);
-
-                        runOnUiThread(() -> {
-                            if (isValidGetCode) {
-                                input.setError(null);
-                                dialog.dismiss();
-                            } else {
-                                input.setError("Invalid product code");
-                            }
-                        });
-                    } else {
-                        handleError(response, input);
+                client.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        runOnUiThread(() ->
+                                showPopupWindow("Login error: " + e.getMessage())
+                        );
                     }
-                }
+
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        String responseData = Objects.requireNonNull(response.body()).string();
+                        try {
+                            JSONObject jsonResponse = new JSONObject(responseData);
+                            boolean isValidLogin = jsonResponse.optBoolean("success", false);
+                            boolean isValidUsername = jsonResponse.optBoolean("validUsername", false);
+                            GlobalVariable.saveVariable(MainActivity.this, isValidLogin);
+
+                            runOnUiThread(() -> {
+                                if (isValidLogin) {
+                                    usernameInput.setError(null);
+                                    passwordInput.setError(null);
+                                    dialog.dismiss();
+                                } else if (!isValidUsername) {
+                                    usernameInput.setError("Invalid username");
+                                } else {
+                                    usernameInput.setError(null);
+                                    passwordInput.setError("Invalid password");
+                                }
+                            });
+                        } catch (JSONException e) {
+                            runOnUiThread(() -> showPopupWindow("Parsing error: " + e.getMessage()));
+                        }
+                    }
+                });
+
             } catch (Exception e) {
                 Log.e("MainActivity", "Error: " + e.getMessage());
                 runOnUiThread(() -> showPopupWindow("Error sending EPCs to server: " + e.getMessage()));
             }
-        });
-    }
-
-    private void handleError(Response response, EditText input) {
-        try {
-            String errorMessage = "Unknown error occurred";
-            if (response.body() != null) {
-                String responseBody = response.body().string(); // Read response body
-                JSONObject errorJson = new JSONObject(responseBody);
-                errorMessage = errorJson.optString("message", "Internal server error");
-            }
-            String finalErrorMessage = errorMessage;
-            runOnUiThread(() -> input.setError(finalErrorMessage));
-        } catch (Exception e) {
-            Log.e("MainActivity", "Error: " + e.getMessage());
-            runOnUiThread(() -> input.setError("Failed to process error response: " + e.getMessage()));
-        } finally {
-            if (response.body() != null) {
-                response.body().close(); // Ensure the response body is closed
-            }
-        }
     }
 
     private void showPopupWindow(String message) {
@@ -262,11 +288,5 @@ public class MainActivity extends AppCompatActivity {
             // Optionally, reset or perform other actions after closing the dialog
         });
         builder.show();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        executorService.shutdown(); // Shutdown executor properly
     }
 }

@@ -780,7 +780,8 @@ public class EditAsset extends AppCompatActivity {
                     Log.w("EditAsset", "Unexpected adapter type for assetExpandableText");
                 }
 
-                assetDescriptionText.setText(assetDescription);
+                assetDescriptionText.setText(!assetDescription.equals("null") && !assetDescription.isEmpty() ? assetDescription : "");
+
                 oldEpc = newEpc = assetEPC;
 
                 // Update IDs

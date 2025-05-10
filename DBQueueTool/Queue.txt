@@ -134,7 +134,9 @@ CREATE TABLE laundryreport (
 	bag_id TEXT,
 	date_drop_off TIMESTAMP,
 	date_ready_to_pick_up TIMESTAMP,
-	FOREIGN KEY(bag_id) REFERENCES laundrybags(id)
+	soldier_id TEXT,
+	FOREIGN KEY(bag_id) REFERENCES laundrybags(id),
+	FOREIGN KEY (soldier_id) REFERENCES soldier(id)
 );
 
 CREATE TABLE assetstype (

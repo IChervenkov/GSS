@@ -69,7 +69,19 @@ const getAllEmojiSchema = Joi.object({
 });
 
 const checkBagsSchema = Joi.object({
-    code: Joi.string().alphanum().required()
+    code: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
+});
+
+const checkAssetSchema = Joi.object({
+    assetId: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
+});
+
+const checkAndChangeAssetSchema = Joi.object({
+    code: Joi.string().alphanum().required(),
+    location: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const changeAmountSchema = Joi.object({
@@ -88,6 +100,20 @@ const editCleanItemSchema = Joi.object({
     isTotalAmound: Joi.boolean().required()
 });
 
+const shemaUpdateQuantityAsset = Joi.object({
+    id: Joi.string().alphanum().required(),
+    newQuantity: Joi.number().integer().required(),
+    isValidCode: Joi.bool().required(),
+    campId: Joi.string().alphanum().required()
+});
+
+const shemaUpdateLocationAsset = Joi.object({
+    id: Joi.string().alphanum().required(),
+    locationId: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().required(),
+    campId: Joi.string().alphanum().required()
+});
+
 const updateBagsScanerSchema = Joi.object({
     codes: Joi.array()
         .items(Joi.string().alphanum())
@@ -98,7 +124,8 @@ const updateBagsScanerSchema = Joi.object({
     prev_destination: Joi.string()
         .valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None')
         .required(),
-    campId: Joi.string().alphanum().required()
+    campId: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const exchangeServiceSchema = Joi.object({
@@ -121,13 +148,15 @@ const checkScaningCodeSchema = Joi.object({
     code: Joi.string().alphanum().required(),
     prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
     destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None', 'Linen Exchange service').required(),
-    permCount: Joi.number().required()
+    permCount: Joi.number().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const checkCountScaningCodesSchema = Joi.object({
     countScaneCode: Joi.number().required(),
     prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to drop off', 'Ready to pick up', 'None').required(),
-    campId: Joi.string().alphanum().required()
+    campId: Joi.string().alphanum().required(),
+    isValidCode: Joi.bool().optional()
 });
 
 const schemaAddBag = Joi.object({
@@ -301,7 +330,7 @@ const schemaRemoveDestination = Joi.object({
 });
 
 const schemaRoomToDestination = Joi.object({
-    roomId: Joi.string().alphanum().required(),
+    roomId: Joi.string().pattern(/^[a-zA-Z0-9\s\-]+$/).required(),
     roomName: Joi.string().pattern(/^[^\/]+\/([^\/]+\/)?.+$/).required(),
     clickBuild: Joi.string().allow('').alphanum().required()
 });
@@ -317,7 +346,7 @@ const schemaSpecialRoom = Joi.object({
 });
 
 const schemaSpecialKey = Joi.object({
-    numRoom: Joi.string().pattern(/^([a-zA-Z0-9]+(\/[a-zA-Z0-9])?\/[a-zA-Z0-9]+)*$/).required()
+    numRoom: Joi.string().pattern(/^([a-zA-Z0-9]+(\/[a-zA-Z0-9\s\-])?\/[a-zA-Z0-9\s\-]+)*$/).required()
 });
 
 const schemaSpecialAssets = Joi.object({
@@ -338,10 +367,6 @@ const schemaAddAsetsType = Joi.object({
 
 const schemaRemoveAsetsType = Joi.object({
     assetTypeId: Joi.string().alphanum().required()
-});
-
-const schemaCheckAppCode = Joi.object({
-    code: Joi.string().alphanum().required()
 });
 
 const schemaLostItems = Joi.object({
@@ -490,11 +515,11 @@ const schemaSaveSoldier = Joi.object({
 });
 
 const schemaViewKey = Joi.object({
-    roomNumber: Joi.string().pattern(/^([a-zA-Z0-9]+(\/[a-zA-Z0-9])?\/[a-zA-Z0-9]+)*$/).required()
+    roomNumber: Joi.string().pattern(/^([a-zA-Z0-9]+(\/[a-zA-Z0-9\s\-])?\/[a-zA-Z0-9\s\-]+)*$/).required()
 });
 
 const schemaNFCBikeRead = Joi.object({
-    nfcData: Joi.string().required(), // nfcData should be a string and is required
+    nfcData: Joi.string().required(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -1021,29 +1046,63 @@ class Server {
 
         });
 
-        this.app.post('/checkCodeProduct', async (req, res) => {
+        this.app.post('/checkLogInApp', async (req, res) => {
+
+            const { error } = schemaLogIn.validate(req.body);
+            if (error) {
+                return res.status(400).json({ success: false, message: error.details[0].message });
+            }
+
+            const { username, password } = req.body;
+
+            const client = await pool.connect();
+
             try {
-                const { error } = schemaCheckAppCode.validate(req.body);
-                if (error) {
-                    return res.status(400).json({ success: false, message: error.details[0].message });
+                await client.query('BEGIN');
+                const result = await client.query("SELECT * FROM users WHERE username = $1", [username]);
+
+                if (result.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(401).json({ success: false, validUsername: false });
                 }
 
-                const { code } = req.body;
-                const codeMatches = await bcrypt.compare(code, process.env.DEVISE_CODE); // Use async bcrypt
-                const codeMatchesNFC = await bcrypt.compare(code, process.env.DEVISE_CODE_NFC); // Use async bcrypt
+                const user = result.rows[0];
 
-                if (codeMatches || codeMatchesNFC) {
-                    return res.status(200).json({ success: true, message: 'Code is valid.' });
+                // Check if the user is blocked due to failed login attempts
+                if (this.isBlocked(username)) {
+                    await client.query('ROLLBACK');
+                    return res.status(403).json({ success: false, message: 'Too many failed attempts. Please try again later.' });
                 }
 
-                return res.status(401).json({ success: false, message: 'Invalid code.' });
+                const passwordMatches = bcrypt.compareSync(password, user.password);
+                if (passwordMatches) {
+
+                    // Reset failed login attempts on successful login
+                    failedLoginAttempts[username] = { failedAttempts: 0 };
+
+                    await client.query('COMMIT');
+                    res.status(200).json({ success: true, validUsername: true });
+
+                } else {
+
+                    // Increment failed attempts or initialize tracking
+                    const record = failedLoginAttempts[username] || { failedAttempts: 0 };
+
+                    record.failedAttempts += 1;
+                    if (record.failedAttempts >= MAX_FAILED_ATTEMPTS) {
+                        record.blockExpiresAt = Date.now() + BLOCK_TIME;
+                    }
+                    failedLoginAttempts[username] = record;
+
+                    await client.query('ROLLBACK');
+                    res.status(401).json({ success: false, validUsername: true });
+                }
 
             } catch (err) {
                 console.error(err);
                 return res.status(500).json({ success: false, message: 'Server error occurred.' });
             }
         });
-
 
         // POST route to handle RFID codes (only accessible after login)
         this.app.get('/rfid', (req, res) => {
@@ -1416,7 +1475,7 @@ class Server {
 
         // Serve APK file from local directory
         this.app.get('/download-apk-bike', (req, res) => {
-            const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.0-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.1-release.apk');
 
             // Check APK file existence and legality
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -1425,7 +1484,7 @@ class Server {
 
             // Serve the APK with proper headers
             res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-            res.setHeader('Content-Disposition', 'attachment; filename="NFCReader-1.0-release.apk"');
+            res.setHeader('Content-Disposition', 'attachment; filename="NFCReader-1.1-release.apk"');
             res.download(apkFilePath, (err) => {
                 if (err) {
                     console.error('Error during APK download:', err);
@@ -1435,7 +1494,7 @@ class Server {
         });
 
         this.app.get('/apk-bike-version', (req, res) => {
-            res.json({ version: "1.0", apkUrl: "/download-apk-bike" });
+            res.json({ version: "1.1", apkUrl: "/download-apk-bike" });
         });
 
         // Section bicycles
@@ -3189,7 +3248,7 @@ class Server {
                     LEFT JOIN buildroom br ON br.roomid = r.id
                     LEFT JOIN buildings b ON br.buildid = b.id
                     LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
-                    WHERE nameroom SIMILAR TO '%/' || $1 || '[0-9]%' AND b.camp_id = $2
+                    WHERE nameroom SIMILAR TO '%/' || $1 || '[0-9]*%' AND b.camp_id = $2
                     GROUP BY nameroom
                     ORDER BY nameroom;`, [numBuild, req.session.camp]);
 
@@ -3222,7 +3281,8 @@ class Server {
                                 THEN k.id
                             END
                         ) AS count_without_location,
-                        COUNT(CASE WHEN a.location_key IS NOT NULL THEN k.id END) AS all_bed_count
+                        COUNT(CASE WHEN a.location_key IS NOT NULL THEN k.id END) AS all_bed_with_location_count,
+                        COUNT(k.id) AS all_bed_without_location_count
                     FROM 
                         rooms r
                     LEFT JOIN 
@@ -3239,7 +3299,7 @@ class Server {
                         buildings b ON br.buildid = b.id
                     WHERE 
                         br.buildid = $1
-                        AND nameroom NOT SIMILAR TO '%/(E|D)[0-9]%'
+                        AND nameroom NOT SIMILAR TO '%/(E|D)[0-9]*'
                     GROUP BY 
                         nameroom
                     ORDER BY 
@@ -3253,7 +3313,7 @@ class Server {
                     resultData.rows.forEach(row => {
                         nameroomSet.add(row.nameroom);
                         roomCounts[row.nameroom] = type === 'Accommodation' ? row.count_with_location || 0 : row.count_without_location || 0;
-                        roomAllCounts[row.nameroom] = row.all_bed_count;
+                        roomAllCounts[row.nameroom] = type === 'Accommodation' ? row.all_bed_with_location_count || 0 : row.all_bed_without_location_count;
                     });
 
                     const countFreeBedsResult = await client.query(`
@@ -3293,7 +3353,7 @@ class Server {
                     LEFT JOIN
                         assets a ON a.location_key = k.id
                     WHERE 
-                        nameroom NOT SIMILAR TO '%/(E|D)[0-9]%'
+                        nameroom NOT SIMILAR TO '%/(E|D)[0-9]*'
                         AND b.type = 'Accommodation'
                         AND b.camp_id = $1
                     GROUP BY 
@@ -3981,6 +4041,7 @@ class Server {
                     client.query("DELETE FROM movesoldier WHERE idsoldier = $1;", [code]),
                     client.query("UPDATE laundrybags SET soldier_id = NULL WHERE soldier_id = $1", [code]),
                     client.query("UPDATE key SET soldierid = NULL WHERE soldierid = $1;", [code]),
+                    client.query("DELETE FROM laundryreport WHERE soldier_id = $1", [code]),
                     client.query("DELETE FROM fitness WHERE soldierid = $1", [code]),
                     client.query("DELETE FROM bikesoldier WHERE soldierid = $1", [code]),
                     client.query("DELETE FROM soldier WHERE id = $1;", [code])
@@ -4046,6 +4107,7 @@ class Server {
                         client.query("UPDATE fitness SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]),
                         client.query("UPDATE bikesoldier SET soldierid = $1 WHERE soldierid = $2;", [soldierNewId, soldierId]),
                         client.query("UPDATE laundrybags SET soldier_id = $1 WHERE soldier_id = $2;", [soldierNewId, soldierId]),
+                        client.query("UPDATE laundryreport SET soldier_id = $1 WHERE soldier_id = $2;", [soldierNewId, soldierId]),
                         client.query("UPDATE additionalItem SET soldier_id = $1 WHERE soldier_id = $2;", [soldierNewId, soldierId]),
                         client.query("DELETE FROM soldier WHERE id = $1;", [soldierId])
                     ]);
@@ -4694,14 +4756,14 @@ class Server {
                     FROM rooms r
                     LEFT JOIN buildroom br ON br.roomid = r.id
                     WHERE br.buildid = $1
-                    AND nameroom NOT SIMILAR TO '%/(E|D)[0-9]%';`, [numBuild]);
+                    AND nameroom NOT SIMILAR TO '%/(E|D)[0-9]*';`, [numBuild]);
                 } else {
                     result = await client.query(`
                         SELECT r.* 
                         FROM rooms r
                         LEFT JOIN buildroom br ON br.roomid = r.id
                         LEFT JOIN buildings b ON br.buildid = b.id
-                        WHERE nameroom SIMILAR TO '%/(E|D)[0-9]%' AND b.camp_id = $1;`, [req.session.camp]);
+                        WHERE nameroom SIMILAR TO '%/(E|D)[0-9]*' AND b.camp_id = $1;`, [req.session.camp]);
                 }
 
                 const result_room_data = result.rows;
@@ -4778,15 +4840,71 @@ class Server {
                 await client.query('BEGIN');
 
                 const result = await client.query(`
-                    SELECT k.id, k.namekey, s.namesoldier, s.country, s.meal_card, l.code, r.nameroom, r.id AS roomid FROM key k
-                    LEFT JOIN soldier s ON s.id = k.soldierid
-                    LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id
-                    LEFT JOIN roomskey rk ON rk.keyid = k.id
-                    LEFT JOIN rooms r ON rk.roomid = r.id
-					LEFT JOIN buildroom br ON br.roomid = r.id
-					LEFT JOIN buildings b ON br.buildid = b.id
-                    JOIN assets a ON a.location_key = k.id
-                    WHERE b.camp_id = $1;`, [req.session.camp]);
+                    WITH key_info AS (
+                        SELECT 
+                            k.id,
+                            k.namekey,
+                            s.namesoldier,
+                            s.country,
+                            s.meal_card,
+                            l.code AS laundry_code,
+                            r.nameroom,
+                            r.id AS roomid,
+                            b.type AS building_type,
+                            a.id AS asset_id
+                        FROM key k
+                        LEFT JOIN soldier s ON s.id = k.soldierid
+                        LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id
+                        LEFT JOIN roomskey rk ON rk.keyid = k.id
+                        LEFT JOIN rooms r ON rk.roomid = r.id
+                        LEFT JOIN buildroom br ON br.roomid = r.id
+                        LEFT JOIN buildings b ON br.buildid = b.id
+                        LEFT JOIN assets a ON a.location_key = k.id
+                        WHERE b.camp_id = $1
+                    )
+
+                    SELECT 
+                        id,
+                        namekey,
+                        namesoldier,
+                        country,
+                        meal_card,
+                        laundry_code,
+                        nameroom,
+                        roomid,
+                        building_type
+                    FROM key_info
+                    WHERE building_type = 'Accommodation' AND asset_id IS NOT NULL
+
+                    UNION
+
+                    SELECT 
+                        id,
+                        namekey,
+                        namesoldier,
+                        country,
+                        meal_card,
+                        laundry_code,
+                        nameroom,
+                        roomid,
+                        building_type
+                    FROM key_info
+                    WHERE building_type <> 'Accommodation'
+
+                    UNION
+
+                    SELECT 
+                        id,
+                        namekey,
+                        namesoldier,
+                        country,
+                        meal_card,
+                        laundry_code,
+                        nameroom,
+                        roomid,
+                        building_type
+                    FROM key_info
+                    WHERE nameroom SIMILAR TO '%/(E|D)[0-9]*';`, [req.session.camp]);
 
                 const result_key_data = result.rows;
                 let total_res = [];
@@ -4943,7 +5061,10 @@ class Server {
                     client.query(`
                         UPDATE assets
                         SET 
-                            location_key = CASE WHEN location_key = $2 THEN $1 ELSE location_key END;`, [newKeyId, oldKeyId])
+                            location_key = CASE WHEN location_key = $2 THEN $1 ELSE location_key END;`, [newKeyId, oldKeyId]),
+
+                    client.query(`
+                        UPDATE soldier SET upcoming_accommodation_key = $1 WHERE upcoming_accommodation_key = $2;`, [newKeyId, oldKeyId])
                 ]);
 
                 await client.query(`DELETE FROM key WHERE id = $1;`, [oldKeyId]);
@@ -5087,6 +5208,7 @@ class Server {
                 if (result_quantity.rows[0].quantity === quantity) {
                     await Promise.all([
                         client.query(`DELETE FROM additionalitem WHERE id = $1;`, [id]),
+                        client.query(`UPDATE laundrybags SET soldier_id = NULL WHERE id = (SELECT bag_id FROM additionalitem WHERE id = $1);`, [id]),
                         client.query(`INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2);`,
                             [req.session.username, `Return additional item`])
                     ]);
@@ -5444,7 +5566,7 @@ class Server {
         // Serve APK file from local directory
         this.app.get('/download-apk-laundry', (req, res) => {
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.0-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.1-release.apk');
 
             // Check legality and existence of the APK file
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -5453,7 +5575,7 @@ class Server {
 
             // Set proper headers for an APK file
             res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
-            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.0-release.apk"'); // Force download with custom filename
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.1-release.apk"'); // Force download with custom filename
 
             // Use res.download() to send the file to the client
             res.download(apkFilePath, (err) => {
@@ -5465,7 +5587,7 @@ class Server {
         });
 
         this.app.get('/apk-laundry-version', (req, res) => {
-            res.json({ version: "1.0", apkUrl: "/download-apk-laundry" });
+            res.json({ version: "1.1", apkUrl: "/download-apk-laundry" });
         });
 
         this.app.get('/laundry', this.isLoggedIn.bind(this), async (req, res) => {
@@ -5583,7 +5705,10 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { code } = req.body;
+            if (!req.body.isValidCode)
+                return res.status(400).json({ message: "Invalid code" });
+
+            const code = req.body.code;
 
             const client = await pool.connect();
 
@@ -5621,6 +5746,9 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
+            if(!req.body.isValidCode)
+                return res.status(400).json({ message: "Invalid code" });
+
             const { codes, destination, prev_destination, campId } = req.body;
 
             if (!Array.isArray(codes)) {
@@ -5639,12 +5767,18 @@ class Server {
                 if (prev_destination === 'None') {
                     const codesPlaceholder = codes.map((_, i) => `$${i + 1}`).join(', ');
 
-                    const insertPromises = codes.map((code) =>
-                        client.query(
-                            `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, NULL) ON CONFLICT DO NOTHING;`,
-                            [code]
+                    const insertPromises = codes.map(async (code) => {
+
+                        const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1;`, [code]);
+                        const result_additional_bag = await client.query(`SELECT soldier_id FROM laundrybags WHERE id = $1;`, [code]);
+
+                        return client.query(
+                            `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up, soldier_id) 
+                                VALUES ($1, CURRENT_TIMESTAMP, NULL, $2) ON CONFLICT DO NOTHING;`,
+                            [code, result_additional_bag.rows[0].soldier_id || result.rows[0].id || null]
                         )
-                    );
+                    });
+
                     await Promise.all(insertPromises);
 
                     await client.query(
@@ -5743,6 +5877,9 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
+            if(!req.body.isValidCode)
+                return res.status(400).json({ message: "Invalid code" });
+
             const { codes, destination, prev_destination, campId } = req.body;
 
             if (!Array.isArray(codes)) {
@@ -5758,12 +5895,15 @@ class Server {
             try {
                 await client.query('BEGIN');
 
-                const insertPromises = codes.map((code) =>
+                const insertPromises = codes.map(async (code) => {
+                    const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1;`, [code]);
+                    const result_additional_bag = await client.query(`SELECT soldier_id FROM laundrybags WHERE id = $1;`, [code]);
                     client.query(
-                        `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;`,
-                        [code]
+                        `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up, soldier_id) 
+                            VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $2) ON CONFLICT DO NOTHING;`,
+                        [code, result_additional_bag.rows[0].soldier_id || result.rows[0].id || null]
                     )
-                );
+                });
                 await Promise.all(insertPromises);
 
                 await client.query('COMMIT');
@@ -5792,10 +5932,14 @@ class Server {
             try {
                 await client.query('BEGIN');
 
+                const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1;`, [code]);
+                const result_additional_bag = await client.query(`SELECT soldier_id FROM laundrybags WHERE id = $1;`, [code]);
+
                 await Promise.all([
                     client.query(
-                        `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up) VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;`,
-                        [code]
+                        `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up, soldier_id) 
+                            VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $2) ON CONFLICT DO NOTHING;`,
+                        [code, result_additional_bag.rows[0].soldier_id || result.rows[0].id || null]
                     )
                 ]);
 
@@ -5817,6 +5961,9 @@ class Server {
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
+
+            if(!req.body.isValidCode)
+                return res.status(400).json({ message: "Invalid code" });
 
             const { code, prev_destination, destination, permCount } = req.body;
             const client = await pool.connect();
@@ -5886,6 +6033,9 @@ class Server {
             if (error) {
                 return res.status(400).json({ message: error.details[0].message });
             }
+
+            if(!req.body.isValidCode)
+                return res.status(400).json({ message: "Invalid code" });
 
             const { countScaneCode, prev_destination, campId } = req.body;
             const client = await pool.connect();
@@ -5961,8 +6111,13 @@ class Server {
                 }
 
                 if (prev_destination === 'None') {
+
+                    const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1;`, [code]);
+                    const result_additional_bag = await client.query(`SELECT soldier_id FROM laundrybags WHERE id = $1;`, [code]);
+
                     queries.push(client.query(`
-                        INSERT INTO laundryreport VALUES ($1, CURRENT_TIMESTAMP, NULL);`, [code]));
+                        INSERT INTO laundryreport VALUES ($1, CURRENT_TIMESTAMP, NULL, $2);`,
+                        [code, result_additional_bag.rows[0].soldier_id || result.rows[0].id || null]));
 
                     queries.push(client.query(`
                         UPDATE laundrybags SET timein = NULL, timeout = NULL, avg_drop_off_duration = 0, avg_transportation_duration = 0,
@@ -6137,94 +6292,33 @@ class Server {
 
                 const [result, result_nationality] = await Promise.all([
                     client.query(`
-                        WITH latest_soldier AS (
-                            SELECT DISTINCT ON (s.laundry_bag_id)
-                                s.id,
-                                s.laundry_bag_id,
-                                s.namesoldier,
-                                s.country
-                            FROM soldier s
-                            WHERE s.laundry_bag_id IS NOT NULL AND s.camp_id = $3
-                            ORDER BY s.laundry_bag_id, 
-                                    (s.date_free IS NULL) DESC, 
-                                    s.date_free DESC
-                        ),
-                        query1 AS (
-                            SELECT 
-                                l.code,
-                                l.type,
-                                CASE 
-                                    WHEN l.status = 'None' THEN 'In the soldier'
-                                    ELSE l.status
-                                END AS status,
-                                ls.namesoldier, 
-                                ls.country,
-                                TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off, 
-                                CASE 
-                                    WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
-                                    ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
-                                END AS date_ready_to_pick_up
-                            FROM laundrybags l
-                            JOIN laundryreport lr ON lr.bag_id = l.id
-                            JOIN latest_soldier ls ON l.id = ls.laundry_bag_id
-                            WHERE lr.date_drop_off BETWEEN $1 AND $2 AND l.camp_id = $3
-                        ),
-                        query2 AS (
-                            SELECT 
-                                l.code,
-                                l.type,
-                                CASE 
-                                    WHEN l.status = 'None' THEN 'In the soldier'
-                                    ELSE l.status
-                                END AS status,
-                                s.namesoldier, 
-                                s.country,
-                                TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off, 
-                                CASE 
-                                    WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
-                                    ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
-                                END AS date_ready_to_pick_up
-                            FROM laundrybags l
-                            JOIN laundryreport lr ON lr.bag_id = l.id
-                            JOIN soldier s ON l.soldier_id = s.id
-                            WHERE lr.date_drop_off BETWEEN $1 AND $2 AND l.camp_id = $3
-                        )
-                        SELECT * FROM query1
-                        UNION ALL
-                        SELECT * FROM query2
-                        WHERE NOT EXISTS (SELECT 1 FROM query1);`, [selectedDate1, selectedDate2, req.session.camp]),
+                        SELECT l.code, l.type,
+                        CASE 
+                            WHEN l.status = 'None' 
+                                OR (lr.date_drop_off IS NOT NULL AND lr.date_ready_to_pick_up IS NOT NULL AND l.status <> 'Ready to pick up' ) 
+                                THEN 'In the soldier'
+                        ELSE l.status
+                        END AS status,
+                        s.namesoldier, 
+                        s.country,
+                        TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off, 
+                        CASE 
+                            WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
+                            ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
+                        END AS date_ready_to_pick_up
+                        FROM laundrybags l
+                        JOIN laundryreport lr ON lr.bag_id = l.id
+                        JOIN soldier s ON lr.soldier_id = s.id
+                        WHERE lr.date_drop_off BETWEEN $1 AND $2 AND l.camp_id = $3`, [selectedDate1, selectedDate2, req.session.camp]),
                     client.query(`
-                        WITH latest_soldier AS (
-                            SELECT DISTINCT ON (s.laundry_bag_id)
-                            s.id,
-                            s.laundry_bag_id,
-                            s.country
-                            FROM soldier s
-                            WHERE s.laundry_bag_id IS NOT NULL AND s.camp_id = $3
-                            ORDER BY s.laundry_bag_id, 
-                                (s.date_free IS NULL) DESC, 
-                                s.date_free DESC
-                        ),
-                        query1 AS (SELECT 
-                            COUNT(*) AS total_count_bags,
-                            ls.country
-                        FROM laundrybags l
-                        JOIN laundryreport lr ON lr.bag_id = l.id
-                        JOIN latest_soldier ls ON l.id = ls.laundry_bag_id
-                        WHERE lr.date_drop_off BETWEEN $1 AND $2 AND l.camp_id = $3
-                        GROUP BY ls.country),
-						query2 AS (SELECT 
+                        SELECT 
                             COUNT(*) AS total_count_bags,
                             s.country
                         FROM laundrybags l
                         JOIN laundryreport lr ON lr.bag_id = l.id
-						JOIN soldier s ON l.soldier_id = s.id
+						JOIN soldier s ON lr.soldier_id = s.id
                         WHERE lr.date_drop_off BETWEEN $1 AND $2 AND l.camp_id = $3
-                        GROUP BY s.country)
-						SELECT * FROM query1
-						UNION ALL
-						SELECT * FROM query2
-						WHERE NOT EXISTS (SELECT 1 FROM query1);`, [selectedDate1, selectedDate2, req.session.camp])
+                        GROUP BY s.country`, [selectedDate1, selectedDate2, req.session.camp])
                 ]);
 
                 await client.query('COMMIT');
@@ -6600,7 +6694,7 @@ class Server {
         // Serve APK file from local directory
         this.app.get('/download-apk-asset', (req, res) => {
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.0-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.1-release.apk');
 
             // Check legality and existence of the APK file
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -6609,7 +6703,7 @@ class Server {
 
             // Set proper headers for an APK file
             res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
-            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryAsset-1.0-release.apk"'); // Force download with custom filename
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryAsset-1.1-release.apk"'); // Force download with custom filename
 
             // Use res.download() to send the file to the client
             res.download(apkFilePath, (err) => {
@@ -6621,7 +6715,7 @@ class Server {
         });
 
         this.app.get('/apk-asset-version', (req, res) => {
-            res.json({ version: "1.0", apkUrl: "/download-apk-asset" });
+            res.json({ version: "1.1", apkUrl: "/download-apk-asset" });
         });
 
         this.app.get('/allAssets', async (req, res) => {
@@ -6883,7 +6977,7 @@ class Server {
                     }));
                 }
 
-                const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings WHERE camp_id = $1`, [req.session.camp]);
+                const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings WHERE camp_id = $1 ORDER BY namebuilding;`, [req.session.camp]);
 
                 navBuild = resultBuild.rows.map(row => ({
                     name: row.namebuilding,
@@ -6992,7 +7086,7 @@ class Server {
 
                 if (numRoom)
                     result_get_room = await client.query(`
-                        SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.id AS keyid, k.namekey, categorie, quantity, mrah, asset_owner, status, expandable, description
+                        SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.id AS keyid, k.namekey, categorie, quantity, mrah, asset_owner, status, expandable, description, a.inventory_status
                         FROM assets a
                         LEFT JOIN assetstype t ON t.id = a.type_id
                         LEFT JOIN rooms r ON r.id = a.location_room
@@ -7000,7 +7094,7 @@ class Server {
                         WHERE location_room = $1;`, [numRoom]);
                 else
                     result_get_room = await client.query(`
-                        SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.id AS keyid, k.namekey, categorie, quantity, mrah, asset_owner, status, expandable, description
+                        SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.id AS keyid, k.namekey, categorie, quantity, mrah, asset_owner, status, expandable, description, a.inventory_status
                         FROM assets a
                         LEFT JOIN assetstype t ON t.id = a.type_id
                         LEFT JOIN rooms r ON r.id = a.location_room
@@ -7022,7 +7116,8 @@ class Server {
                         owner: row.asset_owner,
                         status: row.status,
                         expandable: row.expandable,
-                        description: row.description
+                        description: row.description,
+                        inventory_status: row.inventory_status
                     });
                 });
 
@@ -7054,17 +7149,22 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result = await pool.query(`
-                    SELECT id, nameroom FROM rooms WHERE camp_id = $1;`, [value.campId]);
-                    
+                const result = await client.query(`
+                   SELECT r.id, nameroom FROM rooms r
+                    LEFT JOIN buildroom br ON br.roomid = r.id
+                    LEFT JOIN buildings b ON b.id = br.buildid
+                    WHERE b.camp_id = $1 
+                    AND r.nameroom NOT SIMILAR TO '[0-9]+/[0-9]+/E[0-9]+'
+                    ORDER BY r.nameroom;`, [value.campId]);
+
                 const result_location = result.rows.map(row => ({
                     id: row.id,
-                    name: row.nameroom
+                    nameroom: row.nameroom
                 }));
 
                 await client.query('COMMIT');
                 res.status(200).json(result_location);
-                
+
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error('Server error:', error);
@@ -8425,6 +8525,239 @@ class Server {
                 await client.query('ROLLBACK');
                 console.error('Server error:', error);
                 res.status(500).json({ message: 'Failed to restart inventory' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/updateAssetQuantity', async (req, res) => {
+            const { error } = shemaUpdateQuantityAsset.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const id = req.body.id;
+            const campId = req.body.campId;
+            const isValidCode = req.body.isValidCode;
+            const newQuantity = Number(req.body.newQuantity);
+
+
+            if (!isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [campId]);
+                const queries = [];
+
+                const assetQuantity = await client.query(`SELECT quantity FROM assets WHERE id = $1`, [id]);
+                const asset_quantity = assetQuantity.rows[0].quantity;
+
+                if (newQuantity === 0) {
+
+                    if (result_exist_date.rows.length > 0) {
+                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [asset_quantity, campId]));
+                    } else {
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [asset_quantity, campId]));
+                    }
+
+                    queries.push(client.query(`DELETE FROM assets WHERE id = $1`, [id]));
+
+                } else if (newQuantity < asset_quantity) {
+                    const quantityRemoved = asset_quantity - newQuantity;
+                    if (result_exist_date.rows.length > 0) {
+                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [quantityRemoved, campId]));
+                    } else {
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [quantityRemoved, campId]));
+                    }
+
+                    queries.push(client.query(`UPDATE assets SET quantity = $1, inventory_status = 'edited' WHERE id = $2`, [newQuantity, id]));
+
+                } else {
+                    const quantityAdded = newQuantity - asset_quantity;
+                    if (result_exist_date.rows.length > 0) {
+                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [quantityAdded, campId]));
+                    } else {
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [quantityAdded, campId]));
+                    }
+
+                    queries.push(client.query(`UPDATE assets SET quantity = $1, inventory_status = 'edited' WHERE id = $2`, [newQuantity, id]));
+                }
+
+                await Promise.all(queries);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The asset quantity was successfully update' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to edit quantity of asset' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/check-asset', async (req, res) => {
+
+            const { error, value } = checkAssetSchema.validate(req.body);
+
+            if (error) {
+                // If validation fails, return 400 with the error message
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            if (!value.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const code = value.assetId;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(
+                    'SELECT * FROM assets WHERE id = $1',
+                    [code]
+                );
+
+                if (result.rows.length > 0) {
+                    await client.query('COMMIT');
+                    res.json({ exists: true });
+                } else {
+                    await client.query('COMMIT');
+                    res.json({ exists: false });
+                }
+
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error(err);
+                res.status(500).json({ message: "Internal server error" });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/checkAndChangeScanningAsset', async (req, res) => {
+            const { error } = checkAndChangeAssetSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            if (!req.body.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const { code, location } = req.body;
+            let isOtherLocation = false;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(`SELECT * FROM assets WHERE id = $1 AND location_room = $2`, [code, location]);
+                if (result.rows.length > 0) {
+                    await client.query(`UPDATE assets SET inventory_status = 'discovered' WHERE id = $1`, [code]);
+                } else {
+                    isOtherLocation = true;
+                }
+
+                await client.query('COMMIT');
+                res.status(200).json({ isAdditionalAsset: isOtherLocation });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(err);
+                res.status(500).json({ message: "Internal server error" });
+
+            } finally {
+                client.release();
+            }
+
+        });
+
+        this.app.get('/getDataForAdditionalAsset', async (req, res) => {
+
+            const { error, value } = checkAssetSchema.validate(req.query);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            if (!value.isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const id = value.assetId;
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result = await client.query(`
+                    SELECT a.id, code, name_assets, r.nameroom AS location_name 
+                    FROM assets a
+                    LEFT JOIN rooms r ON a.location_room = r.id
+                    WHERE a.id = $1`, [id]);
+
+                await client.query('COMMIT');
+                res.status(200).json(result.rows[0]);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(err);
+                res.status(500).json({ message: "Internal server error" });
+
+            } finally {
+                client.release();
+            }
+
+        });
+
+        this.app.post('/updateAssetLocation', async (req, res) => {
+            const { error } = shemaUpdateLocationAsset.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.details[0].message });
+            }
+
+            const { id, locationId, isValidCode, campId } = req.body;
+
+            if (!isValidCode)
+                return res.status(402).json({ message: "Invalid product code!" });
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [campId]);
+                const queries = [];
+
+                if (result_exist_date.rows.length > 0) {
+                    queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + 1 WHERE date_change = CURRENT_DATE AND camp_id = $1;`, [campId]));
+                } else {
+                    queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, 1, $2);`, [campId]));
+                }
+
+                queries.push(client.query(`UPDATE assets SET location_room = $1, inventory_status = 'edited' WHERE id = $2`, [locationId, id]));
+
+                await Promise.all(queries);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The asset location was successfully update' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Server error:', error);
+                res.status(500).json({ message: 'Failed to edit location of asset' });
             } finally {
                 client.release();
             }

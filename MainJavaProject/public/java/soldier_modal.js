@@ -546,7 +546,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function filterUpcomingKey(query, dropDown) {
         dropDown.innerHTML = '';
-        const filteredKey = allKeys.filter(key => key.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredKey = allKeys.filter(key => 
+            key.building_type === 'Accommodation' &&
+            !/(E|D)[0-9]/.test(key.name) &&
+            key.name.toLowerCase().includes(query.toLowerCase()));
 
         if (filteredKey.length > 0) {
             dropDown.style.display = 'block';
@@ -1042,7 +1045,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function openModalKey(roomNumber) {
         // Remove all slashes from roomNumber
-        const cleanedRoomNumber = roomNumber.replace(/\s/g, '');
+        const cleanedRoomNumber = roomNumber.trim();
 
         // Fetch the keys when the script loads
         fetchSpecialKey(cleanedRoomNumber);
@@ -3495,7 +3498,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     roomId.addEventListener('input', () => {
-        toggleInputValidity(roomId, roomId.value !== "" && /^[a-zA-Z0-9]+$/.test(roomId.value));
+        toggleInputValidity(roomId, roomId.value !== "" && /^[a-zA-Z0-9\s\-]+$/.test(roomId.value));
     });
 
     roomName.addEventListener('input', function () {
@@ -3513,7 +3516,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let inputsToCheck;
         if (clickBuildNumber.value) {
             inputsToCheck = [
-                { input: roomId, condition: roomId.value === "" || !/^[a-zA-Z0-9]+$/.test(roomId.value) },
+                { input: roomId, condition: roomId.value === "" || !/^[a-zA-Z0-9\s\-]+$/.test(roomId.value) },
                 { input: roomName, condition: roomName.value === "" || !new RegExp(`^${clickBuildNumber.value}\/${roomId.value}$`).test(roomName.value) },
             ];
         } else {

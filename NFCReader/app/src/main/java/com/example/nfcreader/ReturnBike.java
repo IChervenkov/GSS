@@ -71,9 +71,7 @@ public class ReturnBike extends AppCompatActivity {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    Toast.makeText(ReturnBike.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(() -> Toast.makeText(ReturnBike.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
 
             @Override

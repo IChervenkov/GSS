@@ -415,7 +415,7 @@ public class AddAsset extends AppCompatActivity {
                     UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
                     if (uhftagInfo == null) {
                         try {
-                            Thread.sleep(50);
+                            Thread.sleep(20);
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt(); // Properly interrupt the thread
                             break;

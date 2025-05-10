@@ -14,6 +14,7 @@ public class GlobalVariable {
     private static final String KEY_DESTINATION = "destination";
     private static final String KEY_PREV_DESTINATION = "prev_destination";
     private static final String KEY_CAMP = "camp";
+    private static final String KEY_VALIDATION = "validation";
 
     private static SharedPreferences getEncryptedPrefs(Context context) {
         try {
@@ -60,5 +61,15 @@ public class GlobalVariable {
 
     public static String getCamp(Context context) {
         return getEncryptedPrefs(context).getString(KEY_CAMP, "");
+    }
+
+    public static void saveValidatationData(Context context, boolean validationData) {
+        SharedPreferences.Editor editor = getEncryptedPrefs(context).edit();
+        editor.putBoolean(KEY_VALIDATION, validationData);
+        editor.apply();
+    }
+
+    public static boolean getValidatationData(Context context) {
+        return getEncryptedPrefs(context).getBoolean(KEY_VALIDATION, false);
     }
 }

@@ -71,7 +71,6 @@
         android:drawableLeft="@drawable/ic_inventory"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:enabled="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/buttonAssets"

@@ -9,7 +9,9 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.Spinner;
 import android.widget.TableLayout;
@@ -65,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
             .cookieJar(new JavaNetCookieJar(cookieManager))
             .build();
     private String csrfToken = null;
+    private boolean isValidCode;
     private final ExecutorService executorService = Executors.newFixedThreadPool(3);
 
     private void fetchCsrfToken() {
@@ -106,6 +109,15 @@ public class MainActivity extends AppCompatActivity {
 
         cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
 
+        fetchCsrfToken();
+
+        isValidCode = GlobalVariable.getValidatationData(this);
+
+        if(!isValidCode) {
+            showLoginDialog();
+            return;
+        }
+
         ImageButton settingsButton = findViewById(R.id.settingsButton);
 
         settingsButton.setOnClickListener(v -> {
@@ -138,8 +150,6 @@ public class MainActivity extends AppCompatActivity {
         menuButton.setOnClickListener(this::showPopupMenu);
         tableLayout = findViewById(R.id.tableLayout);
 
-        fetchCsrfToken();
-
         // Initialize RFID reader
         try {
             rfidReader = RFIDWithUHFUART.getInstance();
@@ -151,6 +161,115 @@ public class MainActivity extends AppCompatActivity {
             Log.e("MainActivity", "Error: " + e.getMessage());
             Toast.makeText(MainActivity.this, "Error initializing RFID Reader", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void showLoginDialog() {
+        // Create an AlertDialog builder
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("\uD83D\uDD12 Login");
+
+        // Create a LinearLayout to hold the username and password fields
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 40, 50, 10);
+
+        // Username input
+        final EditText usernameInput = new EditText(this);
+        usernameInput.setHint("Username");
+        usernameInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        layout.addView(usernameInput);
+
+        // Password input
+        final EditText passwordInput = new EditText(this);
+        passwordInput.setHint("Password");
+        passwordInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        layout.addView(passwordInput);
+
+        builder.setView(layout);
+
+        // "Login" button
+        builder.setPositiveButton("Login", null); // We'll override the click listener later
+
+        // "Cancel" button
+        builder.setNegativeButton("Cancel", (dialog, which) -> {
+            finish(); // Close the app
+        });
+
+        AlertDialog dialog = builder.create();
+
+        // Override "Login" button behavior
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String username = usernameInput.getText().toString().trim();
+            String password = passwordInput.getText().toString().trim();
+
+            boolean valid = true;
+
+            if (username.isEmpty()) {
+                usernameInput.setError("Username cannot be empty");
+                valid = false;
+            }
+
+            if (password.isEmpty()) {
+                passwordInput.setError("Password cannot be empty");
+                valid = false;
+            }
+
+            if (valid) {
+                checkLoginToServer(usernameInput, passwordInput, username, password, dialog);
+            }
+        }));
+
+        dialog.setOnDismissListener(dialogInterface -> {
+            if (!isValidCode) {
+                finish(); // Close the app if login fails or is canceled
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void checkLoginToServer(EditText usernameInput, EditText passwordInput, String username, String password, AlertDialog dialog) {
+        executorService.execute(()-> {
+            try {
+
+                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+                JSONObject payload = new JSONObject();
+                payload.put("username", username);
+                payload.put("password", password);
+
+                RequestBody body = RequestBody.create(payload.toString(), JSON);
+                String baseUrl = getString(R.string.base_url);
+                Request request = new Request.Builder()
+                        .url(baseUrl + "/checkLogInApp")
+                        .addHeader("X-CSRF-Token", csrfToken)
+                        .post(body)
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    String responseData = Objects.requireNonNull(response.body()).string();
+                    JSONObject jsonResponse = new JSONObject(responseData);
+                    boolean isValidLogin = jsonResponse.optBoolean("success", false);
+                    boolean isValidUsername = jsonResponse.optBoolean("validUsername", false);
+                    GlobalVariable.saveValidatationData(this, isValidLogin);
+
+                    runOnUiThread(() -> {
+                        if (isValidLogin) {
+                            usernameInput.setError(null);
+                            passwordInput.setError(null);
+                            dialog.dismiss();
+                        } else if(!isValidUsername) {
+                            usernameInput.setError("Invalid username");
+                        } else {
+                            usernameInput.setError(null);
+                            passwordInput.setError("Invalid password");
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                Log.e("MainActivity", "Error: " + e.getMessage());
+                runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
+            }
+        });
     }
 
     @Override
@@ -253,6 +372,7 @@ public class MainActivity extends AppCompatActivity {
                                         jsonPayload.put("prev_destination", prev_destination);
                                         jsonPayload.put("destination", destination);
                                         jsonPayload.put("permCount", perm_count);
+                                        jsonPayload.put("isValidCode", isValidCode);
                                     } catch (JSONException e) {
                                         Log.e("MainActivity", "Error: " + e.getMessage());
                                     }
@@ -377,6 +497,7 @@ public class MainActivity extends AppCompatActivity {
                 payload.put("countScaneCode", countScannedCode);
                 payload.put("prev_destination", prev_destination);
                 payload.put("campId", campId);
+                payload.put("isValidCode", isValidCode);
 
                 RequestBody body = RequestBody.create(payload.toString(), JSON);
 
@@ -441,7 +562,7 @@ public class MainActivity extends AppCompatActivity {
 
                 String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url(baseUrl + "/bags?isValidCode=" + true + "&campId=" + campId)
+                        .url(baseUrl + "/bags?isValidCode=" + isValidCode + "&campId=" + campId)
                         .build();
 
                 Response response = client.newCall(request).execute();
@@ -549,6 +670,7 @@ public class MainActivity extends AppCompatActivity {
             JSONObject jsonPayload = new JSONObject();
             try {
                 jsonPayload.put("code", epc);
+                jsonPayload.put("isValidCode", isValidCode);
             } catch (JSONException e) {
                 Log.e("MainActivity", "Error: " + e.getMessage());
             }
@@ -618,6 +740,7 @@ public class MainActivity extends AppCompatActivity {
                 payload.put("destination", destination);
                 payload.put("prev_destination", prev_destination);
                 payload.put("campId", campId);
+                payload.put("isValidCode", isValidCode);
 
                 String url;
                 String baseUrl = getString(R.string.base_url);
