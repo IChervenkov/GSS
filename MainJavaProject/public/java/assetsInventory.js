@@ -33,6 +33,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const addMultiCleanItemModal = document.getElementById('uploadModal');
     const addMultiCleanItemModalContent = addMultiCleanItemModal.querySelector('.modal-content');
 
+    const editMultiAssetsModal = document.getElementById('uploadEditMultiAssetsModal');
+    const editMultiAssetsModalContent = editMultiAssetsModal.querySelector('.modal-content');
+
+    const addMultiAssetsModal = document.getElementById('uploadAddMultiAssetsModal');
+    const addMultiAssetsModalContent = addMultiAssetsModal.querySelector('.modal-content');
+
     const removeCleanItemModal = document.getElementById('removeCleanItemModal');
     const removeCleanItemModalContent = removeCleanItemModal.querySelector('.modal-content');
 
@@ -81,6 +87,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const assetQuantity = document.getElementById('assetQuantity');
     const assetAddMrah = document.getElementById('assetAddMrah');
     const assetAddOwner = document.getElementById('assetAddOwner');
+    const assetAddM2Inside = document.getElementById('assetAddM2Inside');
+    const assetAddComments = document.getElementById('assetAddComments');
+    const assetAddRestValue = document.getElementById('assetAddRestValue');
+    const assetAddReplacedOff = document.getElementById('assetAddReplacedOff');
+    const assetAddReplacedBy = document.getElementById('assetAddReplacedBy');
+    const assetAddYearOfLifeCycle = document.getElementById('assetAddYearOfLifeCycle');
+    const assetAddRestOfLifeCycle = document.getElementById('assetAddRestOfLifeCycle');
+    const assetAddPurchasePrice = document.getElementById('assetAddPurchasePrice');
+    const assetAddDatePurchase = document.getElementById('assetAddDatePurchase');
+    const assetAddDateWrittenOff = document.getElementById('assetAddDateWrittenOff');
+    const assetAddIsFixed = document.getElementById('assetAddIsFixed');
+    const assetAddService = document.getElementById('assetAddService');
     const assetStatus = document.getElementById('assetStatus');
     const assetAddExpandable = document.getElementById('assetAddExpandable');
     const assetAddDescription = document.getElementById('assetAddDescription');
@@ -118,6 +136,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const assetEditQuantity = document.getElementById('quantity');
     const assetMrah = document.getElementById('mrah');
     const assetOwner = document.getElementById('owner');
+    const assetM2Inside = document.getElementById('m2_inside');
+    const assetComments = document.getElementById('comments');
+    const assetRestValue = document.getElementById('rest_value');
+    const assetReplacedOff = document.getElementById('replaced_off');
+    const assetReplacedBy = document.getElementById('replaced_by');
+    const assetYearOfLifeCycle = document.getElementById('year_of_life_cycle');
+    const assetRestOfLifeCycle = document.getElementById('rest_of_life_cycle');
+    const assetPurchasePrice = document.getElementById('purchase_price');
+    const assetDatePurchase = document.getElementById('date_purchase');
+    const assetDateWrittenOff = document.getElementById('date_written_off');
+    const assetIsFixed = document.getElementById('is_fixed');
+    const assetService = document.getElementById('service');
     const assetEditStatus = document.getElementById('status');
     const assetExpandable = document.getElementById('expandable');
     const assetDescription = document.getElementById('description');
@@ -472,7 +502,14 @@ document.addEventListener('DOMContentLoaded', function () {
             row.addEventListener('click', (event) => {
                 // Check if the clicked element is not the first td in the row
                 if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
-                    openEditAssetsModal(item.code, item.name, item.type, item.location, item.namekey, item.categorie, item.quantity, item.mrah, item.owner, item.status, item.expandable, item.description);
+                    openEditAssetsModal(
+                        item.code, item.name, item.type, item.location,
+                        item.namekey, item.categorie, item.quantity, item.mrah,
+                        item.owner, item.status, item.expandable, item.description,
+                        item.service, item.m2_inside, item.is_fixed, item.date_purchase,
+                        item.date_written_off, item.purchase_price, item.comments, item.replaced_off,
+                        item.year_of_life_cycle, item.rest_of_life_cycle, item.replaced_by, item.rest_value
+                    );
                 }
             });
 
@@ -588,6 +625,18 @@ document.addEventListener('DOMContentLoaded', function () {
             assetEditQuantity.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).quantity;
             assetMrah.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).mrah;
             assetOwner.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).owner;
+            assetM2Inside.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).m2_inside;
+            assetComments.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).comments;
+            assetRestValue.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).rest_value;
+            assetReplacedOff.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).replaced_off;
+            assetReplacedBy.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).replaced_by;
+            assetYearOfLifeCycle.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).year_of_life_cycle;
+            assetRestOfLifeCycle.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).rest_of_life_cycle;
+            assetPurchasePrice.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).purchase_price;
+            assetDatePurchase.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).date_purchase;
+            assetDateWrittenOff.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).date_written_off;
+            assetIsFixed.checked = !!nameAssetSetCount.find(item => item.id === selectedAssetId.value).is_fixed;
+            assetService.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).service;
             assetEditStatus.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).status;
             assetExpandable.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).expandable;
             assetDescription.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).description;
@@ -733,13 +782,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 li.setAttribute('data-type-id', asset.type_id);
                 li.setAttribute('data-location-room', asset.location_room);
                 li.setAttribute('data-location-key', asset.location_key);
-                li.setAttribute('data-categorie', asset.categorie);
-                li.setAttribute('data-quantity', asset.quantity);
-                li.setAttribute('data-mrah', asset.mrah);
-                li.setAttribute('data-asset-owner', asset.asset_owner);
-                li.setAttribute('data-status', asset.status);
-                li.setAttribute('data-expandable', asset.expandable);
+                li.setAttribute('data-categorie', asset.categorie || '');
+                li.setAttribute('data-quantity', asset.quantity || '');
+                li.setAttribute('data-mrah', asset.mrah || '');
+                li.setAttribute('data-asset-owner', asset.asset_owner || '');
+                li.setAttribute('data-status', asset.status || '');
+                li.setAttribute('data-expandable', asset.expandable || '');
                 li.setAttribute('data-description', asset.description || '');
+                li.setAttribute('data-service', asset.service || '');
+                li.setAttribute('data-asset-m2-inside', asset.m2_inside || '');
+                li.setAttribute('data-asset-comments', asset.comments || '');
+                li.setAttribute('data-asset-rest-value', asset.rest_value || '');
+                li.setAttribute('data-asset-year-of-life-cycle', asset.year_of_life_cycle || '');
+                li.setAttribute('data-asset-rest-of-life-cycle', asset.rest_of_life_cycle || '');
+                li.setAttribute('data-asset-replaced-off', asset.replaced_off || '');
+                li.setAttribute('data-asset-replaced-by', asset.replaced_by || '');
+                li.setAttribute('data-asset-purchase-price', asset.purchase_price || '');
+                li.setAttribute('data-asset-date-purchase', asset.date_purchase || '');
+                li.setAttribute('data-asset-date-written-off', asset.date_written_off || '');
+                li.setAttribute('data-asset-is-fixed', asset.is_fixed);
                 selectAllAssetDropdown.appendChild(li);
             });
         } else {
@@ -773,6 +834,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const quantity = selectedAllAsset.getAttribute('data-quantity');
             const mrah = selectedAllAsset.getAttribute('data-mrah');
             const owner = selectedAllAsset.getAttribute('data-asset-owner');
+            const m2_inside = selectedAllAsset.getAttribute('data-asset-m2-inside');
+            const comments = selectedAllAsset.getAttribute('data-asset-comments');
+            const rest_value = selectedAllAsset.getAttribute('data-asset-rest-value');
+            const replaced_off = selectedAllAsset.getAttribute('data-asset-replaced-off');
+            const replaced_by = selectedAllAsset.getAttribute('data-asset-replaced-by');
+            const year_of_life_cycle = selectedAllAsset.getAttribute('data-asset-year-of-life-cycle');
+            const rest_of_life_cycle = selectedAllAsset.getAttribute('data-asset-rest-of-life-cycle');
+            const purchase_price = selectedAllAsset.getAttribute('data-asset-purchase-price');
+            const date_purchase = selectedAllAsset.getAttribute('data-asset-date-purchase');
+            const date_written_off = selectedAllAsset.getAttribute('data-asset-date-written-off');
+            const is_fixed = selectedAllAsset.getAttribute('data-asset-is-fixed');
+            const service = selectedAllAsset.getAttribute('data-service');
             const status = selectedAllAsset.getAttribute('data-status');
             const expandable = selectedAllAsset.getAttribute('data-expandable');
             const description = selectedAllAsset.getAttribute('data-description');
@@ -786,18 +859,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     nameAssetSetCount = data;
 
                     openEditAssetsModal(
-                        assetCode,
-                        name,
-                        assetType.find(item => item.id === Number(typeId)).name,
-                        assetLocation.find(item => item.roomid === location) ? assetLocation.find(item => item.roomid === location).nameroom : '',
-                        assetLocation.find(item => item.id === assetNameKey) ? assetLocation.find(item => item.id === assetNameKey).name : '',
-                        categorie,
-                        quantity,
-                        mrah,
-                        owner,
-                        status,
-                        expandable,
-                        description
+                        assetCode, name, assetType.find(item => item.id === Number(typeId)).name, assetLocation.find(item => item.roomid === location) ? assetLocation.find(item => item.roomid === location).nameroom : '',
+                        assetLocation.find(item => item.id === assetNameKey) ? assetLocation.find(item => item.id === assetNameKey).name : '', categorie, quantity, mrah,
+                        owner, status, expandable, description,
+                        service, m2_inside, is_fixed, date_purchase,
+                        date_written_off, purchase_price, comments, replaced_off,
+                        year_of_life_cycle, rest_of_life_cycle, replaced_by, rest_value
                     );
                 })
                 .catch(error => console.error("Error fetching keys:", error));
@@ -1186,11 +1253,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     assetCategory.addEventListener('input', () => {
-        toggleInputValidity(assetCategory, assetCategory.value !== '' && assetCategory.checkValidity());
+        toggleInputValidity(assetCategory, assetCategory.checkValidity());
     });
 
     assetEditQuantity.addEventListener('input', () => {
-        toggleInputValidity(assetEditQuantity, assetEditQuantity.value !== '' && assetEditQuantity.checkValidity());
+        toggleInputValidity(assetEditQuantity, assetEditQuantity.checkValidity());
     });
 
     lostAssetQuantity.addEventListener('input', () => {
@@ -1205,19 +1272,63 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     assetMrah.addEventListener('input', () => {
-        toggleInputValidity(assetMrah, assetMrah.value !== '' && assetMrah.checkValidity());
+        toggleInputValidity(assetMrah, assetMrah.checkValidity());
     });
 
     assetOwner.addEventListener('input', () => {
-        toggleInputValidity(assetOwner, assetOwner.value !== '' && assetOwner.checkValidity());
+        toggleInputValidity(assetOwner, assetOwner.checkValidity());
+    });
+
+    assetM2Inside.addEventListener('input', () => {
+        toggleInputValidity(assetM2Inside, assetM2Inside.checkValidity());
+    });
+
+    assetComments.addEventListener('input', () => {
+        toggleInputValidity(assetComments, assetComments.checkValidity());
+    });
+
+    assetRestValue.addEventListener('input', () => {
+        toggleInputValidity(assetRestValue, assetRestValue.checkValidity());
+    });
+
+    assetReplacedOff.addEventListener('input', () => {
+        toggleInputValidity(assetReplacedOff, assetReplacedOff.checkValidity());
+    });
+
+    assetReplacedBy.addEventListener('input', () => {
+        toggleInputValidity(assetReplacedBy, assetReplacedBy.checkValidity());
+    });
+
+    assetYearOfLifeCycle.addEventListener('input', () => {
+        toggleInputValidity(assetYearOfLifeCycle, assetYearOfLifeCycle.checkValidity());
+    });
+
+    assetRestOfLifeCycle.addEventListener('input', () => {
+        toggleInputValidity(assetRestOfLifeCycle, assetRestOfLifeCycle.checkValidity());
+    });
+
+    assetPurchasePrice.addEventListener('input', () => {
+        toggleInputValidity(assetPurchasePrice, assetPurchasePrice.checkValidity());
+    });
+
+    assetDatePurchase.addEventListener('input', () => {
+        toggleInputValidity(assetDatePurchase, !assetDatePurchase.value.trim() || !isNaN(Date.parse(assetDatePurchase.value.trim())));
+    });
+
+    assetDateWrittenOff.addEventListener('input', () => {
+        toggleInputValidity(assetDateWrittenOff, !assetDateWrittenOff.value.trim() || !isNaN(Date.parse(assetDateWrittenOff.value.trim())));
+    });
+
+    assetService.addEventListener('input', () => {
+        toggleInputValidity(assetService, assetService.checkValidity());
     });
 
     assetEditStatus.addEventListener('input', () => {
-        toggleInputValidity(assetEditStatus, assetEditStatus.value !== '' && assetEditStatus.checkValidity());
+        toggleInputValidity(assetEditStatus, /^[A-Za-z0-9]+$/.test(assetEditStatus.value));
     });
 
     assetExpandable.addEventListener('input', () => {
-        toggleInputValidity(assetExpandable, assetExpandable.value !== '' && assetExpandable.checkValidity());
+        toggleInputValidity(assetExpandable, assetExpandable.checkValidity());
     });
 
     assetDescription.addEventListener('input', () => {
@@ -1243,11 +1354,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     assetAddCategorie.addEventListener('input', () => {
-        toggleInputValidity(assetAddCategorie, assetAddCategorie.value !== '' && assetAddCategorie.checkValidity());
+        toggleInputValidity(assetAddCategorie, assetAddCategorie.checkValidity());
     });
 
     assetQuantity.addEventListener('input', () => {
-        toggleInputValidity(assetQuantity, assetQuantity.value !== '' && assetQuantity.checkValidity());
+        toggleInputValidity(assetQuantity, assetQuantity.checkValidity());
 
         if (assetEps.value && !assetEps.classList.contains('disabled-select')) {
             oldEditAssetId = assetEps.value;
@@ -1274,19 +1385,63 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     assetAddMrah.addEventListener('input', () => {
-        toggleInputValidity(assetAddMrah, assetAddMrah.value !== '' && assetAddMrah.checkValidity());
+        toggleInputValidity(assetAddMrah, assetAddMrah.checkValidity());
     });
 
     assetAddOwner.addEventListener('input', () => {
-        toggleInputValidity(assetAddOwner, assetAddOwner.value !== '' && assetAddOwner.checkValidity());
+        toggleInputValidity(assetAddOwner, assetAddOwner.checkValidity());
+    });
+
+    assetAddM2Inside.addEventListener('input', () => {
+        toggleInputValidity(assetAddM2Inside, assetAddM2Inside.checkValidity());
+    });
+
+    assetAddComments.addEventListener('input', () => {
+        toggleInputValidity(assetAddComments, assetAddComments.checkValidity());
+    });
+
+    assetAddRestValue.addEventListener('input', () => {
+        toggleInputValidity(assetAddRestValue, assetAddRestValue.checkValidity());
+    });
+
+    assetAddReplacedOff.addEventListener('input', () => {
+        toggleInputValidity(assetAddReplacedOff, assetAddReplacedOff.checkValidity());
+    });
+
+    assetAddReplacedBy.addEventListener('input', () => {
+        toggleInputValidity(assetAddReplacedBy, assetAddReplacedBy.checkValidity());
+    });
+
+    assetAddYearOfLifeCycle.addEventListener('input', () => {
+        toggleInputValidity(assetAddYearOfLifeCycle, assetAddYearOfLifeCycle.checkValidity());
+    });
+
+    assetAddRestOfLifeCycle.addEventListener('input', () => {
+        toggleInputValidity(assetAddRestOfLifeCycle, assetAddRestOfLifeCycle.checkValidity());
+    });
+
+    assetAddPurchasePrice.addEventListener('input', () => {
+        toggleInputValidity(assetAddPurchasePrice, assetAddPurchasePrice.checkValidity());
+    });
+
+    assetAddDatePurchase.addEventListener('input', () => {
+        toggleInputValidity(assetAddDatePurchase, !assetAddDatePurchase.value.trim() || !isNaN(Date.parse(assetAddDatePurchase.value.trim())));
+    });
+
+    assetAddDateWrittenOff.addEventListener('input', () => {
+        toggleInputValidity(assetAddDateWrittenOff, !assetAddDateWrittenOff.value.trim() || !isNaN(Date.parse(assetAddDateWrittenOff.value.trim())));
+    });
+
+    assetAddService.addEventListener('input', () => {
+        toggleInputValidity(assetAddService, assetAddService.checkValidity());
     });
 
     assetStatus.addEventListener('input', () => {
-        toggleInputValidity(assetStatus, assetStatus.value !== '' && assetStatus.checkValidity());
+        toggleInputValidity(assetStatus, /^[A-Za-z0-9]+$/.test(assetStatus.value));
     });
 
     assetAddExpandable.addEventListener('input', () => {
-        toggleInputValidity(assetAddExpandable, assetAddExpandable.value !== '' && assetAddExpandable.checkValidity());
+        toggleInputValidity(assetAddExpandable, assetAddExpandable.checkValidity());
     });
 
     assetAddDescription.addEventListener('input', () => {
@@ -1380,17 +1535,12 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () {
 
             document.querySelectorAll(`
-                #assetEpc, 
-                #assetCodeSearch, 
-                #assetAddName, 
-                #addTypeSearch, 
-                #selectedAddTypeId, 
-                #addLocationSearch, 
-                #selectedAddLocationId, 
-                #addSubLocationSearch, 
-                #selectedAddSubLocationId,
-                #addCategorie,
-                #assetAddDescription`).forEach((input) => {
+                #assetEpc, #assetCodeSearch, #assetAddName, #addTypeSearch, 
+                #selectedAddTypeId, #addLocationSearch, #selectedAddLocationId, #addSubLocationSearch, 
+                #selectedAddSubLocationId, #addCategorie, #assetAddDescription, #assetAddDatePurchase,
+                #assetAddDateWrittenOff, #assetAddM2Inside, #assetAddPurchasePrice, #assetAddComments,
+                #assetAddReplacedOff, #assetAddYearOfLifeCycle, #assetAddRestOfLifeCycle, #assetAddReplacedBy,
+                #assetAddRestValue`).forEach((input) => {
 
                 input.classList.remove('is-valid');
                 input.classList.remove('is-invalid');
@@ -1403,6 +1553,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 #assetQuantity,
                 #assetAddMrah,
                 #assetAddOwner,
+                #assetAddService,
                 #assetStatus,
                 #assetAddExpandable`).forEach((input) => {
 
@@ -1410,10 +1561,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.classList.remove('is-invalid');
             });
 
+            assetAddIsFixed.checked = false;
             assetQuantity.value = '1';
             assetAddMrah.value = 'Global RTS';
             assetAddOwner.value = 'Global RTS';
-            assetStatus.value = '1';
+            assetAddService.value = 'Billeting';
+            assetStatus.value = 'New';
             assetAddExpandable.value = 'Non Expandable';
 
             assetEps.classList.remove('disabled-select');
@@ -1734,9 +1887,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
 
+            // Clear existing rows from bike usage details table
+            const assetTableBody = document.getElementById('assetsTable').getElementsByTagName('tbody')[0];
+            const assetDateTableBody = document.getElementById('assetDateTable').getElementsByTagName('tbody')[0];
+
+            assetTableBody.innerHTML = '';
+            assetDateTableBody.innerHTML = '';
+
             assetReportModal.classList.remove('show');
             assetReportModalContent.classList.remove('show');
-        }, 400); // Match the duration of the animation (0.4s)
+        }, 500); // Match the duration of the animation (0.4s)
     }
 
     function openCleanItemListModal() {
@@ -2379,7 +2539,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    function openEditAssetsModal(assetCode, name, type, location, assetNameKey, categorie, quantity, mrah, owner, status, expandable, description) {
+    function openEditAssetsModal(assetCode, name, type, location, assetNameKey, categorie, quantity, mrah, owner, status, expandable, description, service, m2_inside, is_fixed, date_purchase, date_written_off, purchase_price, comments, replaced_off, year_of_life_cycle, rest_of_life_cycle, replaced_by, rest_value) {
 
         assetSearchInput.value = assetCode;
         selectedAssetId.value = nameAssetSetCount.find(asset => asset.code === assetCode).id;
@@ -2403,12 +2563,33 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedSubLocationId.value = assetLocation.find(item => item.name === assetNameKey) ? assetLocation.find(item => item.name === assetNameKey).id : '';
         }
 
-        assetCategory.value = categorie;
-        assetEditQuantity.value = quantity;
-        assetMrah.value = mrah;
-        assetOwner.value = owner;
-        assetEditStatus.value = status;
-        assetExpandable.value = expandable;
+        const formatDate = (date) => {
+            const dateObj = new Date(date);
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+            const day = String(dateObj.getDate()).padStart(2, '0');
+
+            return `${year}-${month}-${day}`;
+        }
+
+        assetCategory.value = categorie || '';
+        assetEditQuantity.value = quantity || '';
+        assetMrah.value = mrah || '';
+        assetOwner.value = owner || '';
+        assetM2Inside.value = m2_inside || '';
+        assetComments.value = comments || '';
+        assetRestValue.value = rest_value || '';
+        assetReplacedOff.value = replaced_off || '';
+        assetReplacedBy.value = replaced_by || '';
+        assetYearOfLifeCycle.value = year_of_life_cycle || '';
+        assetRestOfLifeCycle.value = rest_of_life_cycle || '';
+        assetPurchasePrice.value = purchase_price || '';
+        assetDatePurchase.value = date_purchase ? formatDate(date_purchase) : '';
+        assetDateWrittenOff.value = date_written_off ? formatDate(date_written_off) : '';
+        assetIsFixed.checked = !!is_fixed;
+        assetService.value = service || '';
+        assetEditStatus.value = status || '';
+        assetExpandable.value = expandable || '';
         assetDescription.value = description || '';
 
         // Add the slide-in effect by adding the necessary classes
@@ -2430,17 +2611,12 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () {
 
             document.querySelectorAll(`
-                #assetSearch, 
-                #selectedAssetId, 
-                #assetName, 
-                #typeSearch, 
-                #selectedTypeId, 
-                #locationSearch, 
-                #selectedLocationId, 
-                #subLocationSearch, 
-                #selectedSubLocationId, 
-                #categorie,
-                #description`).forEach((input) => {
+                #assetSearch, #selectedAssetId, #assetName, #typeSearch, 
+                #selectedTypeId, #locationSearch, #selectedLocationId, #subLocationSearch, 
+                #selectedSubLocationId, #categorie, #description, #m2_inside,
+                #date_purchase, #date_written_off, #purchase_price, #comments,
+                #replaced_off, #year_of_life_cycle, #rest_of_life_cycle, #replaced_by,
+                #rest_value`).forEach((input) => {
 
                 input.classList.remove('is-valid');
                 input.classList.remove('is-invalid');
@@ -2453,6 +2629,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 #quantity,
                 #mrah,
                 #owner,
+                #service,
                 #status,
                 #expandable`).forEach((input) => {
 
@@ -2460,10 +2637,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.classList.remove('is-invalid');
             });
 
+            assetIsFixed.checked = false;
             assetEditQuantity.value = '1';
             assetMrah.value = 'Global RTS';
             assetOwner.value = 'Global RTS';
-            assetEditStatus.value = '1';
+            assetService.value = 'Billeting';
+            assetEditStatus.value = 'New';
             assetExpandable.value = 'Non Expandable';
 
             assetSearchInput.classList.remove('disabled-select');
@@ -2477,6 +2656,60 @@ document.addEventListener('DOMContentLoaded', function () {
             subLocationSearchDropdown.style.display = 'none';
 
         }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openEditMultiAssetsModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        editMultiAssetsModal.classList.add('show');
+        editMultiAssetsModalContent.classList.add('show');
+        editMultiAssetsModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        editMultiAssetsModalContent.classList.remove('slide-out');
+    }
+
+    function closeEditMultiAssetsModal() {
+        // Add the slide-out effect
+        editMultiAssetsModalContent.classList.add('slide-out');
+        editMultiAssetsModalContent.classList.remove('slide-in');
+
+        document.getElementById("editMultiAssetsProgress").style.width = 0 + "%";
+        document.getElementById("fileEditMultiAssetsInput").value = '';
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            editMultiAssetsModal.classList.remove('show');
+            editMultiAssetsModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+
+    }
+
+    function openAddMultiAssetsModal() {
+
+        // Add the slide-in effect by adding the necessary classes
+        addMultiAssetsModal.classList.add('show');
+        addMultiAssetsModalContent.classList.add('show');
+        addMultiAssetsModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        addMultiAssetsModalContent.classList.remove('slide-out');
+    }
+
+    function closeAddMultiAssetsModal() {
+        // Add the slide-out effect
+        addMultiAssetsModalContent.classList.add('slide-out');
+        addMultiAssetsModalContent.classList.remove('slide-in');
+
+        document.getElementById("addMultiAssetsProgress").style.width = 0 + "%";
+        document.getElementById("fileAddMultiAssetsInput").value = '';
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            addMultiAssetsModal.classList.remove('show');
+            addMultiAssetsModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+
     }
 
     function openAssetsModal(rowId) {
@@ -2605,7 +2838,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.addEventListener('click', (event) => {
                         // Check if the clicked element is not the first td in the row
                         if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
-                            openEditAssetsModal(item.code, item.name, item.type, item.location, item.namekey, item.categorie, item.quantity, item.mrah, item.owner, item.status, item.expandable, item.description);
+                            openEditAssetsModal(
+                                item.code, item.name, item.type, item.location,
+                                item.namekey, item.categorie, item.quantity, item.mrah,
+                                item.owner, item.status, item.expandable, item.description,
+                                item.service, item.m2_inside, item.is_fixed, item.date_purchase,
+                                item.date_written_off, item.purchase_price, item.comments, item.replaced_off,
+                                item.year_of_life_cycle, item.rest_of_life_cycle, item.replaced_by, item.rest_value
+                            );
                         }
                     });
 
@@ -2674,7 +2914,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[12].onclick = closeEditCleanItemModal;
     document.getElementsByClassName('close-btn')[13].onclick = closeItemTraceabilityModal;
     document.getElementsByClassName('close-btn')[14].onclick = closeInventoryModal;
-    document.getElementsByClassName('close-btn')[15].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[15].onclick = closeEditMultiAssetsModal;
+    document.getElementsByClassName('close-btn')[16].onclick = closeAddMultiAssetsModal;
+    document.getElementsByClassName('close-btn')[17].onclick = closeMessModal;
 
     // Close the modal if the user clicks outside of it
     window.onclick = function (event) {
@@ -2698,6 +2940,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             case addMultiCleanItemModal:
                 closeAddMultiCleanItemModal();
+                break;
+
+            case editMultiAssetsModal:
+                closeEditMultiAssetsModal();
+                break;
+
+            case addMultiAssetsModal:
+                closeAddMultiAssetsModal();
                 break;
 
             case removeCleanItemModal:
@@ -2932,6 +3182,145 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
             closeAddMultiCleanItemModal();
+            showMess("Error", "An unexpected error occurred.");
+        };
+
+        xhr.send(formData);
+    });
+
+    document.getElementById('upload-edit-multi-assets-btn').addEventListener("click", function () {
+
+        const fileInput = document.getElementById("fileEditMultiAssetsInput");
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showMess("Error", "You have not selected a file to upload");
+            return;
+        }
+
+        const url = "/assets/editMultiAsset";
+        const progressBar = document.getElementById("editMultiAssetsProgress");
+
+        const updateProgressBar = (percentage) => {
+            progressBar.style.width = percentage + "%";
+        };
+
+        updateProgressBar(0);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Use XMLHttpRequest to track upload progress
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('CSRF-Token', csrfToken);
+
+        xhr.upload.onprogress = function (event) {
+            if (event.lengthComputable) {
+                const percentage = (event.loaded / event.total) * 100;
+                updateProgressBar(percentage);
+            }
+        };
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                setTimeout(() => {
+                    closeEditMultiAssetsModal();
+                    showMess("Info", "File uploaded successfully!");
+                }, 1000);
+            } else {
+                const data = JSON.parse(xhr.responseText);
+                if (data.errors) {
+                    data.errors.forEach(error => {
+                        if (error.type === 'DuplicateInFile' || error.type === 'NotFound') {
+                            closeEditMultiAssetsModal();
+                            showMess("Error", error.message);
+                        } else if (error.type === 'Validation') {
+                            closeEditMultiAssetsModal();
+                            showMess("Error", `Invalid data in row with item name: ${error.row.code}. Check the syntax of columns in this row.`);
+                        }
+                    });
+                } else {
+                    closeEditMultiAssetsModal();
+                    showMess("Error", data.error || "File upload failed.");
+                }
+            }
+        };
+
+        xhr.onerror = function () {
+            console.error('Error:', xhr.statusText);
+            closeEditMultiAssetsModal();
+            showMess("Error", "An unexpected error occurred.");
+        };
+
+        xhr.send(formData);
+    });
+
+    document.getElementById('upload-add-multi-assets-btn').addEventListener("click", function () {
+
+        const fileInput = document.getElementById("fileAddMultiAssetsInput");
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showMess("Error", "You have not selected a file to upload");
+            return;
+        }
+
+        const url = "/assets/addMultiAsset";
+        const progressBar = document.getElementById("addMultiAssetsProgress");
+
+        const updateProgressBar = (percentage) => {
+            progressBar.style.width = percentage + "%";
+        };
+
+        updateProgressBar(0);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Use XMLHttpRequest to track upload progress
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('CSRF-Token', csrfToken);
+
+        xhr.upload.onprogress = function (event) {
+            if (event.lengthComputable) {
+                const percentage = (event.loaded / event.total) * 100;
+                updateProgressBar(percentage);
+            }
+        };
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                setTimeout(() => {
+                    closeAddMultiAssetsModal();
+                    showMess("Info", "File uploaded successfully!");
+                }, 1000);
+            } else {
+                const data = JSON.parse(xhr.responseText);
+                if (data.errors) {
+                    data.errors.forEach(error => {
+                        if (error.type === 'DuplicateInFile' || error.type === 'IsExistAsset' || error.type === 'NotFound') {
+                            closeAddMultiAssetsModal();
+                            showMess("Error", error.message);
+                        } else if (error.type === 'Validation') {
+                            closeAddMultiAssetsModal();
+                            showMess("Error", `Invalid data in row with item code: ${error.row.assetCode}. Check the syntax of all columns in this row.`);
+                            console.log(error.details);
+                        }
+                    });
+                } else {
+                    closeAddMultiAssetsModal();
+                    showMess("Error", data.error || "File upload failed.");
+                }
+            }
+        };
+
+        xhr.onerror = function () {
+            console.error('Error:', xhr.statusText);
+            closeAddMultiAssetsModal();
             showMess("Error", "An unexpected error occurred.");
         };
 
@@ -3269,6 +3658,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchReport(selectDate1, selectDate2) {
 
+        const formateDate = isoString => {
+            const date = new Date(isoString);
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            let hours = date.getHours();
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            const hourStr = String(hours).padStart(2, '0');
+
+            return `${year}-${month}-${day} ${hourStr}:${minutes}:${seconds} ${ampm}`;
+        }
+
         loadingIndicator.style.display = 'flex';
 
         try {
@@ -3286,12 +3692,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const { data, data_asset_count } = await response.json();
 
-            // Clear existing rows from bike usage details table
             const assetTableBody = document.getElementById('assetsTable').getElementsByTagName('tbody')[0];
             const assetDateTableBody = document.getElementById('assetDateTable').getElementsByTagName('tbody')[0];
 
-            assetTableBody.innerHTML = '';
-            assetDateTableBody.innerHTML = '';
+            const dateFormat = (date) => {
+                const dateObj = new Date(date);
+                const year = dateObj.getFullYear();
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+                const day = String(dateObj.getDate()).padStart(2, '0');
+
+                return `${year}-${month}-${day}`;
+            }
 
             data.forEach(row => {
                 const newRow = assetTableBody.insertRow();
@@ -3323,31 +3734,91 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-category-header');
-                cell.textContent = row.categorie;
+                cell.textContent = row.categorie ? row.categorie : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-quantity-header');
-                cell.textContent = row.quantity;
+                cell.textContent = row.quantity ? row.quantity : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-mrah-header');
-                cell.textContent = row.mrah;
+                cell.textContent = row.mrah ? row.mrah : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-owner-header');
-                cell.textContent = row.asset_owner;
+                cell.textContent = row.asset_owner ? row.asset_owner : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-status-header');
-                cell.textContent = row.status;
+                cell.textContent = row.status ? row.status : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-expandable-header');
-                cell.textContent = row.expandable;
+                cell.textContent = row.expandable ? row.expandable : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-description-header');
-                cell.textContent = row.description ? row.description : 'No description';
+                cell.textContent = row.description ? row.description : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-create-date-header');
+                cell.textContent = row.create_date ? formateDate(row.create_date) : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-last-inventory-date-header');
+                cell.textContent = row.last_inventory_date ? formateDate(row.last_inventory_date) : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-service-header');
+                cell.textContent = row.service ? row.service : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-m2-inside-header');
+                cell.textContent = row.m2_inside ? row.m2_inside : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-fixed-header');
+                cell.textContent = !!row.is_fixed ? 'Yes' : 'No';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-mobile-header');
+                cell.textContent = !!row.is_fixed ? 'No' : 'Yes';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-date-purchase-header');
+                cell.textContent = row.date_purchase ? dateFormat(row.date_purchase) : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-date-written-off-header');
+                cell.textContent = row.date_written_off ? dateFormat(row.date_written_off) : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-purchase-price-header');
+                cell.textContent = row.purchase_price ? row.purchase_price : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-comments-header');
+                cell.textContent = row.comments ? row.comments : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-replaced-off-header');
+                cell.textContent = row.replaced_off ? row.replaced_off : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-year-of-life-cycle-header');
+                cell.textContent = row.year_of_life_cycle ? row.year_of_life_cycle : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-rest-of-life-cycle-header');
+                cell.textContent = row.rest_of_life_cycle ? row.rest_of_life_cycle : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-replaced-by-header');
+                cell.textContent = row.replaced_by ? row.replaced_by : 'N/A';
+
+                cell = newRow.insertCell();
+                cell.classList.add('asset-rest-value-header');
+                cell.textContent = row.rest_value ? row.rest_value : 'N/A';
             });
 
             data_asset_count.forEach(row => {
@@ -3572,6 +4043,14 @@ document.addEventListener('DOMContentLoaded', function () {
         openAddAssetsModal();
     });
 
+    document.getElementById('multiEditAsset').addEventListener('click', () => {
+        openEditMultiAssetsModal();
+    });
+
+    document.getElementById('add-multi-button').addEventListener('click', () => {
+        openAddMultiAssetsModal();
+    });
+
     document.getElementById('form1').addEventListener('keypress', function (event) {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -3636,13 +4115,25 @@ document.addEventListener('DOMContentLoaded', function () {
             { input: typeSearchInput, condition: selectedTypeId.value === '' },
             { input: locationSearchInput, condition: selectedLocationId.value === '' },
             { input: subLocationSearchInput, condition: !subLocationSearchInput.disabled && selectedSubLocationId.value === '' },
-            { input: assetCategory, condition: assetCategory.value === '' || !assetCategory.checkValidity() },
-            { input: assetEditQuantity, condition: assetEditQuantity.value === '' || !assetEditQuantity.checkValidity() },
-            { input: assetMrah, condition: assetMrah.value === '' || !assetMrah.checkValidity() },
-            { input: assetOwner, condition: assetOwner.value === '' || !assetOwner.checkValidity() },
-            { input: assetEditStatus, condition: assetEditStatus.value === '' || !assetEditStatus.checkValidity() },
-            { input: assetExpandable, condition: assetExpandable.value === '' || !assetExpandable.checkValidity() },
-            { input: assetDescription, condition: !/^[a-zA-Z0-9\s]*$/.test(assetDescription.value) }
+            { input: assetCategory, condition: !assetCategory.checkValidity() },
+            { input: assetEditQuantity, condition: !assetEditQuantity.checkValidity() },
+            { input: assetMrah, condition: !assetMrah.checkValidity() },
+            { input: assetOwner, condition: !assetOwner.checkValidity() },
+            { input: assetService, condition: !assetService.checkValidity() },
+            { input: assetEditStatus, condition: !/^[A-Za-z0-9]+$/.test(assetEditStatus.value) },
+            { input: assetExpandable, condition: !assetExpandable.checkValidity() },
+            { input: assetDescription, condition: !/^[a-zA-Z0-9\s]*$/.test(assetDescription.value) },
+            { input: assetM2Inside, condition: !assetM2Inside.checkValidity() },
+            { input: assetDatePurchase, condition: assetDatePurchase.value.trim() && isNaN(Date.parse(assetDatePurchase.value.trim())) },
+            { input: assetDateWrittenOff, condition: assetDateWrittenOff.value.trim() && isNaN(Date.parse(assetDateWrittenOff.value.trim())) },
+            { input: assetPurchasePrice, condition: !assetPurchasePrice.checkValidity() },
+            { input: assetComments, condition: !assetComments.checkValidity() },
+            { input: assetRestValue, condition: !assetRestValue.checkValidity() },
+            { input: assetReplacedOff, condition: !assetReplacedOff.checkValidity() },
+            { input: assetReplacedBy, condition: !assetReplacedBy.checkValidity() },
+            { input: assetYearOfLifeCycle, condition: !assetYearOfLifeCycle.checkValidity() },
+            { input: assetRestOfLifeCycle, condition: !assetRestOfLifeCycle.checkValidity() }
+
         ];
 
         let isValid = true;
@@ -3670,9 +4161,21 @@ document.addEventListener('DOMContentLoaded', function () {
             assetQuantity: assetEditQuantity.value,
             assetMrah: assetMrah.value,
             assetOwner: assetOwner.value,
+            assetService: assetService.value,
             assetStatus: assetEditStatus.value,
             assetExpandable: assetExpandable.value,
-            assetDescription: assetDescription.value
+            assetDescription: assetDescription.value,
+            assetM2Inside: assetM2Inside.value,
+            assetIsFixed: assetIsFixed.checked,
+            assetDatePurchase: assetDatePurchase.value,
+            assetDateWrittenOff: assetDateWrittenOff.value,
+            assetPurchasePrice: assetPurchasePrice.value,
+            assetComments: assetComments.value,
+            assetReplacedOff: assetReplacedOff.value,
+            assetYearOfLifeCycle: assetYearOfLifeCycle.value,
+            assetRestOfLifeCycle: assetRestOfLifeCycle.value,
+            assetReplacedBy: assetReplacedBy.value,
+            assetRestValue: assetRestValue.value
         };
 
         const submitButton = document.createElement('button');
@@ -3762,13 +4265,24 @@ document.addEventListener('DOMContentLoaded', function () {
             { input: typeAddSearchInput, condition: selectedAddTypeId.value === '' },
             { input: addLocationSearchInput, condition: selectedAddLocationId.value === '' },
             { input: addSubLocationSearchInput, condition: !addSubLocationSearchInput.disabled && selectedAddSubLocationId.value === '' },
-            { input: assetAddCategorie, condition: assetAddCategorie.value === '' || !assetAddCategorie.checkValidity() },
-            { input: assetQuantity, condition: assetQuantity.value === '' || !assetQuantity.checkValidity() },
-            { input: assetAddMrah, condition: assetAddMrah.value === '' || !assetAddMrah.checkValidity() },
-            { input: assetAddOwner, condition: assetAddOwner.value === '' || !assetAddOwner.checkValidity() },
-            { input: assetStatus, condition: assetStatus.value === '' || !assetStatus.checkValidity() },
-            { input: assetAddExpandable, condition: assetAddExpandable.value === '' || !assetAddExpandable.checkValidity() },
-            { input: assetAddDescription, condition: !/^[a-zA-Z0-9\s]*$/.test(assetAddDescription.value) }
+            { input: assetAddCategorie, condition: !assetAddCategorie.checkValidity() },
+            { input: assetQuantity, condition: !assetQuantity.checkValidity() },
+            { input: assetAddMrah, condition: !assetAddMrah.checkValidity() },
+            { input: assetAddOwner, condition: !assetAddOwner.checkValidity() },
+            { input: assetStatus, condition: !/^[A-Za-z0-9]*$/.test(assetStatus.value) },
+            { input: assetAddExpandable, condition: !assetAddExpandable.checkValidity() },
+            { input: assetAddService, condition: !assetAddService.checkValidity() },
+            { input: assetAddDescription, condition: !/^[a-zA-Z0-9\s]*$/.test(assetAddDescription.value) },
+            { input: assetAddM2Inside, condition: !assetAddM2Inside.checkValidity() },
+            { input: assetAddDatePurchase, condition: assetAddDatePurchase.value.trim() && isNaN(Date.parse(assetAddDatePurchase.value.trim())) },
+            { input: assetAddDateWrittenOff, condition: assetAddDateWrittenOff.value.trim() && isNaN(Date.parse(assetAddDateWrittenOff.value.trim())) },
+            { input: assetAddPurchasePrice, condition: !assetAddPurchasePrice.checkValidity() },
+            { input: assetAddComments, condition: !assetAddComments.checkValidity() },
+            { input: assetAddReplacedOff, condition: !assetAddReplacedOff.checkValidity() },
+            { input: assetAddReplacedBy, condition: !assetAddReplacedBy.checkValidity() },
+            { input: assetAddYearOfLifeCycle, condition: !assetAddYearOfLifeCycle.checkValidity() },
+            { input: assetAddRestOfLifeCycle, condition: !assetAddRestOfLifeCycle.checkValidity() },
+            { input: assetAddRestValue, condition: !assetAddRestValue.checkValidity() }
         ];
 
         let isValid = true;
@@ -3799,7 +4313,19 @@ document.addEventListener('DOMContentLoaded', function () {
             assetAddOwner: assetAddOwner.value,
             assetStatus: assetStatus.value,
             assetAddExpandable: assetAddExpandable.value,
-            assetAddDescription: assetAddDescription.value
+            assetAddService: assetAddService.value,
+            assetAddDescription: assetAddDescription.value,
+            assetAddM2Inside: assetAddM2Inside.value,
+            assetAddIsFixed: assetAddIsFixed.checked,
+            assetAddDatePurchase: assetAddDatePurchase.value,
+            assetAddDateWrittenOff: assetAddDateWrittenOff.value,
+            assetAddPurchasePrice: assetAddPurchasePrice.value,
+            assetAddComments: assetAddComments.value,
+            assetAddReplacedOff: assetAddReplacedOff.value,
+            assetAddYearOfLifeCycle: assetAddYearOfLifeCycle.value,
+            assetAddRestOfLifeCycle: assetAddRestOfLifeCycle.value,
+            assetAddReplacedBy: assetAddReplacedBy.value,
+            assetAddRestValue: assetAddRestValue.value
         };
 
         const submitButton = document.createElement('button');
@@ -4257,7 +4783,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Content-Type': 'application/json',
                     'CSRF-Token': csrfToken
                 },
-                body: JSON.stringify({ result: data, result_nationality: data_1, filtersAssets: filtersAssets, filtersAssetsData: filtersAssetsData })
+                body: JSON.stringify({
+                    result: data,
+                    result_nationality: data_1,
+                    filtersAssets: filtersAssets,
+                    filtersAssetsData: filtersAssetsData,
+                })
             });
 
             if (!response.ok) throw new Error(await response.text());
@@ -4614,7 +5145,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function showDropdown() {
         clearTimeout(hideDropdownTimeout);
-        filterOptions.style.display = 'block';
+        filterOptions.style.display = 'grid';
     }
 
     function hideDropdown() {
@@ -4684,5 +5215,21 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+
+    document.getElementById("toggleFormButton").addEventListener("click", function () {
+        let form = document.getElementById("form5");
+        let table = document.getElementById("lostItemsTable");
+        let groupNav = document.getElementById("groupNav");
+
+        form.style.display = form.style.display === "none" || form.style.display === "" ? "flex" : "none";
+        table.style.display = form.style.display === "flex" ? "none" : "flex";
+
+        if (form.style.display === "flex") {
+            groupNav.classList.remove('d-flex');
+            groupNav.style.display = 'none';
+        } else {
+            groupNav.classList.add('d-flex');
+        }
+    });
 
 });

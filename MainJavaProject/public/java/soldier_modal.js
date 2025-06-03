@@ -45,6 +45,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalRoomAddModal = document.getElementById('roomAddModal');
     const modalRoomAddModalContent = modalRoomAddModal.querySelector('.modal-content');
 
+    const modalRoomAddMultiModal = document.getElementById('uploadRoomModal');
+    const modalRoomAddMultiModalContent = modalRoomAddMultiModal.querySelector('.modal-content');
+
+    const modalKeyAddMultiModal = document.getElementById('uploadKeyModal');
+    const modalKeyAddMultiModalContent = modalKeyAddMultiModal.querySelector('.modal-content');
+
+    const modalReleaseMultiRoomModal = document.getElementById('releaseRoomsModal');
+    const modalReleaseMultiRoomModalContent = modalReleaseMultiRoomModal.querySelector('.modal-content');
+
     const modalRoomRemoveModal = document.getElementById('roomRemoveModal');
     const modalRoomRemoveModalContent = modalRoomRemoveModal.querySelector('.modal-content');
 
@@ -546,9 +555,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function filterUpcomingKey(query, dropDown) {
         dropDown.innerHTML = '';
-        const filteredKey = allKeys.filter(key => 
+        const filteredKey = allKeys.filter(key =>
             key.building_type === 'Accommodation' &&
-            !/(E|D)[0-9]/.test(key.name) &&
+            !/(E|D)[0-9]*/.test(key.name) &&
             key.name.toLowerCase().includes(query.toLowerCase()));
 
         if (filteredKey.length > 0) {
@@ -2047,6 +2056,81 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    function openModalAddMultiRoom() {
+        // Add the slide-in effect by adding the necessary classes
+        modalRoomAddMultiModal.classList.add('show');
+        modalRoomAddMultiModalContent.classList.add('show');
+        modalRoomAddMultiModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalRoomAddMultiModalContent.classList.remove('slide-out');
+    }
+
+    function closeModalAddMultiRoom() {
+        // Add the slide-out effect
+        modalRoomAddMultiModalContent.classList.add('slide-out');
+        modalRoomAddMultiModalContent.classList.remove('slide-in');
+
+        document.getElementById("progress-multi-room").style.width = 0 + "%";
+        document.getElementById("fileInputRoom").value = '';
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            modalRoomAddMultiModal.classList.remove('show');
+            modalRoomAddMultiModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openModalAddMultiKey() {
+        // Add the slide-in effect by adding the necessary classes
+        modalKeyAddMultiModal.classList.add('show');
+        modalKeyAddMultiModalContent.classList.add('show');
+        modalKeyAddMultiModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalKeyAddMultiModalContent.classList.remove('slide-out');
+    }
+
+    function closeModalAddMultiKey() {
+        // Add the slide-out effect
+        modalKeyAddMultiModalContent.classList.add('slide-out');
+        modalKeyAddMultiModalContent.classList.remove('slide-in');
+
+        document.getElementById("progress-multi-key").style.width = 0 + "%";
+        document.getElementById("fileInputKey").value = '';
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            modalKeyAddMultiModal.classList.remove('show');
+            modalKeyAddMultiModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
+    function openReleaseRoomsModal() {
+        // Add the slide-in effect by adding the necessary classes
+        modalReleaseMultiRoomModal.classList.add('show');
+        modalReleaseMultiRoomModalContent.classList.add('show');
+        modalReleaseMultiRoomModalContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalReleaseMultiRoomModalContent.classList.remove('slide-out');
+    }
+
+    function closeReleaseRoomsModal() {
+        // Add the slide-out effect
+        modalReleaseMultiRoomModalContent.classList.add('slide-out');
+        modalReleaseMultiRoomModalContent.classList.remove('slide-in');
+
+        document.getElementById("progress-multi-release-rooms").style.width = 0 + "%";
+        document.getElementById("fileInputReleaseRooms").value = '';
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+            modalReleaseMultiRoomModal.classList.remove('show');
+            modalReleaseMultiRoomModalContent.classList.remove('show');
+        }, 400); // Match the duration of the animation (0.4s)
+    }
+
     function openModalAddKey() {
         // Add the slide-in effect by adding the necessary classes
         modalKeyAddModal.classList.add('show');
@@ -2215,11 +2299,14 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[11].onclick = closeDeleteModal;
     document.getElementsByClassName('close-btn')[12].onclick = closeModalDest;
     document.getElementsByClassName('close-btn')[13].onclick = closeModalAddRoom;
-    document.getElementsByClassName('close-btn')[14].onclick = closeModalRemoveRoom;
-    document.getElementsByClassName('close-btn')[15].onclick = closeModalAddKey;
-    document.getElementsByClassName('close-btn')[16].onclick = closeModalRemoveKey;
-    document.getElementsByClassName('close-btn')[17].onclick = closeAdditionalItemModal;
-    document.getElementsByClassName('close-btn')[18].onclick = closeGlobalMessModal;
+    document.getElementsByClassName('close-btn')[14].onclick = closeModalAddMultiRoom;
+    document.getElementsByClassName('close-btn')[15].onclick = closeModalRemoveRoom;
+    document.getElementsByClassName('close-btn')[16].onclick = closeModalAddKey;
+    document.getElementsByClassName('close-btn')[17].onclick = closeModalAddMultiKey;
+    document.getElementsByClassName('close-btn')[18].onclick = closeModalRemoveKey;
+    document.getElementsByClassName('close-btn')[19].onclick = closeAdditionalItemModal;
+    document.getElementsByClassName('close-btn')[20].onclick = closeReleaseRoomsModal;
+    document.getElementsByClassName('close-btn')[21].onclick = closeGlobalMessModal;
 
     // Hide dropdown if clicked outside
     window.addEventListener('click', function (event) {
@@ -2468,6 +2555,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeModalAddRoom();
                 break;
 
+            case modalRoomAddMultiModal:
+                closeModalAddMultiRoom();
+                break;
+
+            case modalKeyAddMultiModal:
+                closeModalAddMultiKey();
+                break;
+
+            case modalReleaseMultiRoomModal:
+                closeReleaseRoomsModal();
+                break;
+
             case modalRoomRemoveModal:
                 closeModalRemoveRoom();
                 break;
@@ -2647,6 +2746,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // Open the add soldier modal when the Add soldier button is clicked
     document.getElementById("addSoldier").addEventListener("click", function () {
         openAddSoldierModal();
+    });
+
+    document.getElementById("confirmReportBtnAddMultiRooms").addEventListener("click", function () {
+        openModalAddMultiRoom();
+    });
+
+    document.getElementById("confirmReportBtnAddMultiKeys").addEventListener("click", function () {
+        openModalAddMultiKey();
+    });
+
+    document.getElementById("releaseRoom").addEventListener("click", function () {
+        openReleaseRoomsModal();
     });
 
     document.getElementById('confirmReportBtn').addEventListener('click', () => {
@@ -2914,7 +3025,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {
                             closeAddMultiSoldierModal();
-                            showGlobalMess("Error", `Invalid data in row with Id: ${error.row.soldierId}. Check the syntax of data in this roows.`);
+                            showGlobalMess("Error", `Invalid data in row with Id: ${error.row.soldierId}. Check the syntax of data in this rows.`);
                         }
                     });
                 } else {
@@ -2927,6 +3038,213 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
             closeAddMultiSoldierModal();
+            showGlobalMess("Error", "An unexpected error occurred.");
+        };
+
+        xhr.send(formData);
+    });
+
+    document.getElementById('upload-room-btn').addEventListener("click", function () {
+
+        const fileInput = document.getElementById("fileInputRoom");
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showGlobalMess("Error", "You have not selected a file to upload");
+            return;
+        }
+
+        const url = "/accommodation/uploadRooms";
+        const progressBar = document.getElementById("progress-multi-room");
+
+        const updateProgressBar = (percentage) => {
+            progressBar.style.width = percentage + "%";
+        };
+
+        updateProgressBar(0);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Use XMLHttpRequest to track upload progress
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('CSRF-Token', csrfToken);
+
+        xhr.upload.onprogress = function (event) {
+            if (event.lengthComputable) {
+                const percentage = (event.loaded / event.total) * 100;
+                updateProgressBar(percentage);
+            }
+        };
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                setTimeout(() => {
+                    closeModalAddMultiRoom();
+                    showGlobalMess("Info", "File uploaded successfully!");
+                }, 1000);
+            } else {
+                const data = JSON.parse(xhr.responseText);
+                if (data.errors) {
+                    data.errors.forEach(error => {
+                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'InvalidDate' || error.type === 'CheckBag' || error.type === 'CheckKey') {
+                            closeModalAddMultiRoom();
+                            showGlobalMess("Error", error.message);
+                        } else if (error.type === 'Validation') {
+                            closeModalAddMultiRoom();
+                            showGlobalMess("Error", `Invalid data in row with Id: ${error.row.roomId}. Check the syntax of data in this rows.`);
+                        }
+                    });
+                } else {
+                    closeModalAddMultiRoom();
+                    showGlobalMess("Error", data.error || "File upload failed.");
+                }
+            }
+        };
+
+        xhr.onerror = function () {
+            console.error('Error:', xhr.statusText);
+            closeModalAddMultiRoom();
+            showGlobalMess("Error", "An unexpected error occurred.");
+        };
+
+        xhr.send(formData);
+    });
+
+    document.getElementById('upload-key-btn').addEventListener("click", function () {
+
+        const fileInput = document.getElementById("fileInputKey");
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showGlobalMess("Error", "You have not selected a file to upload");
+            return;
+        }
+
+        const url = "/accommodation/uploadKeys";
+        const progressBar = document.getElementById("progress-multi-key");
+
+        const updateProgressBar = (percentage) => {
+            progressBar.style.width = percentage + "%";
+        };
+
+        updateProgressBar(0);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Use XMLHttpRequest to track upload progress
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('CSRF-Token', csrfToken);
+
+        xhr.upload.onprogress = function (event) {
+            if (event.lengthComputable) {
+                const percentage = (event.loaded / event.total) * 100;
+                updateProgressBar(percentage);
+            }
+        };
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                setTimeout(() => {
+                    closeModalAddMultiKey();
+                    showGlobalMess("Info", "File uploaded successfully!");
+                }, 1000);
+            } else {
+                const data = JSON.parse(xhr.responseText);
+                if (data.errors) {
+                    data.errors.forEach(error => {
+                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'InvalidDate' || error.type === 'CheckBag' || error.type === 'CheckKey') {
+                            closeModalAddMultiKey();
+                            showGlobalMess("Error", error.message);
+                        } else if (error.type === 'Validation') {
+                            closeModalAddMultiKey();
+                            showGlobalMess("Error", `Invalid data in row with Id: ${error.row.keyId}. Check the syntax of data in this rows.`);
+                        }
+                    });
+                } else {
+                    closeModalAddMultiKey();
+                    showGlobalMess("Error", data.error || "File upload failed.");
+                }
+            }
+        };
+
+        xhr.onerror = function () {
+            console.error('Error:', xhr.statusText);
+            closeModalAddMultiKey();
+            showGlobalMess("Error", "An unexpected error occurred.");
+        };
+
+        xhr.send(formData);
+    });
+
+    document.getElementById('upload-multi-release-rooms-btn').addEventListener("click", function () {
+
+        const fileInput = document.getElementById("fileInputReleaseRooms");
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showGlobalMess("Error", "You have not selected a file to upload");
+            return;
+        }
+
+        const url = "/accommodation/uploadReleaseRooms";
+        const progressBar = document.getElementById("progress-multi-release-rooms");
+
+        const updateProgressBar = (percentage) => {
+            progressBar.style.width = percentage + "%";
+        };
+
+        updateProgressBar(0);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Use XMLHttpRequest to track upload progress
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('CSRF-Token', csrfToken);
+
+        xhr.upload.onprogress = function (event) {
+            if (event.lengthComputable) {
+                const percentage = (event.loaded / event.total) * 100;
+                updateProgressBar(percentage);
+            }
+        };
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                setTimeout(() => {
+                    closeReleaseRoomsModal();
+                    showGlobalMess("Info", "File uploaded successfully!");
+                }, 1000);
+            } else {
+                const data = JSON.parse(xhr.responseText);
+                if (data.errors) {
+                    data.errors.forEach(error => {
+                        if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'CheckBike' || error.type === 'CheckBag' || error.type === 'CheckAI') {
+                            closeReleaseRoomsModal();
+                            showGlobalMess("Error", error.message);
+                        } else if (error.type === 'Validation') {
+                            closeReleaseRoomsModal();
+                            showGlobalMess("Error", `Invalid data in row with key name: ${error.row.keyName}. Check the syntax of data in this rows.`);
+                        }
+                    });
+                } else {
+                    closeReleaseRoomsModal();
+                    showGlobalMess("Error", data.error || "File upload failed.");
+                }
+            }
+        };
+
+        xhr.onerror = function () {
+            console.error('Error:', xhr.statusText);
+            closeReleaseRoomsModal();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -4546,7 +4864,16 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById("toggleFormButton").addEventListener("click", function () {
         let form = document.getElementById("form12");
         let table = document.getElementById("additonalItemTable");
-        form.style.display = form.style.display === "none" ? "flex" : "none";
+        let groupNav = document.getElementById("groupNav");
+        
+        form.style.display = form.style.display === "none" || form.style.display === "" ? "flex" : "none";
         table.style.display = form.style.display === "flex" ? "none" : "flex";
+
+        if (form.style.display === "flex") {
+            groupNav.classList.remove('d-flex');
+            groupNav.style.display = 'none';
+        } else {
+            groupNav.classList.add('d-flex');
+        }
     });
 });

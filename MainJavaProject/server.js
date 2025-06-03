@@ -44,6 +44,7 @@ const pool = new Pool({
 });
 
 const Joi = require('joi');
+const safeStringPattern = /^[a-zA-Z0-9\s!\&\)\(._-]*$/;
 
 const shemaChangeCamp = Joi.object({
     campId: Joi.string().alphanum().optional()
@@ -332,13 +333,17 @@ const schemaRemoveDestination = Joi.object({
 const schemaRoomToDestination = Joi.object({
     roomId: Joi.string().pattern(/^[a-zA-Z0-9\s\-]+$/).required(),
     roomName: Joi.string().pattern(/^[^\/]+\/([^\/]+\/)?.+$/).required(),
-    clickBuild: Joi.string().allow('').alphanum().required()
+    clickBuild: Joi.string().allow('').alphanum().optional()
+});
+
+const schemaReleaseMultiRoom = Joi.object({
+    keyName: Joi.string().pattern(/^[^\/]+\/[^\/]+\/.+$/).required()
 });
 
 const schemaKeyToRoom = Joi.object({
     keyId: Joi.string().alphanum().required(),
     keyName: Joi.string().pattern(/^[^\/]+\/[^\/]+\/.+$/).required(),
-    selectedRoomForKey: Joi.string().pattern(/^[^\/]+\/.+$/).required()
+    selectedRoomForKey: Joi.string().pattern(/^[^\/]+\/.+$/).optional()
 });
 
 const schemaSpecialRoom = Joi.object({
@@ -371,7 +376,7 @@ const schemaRemoveAsetsType = Joi.object({
 
 const schemaLostItems = Joi.object({
     itemName: Joi.string().alphanum().required(),
-    description: Joi.string().allow('').pattern(/^[a-zA-Z0-9\s]*$/).required(),
+    description: Joi.string().allow('').pattern(safeStringPattern).required(),
     lostQuantity: Joi.number().required()
 });
 
@@ -383,53 +388,181 @@ const schemaRestorItems = Joi.object({
 const schemaAddAsset = Joi.object({
     assetEps: Joi.string().alphanum().required(),
     assetCodeSearch: Joi.string().alphanum().required(),
-    assetAddName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    assetAddName: Joi.string().pattern(safeStringPattern).required(),
     selectedAddTypeId: Joi.string().alphanum().required(),
     selectedAddLocationId: Joi.string().alphanum().required(),
     selectedAddSubLocationId: Joi.string().alphanum().allow('').optional(),
-    assetAddCategorie: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
-    assetQuantity: Joi.number().integer().required(),
-    assetAddMrah: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
-    assetAddOwner: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
-    assetStatus: Joi.number().integer().required(),
-    assetAddExpandable: Joi.valid('Expandable', 'Non Expandable').required(),
-    assetAddDescription: Joi.string().allow('').pattern(/^[a-zA-Z0-9\s]*$/).required(),
+    assetAddCategorie: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetQuantity: Joi.number().integer().min(1).required(),
+    assetAddMrah: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetAddOwner: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetStatus: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetAddExpandable: Joi.valid('Expandable', 'Non Expandable', '').required(),
+    assetAddService: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetAddDescription: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetAddM2Inside: Joi.string().allow('').pattern(/^([0-9]+,[0-9]+)?$/).required(),
+    assetAddIsFixed: Joi.boolean().required(),
+    assetAddDatePurchase: Joi.alternatives().try(
+        Joi.string().isoDate(),
+        Joi.string().valid('')
+    ).required(),
+    assetAddDateWrittenOff: Joi.alternatives().try(
+        Joi.string().isoDate(),
+        Joi.string().valid('')
+    ).required(),
+    assetAddPurchasePrice: Joi.string().allow('').pattern(/^([0-9]+,[0-9]+)?$/).required(),
+    assetAddComments: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetAddReplacedOff: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetAddYearOfLifeCycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    assetAddRestOfLifeCycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    assetAddReplacedBy: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetAddRestValue: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
     campId: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
 
 const schemaEditAsset = Joi.object({
     assetId: Joi.string().alphanum().required(),
-    assetName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    assetName: Joi.string().pattern(safeStringPattern).required(),
     assetType: Joi.string().alphanum().required(),
     assetLocation: Joi.string().alphanum().required(),
     assetSubLocation: Joi.string().alphanum().allow('').optional(),
-    assetCategory: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
-    assetQuantity: Joi.number().integer().required(),
-    assetMrah: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
-    assetOwner: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
-    assetStatus: Joi.number().integer().required(),
-    assetExpandable: Joi.valid('Expandable', 'Non Expandable').required(),
-    assetDescription: Joi.string().allow('').pattern(/^[a-zA-Z0-9\s]*$/).required()
+    assetCategory: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetQuantity: Joi.number().integer().min(1).required(),
+    assetMrah: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetOwner: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetService: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetStatus: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetExpandable: Joi.valid('Expandable', 'Non Expandable', '').required(),
+    assetDescription: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetM2Inside: Joi.string().allow('').pattern(/^([0-9]+,[0-9]+)?$/).required(),
+    assetIsFixed: Joi.boolean().required(),
+    assetDatePurchase: Joi.alternatives().try(
+        Joi.string().isoDate(),
+        Joi.string().valid('')
+    ).required(),
+    assetDateWrittenOff: Joi.alternatives().try(
+        Joi.string().isoDate(),
+        Joi.string().valid('')
+    ).required(),
+    assetPurchasePrice: Joi.string().allow('').pattern(/^([0-9]+,[0-9]+)?$/).required(),
+    assetComments: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetReplacedOff: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetYearOfLifeCycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    assetRestOfLifeCycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    assetReplacedBy: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetRestValue: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
 });
 
 const schemaEditAssetDevice = Joi.object({
     oldCode: Joi.string().alphanum().required(),
     newCode: Joi.string().alphanum().required(),
     code: Joi.string().alphanum().required(),
-    name: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    name: Joi.string().pattern(safeStringPattern).required(),
     type: Joi.string().alphanum().required(),
     location: Joi.string().alphanum().required(),
     subLocation: Joi.string().alphanum().allow('').optional(),
-    category: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
-    quantity: Joi.number().integer().required(),
-    mrah: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
-    owner: Joi.string().pattern(/^[a-zA-Z\s]+$/).required(),
-    status: Joi.number().integer().required(),
-    expandable: Joi.valid('Expandable', 'Non Expandable').required(),
-    description: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    category: Joi.string().allow('').pattern(safeStringPattern).required(),
+    quantity: Joi.number().integer().min(1).required(),
+    mrah: Joi.string().allow('').pattern(safeStringPattern).required(),
+    owner: Joi.string().allow('').pattern(safeStringPattern).required(),
+    status: Joi.string().allow('').pattern(safeStringPattern).required(),
+    expandable: Joi.valid('Expandable', 'Non Expandable', '').required(),
+    service: Joi.string().allow('').pattern(safeStringPattern).required(),
+    description: Joi.string().allow('').pattern(safeStringPattern).required(),
+    m2Inside: Joi.string().allow('').pattern(/^([0-9]+,[0-9]+)?$/).required(),
+    isFixed: Joi.boolean().required(),
+    datePurchase: Joi.alternatives().try(
+        Joi.string().isoDate(),
+        Joi.string().valid('')
+    ).required(),
+    dateWrittenOff: Joi.alternatives().try(
+        Joi.string().isoDate(),
+        Joi.string().valid('')
+    ).required(),
+    purchasePrice: Joi.string().allow('').pattern(/^([0-9]+,[0-9]+)?$/).required(),
+    comments: Joi.string().allow('').pattern(safeStringPattern).required(),
+    replacedOff: Joi.string().allow('').pattern(safeStringPattern).required(),
+    yearOfLifeCycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    restOfLifeCycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    replacedBy: Joi.string().allow('').pattern(safeStringPattern).required(),
+    restValue: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
     campId: Joi.string().alphanum().required(),
     isValidCode: Joi.bool().optional()
+});
+
+const schemaEditMultiAsset = Joi.object({
+    id: Joi.string().alphanum().required(),
+    code: Joi.alternatives().try(
+        Joi.string().alphanum().required(),
+        Joi.number().integer().required().custom((val) => val.toString())
+    ),
+    name_assets: Joi.string().pattern(safeStringPattern).required(),
+    asset_type: Joi.string().pattern(safeStringPattern).required(),
+    location_room: Joi.string().pattern(/^[^\/]+\/([^\/]+\/)?.+$/).required(),
+    location_key: Joi.string().allow('').pattern(/^[^\/]+\/[^\/]+\/.+$/).required(),
+    categorie: Joi.string().allow('').pattern(safeStringPattern).required(),
+    quantity: Joi.number().integer().min(1).required(),
+    mrah: Joi.string().allow('').pattern(safeStringPattern).required(),
+    asset_owner: Joi.string().allow('').pattern(safeStringPattern).required(),
+    status: Joi.string().allow('').pattern(safeStringPattern).required(),
+    expandable: Joi.valid('Expandable', 'Non Expandable', '').required(),
+    description: Joi.string().allow('').pattern(safeStringPattern).required(),
+    service: Joi.string().allow('').pattern(safeStringPattern).required(),
+    m2_inside: Joi.string().allow('').pattern(/^([0-9]+,[0-9]+)?$/).required(),
+    is_fixed: Joi.boolean().required(),
+    date_purchase: Joi.alternatives().try(
+        Joi.string().isoDate(),
+        Joi.string().valid('')
+    ).required(),
+    date_written_off: Joi.alternatives().try(
+        Joi.string().isoDate(),
+        Joi.string().valid('')
+    ).required(),
+    purchase_price: Joi.string().allow('').pattern(/^([0-9]+,[0-9]+)?$/).required(),
+    comments: Joi.string().allow('').pattern(safeStringPattern).required(),
+    replaced_off: Joi.string().allow('').pattern(safeStringPattern).required(),
+    year_of_life_cycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    rest_of_life_cycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    replaced_by: Joi.string().allow('').pattern(safeStringPattern).required(),
+    rest_value: Joi.string().allow('').pattern(/^[0-9]*$/).required()
+});
+
+const schemaAddMultiAsset = Joi.object({
+    assetEpc: Joi.string().alphanum().required(),
+    assetCode: Joi.alternatives().try(
+        Joi.string().alphanum().required(),
+        Joi.number().integer().required().custom((val) => val.toString())
+    ),
+    assetName: Joi.string().pattern(safeStringPattern).required(),
+    assetTypeName: Joi.string().pattern(safeStringPattern).required(),
+    assetLocation: Joi.string().pattern(/^[^\/]+\/([^\/]+\/)?.+$/).required(),
+    assetSubLocation: Joi.string().allow('').pattern(/^[^\/]+\/[^\/]+\/.+$/).required(),
+    assetCategorie: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetQuantity: Joi.number().integer().min(1).required(),
+    assetMrah: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetOwner: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetStatus: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetExpandable: Joi.valid('Expandable', 'Non Expandable', '').required(),
+    assetDescription: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetService: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetM2Inside: Joi.string().allow('').pattern(/^([0-9]+,[0-9]+)?$/).required(),
+    assetIsFixed: Joi.boolean().required(),
+    assetDatePurchase: Joi.alternatives().try(
+        Joi.string().isoDate(),
+        Joi.string().valid('')
+    ).required(),
+    assetDateWrittenOff: Joi.alternatives().try(
+        Joi.string().isoDate(),
+        Joi.string().valid('')
+    ).required(),
+    assetPurchasePrice: Joi.string().allow('').pattern(/^([0-9]+,[0-9]+)?$/).required(),
+    assetComments: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetReplacedOff: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetYearOfLifeCycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    assetRestOfLifeCycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    assetReplacedBy: Joi.string().allow('').pattern(safeStringPattern).required(),
+    assetRestValue: Joi.string().allow('').pattern(/^[0-9]*$/).required()
 });
 
 const schemaRemoveRoom = Joi.object({
@@ -447,7 +580,7 @@ const schemaRenameKey = Joi.object({
 
 const schemaAddAdditionalItem = Joi.object({
     soldierId: Joi.string().alphanum().required(),
-    description: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+    description: Joi.string().pattern(safeStringPattern).required(),
     bagId: Joi.string().allow('').alphanum().required(),
     quantity: Joi.number().integer().required()
 });
@@ -580,8 +713,8 @@ class Server {
         this.app.set('trust proxy', 1);
 
         // Set up body parsing with size limits
-        this.app.use(express.json({ limit: '10mb' }));
-        this.app.use(express.urlencoded({ limit: '10mb', extended: true }));
+        this.app.use(express.json({ limit: '20mb' }));
+        this.app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
         // Middleware to parse JSON bodies (bodyParser is already included in Express)
         this.app.set("view engine", "ejs");
@@ -1656,6 +1789,9 @@ class Server {
 
                 if (actionId === 'Rent') {
 
+                    if (!clientId)
+                        return res.status(401).json({ message: 'Invalid client ID.' });
+
                     const count_result = await client.query(
                         `SELECT COUNT(*) FROM bikesoldier WHERE bikeid = $1 AND dateto IS NULL`,
                         [bikeId]
@@ -2171,6 +2307,10 @@ class Server {
                 return res.status(400).send({ message: error.details[0].message });
             }
 
+            if (!req.session.camp && !req.body.campId) {
+                return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
+            }
+
             if (!req.body.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
@@ -2218,6 +2358,10 @@ class Server {
             const { error } = schemaAddHelmet.validate(req.body);
             if (error) {
                 return res.status(400).send({ message: error.details[0].message });
+            }
+
+            if (!req.session.camp && !req.body.campId) {
+                return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
             }
 
             if (!req.body.isValidCode && !req.session.username)
@@ -2424,6 +2568,10 @@ class Server {
             const client = await pool.connect();
             const errors = [];
 
+            if (!req.session.camp) {
+                return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
+            }
+
             try {
 
                 await client.query('BEGIN');
@@ -2516,6 +2664,10 @@ class Server {
 
             const client = await pool.connect();
             const errors = [];
+
+            if (!req.session.camp) {
+                return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
+            }
 
             try {
 
@@ -3239,8 +3391,8 @@ class Server {
 
                     const resultData = await client.query(`
                     SELECT nameroom,
-                           COUNT(CASE WHEN namesoldier IS NULL THEN 1 END) as unassigned_count,
-                           COUNT(1) as all_bed_count
+                           COUNT(CASE WHEN namesoldier IS NULL THEN k.id END) as unassigned_count,
+                           COUNT(k.id) as all_bed_count
                     FROM rooms r
                     LEFT JOIN roomskey rk ON r.id = rk.roomid
                     LEFT JOIN key k ON k.id = rk.keyid
@@ -3248,7 +3400,7 @@ class Server {
                     LEFT JOIN buildroom br ON br.roomid = r.id
                     LEFT JOIN buildings b ON br.buildid = b.id
                     LEFT JOIN laundrybags lb ON lb.id = s.laundry_bag_id
-                    WHERE nameroom SIMILAR TO '%/' || $1 || '[0-9]*%' AND b.camp_id = $2
+                    WHERE nameroom SIMILAR TO '%/' || $1 || '[0-9]*' AND b.camp_id = $2
                     GROUP BY nameroom
                     ORDER BY nameroom;`, [numBuild, req.session.camp]);
 
@@ -3382,7 +3534,13 @@ class Server {
                         break;
                 }
 
-                const resultBuild = await client.query(`SELECT id, namebuilding FROM buildings WHERE camp_id = $1`, [req.session.camp]);
+                const resultBuild = await client.query(`
+                    SELECT id, namebuilding
+                    FROM buildings
+                    WHERE camp_id = $1
+                    ORDER BY 
+                    CASE WHEN type = 'Accommodation' THEN 0 ELSE 1 END,
+                    namebuilding ASC;`, [req.session.camp]);
 
                 var navBuild = [
                     { id: "E", name: "Entrance" },
@@ -3976,6 +4134,10 @@ class Server {
                 return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
             }
 
+            if (!req.session.camp) {
+                return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
+            }
+
             const { soldierId, soldierName, soldierCountry, upcomingKey, soldierBag, soldierMealCard, upcomingAccommodationDate, upcomingReleaseDate } = req.body;
             const client = await pool.connect();
 
@@ -4135,6 +4297,10 @@ class Server {
             const bagSet = [];
             const keySet = [];
 
+            if (!req.session.camp) {
+                return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
+            }
+
             try {
                 await client.query('BEGIN');
 
@@ -4224,7 +4390,12 @@ class Server {
                     }
 
                     if (row.upcomingKey) {
-                        const result_check_key = await client.query("SELECT * FROM key WHERE namekey = $1;", [row.upcomingKey]);
+                        const result_check_key = await client.query(`
+                            SELECT * FROM key 
+                            LEFT JOIN roomskey rk ON key.id = rk.keyid
+                            LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                            LEFT JOIN buildings b ON br.buildid = b.id
+                            WHERE namekey = $1 AND b.camp_id = $2;`, [row.upcomingKey, req.session.camp]);
 
                         if (result_check_key.rows.length === 0) {
                             errors.push({ type: 'CheckKey', message: `The key with name '${row.upcomingKey}' is not exists.` });
@@ -4386,6 +4557,10 @@ class Server {
             const client = await pool.connect();
             const errors = [];
             const bagSet = [];
+
+            if (!req.session.camp) {
+                return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
+            }
 
             try {
 
@@ -4601,6 +4776,10 @@ class Server {
 
             const client = await pool.connect();
 
+            if (!req.session.camp) {
+                return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
+            }
+
             try {
 
                 await client.query('BEGIN');
@@ -4677,6 +4856,10 @@ class Server {
             const { error } = schemaRoomToDestination.validate(req.body);
             if (error) {
                 return res.status(400).send({ message: error.details[0].message });
+            }
+
+            if (!req.session.camp) {
+                return res.status(401).json({ message: "You not select camp. First select camp then add lost item?!" });
             }
 
             const { roomId, roomName, clickBuild } = req.body;
@@ -4916,9 +5099,10 @@ class Server {
                         soldierName: row.namesoldier ? row.namesoldier : 'Free',
                         country: row.country ? row.country : 'Undefined',
                         maleCard: row.meal_card ? row.meal_card : 'Undefined',
-                        laundryBag: row.code ? row.code : 'Undefined',
+                        laundryBag: row.laundry_code ? row.laundry_code : 'Undefined',
                         roomid: row.roomid,
-                        nameroom: row.nameroom
+                        nameroom: row.nameroom,
+                        building_type: row.building_type
                     });
                 }));
 
@@ -5014,6 +5198,150 @@ class Server {
                 console.error('Error add destination:', error);
                 res.status(500).json({ message: 'An error occurred while processing the data.' });
 
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/accommodation/uploadKeys/download', async (req, res) => {
+
+            // Create a new Excel workbook
+            const workbook = new excelJS.Workbook();
+
+            // Sheet 1: Soldier Data
+            const worksheet = workbook.addWorksheet('Add Multipul Keys');
+
+            // Add custom column titles for the first sheet
+            const headers = ['keyId', 'keyName'];
+            const headerRow = worksheet.addRow(headers);
+
+            // Apply styling to the headers
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, size: 12 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+
+            // Set column widths for sheet 1
+            worksheet.columns = [
+                { width: 25 },
+                { width: 20 }
+            ];
+
+            // Set the response headers for file download
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=templateAddKeys.xlsx');
+
+            // Write the workbook to the response stream
+            await workbook.xlsx.write(res);
+            res.end(); // End the response
+
+        });
+
+        this.app.post('/accommodation/uploadKeys', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+            const client = await pool.connect();
+            const errors = [];
+
+            try {
+                await client.query('BEGIN');
+
+                if (!req.file) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ error: 'No file uploaded.' });
+                }
+
+                const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet);
+
+                // Set to track unique soldierIds in the file
+                const seenIds = new Set();
+
+                if (sheetName !== 'Add Multipul Keys') {
+                    await client.query('ROLLBACK');
+                    errors.push({ type: 'InvalidFormat', message: `Invalid template` });
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row, index) => {
+                    const { error } = schemaKeyToRoom.validate(row);
+
+                    if (error) {
+                        errors.push({ type: 'Validation', details: error.details, row, index });
+                        return;
+                    }
+
+                    // Check for duplicates within the file
+                    if (seenIds.has(row.keyName)) {
+                        errors.push({ type: 'DuplicateInFile', row, index, message: `Duplicate key name '${row.keyName}' in the file.` });
+                        return;
+                    }
+                    seenIds.add(row.keyName);
+
+                    const result_check_room = await client.query(`
+                        SELECT * FROM rooms 
+                        LEFT JOIN buildroom br ON br.roomid = rooms.id
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE nameroom = $1 AND b.camp_id = $2;`, [row.keyName.split('/').slice(0, -1).join('/'), req.session.camp]);
+
+                    if (result_check_room.rows.length === 0) {
+                        errors.push({ type: 'DuplicateInDB', message: `${row.keyName.split('/').slice(0, -1).join('/')} not exists.` });
+                        return;
+                    }
+
+                    // Check for duplicates in the database
+                    const result = await client.query(`
+                        SELECT * FROM key 
+                        LEFT JOIN roomskey rk ON rk.keyid = key.id
+                        LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE namekey = $1 AND b.camp_id = $2;`, [row.keyName, req.session.camp]);
+
+                    if (result.rows.length > 0) {
+                        errors.push({ type: 'DuplicateInDB', message: `Key '${row.keyName}' already exists.` });
+                        return;
+                    }
+
+                    if (row.keyName.endsWith(' ')) {
+                        errors.push({ type: 'InvalidFormat', message: `Key name '${row.keyName}' should not end with a space.` });
+                        return;
+                    }
+                }));
+
+                if (errors.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row) => {
+
+                    const get_key_id = await client.query(`
+                        SELECT rooms.id FROM rooms
+                        LEFT JOIN buildroom br ON br.roomid = rooms.id
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE nameroom = $1 AND b.camp_id = $2`,
+                        [row.keyName.split('/').slice(0, -1).join('/'), req.session.camp]);
+
+                    client.query("INSERT INTO key VALUES ($1, $2)", [row.keyId, row.keyName]);
+                    client.query("INSERT INTO roomskey VALUES ($1, $2)", [get_key_id.rows[0].id, row.keyId]);
+                }));
+
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Add multi keys`]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'File processed successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ error: 'An error occurred while processing the file.' });
             } finally {
                 client.release();
             }
@@ -5228,6 +5556,340 @@ class Server {
                 console.error('Error return item:', error);
                 res.status(500).json({ message: 'Error returning item!' });
 
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/accommodation/uploadRooms/download', async (req, res) => {
+
+            // Create a new Excel workbook
+            const workbook = new excelJS.Workbook();
+
+            // Sheet 1: Soldier Data
+            const worksheet = workbook.addWorksheet('Add Multipul Rooms');
+
+            // Add custom column titles for the first sheet
+            const headers = ['roomId', 'roomName'];
+            const headerRow = worksheet.addRow(headers);
+
+            // Apply styling to the headers
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, size: 12 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+
+            // Set column widths for sheet 1
+            worksheet.columns = [
+                { width: 25 },
+                { width: 20 }
+            ];
+
+            // Set the response headers for file download
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=templateAddRooms.xlsx');
+
+            // Write the workbook to the response stream
+            await workbook.xlsx.write(res);
+            res.end(); // End the response
+
+        });
+
+        this.app.post('/accommodation/uploadRooms', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+            const client = await pool.connect();
+            const errors = [];
+
+            try {
+                await client.query('BEGIN');
+
+                if (!req.file) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ error: 'No file uploaded.' });
+                }
+
+                const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet);
+
+                // Set to track unique soldierIds in the file
+                const seenIds = new Set();
+
+                if (sheetName !== 'Add Multipul Rooms') {
+                    await client.query('ROLLBACK');
+                    errors.push({ type: 'InvalidFormat', message: `Invalid template` });
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row, index) => {
+                    const { error } = schemaRoomToDestination.validate(row);
+
+                    if (error) {
+                        errors.push({ type: 'Validation', details: error.details, row, index });
+                        return;
+                    }
+
+                    // Check for duplicates within the file
+                    if (seenIds.has(row.roomName)) {
+                        errors.push({ type: 'DuplicateInFile', row, index, message: `Duplicate room name '${row.roomName}' in the file.` });
+                        return;
+                    }
+                    seenIds.add(row.roomName);
+
+                    const result_check_build = await client.query("SELECT * FROM buildings WHERE namebuilding = $1 AND camp_id = $2;", ['Building ' + row.roomName.split('/')[0], req.session.camp]);
+                    if (result_check_build.rows.length === 0) {
+                        errors.push({ type: 'DuplicateInDB', message: `Building ${row.roomName.split('/')[0]} not exists.` });
+                        return;
+                    }
+
+                    if (!row.roomName.endsWith(`/${row.roomId}`)) {
+                        errors.push({ type: 'InvalidFormat', message: `Room name '${row.roomName}' has invalid format.` });
+                        return;
+                    }
+
+                    // Check for duplicates in the database
+                    const result = await client.query(`
+                        SELECT * FROM rooms 
+                        LEFT JOIN buildroom br ON br.roomid = rooms.id
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE nameroom = $1 AND b.camp_id = $2;`, [row.roomName, req.session.camp]);
+
+                    if (result.rows.length > 0) {
+                        errors.push({ type: 'DuplicateInDB', message: `Room '${row.roomName}' already exists.` });
+                        return;
+                    }
+
+                    if (row.roomName.endsWith(' ')) {
+                        errors.push({ type: 'InvalidFormat', message: `Room name '${row.roomName}' should not end with a space.` });
+                        return;
+                    }
+                }));
+
+                if (errors.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row) => {
+
+                    const build_id = await client.query(`SELECT id FROM buildings WHERE namebuilding = $1 AND camp_id = $2`,
+                        [`Building ${row.roomName.split('/')[0]}`, req.session.camp]);
+
+                    let buildingName = build_id.rows[0].id;
+
+                    const uniqueId = crypto.randomBytes(16).toString('hex');
+                    client.query("INSERT INTO rooms VALUES ($1, $2)", [uniqueId, row.roomName]);
+                    client.query("INSERT INTO buildroom VALUES ($1, $2)", [buildingName, uniqueId]);
+                }));
+
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Add multi room`]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'File processed successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ error: 'An error occurred while processing the file.' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/accommodation/multiReleaseRooms/download', async (req, res) => {
+
+            // Create a new Excel workbook
+            const workbook = new excelJS.Workbook();
+
+            // Sheet 1: Soldier Data
+            const worksheet = workbook.addWorksheet('Release Multipul Rooms');
+
+            // Add custom column titles for the first sheet
+            const headers = ['keyName'];
+            const headerRow = worksheet.addRow(headers);
+
+            // Apply styling to the headers
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, size: 12 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+
+            // Set column widths for sheet 1
+            worksheet.columns = [
+                { width: 20 }
+            ];
+
+            // Set the response headers for file download
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=templateReleaseRooms.xlsx');
+
+            // Write the workbook to the response stream
+            await workbook.xlsx.write(res);
+            res.end(); // End the response
+
+        });
+
+        this.app.post('/accommodation/uploadReleaseRooms', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+            const client = await pool.connect();
+            const errors = [];
+
+            try {
+                await client.query('BEGIN');
+
+                if (!req.file) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ error: 'No file uploaded.' });
+                }
+
+                const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet);
+
+                // Set to track unique soldierIds in the file
+                const seenIds = new Set();
+
+                if (sheetName !== 'Release Multipul Rooms') {
+                    await client.query('ROLLBACK');
+                    errors.push({ type: 'InvalidFormat', message: `Invalid template` });
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row, index) => {
+                    const { error } = schemaReleaseMultiRoom.validate(row);
+
+                    if (error) {
+                        errors.push({ type: 'Validation', details: error.details, row, index });
+                        return;
+                    }
+
+                    // Check for duplicates within the file
+                    if (seenIds.has(row.keyName)) {
+                        errors.push({ type: 'DuplicateInFile', row, index, message: `Duplicate key name '${row.keyName}' in the file.` });
+                        return;
+                    }
+                    seenIds.add(row.keyName);
+
+                    const result_check_key = await client.query(`
+                        SELECT key.* FROM key
+                        LEFT JOIN roomskey rk ON rk.keyid = key.id
+                        LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE namekey = $1 AND b.camp_id = $2;`, [row.keyName, req.session.camp]);
+
+                    if (result_check_key.rows.length === 0) {
+                        errors.push({ type: 'DuplicateInDB', message: `Key ${row.keyName} not exists.` });
+                        return;
+                    }
+
+                    if (row.keyName.endsWith(' ')) {
+                        errors.push({ type: 'InvalidFormat', message: `Key name '${row.keyName}' should not end with a space.` });
+                        return;
+                    }
+
+                    const res_query = await client.query(
+                        `SELECT soldierid FROM key 
+                        LEFT JOIN roomskey rk ON rk.keyid = key.id
+                        LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE namekey = $1 AND b.camp_id = $2;`, [row.keyName, req.session.camp]
+                    );
+
+                    const check_laundry_bag = await client.query(`
+                        SELECT l.status FROM laundrybags l
+                        LEFT JOIN soldier s ON s.laundry_bag_id = l.id
+                        LEFT JOIN additionalitem ai ON ai.bag_id = l.id
+                        WHERE s.id = $1 OR ai.soldier_id = $1;`, [res_query.rows[0].soldierid]);
+
+                    const check_bike = await client.query(`
+                        SELECT * FROM soldier s
+                        LEFT JOIN bikesoldier bs ON s.id = bs.soldierid
+                        WHERE s.id = $1 AND datefrom IS NOT NULL AND dateto IS NULL;`, [res_query.rows[0].soldierid]);
+
+                    const check_additional_item = await client.query(`SELECT * FROM additionalitem WHERE soldier_id = $1;`, [res_query.rows[0].soldierid]);
+
+                    const check_build_type = await client.query(`
+                        SELECT type FROM buildings b
+                        LEFT JOIN buildroom br ON b.id = br.buildid
+                        LEFT JOIN rooms r ON r.id = br.roomid
+                        LEFT JOIN roomskey rk ON rk.roomid = r.id
+                        LEFT JOIN key k ON k.id = rk.keyid
+                        WHERE b.camp_id = $1 AND k.namekey = $2`, [req.session.camp, row.keyName]);
+
+                    if (check_build_type.rows[0].type !== 'Accommodation')
+                        return;
+
+                    if (check_laundry_bag.rows.length > 0) {
+                        const activeBags = check_laundry_bag.rows.filter(bag => bag.status !== 'None');
+                        if (activeBags.length > 0) {
+                            errors.push({ type: 'CheckBag', message: `"The soldier with key ${row.keyName} has an active laundry bag and cannot be released."` });
+                            return;
+                        }
+                    }
+
+                    if (check_bike.rows.length > 0) {
+                        errors.push({ type: 'CheckBike', message: `"The soldier with key ${row.keyName} has an active bike rental and cannot be released."` });
+                        return;
+                    }
+
+                    if (check_additional_item.rows.length > 0) {
+                        errors.push({ type: 'CheckBike', message: `"The soldier with key ${row.keyName} has a non returned additional items!"` });
+                        return;
+                    }
+                }));
+
+                if (errors.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row) => {
+
+                    const check_build_type = await client.query(`
+                        SELECT type FROM buildings b
+                        LEFT JOIN buildroom br ON b.id = br.buildid
+                        LEFT JOIN rooms r ON r.id = br.roomid
+                        LEFT JOIN roomskey rk ON rk.roomid = r.id
+                        LEFT JOIN key k ON k.id = rk.keyid
+                        WHERE b.camp_id = $1 AND k.namekey = $2`, [req.session.camp, row.keyName]);
+
+                    const res_query = await client.query(`
+                        SELECT key.id, key.soldierid FROM key
+                        LEFT JOIN roomskey rk ON rk.keyid = key.id
+                        LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE namekey = $1 AND b.camp_id = $2;`, [row.keyName, req.session.camp]);
+
+                    if (check_build_type.rows[0].type === 'Accommodation')
+                        client.query("UPDATE soldier SET date_free = CURRENT_DATE, upcoming_release = NULL WHERE id = $1;", [res_query.rows[0].soldierid])
+
+                    client.query("UPDATE key SET soldierid = NULL WHERE id = $1;", [res_query.rows[0].id]);
+
+                }));
+
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Release multi rooms`]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'File processed successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ error: 'An error occurred while processing the file.' });
             } finally {
                 client.release();
             }
@@ -5746,7 +6408,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            if(!req.body.isValidCode)
+            if (!req.body.isValidCode)
                 return res.status(400).json({ message: "Invalid code" });
 
             const { codes, destination, prev_destination, campId } = req.body;
@@ -5769,7 +6431,8 @@ class Server {
 
                     const insertPromises = codes.map(async (code) => {
 
-                        const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1;`, [code]);
+                        const result = await client.query(`
+                            SELECT id FROM soldier WHERE laundry_bag_id = $1 AND date_accommodation IS NOT NULL AND date_free IS NULL;`, [code]);
                         const result_additional_bag = await client.query(`SELECT soldier_id FROM laundrybags WHERE id = $1;`, [code]);
 
                         return client.query(
@@ -5877,7 +6540,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            if(!req.body.isValidCode)
+            if (!req.body.isValidCode)
                 return res.status(400).json({ message: "Invalid code" });
 
             const { codes, destination, prev_destination, campId } = req.body;
@@ -5896,7 +6559,7 @@ class Server {
                 await client.query('BEGIN');
 
                 const insertPromises = codes.map(async (code) => {
-                    const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1;`, [code]);
+                    const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1 AND date_accommodation IS NOT NULL AND date_free IS NULL;`, [code]);
                     const result_additional_bag = await client.query(`SELECT soldier_id FROM laundrybags WHERE id = $1;`, [code]);
                     client.query(
                         `INSERT INTO laundryreport (bag_id, date_drop_off, date_ready_to_pick_up, soldier_id) 
@@ -5932,7 +6595,7 @@ class Server {
             try {
                 await client.query('BEGIN');
 
-                const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1;`, [code]);
+                const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1 AND date_accommodation IS NOT NULL AND date_free IS NULL;`, [code]);
                 const result_additional_bag = await client.query(`SELECT soldier_id FROM laundrybags WHERE id = $1;`, [code]);
 
                 await Promise.all([
@@ -5962,7 +6625,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            if(!req.body.isValidCode)
+            if (!req.body.isValidCode)
                 return res.status(400).json({ message: "Invalid code" });
 
             const { code, prev_destination, destination, permCount } = req.body;
@@ -6034,7 +6697,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            if(!req.body.isValidCode)
+            if (!req.body.isValidCode)
                 return res.status(400).json({ message: "Invalid code" });
 
             const { countScaneCode, prev_destination, campId } = req.body;
@@ -6112,7 +6775,7 @@ class Server {
 
                 if (prev_destination === 'None') {
 
-                    const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1;`, [code]);
+                    const result = await client.query(`SELECT id FROM soldier WHERE laundry_bag_id = $1 AND date_accommodation IS NOT NULL AND date_free IS NULL;`, [code]);
                     const result_additional_bag = await client.query(`SELECT soldier_id FROM laundrybags WHERE id = $1;`, [code]);
 
                     queries.push(client.query(`
@@ -6478,6 +7141,9 @@ class Server {
             if (!req.body.isValidCode && !req.session.username)
                 return res.status(402).json({ message: "Invalid product code!" });
 
+            if (!req.session.camp && !req.body.campId)
+                return res.status(401).json({ message: "You not select camp. First select camp then add clean item?!" });
+
             const { epc, code, type, maxcount } = req.body;
             const campId = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
 
@@ -6760,19 +7426,13 @@ class Server {
                 }));
 
                 const allAssets = resultAllAssets.rows.map(row => ({
-                    id: row.id,
-                    code: row.code,
-                    name_assets: row.name_assets,
-                    type_id: row.type_id,
-                    location_id: row.location_room,
-                    sub_location_id: row.location_key,
-                    categorie: row.categorie,
-                    quantity: row.quantity,
-                    mrah: row.mrah,
-                    owner: row.asset_owner,
-                    status: row.status,
-                    expandable: row.expandable,
-                    description: row.description,
+                    id: row.id, code: row.code, name_assets: row.name_assets, type_id: row.type_id,
+                    location_id: row.location_room, sub_location_id: row.location_key, categorie: row.categorie, quantity: row.quantity,
+                    mrah: row.mrah, owner: row.asset_owner, status: row.status, expandable: row.expandable,
+                    description: row.description, service: row.service, m2_inside: row.m2_inside, is_fixed: row.is_fixed,
+                    date_purchase: row.date_purchase, date_written_off: row.date_written_off, purchase_price: row.purchase_price, comments: row.comments,
+                    replaced_off: row.replaced_off, year_of_life_cycle: row.year_of_life_cycle, rest_of_life_cycle: row.rest_of_life_cycle, replaced_by: row.replaced_by,
+                    rest_value: row.rest_value
                 }));
 
                 const allLostItem = resultAllLostItem.rows.map(row => ({
@@ -6841,9 +7501,9 @@ class Server {
 
                 const result = await client.query(`
                         SELECT k.id, k.namekey, r.nameroom, r.id AS roomid, camp_id
-                        FROM key k
-                        LEFT JOIN roomskey rk ON rk.keyid = k.id
-                        LEFT JOIN rooms r ON rk.roomid = r.id
+                        FROM rooms r
+                        LEFT JOIN roomskey rk ON rk.roomid = r.id
+                        LEFT JOIN key k ON rk.keyid = k.id
 						LEFT JOIN buildroom br ON br.roomid = r.id
 						LEFT JOIN buildings b ON b.id = br.buildid
 						WHERE b.camp_id = $1;`, [camp_id]);
@@ -7086,7 +7746,13 @@ class Server {
 
                 if (numRoom)
                     result_get_room = await client.query(`
-                        SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.id AS keyid, k.namekey, categorie, quantity, mrah, asset_owner, status, expandable, description, a.inventory_status
+                        SELECT a.id, code, name_assets, t.type_name, 
+                            r.nameroom, k.id AS keyid, k.namekey, categorie, 
+                            quantity, mrah, asset_owner, status, 
+                            expandable, description, a.inventory_status, a.service, 
+                            a.m2_inside, a.is_fixed, a.date_purchase, a.date_written_off, 
+                            a.purchase_price, a.comments, a.replaced_off, a.year_of_life_cycle,
+                            a.rest_of_life_cycle, a.replaced_by, a.rest_value
                         FROM assets a
                         LEFT JOIN assetstype t ON t.id = a.type_id
                         LEFT JOIN rooms r ON r.id = a.location_room
@@ -7094,7 +7760,13 @@ class Server {
                         WHERE location_room = $1;`, [numRoom]);
                 else
                     result_get_room = await client.query(`
-                        SELECT a.id, code, name_assets, t.type_name, r.nameroom, k.id AS keyid, k.namekey, categorie, quantity, mrah, asset_owner, status, expandable, description, a.inventory_status
+                        SELECT a.id, code, name_assets, t.type_name, 
+                            r.nameroom, k.id AS keyid, k.namekey, categorie, 
+                            quantity, mrah, asset_owner, status, 
+                            expandable, description, a.inventory_status, a.service, 
+                            a.m2_inside, a.is_fixed, a.date_purchase, a.date_written_off, 
+                            a.purchase_price, a.comments, a.replaced_off, a.year_of_life_cycle,
+                            a.rest_of_life_cycle, a.replaced_by, a.rest_value
                         FROM assets a
                         LEFT JOIN assetstype t ON t.id = a.type_id
                         LEFT JOIN rooms r ON r.id = a.location_room
@@ -7103,21 +7775,13 @@ class Server {
 
                 result_get_room.rows.forEach(row => {
                     nameAssetSetCount.push({
-                        id: row.id,
-                        code: row.code,
-                        name: row.name_assets,
-                        type: row.type_name,
-                        location: row.nameroom,
-                        keyid: row.keyid,
-                        namekey: row.namekey ? row.namekey : 'There is no associated key',
-                        categorie: row.categorie,
-                        quantity: row.quantity,
-                        mrah: row.mrah,
-                        owner: row.asset_owner,
-                        status: row.status,
-                        expandable: row.expandable,
-                        description: row.description,
-                        inventory_status: row.inventory_status
+                        id: row.id, code: row.code, name: row.name_assets, type: row.type_name,
+                        location: row.nameroom, keyid: row.keyid, namekey: row.namekey ? row.namekey : 'There is no associated key', categorie: row.categorie,
+                        quantity: row.quantity, mrah: row.mrah, owner: row.asset_owner, service: row.service,
+                        status: row.status, expandable: row.expandable, description: row.description, inventory_status: row.inventory_status,
+                        m2_inside: row.m2_inside, is_fixed: row.is_fixed, date_purchase: row.date_purchase, date_written_off: row.date_written_off,
+                        purchase_price: row.purchase_price, comments: row.comments, replaced_off: row.replaced_off, year_of_life_cycle: row.year_of_life_cycle,
+                        rest_of_life_cycle: row.rest_of_life_cycle, replaced_by: row.replaced_by, rest_value: row.rest_value
                     });
                 });
 
@@ -7215,18 +7879,13 @@ class Server {
                 return res.status(400).send({ message: error.details[0].message });
             }
 
-            const { assetId,
-                assetName,
-                assetType,
-                assetLocation,
-                assetSubLocation,
-                assetCategory,
-                assetQuantity,
-                assetMrah,
-                assetOwner,
-                assetStatus,
-                assetExpandable,
-                assetDescription
+            const {
+                assetId, assetName, assetType, assetLocation,
+                assetSubLocation, assetCategory, assetQuantity, assetMrah,
+                assetOwner, assetService, assetStatus, assetExpandable,
+                assetDescription, assetM2Inside, assetIsFixed, assetDatePurchase,
+                assetDateWrittenOff, assetPurchasePrice, assetComments, assetReplacedOff,
+                assetYearOfLifeCycle, assetRestOfLifeCycle, assetReplacedBy, assetRestValue
             } = req.body;
 
             const client = await pool.connect();
@@ -7239,33 +7898,39 @@ class Server {
 
                 if (assetSubLocation !== '') {
                     await client.query(`UPDATE assets SET 
-                        name_assets = $2, 
-                        type_id = $3, 
-                        location_room = $4, 
-                        location_key = $5,
-                        categorie = $6,
-                        quantity = $7,
-                        mrah = $8,
-                        asset_owner = $9,
-                        status = $10,
-                        expandable = $11,
-                        description = $12 WHERE id = $1`,
-                        [assetId, assetName, assetType, assetLocation, assetSubLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription ? assetDescription : null]
+                        name_assets = $2, type_id = $3, location_room = $4, location_key = $5, 
+                        categorie = $6, quantity = $7, mrah = $8, asset_owner = $9,
+                        status = $10,expandable = $11,description = $12,service = $13,
+                        m2_inside = $14, is_fixed = $15, date_purchase = $16, date_written_off = $17,
+                        purchase_price = $18, comments = $19, replaced_off = $20, year_of_life_cycle = $21,
+                        rest_of_life_cycle = $22, replaced_by = $23, rest_value = $24
+                        WHERE id = $1`,
+                        [
+                            assetId, assetName, assetType, assetLocation,
+                            assetSubLocation, assetCategory || null, assetQuantity || null, assetMrah || null,
+                            assetOwner || null, assetStatus || null, assetExpandable || null, assetDescription || null,
+                            assetService || null, assetM2Inside || null, assetIsFixed, assetDatePurchase || null,
+                            assetDateWrittenOff || null, assetPurchasePrice || null, assetComments || null, assetReplacedOff || null,
+                            assetYearOfLifeCycle || null, assetRestOfLifeCycle || null, assetReplacedBy || null, assetRestValue || null
+                        ]
                     );
                 } else {
                     await client.query(`UPDATE assets SET 
-                        name_assets = $2, 
-                        type_id = $3, 
-                        location_room = $4, 
-                        location_key = NULL,
-                        categorie = $5,
-                        quantity = $6,
-                        mrah = $7,
-                        asset_owner = $8,
-                        status = $9,
-                        expandable = $10,
-                        description = $11 WHERE id = $1`,
-                        [assetId, assetName, assetType, assetLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription ? assetDescription : null]
+                        name_assets = $2, type_id = $3, location_room = $4, location_key = NULL,
+                        categorie = $5, quantity = $6, mrah = $7, asset_owner = $8,
+                        status = $9, expandable = $10, description = $11, service = $12,
+                        m2_inside = $13, is_fixed = $14, date_purchase = $15, date_written_off = $16,
+                        purchase_price = $17, comments = $18, replaced_off = $19, year_of_life_cycle = $20,
+                        rest_of_life_cycle = $21, replaced_by = $22, rest_value = $23
+                        WHERE id = $1`,
+                        [
+                            assetId, assetName, assetType, assetLocation,
+                            assetCategory || null, assetQuantity || null, assetMrah || null, assetOwner || null,
+                            assetStatus || null, assetExpandable || null, assetDescription || null, assetService || null,
+                            assetM2Inside || null, assetIsFixed, assetDatePurchase || null, assetDateWrittenOff || null,
+                            assetPurchasePrice || null, assetComments || null, assetReplacedOff || null, assetYearOfLifeCycle || null,
+                            assetRestOfLifeCycle || null, assetReplacedBy || null, assetRestValue || null
+                        ]
                     );
                 }
 
@@ -7295,7 +7960,7 @@ class Server {
                 }
 
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Edit asset with code ${assetId} set name ${assetName}, type ${assetType}, location ${assetLocation}, sublocation ${assetSubLocation}, category ${assetCategory}, quantity ${assetQuantity}, mrah ${assetMrah}, owner ${assetOwner}, status ${assetStatus}, expandable ${assetExpandable}, description ${assetDescription}`]));
+                    [req.session.username, `Edit asset with code ${assetId} set name ${assetName}, type ${assetType}, location ${assetLocation}, sublocation ${assetSubLocation}, category ${assetCategory}, quantity ${assetQuantity}, mrah ${assetMrah}, owner ${assetOwner}, status ${assetStatus}, expandable ${assetExpandable}, description ${assetDescription}, service ${assetService}, m2_inside ${assetM2Inside}`]));
 
                 await Promise.all(queries);
 
@@ -7322,51 +7987,64 @@ class Server {
             if (!req.body.isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
 
-            const { oldCode, newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description, campId } = req.body;
+            const {
+                oldCode, newCode, code, name,
+                type, location, subLocation, category,
+                quantity, mrah, owner, status,
+                expandable, service, description, m2Inside,
+                isFixed, datePurchase, dateWrittenOff, purchasePrice,
+                comments, replacedOff, yearOfLifeCycle, restOfLifeCycle,
+                replacedBy, restValue, campId } = req.body;
 
             const client = await pool.connect();
 
             try {
                 await client.query('BEGIN');
 
-                const result_asset_quantity = await client.query(`SELECT quantity, camp_id FROM assets WHERE id = $1;`, [oldCode]);
+                const result_asset_quantity = await client.query(`SELECT * FROM assets WHERE id = $1;`, [oldCode]);
                 const asset_quantity = result_asset_quantity.rows[0].quantity;
                 const oldCampId = result_asset_quantity.rows[0].camp_id;
+                const inventory_status = result_asset_quantity.rows[0].inventory_status;
+                const create_date = result_asset_quantity.rows[0].create_date;
+                const last_inventory_date = result_asset_quantity.rows[0].last_inventory_date;
 
                 if (oldCode === newCode) {
                     if (subLocation !== '') {
                         await client.query(`UPDATE assets SET 
-                            code = $2,
-                            name_assets = $3, 
-                            type_id = $4, 
-                            location_room = $5, 
-                            location_key = $6, 
-                            categorie = $7, 
-                            quantity = $8,
-                            mrah = $9, 
-                            asset_owner = $10, 
-                            status = $11,
-                            expandable = $12,
-                            description = $13
+                            code = $2, name_assets = $3, type_id = $4, location_room = $5, 
+                            location_key = $6, categorie = $7, quantity = $8,mrah = $9, 
+                            asset_owner = $10, status = $11,expandable = $12,description = $13,
+                            service = $14, m2_inside = $15, is_fixed = $16, date_purchase = $17,
+                            date_written_off = $18, purchase_price = $19, comments = $20, replaced_off = $21,
+                            year_of_life_cycle = $22, rest_of_life_cycle = $23, replaced_by = $24, rest_value = $25
                             WHERE id = $1`,
-                            [newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description ? description : null]
+                            [
+                                newCode, code, name, type,
+                                location, subLocation, category || null, quantity || null,
+                                mrah || null, owner || null, status || null, expandable || null,
+                                description || null, service || null, m2Inside || null, isFixed,
+                                datePurchase || null, dateWrittenOff || null, purchasePrice || null, comments || null,
+                                replacedOff || null, yearOfLifeCycle || null, restOfLifeCycle || null, replacedBy || null,
+                                restValue || null
+                            ]
                         );
                     } else {
                         await client.query(`UPDATE assets SET 
-                            code = $2, 
-                            name_assets = $3, 
-                            type_id = $4, 
-                            location_room = $5, 
-                            location_key = NULL,
-                            categorie = $6, 
-                            quantity = $7,
-                            mrah = $8, 
-                            asset_owner = $9, 
-                            status = $10,
-                            expandable = $11,
-                            description = $12
+                            code = $2, name_assets = $3, type_id = $4, location_room = $5, 
+                            location_key = NULL, categorie = $6,  quantity = $7, mrah = $8, 
+                            asset_owner = $9, status = $10,expandable = $11,description = $12,
+                            service = $13, m2_inside = $14, is_fixed = $15, date_purchase = $16,
+                            date_written_off = $17, purchase_price = $18, comments = $19, replaced_off = $20,
+                            year_of_life_cycle = $21, rest_of_life_cycle = $22, replaced_by = $23, rest_value = $24
                             WHERE id = $1`,
-                            [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description ? description : null]
+                            [
+                                newCode, code, name, type,
+                                location, category || null, quantity || null, mrah || null,
+                                owner || null, status || null, expandable || null, description || null,
+                                service || null, m2Inside || null, isFixed, datePurchase || null,
+                                dateWrittenOff || null, purchasePrice || null, comments || null, replacedOff || null,
+                                yearOfLifeCycle || null, restOfLifeCycle || null, replacedBy || null, restValue || null
+                            ]
                         );
                     }
 
@@ -7374,13 +8052,30 @@ class Server {
 
                     if (subLocation !== '') {
 
-                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`,
-                            [newCode, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description ? description : null, oldCampId]
+                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
+                            [
+                                newCode, code, name, type,
+                                location, subLocation, category || null, quantity || null,
+                                mrah || null, owner || null, status || null, expandable || null,
+                                description || null, oldCampId, inventory_status, create_date,
+                                last_inventory_date, service || null, m2Inside || null, isFixed,
+                                datePurchase || null, dateWrittenOff || null, purchasePrice || null, comments || null,
+                                replacedOff || null, yearOfLifeCycle || null, restOfLifeCycle || null, replacedBy || null,
+                                restValue || null
+                            ]
                         );
 
                     } else {
-                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12, $13);`,
-                            [newCode, code, name, type, location, category, quantity, mrah, owner, status, expandable, description ? description : null, oldCampId]
+                        await client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28);`,
+                            [
+                                newCode, code, name, type,
+                                location, category || null, quantity || null, mrah || null,
+                                owner || null, status || null, expandable || null, description || null,
+                                oldCampId, inventory_status, create_date, last_inventory_date,
+                                service || null, m2Inside || null, isFixed, datePurchase || null,
+                                dateWrittenOff || null, purchasePrice || null, comments || null, replacedOff || null,
+                                yearOfLifeCycle || null, restOfLifeCycle || null, replacedBy || null, restValue || null
+                            ]
                         );
                     }
 
@@ -7415,7 +8110,7 @@ class Server {
                 }
 
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    ['PhoneUser', `Edit asset with code ${oldCode} set code ${newCode}, type=${type}, location=${location}, sublocation=${subLocation}, category=${category}, quantity=${quantity}, mrah=${mrah}, owner=${owner}, status=${status}, expandable=${expandable}, description=${description}`]));
+                    ['PhoneUser', `Edit asset with code ${oldCode} set code ${newCode}, type=${type}, location=${location}, sublocation=${subLocation}, category=${category}, quantity=${quantity}, mrah=${mrah}, owner=${owner}, status=${status}, expandable=${expandable}, description=${description}, service=${service}, m2_inside=${m2Inside}`]));
 
                 await Promise.all(queries);
 
@@ -7443,19 +8138,14 @@ class Server {
                 return res.status(402).json({ message: "Invalid product code!" });
 
             const {
-                assetEps,
-                assetCodeSearch,
-                assetAddName,
-                selectedAddTypeId,
-                selectedAddLocationId,
-                selectedAddSubLocationId,
-                assetAddCategorie,
-                assetQuantity,
-                assetAddMrah,
-                assetAddOwner,
-                assetStatus,
-                assetAddExpandable,
-                assetAddDescription } = req.body;
+                assetEps, assetCodeSearch, assetAddName, selectedAddTypeId,
+                selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie, assetQuantity,
+                assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable,
+                assetAddService, assetAddDescription, assetAddM2Inside, assetAddIsFixed,
+                assetAddDatePurchase, assetAddDateWrittenOff, assetAddPurchasePrice, assetAddComments,
+                assetAddReplacedOff, assetAddYearOfLifeCycle, assetAddRestOfLifeCycle, assetAddReplacedBy,
+                assetAddRestValue
+            } = req.body;
 
             const client = await pool.connect();
             const campId = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
@@ -7473,13 +8163,29 @@ class Server {
                 const queries = [];
 
                 if (selectedAddSubLocationId !== '') {
-                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`,
-                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription ? assetAddDescription : null, campId]
+                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'undiscovered', CURRENT_TIMESTAMP, NULL, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26);`,
+                        [
+                            assetEps, assetCodeSearch, assetAddName, selectedAddTypeId,
+                            selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie || null, assetQuantity || null,
+                            assetAddMrah || null, assetAddOwner || null, assetStatus || null, assetAddExpandable || null,
+                            assetAddDescription || null, campId, assetAddService || null, assetAddM2Inside || null,
+                            assetAddIsFixed, assetAddDatePurchase || null, assetAddDateWrittenOff || null, assetAddPurchasePrice || null,
+                            assetAddComments || null, assetAddReplacedOff || null, assetAddYearOfLifeCycle || null, assetAddRestOfLifeCycle || null,
+                            assetAddReplacedBy || null, assetAddRestValue || null
+                        ]
                     ));
 
                 } else {
-                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12, $13);`,
-                        [assetEps, assetCodeSearch, assetAddName, selectedAddTypeId, selectedAddLocationId, assetAddCategorie, assetQuantity, assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable, assetAddDescription ? assetAddDescription : null, campId]
+                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12, $13, 'undiscovered', CURRENT_TIMESTAMP, NULL, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25);`,
+                        [
+                            assetEps, assetCodeSearch, assetAddName, selectedAddTypeId,
+                            selectedAddLocationId, assetAddCategorie || null, assetQuantity || null, assetAddMrah || null,
+                            assetAddOwner || null, assetStatus || null, assetAddExpandable || null, assetAddDescription || null,
+                            campId, assetAddService || null, assetAddM2Inside || null, assetAddIsFixed,
+                            assetAddDatePurchase || null, assetAddDateWrittenOff || null, assetAddPurchasePrice || null, assetAddComments || null,
+                            assetAddReplacedOff || null, assetAddYearOfLifeCycle || null, assetAddRestOfLifeCycle || null, assetAddReplacedBy || null,
+                            assetAddRestValue || null
+                        ]
                     ));
                 }
 
@@ -7655,6 +8361,7 @@ class Server {
                 await client.query('BEGIN');
 
                 const check_exist = await client.query(`SELECT * FROM assets WHERE type_id = $1;`, [assetTypeId]);
+                const typeData = await client.query(`SELECT * FROM assetstype WHERE id = $1;`, [assetTypeId]);
 
                 if (check_exist.rows.length > 0) {
                     await client.query('ROLLBACK');
@@ -7664,7 +8371,7 @@ class Server {
                 await Promise.all([
                     client.query(`DELETE FROM assetstype WHERE id = $1`, [assetTypeId]),
                     client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                        [req.session.username, `Remove asset type with name ${check_exist.rows[0].type_name}`])
+                        [req.session.username, `Remove asset type with name ${typeData.rows[0].type_name}`])
                 ]);
 
                 await client.query('COMMIT');
@@ -7710,23 +8417,16 @@ class Server {
                     queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2 AND camp_id = $3;`, [lostQuantity, itemName, req.session.camp]));
                 } else {
                     queries.push(client.query(`INSERT INTO lostitem VALUES (
-                        (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`,
+                        (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
                         [
-                            itemName,
-                            description !== '' ? description : null,
-                            lostQuantity,
-                            item_into.id,
-                            item_into.name_assets,
-                            item_into.type_id,
-                            item_into.location_room,
-                            item_into.location_key,
-                            item_into.categorie,
-                            item_into.mrah,
-                            item_into.asset_owner,
-                            item_into.status,
-                            item_into.expandable,
-                            item_into.description,
-                            item_into.camp_id
+                            itemName, description !== '' ? description : null, lostQuantity, item_into.id,
+                            item_into.name_assets, item_into.type_id, item_into.location_room, item_into.location_key,
+                            item_into.categorie, item_into.mrah, item_into.asset_owner, item_into.status,
+                            item_into.expandable, item_into.description, item_into.camp_id, item_into.create_date,
+                            item_into.last_inventory_date, item_into.service, item_into.m2_inside, item_into.is_fixed,
+                            item_into.date_purchase, item_into.date_written_off, item_into.purchase_price, item_into.comments,
+                            item_into.replaced_off, item_into.year_of_life_cycle, item_into.rest_of_life_cycle, item_into.replaced_by,
+                            item_into.rest_value
                         ]));
                 }
 
@@ -7799,21 +8499,14 @@ class Server {
                     ]);
                 } else {
                     await Promise.all([
-                        client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`, [
-                            restor_data.item_id,
-                            restor_data.nameitem,
-                            restor_data.item_name,
-                            restor_data.item_type_id,
-                            restor_data.item_location_room,
-                            restor_data.item_location_key,
-                            restor_data.item_category,
-                            lost_quantity,
-                            restor_data.item_mrah,
-                            restor_data.item_owner,
-                            restor_data.item_status,
-                            restor_data.item_expandable,
-                            restor_data.item_description,
-                            restor_data.camp_id
+                        client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'undiscovered', $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)`, [
+                            restor_data.item_id, restor_data.nameitem, restor_data.item_name, restor_data.item_type_id,
+                            restor_data.item_location_room, restor_data.item_location_key, restor_data.item_category, lost_quantity,
+                            restor_data.item_mrah, restor_data.item_owner, restor_data.item_status, restor_data.item_expandable,
+                            restor_data.item_description, restor_data.camp_id, restor_data.item_create_date, restor_data.item_last_inventory_date,
+                            restor_data.item_service, restor_data.item_m2_inside, restor_data.item_is_fixed, restor_data.item_date_purchase,
+                            restor_data.item_date_written_off, restor_data.item_purchase_price, restor_data.item_comments, restor_data.item_replaced_off,
+                            restor_data.item_year_of_life_cycle, restor_data.item_rest_of_life_cycle, restor_data.item_replaced_by, restor_data.item_rest_value
                         ]),
                         client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [lost_quantity, restor_data.item_id]),
                         result_exist_date.rows.length > 0
@@ -7858,19 +8551,13 @@ class Server {
                 const [result, result_count_asset] = await Promise.all([
                     client.query(
                         `SELECT 
-                            a.id, 
-                            code,
-                            name_assets,
-                            type_name AS type, 
-                            b.namebuilding AS location_building,
-                            r.nameroom AS location_room,
-                            categorie,
-                            quantity,
-                            mrah,
-                            asset_owner,
-                            status,
-                            expandable,
-                            description
+                            a.id, code, name_assets, type_name AS type, 
+                            b.namebuilding AS location_building, r.nameroom AS location_room, categorie, quantity,
+                            mrah, asset_owner, status, expandable,
+                            description, create_date, last_inventory_date, service,
+                            m2_inside, is_fixed, date_purchase, date_written_off,
+                            purchase_price, comments, replaced_off, year_of_life_cycle,
+                            rest_of_life_cycle, replaced_by, rest_value
                         FROM assets a
                         LEFT JOIN assetstype at ON a.type_id = at.id
                         LEFT JOIN rooms r ON r.id = a.location_room
@@ -7988,6 +8675,8 @@ class Server {
                 });
             };
 
+            const client = await pool.connect();
+
             try {
 
                 // Filter both datasets
@@ -7997,42 +8686,54 @@ class Server {
                 const workbook = new excelJS.Workbook();
                 const worksheet1 = workbook.addWorksheet('Assets Data');
                 const worksheet2 = workbook.addWorksheet('Assets Traceability');
+                const worksheet3 = workbook.addWorksheet('Lost Assets Data');
 
                 // Dynamically create headers for worksheet1 (Assets Data) based on the first item of result
-                if (filteredAssets.length > 0) {
-                    const headers1 = Object.keys(filteredAssets[0]); // Get keys of the first object as headers
-                    worksheet1.addRow(headers1).eachCell((cell) => {
-                        cell.font = { bold: true };
-                        cell.alignment = { horizontal: 'center' };
-                        cell.border = {
-                            top: { style: 'thin' },
-                            left: { style: 'thin' },
-                            bottom: { style: 'thin' },
-                            right: { style: 'thin' },
-                        };
-                    });
-                    worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
-                }
+                const headers1 = Object.keys(filteredAssets.length > 0 ? filteredAssets[0] : filtersAssets); // Get keys of the first object as headers
+                worksheet1.addRow(headers1).eachCell((cell) => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+                worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
 
                 // Dynamically create headers for worksheet2 (Assets Traceability) based on the first item of result_nationality
-                if (filteredAssetDates.length > 0) {
-                    const headers2 = Object.keys(filteredAssetDates[0]); // Get keys of the first object as headers
-                    worksheet2.addRow(headers2).eachCell((cell) => {
-                        cell.font = { bold: true };
-                        cell.alignment = { horizontal: 'center' };
-                        cell.border = {
-                            top: { style: 'thin' },
-                            left: { style: 'thin' },
-                            bottom: { style: 'thin' },
-                            right: { style: 'thin' },
-                        };
-                    });
-                    worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
-                }
+
+                const headers2 = ['Date', 'Total Assets', 'Total New Assets', 'Total Updated Assets', 'Total Removed Assets', 'Total Missing Assets'];
+                worksheet2.addRow(headers2).eachCell((cell) => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+                worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
+
+                const headers3 = ['Item Code', 'Item Description', 'Lost Quantity'];
+                worksheet3.addRow(headers3).eachCell((cell) => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+                worksheet3.columns = headers3.map(header => ({ header, width: header.length + 10 }));
 
                 // Add data to worksheet1 (Assets Data)
                 await Promise.all(filteredAssets.map(async (data, index) => {
-                    const row = worksheet1.addRow(Object.values(data)); // Convert object values to array
+                    const rowData = Object.values(data).map(val => val === 'N/A' ? '' : val);
+                    const row = worksheet1.addRow(rowData);
                     row.eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
                         cell.border = {
@@ -8057,6 +8758,38 @@ class Server {
                 // Add data to worksheet2 (Assets Traceability)
                 await Promise.all(filteredAssetDates.map(async (data, index) => {
                     const row = worksheet2.addRow(Object.values(data)); // Convert object values to array
+                    row.eachCell((cell) => {
+                        cell.alignment = { horizontal: 'center' };
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+
+                    if (index % 2 === 0) {
+                        row.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey for alternating rows
+                            };
+                        });
+                    }
+                }));
+
+                const result_lost_item = await client.query(`
+                    SELECT nameitem, 
+                        COALESCE(description, '') AS description, 
+                        lost_quantity 
+                    FROM lostitem 
+                    WHERE camp_id = $1`, [req.session.camp]);
+
+                const filteredLostAssets = result_lost_item.rows;
+
+                await Promise.all(filteredLostAssets.map(async (data, index) => {
+                    const row = worksheet3.addRow(Object.values(data)); // Convert object values to array
                     row.eachCell((cell) => {
                         cell.alignment = { horizontal: 'center' };
                         cell.border = {
@@ -8120,6 +8853,9 @@ class Server {
             if (error) {
                 return res.status(400).send({ message: error.details[0].message });
             }
+
+            if (!req.session.camp)
+                return res.status(401).json({ message: "You not select camp. First select camp then add clean item?!" });
 
             const { itemName, totalAmount } = req.body;
 
@@ -8197,6 +8933,9 @@ class Server {
             const client = await pool.connect();
             const errors = [];
 
+            if (!req.session.camp)
+                return res.status(401).json({ message: "You not select camp. First select camp then add clean item?!" });
+
             try {
                 await client.query('BEGIN');
 
@@ -8235,7 +8974,7 @@ class Server {
                     seenIds.add(row.itemName);
 
                     // Check for duplicates in the database
-                    const result = await client.query("SELECT * FROM clearitem WHERE itemname = $1;", [row.itemName]);
+                    const result = await client.query("SELECT * FROM clearitem WHERE itemname = $1 AND camp_id = $2;", [row.itemName, req.session.camp]);
                     if (result.rows.length > 0) {
                         errors.push({ type: 'DuplicateInDB', message: `Item '${row.itemName}' already exists.` });
                         return;
@@ -8512,6 +9251,9 @@ class Server {
 
             const client = await pool.connect();
 
+            if (!req.session.camp)
+                return res.status(401).json({ message: "You not select camp. First select camp then add clean item?!" });
+
             try {
 
                 await client.query('BEGIN');
@@ -8557,22 +9299,69 @@ class Server {
                 const assetQuantity = await client.query(`SELECT quantity FROM assets WHERE id = $1`, [id]);
                 const asset_quantity = assetQuantity.rows[0].quantity;
 
+                if (newQuantity === asset_quantity) {
+                    await client.query(`UPDATE assets SET inventory_status = 'discovered', last_inventory_date = CURRENT_TIMESTAMP WHERE id = $1`, [id]);
+                    await client.query('COMMIT');
+                    return res.status(200).json({ message: 'The asset quantity was successfully update' });
+                }
+
+                const result = await client.query(`SELECT * FROM assets WHERE id = $1 AND camp_id = $2;`, [id, campId]);
+                const item_into = result.rows[0];
+
+                const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE nameitem = $1 AND camp_id = $2;`, [item_into.code, campId]);
+
                 if (newQuantity === 0) {
 
-                    if (result_exist_date.rows.length > 0) {
-                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [asset_quantity, campId]));
+                    if (get_exist_lost_item.rows.length > 0) {
+                        queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2 AND camp_id = $3;`, [asset_quantity, item_into.code, campId]));
                     } else {
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [asset_quantity, campId]));
+                        queries.push(client.query(`INSERT INTO lostitem VALUES (
+                        (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
+                            [
+                                item_into.code, "Removed during inventory", asset_quantity, item_into.id,
+                                item_into.name_assets, item_into.type_id, item_into.location_room, item_into.location_key,
+                                item_into.categorie, item_into.mrah, item_into.asset_owner, item_into.status,
+                                item_into.expandable, item_into.description, item_into.camp_id, item_into.create_date,
+                                item_into.last_inventory_date, item_into.service, item_into.m2_inside, item_into.is_fixed,
+                                item_into.date_purchase, item_into.date_written_off, item_into.purchase_price, item_into.comments,
+                                item_into.replaced_off, item_into.year_of_life_cycle, item_into.rest_of_life_cycle, item_into.replaced_by,
+                                item_into.rest_value
+                            ]));
+                    }
+
+                    if (result_exist_date.rows.length > 0) {
+                        queries.push(client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [asset_quantity, campId]));
+                    } else {
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0, $2);`, [asset_quantity, campId]));
                     }
 
                     queries.push(client.query(`DELETE FROM assets WHERE id = $1`, [id]));
 
                 } else if (newQuantity < asset_quantity) {
+
                     const quantityRemoved = asset_quantity - newQuantity;
-                    if (result_exist_date.rows.length > 0) {
-                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [quantityRemoved, campId]));
+
+                    if (get_exist_lost_item.rows.length > 0) {
+                        queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2 AND camp_id = $3;`, [quantityRemoved, item_into.code, campId]));
                     } else {
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [quantityRemoved, campId]));
+                        queries.push(client.query(`INSERT INTO lostitem VALUES (
+                        (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
+                            [
+                                item_into.code, "Removed during inventory", quantityRemoved, item_into.id,
+                                item_into.name_assets, item_into.type_id, item_into.location_room, item_into.location_key,
+                                item_into.categorie, item_into.mrah, item_into.asset_owner, item_into.status,
+                                item_into.expandable, item_into.description, item_into.camp_id, item_into.create_date,
+                                item_into.last_inventory_date, item_into.service, item_into.m2_inside, item_into.is_fixed,
+                                item_into.date_purchase, item_into.date_written_off, item_into.purchase_price, item_into.comments,
+                                item_into.replaced_off, item_into.year_of_life_cycle, item_into.rest_of_life_cycle, item_into.replaced_by,
+                                item_into.rest_value
+                            ]));
+                    }
+
+                    if (result_exist_date.rows.length > 0) {
+                        queries.push(client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [quantityRemoved, campId]));
+                    } else {
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0, $2);`, [quantityRemoved, campId]));
                     }
 
                     queries.push(client.query(`UPDATE assets SET quantity = $1, inventory_status = 'edited' WHERE id = $2`, [newQuantity, id]));
@@ -8665,7 +9454,7 @@ class Server {
 
                 const result = await client.query(`SELECT * FROM assets WHERE id = $1 AND location_room = $2`, [code, location]);
                 if (result.rows.length > 0) {
-                    await client.query(`UPDATE assets SET inventory_status = 'discovered' WHERE id = $1`, [code]);
+                    await client.query(`UPDATE assets SET inventory_status = 'discovered', last_inventory_date = CURRENT_TIMESTAMP WHERE id = $1`, [code]);
                 } else {
                     isOtherLocation = true;
                 }
@@ -8758,6 +9547,643 @@ class Server {
                 await client.query('ROLLBACK');
                 console.error('Server error:', error);
                 res.status(500).json({ message: 'Failed to edit location of asset' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/assets/editMultiAsset/download', async (req, res) => {
+
+            // Create a new Excel workbook
+            const workbook = new excelJS.Workbook();
+
+            // Sheet 1: Soldier Data
+            const worksheet = workbook.addWorksheet('Edit Multipul Assets');
+
+            // Add custom column titles for the first sheet
+            const headers = [
+                'id', 'code', 'name_assets', 'asset_type',
+                'location_room', 'location_key', 'categorie', 'quantity',
+                'mrah', 'asset_owner', 'status', 'expandable',
+                'description', 'service', 'm2_inside', 'is_fixed',
+                'date_purchase', 'date_written_off', 'purchase_price', 'comments',
+                'replaced_off', 'year_of_life_cycle', 'rest_of_life_cycle', 'replaced_by',
+                'rest_value'
+            ];
+            const headerRow = worksheet.addRow(headers);
+
+            // Apply styling to the headers
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, size: 12 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+
+            // Set column widths for sheet 1
+            worksheet.columns = [
+                { width: 35 }, { width: 20 }, { width: 20 }, { width: 20 },
+                { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 },
+                { width: 20 }, { width: 20 }, { width: 20 }, { width: 25 },
+                { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 },
+                { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 },
+                { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 },
+                { width: 20 }
+            ];
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const result = await client.query(`
+                    SELECT 
+                        a.id, code, name_assets, type_name, 
+                        nameroom, namekey, categorie, quantity, 
+                        mrah, asset_owner, status, expandable, 
+                        description, service, m2_inside, is_fixed, 
+                        date_purchase, date_written_off, purchase_price, comments,
+                        replaced_off, year_of_life_cycle, rest_of_life_cycle, replaced_by,
+                        rest_value
+                    FROM assets a
+                    LEFT JOIN assetstype atype ON atype.id = a.type_id
+                    LEFT JOIN rooms r ON r.id = a.location_room
+                    LEFT JOIN key k ON k.id = a.location_key 
+                    WHERE camp_id = $1;`, [req.session.camp]);
+
+                const data = result.rows;
+
+                const formatDate = (date) => {
+                    const dateObj = new Date(date);
+                    const year = dateObj.getFullYear();
+                    const month = String(dateObj.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+                    const day = String(dateObj.getDate()).padStart(2, '0');
+
+                    return date ? `${year}-${month}-${day}` : '';
+                }
+
+                data.forEach((row) => {
+                    const rowData = [
+                        row.id, row.code, row.name_assets, row.type_name,
+                        row.nameroom, row.namekey, row.categorie, row.quantity,
+                        row.mrah, row.asset_owner, row.status, row.expandable,
+                        row.description, row.service, row.m2_inside, row.is_fixed,
+                        formatDate(row.date_purchase), formatDate(row.date_written_off), row.purchase_price, row.comments,
+                        row.replaced_off, row.year_of_life_cycle, row.rest_of_life_cycle, row.replaced_by,
+                        row.rest_value
+                    ];
+                    worksheet.addRow(rowData);
+                });
+                await client.query('COMMIT');
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error fetching data:', error);
+                return res.status(500).json({ error: 'An error occurred while fetching data.' });
+
+            } finally {
+                client.release();
+            }
+
+            // Set the response headers for file download
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=templateEditMultiAssets.xlsx');
+
+            // Write the workbook to the response stream
+            await workbook.xlsx.write(res);
+            res.end(); // End the response
+
+        });
+
+        this.app.post('/assets/editMultiAsset', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+            const client = await pool.connect();
+            const errors = [];
+
+            try {
+                await client.query('BEGIN');
+
+                if (!req.file) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ error: 'No file uploaded.' });
+                }
+
+                const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                // Set to track unique soldierIds in the file
+                const seenIds = new Set();
+
+                if (sheetName !== 'Edit Multipul Assets') {
+                    await client.query('ROLLBACK');
+                    errors.push({ type: 'InvalidFormat', message: `Invalid template` });
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row, index) => {
+                    const { error } = schemaEditMultiAsset.validate(row);
+
+                    if (error) {
+                        errors.push({ type: 'Validation', details: error.details, row, index });
+                        return;
+                    }
+
+                    // Check for duplicates within the file
+                    if (seenIds.has(row.id)) {
+                        errors.push({ type: 'DuplicateInFile', row, index, message: `Duplicate epc code (id) in row with asset code: '${row.code}' in the file.` });
+                        return;
+                    }
+                    seenIds.add(row.id);
+
+                    // Check if the asset exists in the database
+                    const result = await client.query(`SELECT * FROM assets WHERE id = $1`, [row.id]);
+                    if (result.rows.length === 0) {
+                        errors.push({ type: 'NotFound', row, index, message: `Asset with code '${row.code}' not found in the database.` });
+                        return;
+                    }
+
+                    const result_type = await client.query(`SELECT * FROM assetstype WHERE type_name = $1;`, [row.asset_type]);
+                    if (result_type.rows.length === 0) {
+                        errors.push({ type: 'NotFound', row, index, message: `Asset type '${row.asset_type}' not found in the database.` });
+                        return;
+                    }
+
+                    const result_room = await client.query(`
+                        SELECT r.* FROM rooms r
+                        LEFT JOIN buildroom br ON br.roomid = r.id
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE nameroom = $1 AND camp_id = $2;`, [row.location_room, req.session.camp]);
+                    if (result_room.rows.length === 0) {
+                        errors.push({ type: 'NotFound', row, index, message: `Room '${row.location_room}' not found in the database.` });
+                        return;
+                    }
+
+                    if (row.asset_type === 'BED stackable' && row.location_key === '') {
+                        errors.push({ type: 'NotFound', row, index, message: `The asset with code '${row.code}' is a stackable bed and must have a location key.` });
+                        return;
+                    }
+
+                    if (row.asset_type !== 'BED stackable' && row.location_key !== '') {
+                        errors.push({ type: 'NotFound', row, index, message: `The asset with code '${row.code}' is not a stackable bed and should not have a location key.` });
+                        return;
+                    }
+
+                    const result_key = await client.query(`
+                        SELECT k.* FROM key k
+                        LEFT JOIN roomskey rk ON rk.keyid = k.id
+                        LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE namekey = $1 AND camp_id = $2;`, [row.location_key || null, req.session.camp]);
+                    if (row.location_key && result_key.rows.length === 0) {
+                        errors.push({ type: 'NotFound', row, index, message: `Key '${row.location_key}' not found in the database.` });
+                        return;
+                    }
+
+                    const result_room_key = await client.query(`SELECT * FROM roomskey WHERE roomid = (SELECT id FROM rooms WHERE nameroom = $1) AND keyid = (SELECT id FROM key WHERE namekey = $2);`, [row.location_room, row.location_key || null]);
+                    if (row.location_key && result_room_key.rows.length === 0) {
+                        errors.push({ type: 'NotFound', row, index, message: `The associated key must be from a room ${row.location_room}. The key ${row.location_key} is not from room ${row.location_room}` });
+                        return;
+                    }
+
+                }));
+
+                if (errors.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                let result_exist_date = await client.query(
+                    `SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`,
+                    [req.session.camp]
+                );
+
+                let hasActionRow = result_exist_date.rows.length > 0;
+                const query = [];
+
+                data.map(async (row) => {
+                    const {
+                        id, code, name_assets, asset_type,
+                        location_room, location_key, categorie, quantity,
+                        mrah, asset_owner, status, expandable,
+                        description, service, m2_inside, is_fixed,
+                        date_purchase, date_written_off, purchase_price, comments,
+                        replaced_off, year_of_life_cycle, rest_of_life_cycle, replaced_by,
+                        rest_value
+                    } = row;
+
+                    const existingAsset = await client.query(`
+                        SELECT 
+                            a.code, a.name_assets, at.type_name AS asset_type, 
+                            r.nameroom AS location_room, k.namekey AS location_key,
+                            a.categorie, a.quantity, a.mrah, a.asset_owner, a.status, 
+                            a.expandable, a.description, a.service, a.m2_inside, a.is_fixed,
+                            a.date_purchase, a.date_written_off, a.purchase_price, a.comments,
+                            a.replaced_off, a.year_of_life_cycle, a.rest_of_life_cycle, a.replaced_by,
+                            a.rest_value
+                        FROM assets a
+                        LEFT JOIN assetstype at ON a.type_id = at.id
+                        LEFT JOIN rooms r ON a.location_room = r.id
+                        LEFT JOIN key k ON a.location_key = k.id
+                        WHERE a.id = $1`, [id]);
+
+                    const old = existingAsset.rows[0];
+
+                    function formatDatePreserveLocal(date) {
+                        const d = new Date(date);
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                    }
+
+                    function normalize(value) {
+                        if (value === null || value === undefined) return '';
+                        if (typeof value === 'boolean') return value ? 'true' : 'false';
+                        if (Object.prototype.toString.call(value) === '[object Date]' || /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                            return formatDatePreserveLocal(value);
+                        }
+                        return value.toString().trim();
+                    }
+
+                    // Check if any value changed
+                    const hasChanged = (
+                        normalize(code) !== normalize(old.code) ||
+                        normalize(name_assets) !== normalize(old.name_assets) ||
+                        normalize(asset_type) !== normalize(old.asset_type) ||
+                        normalize(location_room) !== normalize(old.location_room) ||
+                        normalize(location_key) !== normalize(old.location_key) ||
+                        normalize(categorie) !== normalize(old.categorie) ||
+                        normalize(quantity) !== normalize(old.quantity) ||
+                        normalize(mrah) !== normalize(old.mrah) ||
+                        normalize(asset_owner) !== normalize(old.asset_owner) ||
+                        normalize(status) !== normalize(old.status) ||
+                        normalize(expandable) !== normalize(old.expandable) ||
+                        normalize(description) !== normalize(old.description) ||
+                        normalize(service) !== normalize(old.service) ||
+                        normalize(m2_inside) !== normalize(old.m2_inside) ||
+                        normalize(is_fixed) !== normalize(old.is_fixed) ||
+                        normalize(date_purchase) !== normalize(old.date_purchase) ||
+                        normalize(date_written_off) !== normalize(old.date_written_off) ||
+                        normalize(purchase_price) !== normalize(old.purchase_price) ||
+                        normalize(comments) !== normalize(old.comments) ||
+                        normalize(replaced_off) !== normalize(old.replaced_off) ||
+                        normalize(year_of_life_cycle) !== normalize(old.year_of_life_cycle) ||
+                        normalize(rest_of_life_cycle) !== normalize(old.rest_of_life_cycle) ||
+                        normalize(replaced_by) !== normalize(old.replaced_by) ||
+                        normalize(rest_value) !== normalize(old.rest_value)
+                    );
+
+                    if (!hasChanged) return; // Skip update if nothing changed
+
+                    if (location_key !== '') {
+                        query.push(client.query(`UPDATE assets SET
+                            code = $2, name_assets = $3,  type_id = (SELECT id FROM assetstype WHERE type_name = $4),  location_room = (SELECT id FROM rooms WHERE nameroom = $5 AND camp_id = $14), 
+                            location_key = (SELECT id FROM key WHERE namekey = $6 AND camp_id = $14), categorie = $7, quantity = $8, mrah = $9,
+                            asset_owner = $10, status = $11, expandable = $12, description = $13,
+                            service = $15, m2_inside = $16, is_fixed = $17, date_purchase = $18,
+                            date_written_off = $19, purchase_price = $20, comments = $21, replaced_off = $22,
+                            year_of_life_cycle = $23, rest_of_life_cycle = $24, replaced_by = $25, rest_value = $26
+                            WHERE id = $1`,
+                            [
+                                id, code, name_assets, asset_type,
+                                location_room, location_key, categorie || null, quantity || null,
+                                mrah || null, asset_owner || null, status || null, expandable || null,
+                                description || null, req.session.camp, service || null, m2_inside || null,
+                                is_fixed, date_purchase || null, date_written_off || null, purchase_price || null,
+                                comments || null, replaced_off || null, year_of_life_cycle || null, rest_of_life_cycle || null,
+                                replaced_by || null, rest_value || null
+                            ]
+                        ));
+                    } else {
+                        query.push(client.query(`UPDATE assets SET 
+                            code = $2, name_assets = $3,  type_id = (SELECT id FROM assetstype WHERE type_name = $4),  location_room = (SELECT id FROM rooms WHERE nameroom = $5 AND camp_id = $13), 
+                            location_key = NULL, categorie = $6, quantity = $7, mrah = $8,
+                            asset_owner = $9, status = $10, expandable = $11, description = $12,
+                            service = $14, m2_inside = $15, is_fixed = $16, date_purchase = $17,
+                            date_written_off = $18, purchase_price = $19, comments = $20, replaced_off = $21,
+                            year_of_life_cycle = $22, rest_of_life_cycle = $23, replaced_by = $24, rest_value = $25
+                            WHERE id = $1`,
+                            [
+                                id, code, name_assets, asset_type,
+                                location_room, categorie || null, quantity || null, mrah || null,
+                                asset_owner || null, status || null, expandable || null, description || null,
+                                req.session.camp, service || null, m2_inside || null, is_fixed,
+                                date_purchase || null, date_written_off || null, purchase_price || null, comments || null,
+                                replaced_off || null, year_of_life_cycle || null, rest_of_life_cycle || null, replaced_by || null,
+                                rest_value || null
+                            ]
+                        ));
+                    }
+
+                    const asset_quantity = Number(old.quantity);
+                    const current_quantity = Number(quantity);
+
+                    if (hasActionRow) {
+                        if (asset_quantity === current_quantity) {
+                            query.push(client.query(
+                                `UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`,
+                                [current_quantity, req.session.camp]
+                            ));
+                        } else if (asset_quantity > current_quantity) {
+                            query.push(client.query(
+                                `UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`,
+                                [asset_quantity - current_quantity, req.session.camp]
+                            ));
+                        } else {
+                            query.push(client.query(
+                                `UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`,
+                                [current_quantity - asset_quantity, req.session.camp]
+                            ));
+                        }
+                    } else {
+                        if (asset_quantity === current_quantity) {
+                            query.push(client.query(
+                                `INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1, $2);`,
+                                [current_quantity, req.session.camp]
+                            ));
+                        } else if (asset_quantity > current_quantity) {
+                            query.push(client.query(
+                                `INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`,
+                                [asset_quantity - current_quantity, req.session.camp]
+                            ));
+                        } else {
+                            query.push(client.query(
+                                `INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`,
+                                [current_quantity - asset_quantity, req.session.camp]
+                            ));
+                        }
+
+                        // Update local flag so next row behaves correctly
+                        hasActionRow = true;
+                    }
+
+                });
+
+                await Promise.all(query);
+
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Edit multi assets`]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'File processed successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ error: 'An error occurred while processing the file.' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/assets/addMultiAsset/download', async (req, res) => {
+
+            // Create a new Excel workbook
+            const workbook = new excelJS.Workbook();
+
+            // Sheet 1: Soldier Data
+            const worksheet = workbook.addWorksheet('Add Multipul Assets');
+
+            // Add custom column titles for the first sheet
+            const headers = [
+                'assetEpc', 'assetCode', 'assetName', 'assetTypeName',
+                'assetLocation', 'assetSubLocation', 'assetCategorie', 'assetQuantity',
+                'assetMrah', 'assetOwner', 'assetStatus', 'assetExpandable',
+                'assetDescription', 'assetService', 'assetM2Inside', 'assetIsFixed',
+                'assetDatePurchase', 'assetDateWrittenOff', 'assetPurchasePrice', 'assetComments',
+                'assetReplacedOff', 'assetYearOfLifeCycle', 'assetRestOfLifeCycle', 'assetReplacedBy',
+                'assetRestValue',
+            ];
+
+            const headerRow = worksheet.addRow(headers);
+
+            // Apply styling to the headers
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, size: 12 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+
+            // Set column widths for sheet 1
+            worksheet.columns = [
+                { width: 35 }, { width: 20 }, { width: 20 }, { width: 20 },
+                { width: 25 }, { width: 25 }, { width: 20 }, { width: 20 },
+                { width: 20 }, { width: 20 }, { width: 20 }, { width: 25 },
+                { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 },
+                { width: 25 }, { width: 25 }, { width: 25 }, { width: 25 },
+                { width: 25 }, { width: 25 }, { width: 25 }, { width: 25 },
+                { width: 20 }
+            ];
+
+            // Set the response headers for file download
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=templateAddMultiAssets.xlsx');
+
+            // Write the workbook to the response stream
+            await workbook.xlsx.write(res);
+            res.end(); // End the response
+
+        });
+
+        this.app.post('/assets/addMultiAsset', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+            const client = await pool.connect();
+            const errors = [];
+
+            try {
+                await client.query('BEGIN');
+
+                if (!req.file) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ error: 'No file uploaded.' });
+                }
+
+                const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                // Set to track unique soldierIds in the file
+                const seenIds = new Set();
+
+                if (sheetName !== 'Add Multipul Assets') {
+                    await client.query('ROLLBACK');
+                    errors.push({ type: 'InvalidFormat', message: `Invalid template` });
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                await Promise.all(data.map(async (row, index) => {
+
+                    if (!row.assetEpc || String(row.assetEpc).trim() === '') {
+                        row.assetEpc = crypto.randomBytes(16).toString('hex');
+                    }
+
+                    const { error } = schemaAddMultiAsset.validate(row);
+
+                    if (error) {
+                        errors.push({ type: 'Validation', details: error.details, row, index });
+                        return;
+                    }
+
+                    // Check for duplicates within the file
+                    if (seenIds.has(row.assetEpc)) {
+                        errors.push({ type: 'DuplicateInFile', row, index, message: `Duplicate epc code in row with asset code: '${row.assetCode}' in the file.` });
+                        return;
+                    }
+                    seenIds.add(row.assetEpc);
+
+                    // Check if the asset exists in the database
+                    const result = await client.query(`SELECT * FROM assets WHERE id = $1`, [row.assetEpc]);
+                    if (result.rows.length > 0) {
+                        errors.push({ type: 'IsExistAsset', row, index, message: `Asset with code '${row.assetCode}' exists in the database.` });
+                        return;
+                    }
+
+                    const result_type = await client.query(`SELECT * FROM assetstype WHERE type_name = $1;`, [row.assetTypeName]);
+                    if (result_type.rows.length === 0) {
+                        errors.push({ type: 'NotFound', row, index, message: `Asset type '${row.assetTypeName}' not found in the database.` });
+                        return;
+                    }
+
+                    const result_room = await client.query(`
+                        SELECT r.* FROM rooms r
+                        LEFT JOIN buildroom br ON br.roomid = r.id
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE nameroom = $1 AND camp_id = $2;`, [row.assetLocation, req.session.camp]);
+                    if (result_room.rows.length === 0) {
+                        errors.push({ type: 'NotFound', row, index, message: `Room '${row.assetLocation}' not found in the database.` });
+                        return;
+                    }
+
+                    if (row.assetTypeName === 'BED stackable' && row.assetSubLocation === '') {
+                        errors.push({ type: 'NotFound', row, index, message: `The asset with code '${row.assetCode}' is a stackable bed and must have a location key.` });
+                        return;
+                    }
+
+                    if (row.assetTypeName !== 'BED stackable' && row.assetSubLocation !== '') {
+                        errors.push({ type: 'NotFound', row, index, message: `The asset with code '${row.assetCode}' is not a stackable bed and should not have a location key.` });
+                        return;
+                    }
+
+                    const result_key = await client.query(`
+                        SELECT k.* FROM key k
+                        LEFT JOIN roomskey rk ON rk.keyid = k.id
+                        LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        WHERE namekey = $1 AND camp_id = $2;`, [row.assetSubLocation || null, req.session.camp]);
+                    if (row.assetSubLocation && result_key.rows.length === 0) {
+                        errors.push({ type: 'NotFound', row, index, message: `Key '${row.assetSubLocation}' not found in the database.` });
+                        return;
+                    }
+
+                    const result_room_key = await client.query(`SELECT * FROM roomskey WHERE roomid = (SELECT id FROM rooms WHERE nameroom = $1) AND keyid = (SELECT id FROM key WHERE namekey = $2);`, [row.assetLocation, row.assetSubLocation || null]);
+                    if (row.assetSubLocation && result_room_key.rows.length === 0) {
+                        errors.push({ type: 'NotFound', row, index, message: `The associated key must be from a room ${row.assetLocation}. The key ${row.assetSubLocation} is not from room ${row.assetLocation}` });
+                        return;
+                    }
+
+                }));
+
+                if (errors.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Some rows could not be processed', errors });
+                }
+
+                let result_exist_date = await client.query(
+                    `SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`,
+                    [req.session.camp]
+                );
+
+                let hasActionRow = result_exist_date.rows.length > 0;
+                const query = [];
+
+                data.map(async (row) => {
+
+                    const {
+                        assetEpc, assetCode, assetName, assetTypeName,
+                        assetLocation, assetSubLocation, assetCategorie, assetQuantity,
+                        assetMrah, assetOwner, assetStatus, assetExpandable,
+                        assetService, assetDescription, assetM2Inside, assetIsFixed,
+                        assetDatePurchase, assetDateWrittenOff, assetPurchasePrice, assetComments,
+                        assetReplacedOff, assetYearOfLifeCycle, assetRestOfLifeCycle, assetReplacedBy,
+                        assetRestValue
+                    } = row;
+
+                    if (assetSubLocation !== '') {
+                        query.push(client.query(`
+                            INSERT INTO assets VALUES (
+                                $1, $2, $3, (SELECT id FROM assetstype WHERE type_name = $4), 
+                                (SELECT id FROM rooms WHERE nameroom = $5), (SELECT id FROM key WHERE namekey = $6), $7, $8, 
+                                $9, $10, $11, $12, 
+                                $13, $14, 'undiscovered', CURRENT_TIMESTAMP, 
+                                NULL, $15, $16, $17, 
+                                $18, $19, $20, $21, 
+                                $22, $23, $24, $25, $26);`,
+                            [
+                                assetEpc, assetCode, assetName, assetTypeName,
+                                assetLocation, assetSubLocation, assetCategorie || null, assetQuantity || null,
+                                assetMrah || null, assetOwner || null, assetStatus || null, assetExpandable || null,
+                                assetDescription || null, req.session.camp, assetService || null, assetM2Inside || null,
+                                assetIsFixed, assetDatePurchase || null, assetDateWrittenOff || null, assetPurchasePrice || null,
+                                assetComments || null, assetReplacedOff || null, assetYearOfLifeCycle || null, assetRestOfLifeCycle || null,
+                                assetReplacedBy || null, assetRestValue || null
+                            ]
+                        ));
+
+                    } else {
+                        query.push(client.query(`
+                            INSERT INTO assets VALUES (
+                                $1, $2, $3, (SELECT id FROM assetstype WHERE type_name = $4), 
+                                (SELECT id FROM rooms WHERE nameroom = $5), NULL, 
+                                $6, $7, $8, $9, 
+                                $10, $11, $12, $13, 
+                                'undiscovered', CURRENT_TIMESTAMP, NULL, $14, 
+                                $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25);`,
+                            [
+                                assetEpc, assetCode, assetName, assetTypeName,
+                                assetLocation, assetCategorie || null, assetQuantity || null, assetMrah || null,
+                                assetOwner || null, assetStatus || null, assetExpandable || null, assetDescription || null,
+                                req.session.camp, assetService || null, assetM2Inside || null, assetIsFixed,
+                                assetDatePurchase || null, assetDateWrittenOff || null, assetPurchasePrice || null, assetComments || null,
+                                assetReplacedOff || null, assetYearOfLifeCycle || null, assetRestOfLifeCycle || null, assetReplacedBy || null,
+                                assetRestValue || null
+                            ]
+                        ));
+                    }
+
+                    const current_quantity = Number(assetQuantity);
+
+                    if (hasActionRow) {
+                        query.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [current_quantity, req.session.camp]));
+
+                    } else {
+                        query.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [current_quantity, req.session.camp]));
+                        hasActionRow = true;
+                    }
+
+                });
+
+                await Promise.all(query);
+
+                await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.session.username, `Add multi assets`]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'File processed successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error processing file:', error);
+                res.status(500).json({ error: 'An error occurred while processing the file.' });
             } finally {
                 client.release();
             }

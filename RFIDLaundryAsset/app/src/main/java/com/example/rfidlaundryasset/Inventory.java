@@ -180,6 +180,10 @@ public class Inventory extends AppCompatActivity {
             if (rfidReader != null) {
                 rfidReader.stopInventory();
             }
+
+            runOnUiThread(() ->
+                    Toast.makeText(this, "Scanning stopped", Toast.LENGTH_SHORT).show()
+            );
         }
     }
 
@@ -187,6 +191,10 @@ public class Inventory extends AppCompatActivity {
 
         if (rfidReader.startInventoryTag()) {
             isScaning = true;
+
+            runOnUiThread(() ->
+                    Toast.makeText(this, "Scanning started", Toast.LENGTH_SHORT).show()
+            );
 
             // Submit the RFID scanning task to the executor
             executorService.execute(() -> {
@@ -608,6 +616,12 @@ public class Inventory extends AppCompatActivity {
 
                     // Handle button click
                     changeButton.setOnClickListener(v -> {
+
+                        if (isScaning) {
+                            Toast.makeText(this, "Please stop scanning before relocation asset", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
                         AlertDialog.Builder builder = new AlertDialog.Builder(this);
                         builder.setTitle("Edit Location");
 
@@ -808,6 +822,12 @@ public class Inventory extends AppCompatActivity {
 
                 // Handle button click
                 changeButton.setOnClickListener(v -> {
+
+                    if (isScaning) {
+                        Toast.makeText(this, "Please stop scanning before editing quantity", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
                     AlertDialog.Builder builder = new AlertDialog.Builder(this);
                     builder.setTitle("Edit Quantity");
 

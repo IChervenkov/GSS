@@ -227,6 +227,15 @@
                 </div>
                 <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
                         <button type="button"
+                            class="btn btn-outline-primary btn-sm rounded-circle fw-bold <% if(username == 'NSPA') { %> disabled-button <% } %>"
+                            id="multiEditAsset"><i class="bi bi-pencil"></i></button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Edit multiple assets at once.</span>
+                        </div>
+                </div>
+                <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
+                        <button type="button"
                             class="btn btn-outline-danger btn-sm rounded-circle fw-bold <% if(username == 'NSPA') { %> disabled-button <% } %>"
                             id="removeAsset"><i class="bi bi-dash"></i></button>
                         <div class="tooltip-custom">
@@ -286,7 +295,7 @@
             <h2 class="mb-4">Asset information</h2>
 
             <div class="row">
-                <div class="col-md-4 mb-3 search-container" id="search-assert-container">
+                <div class="col-md-2 mb-3 search-container" id="search-assert-container">
                     <label for="assetSearch" class="form-label">Asset code <span class="text-danger">*</span></label>
                     <input type="text" id="assetSearch" class="form-control" placeholder="Asset code">
                     <div class="invalid-feedback"></div>
@@ -296,13 +305,13 @@
                     <!-- To store the selected soldier ID -->
                 </div>
 
-                <div class="col-md-4 mb-3">
+                <div class="col-md-2 mb-3">
                     <label for="assetName" class="form-label">Asset name <span class="text-danger">*</span></label>
                     <input type="text" id="assetName" class="form-control" placeholder="Asset name"
                         pattern="^[a-zA-Z0-9\s]+$">
                 </div>
 
-                <div class="col-md-4 mb-3 search-container" id="search-type-container">
+                <div class="col-md-2 mb-3 search-container" id="search-type-container">
                     <label for="typeSearch" class="form-label">Asset type <span class="text-danger">*</span></label>
                     <input type="text" id="typeSearch" class="form-control" placeholder="Asset type">
                     <div class="invalid-feedback"></div>
@@ -311,10 +320,8 @@
                     <input type="hidden" id="selectedTypeId" name="typeId" value="">
                     <!-- To store the selected soldier ID -->
                 </div>
-            </div>
 
-            <div class="row">
-                <div class="col-md-4 mb-3 search-container" id="search-location-container">
+                <div class="col-md-2 mb-3 search-container" id="search-location-container">
                     <label for="locationSearch" class="form-label">Asset location <span
                             class="text-danger">*</span></label>
                     <input type="text" id="locationSearch" class="form-control" placeholder="Asset location">
@@ -325,7 +332,7 @@
                     <!-- To store the selected soldier ID -->
                 </div>
 
-                <div class="col-md-4 mb-3 search-container" id="search-sub-location-container">
+                <div class="col-md-2 mb-3 search-container" id="search-sub-location-container">
                     <label for="subLocationSearch" class="form-label">Associated key</label>
                     <input type="text" id="subLocationSearch" class="form-control" placeholder="Associated key">
                     <div class="invalid-feedback"></div>
@@ -335,19 +342,18 @@
                     <!-- To store the selected soldier ID -->
                 </div>
 
-                <div class="col-md-4 mb-3">
-                    <label for="categorie" class="form-label">Asset categories <span
-                            class="text-danger">*</span></label>
+                <div class="col-md-2 mb-3">
+                    <label for="categorie" class="form-label">Asset categories</label>
                     <input type="text" id="categorie" class="form-control" placeholder="Asset categories"
-                        pattern="^[a-zA-Z\s]+$">
+                        pattern="^[a-zA-Z\s]*$">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
-
             </div>
 
             <div class="row">
-                <div class="col-md-4 mb-3">
+
+                <div class="col-md-2 mb-3">
                     <label for="quantity" class="form-label">Asset quantity <span class="text-danger">*</span></label>
                     <input type="number" id="quantity" class="form-control" placeholder="Asset quantity" min="1"
                         value="1">
@@ -355,18 +361,43 @@
                     <div class="valid-feedback"></div>
                 </div>
 
-                <div class="col-md-4 mb-3">
-                    <label for="mrah" class="form-label">MRAH <span class="text-danger">*</span></label>
-                    <input type="text" id="mrah" class="form-control" placeholder="MRAH" pattern="^[a-zA-Z\s]+$"
+                <div class="col-md-2 mb-3">
+                    <label for="mrah" class="form-label">MRAH</label>
+                    <input type="text" id="mrah" class="form-control" placeholder="MRAH" pattern="^[a-zA-Z\s]*$"
                         value="Global RTS">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
 
-                <div class="col-md-4 mb-3">
-                    <label for="owner" class="form-label">Asset owner <span class="text-danger">*</span></label>
-                    <input type="text" id="owner" class="form-control" placeholder="Asset owner" pattern="^[a-zA-Z\s]+$"
+                <div class="col-md-2 mb-3">
+                    <label for="owner" class="form-label">Asset owner</label>
+                    <input type="text" id="owner" class="form-control" placeholder="Asset owner" pattern="^[a-zA-Z\s]*$"
                         value="Global RTS">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="status" class="form-label">Status</label>
+                    <input id="status" class="form-control" placeholder="Status" value="New">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="expandable" class="form-label">Expandable</label>
+                    <select id="expandable" class="form-control">
+                        <option value="Expandable">Expandable</option>
+                        <option value="Non Expandable" selected>Non Expandable</option>
+                    </select>
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="service" class="form-label">Asset service</label>
+                    <input type="text" id="service" class="form-control" placeholder="Asset service"
+                        pattern="^[a-zA-Z\s]*$" value="Billeting">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
@@ -374,20 +405,87 @@
             </div>
 
             <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                    <input type="number" id="status" class="form-control" placeholder="Status" min="1" max="3"
-                        value="1">
+                <div class="col-md-2 mb-3">
+                    <label for="m2_inside" class="form-label">M2 Inside</label>
+                    <input id="m2_inside" class="form-control" placeholder="M2 Inside" pattern="^([0-9]+,[0-9]+)?$">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
 
-                <div class="col-md-6 mb-3">
-                    <label for="expandable" class="form-label">Expandable <span class="text-danger">*</span></label>
-                    <select id="expandable" class="form-control">
-                        <option value="Expandable">Expandable</option>
-                        <option value="Non Expandable" selected>Non Expandable</option>
-                    </select>
+                <div class="col-md-2 mb-3">
+                    <label for="date_purchase" class="form-label">Date Purchase</label>
+                    <input type="date" id="date_purchase" class="form-control" placeholder="Date Purchase">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="date_written_off" class="form-label">Date Written Off</label>
+                    <input type="date" id="date_written_off" class="form-control" placeholder="Date Written Off">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mt-3 d-flex align-items-center justify-content-center">
+                    <input type="checkbox" id="is_fixed" class="me-2 column-toggle" value="false">
+                    <label for="is_fixed" class="mb-0">Is Fixed</label>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="purchase_price" class="form-label">Purchase Price</label>
+                    <input id="purchase_price" class="form-control" placeholder="Purchase Price"
+                        pattern="^([0-9]+,[0-9]+)?$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="comments" class="form-label">Comments</label>
+                    <input type="text" id="comments" class="form-control" placeholder="Comments"
+                        pattern="^[a-zA-Z0-9\s]*$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+            </div>
+
+            <div class="row">
+                <div class="col-md-2 mb-3">
+                    <label for="replaced_off" class="form-label">Replaced Off</label>
+                    <input type="text" id="replaced_off" class="form-control" placeholder="Replaced Off"
+                        pattern="^[a-zA-Z0-9\s]*$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="year_of_life_cycle" class="form-label">Year of Life Cycle</label>
+                    <input type="number" id="year_of_life_cycle" class="form-control" placeholder="Year of Life Cycle"
+                        min="1" value="1">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="rest_of_life_cycle" class="form-label">Rest of Life Cycle</label>
+                    <input type="number" id="rest_of_life_cycle" class="form-control" placeholder="Rest of Life Cycle"
+                        min="1" value="1">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="replaced_by" class="form-label">Replaced by</label>
+                    <input type="text" id="replaced_by" class="form-control" placeholder="Replaced by"
+                        pattern="^[a-zA-Z0-9\s]*$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="rest_value" class="form-label">Rest Value</label>
+                    <input type="number" id="rest_value" class="form-control" placeholder="Rest Value" min="1"
+                        value="1">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
@@ -418,7 +516,7 @@
             <h2 class="mb-4">Add asset</h2>
 
             <div class="row">
-                <div class="col-md-4 mb-3" id="assert-epc-container">
+                <div class="col-md-2 mb-3" id="assert-epc-container">
                     <label for="assetEpc" class="form-label">Asset EPC code <span class="text-danger">*</span></label>
                     <input type="text" id="assetEpc" class="form-control" placeholder="Asset EPC code"
                         pattern="^[a-zA-Z0-9]+$">
@@ -426,7 +524,7 @@
                     <div class="valid-feedback"></div>
                 </div>
 
-                <div class="col-md-4 mb-3" id="assert-code-container">
+                <div class="col-md-2 mb-3" id="assert-code-container">
                     <label for="assetCodeSearch" class="form-label">Asset code <span
                             class="text-danger">*</span></label>
                     <input type="text" id="assetCodeSearch" class="form-control" placeholder="Asset code"
@@ -435,18 +533,15 @@
                     <div class="valid-feedback"></div>
                 </div>
 
-                <div class="col-md-4 mb-3">
+                <div class="col-md-2 mb-3">
                     <label for="assetAddName" class="form-label">Asset name <span class="text-danger">*</span></label>
                     <input type="text" id="assetAddName" class="form-control" placeholder="Asset name"
                         pattern="^[a-zA-Z0-9\s]+$">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
-            </div>
 
-            <div class="row">
-
-                <div class="col-md-4 mb-3 search-container" id="search-add-type-container">
+                <div class="col-md-2 mb-3 search-container" id="search-add-type-container">
                     <label for="addTypeSearch" class="form-label">Asset type <span class="text-danger">*</span></label>
                     <input type="text" id="addTypeSearch" class="form-control" placeholder="Asset type">
                     <div class="invalid-feedback"></div>
@@ -455,7 +550,7 @@
                     <input type="hidden" id="selectedAddTypeId" name="typeId" value="">
                 </div>
 
-                <div class="col-md-4 mb-3 search-container" id="search-add-location-container">
+                <div class="col-md-2 mb-3 search-container" id="search-add-location-container">
                     <label for="addLocationSearch" class="form-label">Asset location <span
                             class="text-danger">*</span></label>
                     <input type="text" id="addLocationSearch" class="form-control" placeholder="Asset location">
@@ -465,7 +560,7 @@
                     <input type="hidden" id="selectedAddLocationId" name="locationId" value="">
                 </div>
 
-                <div class="col-md-4 mb-3 search-container" id="search-add-sub-location-container">
+                <div class="col-md-2 mb-3 search-container" id="search-add-sub-location-container">
                     <label for="addSubLocationSearch" class="form-label">Associated key</label>
                     <input type="text" id="addSubLocationSearch" class="form-control" placeholder="Associated key">
                     <div class="invalid-feedback"></div>
@@ -476,28 +571,52 @@
             </div>
 
             <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label for="addCategorie" class="form-label">Asset categories <span
-                            class="text-danger">*</span></label>
+
+                <div class="col-md-2 mb-3">
+                    <label for="addCategorie" class="form-label">Asset categories</label>
                     <input type="text" id="addCategorie" class="form-control" placeholder="Asset categories"
-                        pattern="^[a-zA-Z\s]+$">
+                        pattern="^[a-zA-Z\s]*$">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
 
-                <div class="col-md-4 mb-3">
-                    <label for="assetQuantity" class="form-label">Asset quantity <span
-                            class="text-danger">*</span></label>
+                <div class="col-md-2 mb-3">
+                    <label for="assetQuantity" class="form-label">Asset quantity <span class="text-danger">*</span></label>
                     <input type="number" id="assetQuantity" class="form-control" placeholder="Asset quantity" min="1"
                         value="1">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
 
-                <div class="col-md-4 mb-3">
-                    <label for="assetAddMrah" class="form-label">MRAH <span class="text-danger">*</span></label>
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddMrah" class="form-label">MRAH</label>
                     <input type="text" id="assetAddMrah" class="form-control" placeholder="MRAH" pattern="^[a-zA-Z\s]+$"
                         value="Global RTS">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddOwner" class="form-label">Asset owner</label>
+                    <input type="text" id="assetAddOwner" class="form-control" placeholder="Asset owner"
+                        pattern="^[a-zA-Z\s]*$" value="Global RTS">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetStatus" class="form-label">Status</label>
+                    <input id="assetStatus" class="form-control" placeholder="Status" value="New">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddExpandable" class="form-label">Expandable</label>
+                    <select id="assetAddExpandable" class="form-control">
+                        <option value="Expandable">Expandable</option>
+                        <option value="Non Expandable" selected>Non Expandable</option>
+                    </select>
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
@@ -505,29 +624,96 @@
 
             <div class="row">
 
-                <div class="col-md-4 mb-3">
-                    <label for="assetAddOwner" class="form-label">Asset owner <span class="text-danger">*</span></label>
-                    <input type="text" id="assetAddOwner" class="form-control" placeholder="Asset owner"
-                        pattern="^[a-zA-Z\s]+$" value="Global RTS">
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddService" class="form-label">Asset service</label>
+                    <input type="text" id="assetAddService" class="form-control" placeholder="Asset service"
+                        pattern="^[a-zA-Z\s]*$" value="Billeting">
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
 
-                <div class="col-md-4 mb-3">
-                    <label for="assetStatus" class="form-label">Status <span class="text-danger">*</span></label>
-                    <input type="number" id="assetStatus" class="form-control" placeholder="Status" min="1" max="3"
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddM2Inside" class="form-label">M2 Inside</label>
+                    <input type="text" id="assetAddM2Inside" class="form-control" placeholder="M2 Inside"
+                        pattern="^([0-9]+,[0-9]+)?$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddDatePurchase" class="form-label">Date Purchase</label>
+                    <input type="date" id="assetAddDatePurchase" class="form-control" placeholder="Date Purchase">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddDateWrittenOff" class="form-label">Date Written Off</label>
+                    <input type="date" id="assetAddDateWrittenOff" class="form-control" placeholder="Date Written Off">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddPurchasePrice" class="form-label">Purchase Price</label>
+                    <input type="text" id="assetAddPurchasePrice" class="form-control" placeholder="Purchase Price"
+                        pattern="^([0-9]+,[0-9]+)?$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mt-3 d-flex align-items-center justify-content-center">
+                    <input type="checkbox" id="assetAddIsFixed" class="me-2 column-toggle" value="false">
+                    <label for="assetAddIsFixed" class="mb-0">Is Fixed</label>
+                </div>
+
+            </div>
+
+            <div class="row">
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddComments" class="form-label">Comments</label>
+                    <input type="text" id="assetAddComments" class="form-control" placeholder="Comments"
+                        pattern="^[a-zA-Z0-9\s]*$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddReplacedOff" class="form-label">Replaced Off</label>
+                    <input type="text" id="assetAddReplacedOff" class="form-control" placeholder="Replaced Off"
+                        pattern="^[a-zA-Z0-9\s]*$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddYearOfLifeCycle" class="form-label">Year of Life Cycle</label>
+                    <input type="number" id="assetAddYearOfLifeCycle" class="form-control"
+                        placeholder="Year of Life Cycle" min="1" value="1">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddRestOfLifeCycle" class="form-label">Rest of Life Cycle</label>
+                    <input type="number" id="assetAddRestOfLifeCycle" class="form-control"
+                        placeholder="Rest of Life Cycle" min="1" value="1">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddReplacedBy" class="form-label">Replaced by</label>
+                    <input type="text" id="assetAddReplacedBy" class="form-control" placeholder="Replaced by"
+                        pattern="^[a-zA-Z0-9\s]*$">
+                    <div class="invalid-feedback"></div>
+                    <div class="valid-feedback"></div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label for="assetAddRestValue" class="form-label">Rest Value</label>
+                    <input type="number" id="assetAddRestValue" class="form-control" placeholder="Rest Value" min="1"
                         value="1">
-                    <div class="invalid-feedback"></div>
-                    <div class="valid-feedback"></div>
-                </div>
-
-                <div class="col-md-4 mb-3">
-                    <label for="assetAddExpandable" class="form-label">Expandable <span
-                            class="text-danger">*</span></label>
-                    <select id="assetAddExpandable" class="form-control">
-                        <option value="Expandable">Expandable</option>
-                        <option value="Non Expandable" selected>Non Expandable</option>
-                    </select>
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
                 </div>
@@ -540,9 +726,14 @@
                         style="max-height: 120px;"></textarea>
                 </div>
 
-                <button type="submit" class="modal-button" id="add-button">
-                    <i class="bi bi-plus-circle"></i> Add Asset
-                </button>
+                <div class="button-container">
+                    <button type="submit" class="modal-button" id="add-button">
+                        <i class="bi bi-plus-circle"></i> Add Asset
+                    </button>
+                    <button type="button" class="modal-button" id="add-multi-button">
+                        <i class="bi bi-plus-circle"></i> Add Multi Asset
+                    </button>
+                </div>
             </div>
 
         </form>
@@ -599,13 +790,16 @@
 
             <h2>Lost Asset</h2>
 
-            <div class="d-flex justify-content-end mt-2 mb-2">
+            <div id="groupNav" class="d-flex justify-content-end mt-2 mb-2">
                 <button type="button" id="prevBtnTherd"></button>
                 <span id="pageNumberTherd"></span>
                 <button type="button" id="nextBtnTherd"></button>
             </div>
 
             <div class="modal-body">
+
+                <button type="button" id="toggleFormButton" class="modal-button"><i
+                        class="bi bi-plus-circle me-1"></i>Add Lost Item</button>
 
                 <form class="form-section" method="POST" action="/assets/lostItem" id="form5">
                     <div class="mb-3 search-container">
@@ -644,11 +838,13 @@
                     <table id="lostItemsTable">
                         <thead>
                             <tr>
-                                <th><input type="text" class="lost-item-search-input" placeholder="Search...">Item Name
+                                <th><input name="itemName" type="text" class="lost-item-search-input"
+                                        placeholder="Search...">Item Name
                                 </th>
-                                <th><input type="text" class="lost-item-search-input"
+                                <th><input name="itemDescription" type="text" class="lost-item-search-input"
                                         placeholder="Search...">Description</th>
-                                <th><input type="text" class="lost-item-search-input" placeholder="Search...">Lost
+                                <th><input name="lostQuantity" type="text" class="lost-item-search-input"
+                                        placeholder="Search...">Lost
                                     Quantity</th>
                             </tr>
                         </thead>
@@ -764,6 +960,37 @@
                                     checked> Asset expandable</label>
                             <label><input type="checkbox" class="column-toggle" data-column="asset-description-header"
                                     checked> Asset description</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-create-date-header"
+                                    checked> Asset create date</label>
+                            <label><input type="checkbox" class="column-toggle"
+                                    data-column="asset-last-inventory-date-header" checked> Asset last inventory
+                                date</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-service-header"
+                                    checked> Service</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-m2-inside-header"
+                                    checked> M2 Inside</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-fixed-header"
+                                    checked> Fixed</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-mobile-header"
+                                    checked> Mobile</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-date-purchase-header"
+                                    checked> Date Purchase</label>
+                            <label><input type="checkbox" class="column-toggle"
+                                    data-column="asset-date-written-off-header" checked> Date Written Off</label>
+                            <label><input type="checkbox" class="column-toggle"
+                                    data-column="asset-purchase-price-header" checked> Purchase Price</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-comments-header"
+                                    checked> Comments</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-replaced-off-header"
+                                    checked> Replaced Off</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="year-of-life-cycle"
+                                    checked> Year of Life Cycle</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="rest-of-life-cycle"
+                                    checked> Rest of Life Cycle</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-replaced-by-header"
+                                    checked> Replaced by</label>
+                            <label><input type="checkbox" class="column-toggle" data-column="asset-rest-value-header"
+                                    checked> Rest Value</label>
                         </div>
                     </div>
                 </div>
@@ -781,69 +1008,139 @@
                     <thead>
                         <tr>
                             <th class="asset-rfid-header">
-                                <input name="assetRfid" type="text" class="search-input-view-assets"
-                                    placeholder="Search...">
+                                <input name="RFID" type="text" class="search-input-view-assets" placeholder="Search...">
                                 <label>RFID</label>
                             </th>
                             <th class="asset-code-header">
-                                <input name="assetCode" type="text" class="search-input-view-assets"
-                                    placeholder="Search...">
+                                <input name="Code" type="text" class="search-input-view-assets" placeholder="Search...">
                                 <label>Asset code</label>
                             </th>
                             <th class="asset-name-header">
-                                <input name="assetName" type="text" class="search-input-view-assets"
-                                    placeholder="Search...">
+                                <input name="Name" type="text" class="search-input-view-assets" placeholder="Search...">
                                 <label>Asset Name</label>
                             </th>
                             <th class="asset-type-header">
-                                <input name="assetType" type="text" class="search-input-view-assets"
+                                <input name="Asset Type" type="text" class="search-input-view-assets"
                                     placeholder="Search...">
                                 <label>Asset type</label>
                             </th>
                             <th class="asset-building-header">
-                                <input name="assetBuilding" type="text" class="search-input-view-assets"
+                                <input name="Building" type="text" class="search-input-view-assets"
                                     placeholder="Search...">
                                 <label>Building</label>
                             </th>
                             <th class="asset-room-header">
-                                <input name="assetRoom" type="text" class="search-input-view-assets"
-                                    placeholder="Search...">
+                                <input name="Room" type="text" class="search-input-view-assets" placeholder="Search...">
                                 <label>Room</label>
                             </th>
                             <th class="asset-category-header">
-                                <input name="assetCategory" type="text" class="search-input-view-assets"
+                                <input name="Asset Category" type="text" class="search-input-view-assets"
                                     placeholder="Search...">
                                 <label>Asset category</label>
                             </th>
                             <th class="asset-quantity-header">
-                                <input name="assetQuantity" type="text" class="search-input-view-assets"
+                                <input name="№ of Items" type="text" class="search-input-view-assets"
                                     placeholder="Search...">
                                 <label>Asset quantity</label>
                             </th>
                             <th class="asset-mrah-header">
-                                <input name="assetMrah" type="text" class="search-input-view-assets"
-                                    placeholder="Search...">
+                                <input name="MRAH" type="text" class="search-input-view-assets" placeholder="Search...">
                                 <label>MRAH</label>
                             </th>
                             <th class="asset-owner-header">
-                                <input name="assetOwner" type="text" class="search-input-view-assets"
+                                <input name="Owner" type="text" class="search-input-view-assets"
                                     placeholder="Search...">
                                 <label>Asset owner</label>
                             </th>
                             <th class="asset-status-header">
-                                <input name="assetStatus" type="text" class="search-input-view-assets"
+                                <input name="Status" type="text" class="search-input-view-assets"
                                     placeholder="Search...">
                                 <label>Asset status</label>
                             </th>
                             <th class="asset-expandable-header">
-                                <input name="assetExpandable" type="text" class="search-input-view-assets"
+                                <input name="Expandable/Non Expandable" type="text" class="search-input-view-assets"
                                     placeholder="Search...">
                                 <label>Asset expandable</label>
                             </th>
                             <th class="asset-description-header">
-                                <input name="assetDescription" type="text" class="search-input-view-assets"
+                                <input name="Description" type="text" class="search-input-view-assets"
                                     placeholder="Search...">
                                 <label>Asset description</label>
+                            </th>
+                            <th class="asset-create-date-header">
+                                <input name="Create Date" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Asset create date</label>
+                            </th>
+                            <th class="asset-last-inventory-date-header">
+                                <input name="Last Inventory Date" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Asset last inventory date</label>
+                            </th>
+                            <th class="asset-service-header">
+                                <input name="Service" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Service</label>
+                            </th>
+                            <th class="asset-m2-inside-header">
+                                <input name="M2 Inside" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>M2 Inside</label>
+                            </th>
+                            <th class="asset-fixed-header">
+                                <input name="Fixed" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Fixed</label>
+                            </th>
+                            <th class="asset-mobile-header">
+                                <input name="Mobile" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Mobile</label>
+                            </th>
+                            <th class="asset-date-purchase-header">
+                                <input name="Date Purchase" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Date Purchase</label>
+                            </th>
+                            <th class="asset-date-written-off-header">
+                                <input name="Date Written Off" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Date Written Off</label>
+                            </th>
+                            <th class="asset-purchase-price-header">
+                                <input name="Purchase Price" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Purchase Price</label>
+                            </th>
+                            <th class="asset-comments-header">
+                                <input name="Comments" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Comments</label>
+                            </th>
+                            <th class="asset-replaced-off-header">
+                                <input name="Replaced Off" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Replaced Off</label>
+                            </th>
+                            <th class="asset-year-of-life-cycle-header">
+                                <input name="Year of Life Cycle" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Year of Life Cycle</label>
+                            </th>
+                            <th class="asset-rest-of-life-cycle-header">
+                                <input name="Rest of Life Cycle" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Rest of Life Cycle</label>
+                            </th>
+                            <th class="asset-replaced-by-header">
+                                <input name="Replaced by" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Replaced by</label>
+                            </th>
+                            <th class="asset-rest-value-header">
+                                <input name="Rest Value" type="text" class="search-input-view-assets"
+                                    placeholder="Search...">
+                                <label>Rest Value</label>
                             </th>
                         </tr>
                     </thead>
@@ -858,7 +1155,7 @@
                 <button type="button" id="nextBtnDate"></button>
             </div>
 
-            <div class="table-container">
+            <div class="table-container-second">
                 <table id="assetDateTable">
                     <thead>
                         <tr>
@@ -1202,17 +1499,69 @@
 
             <h4 class="mb-3">Inventory Sections
                 <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
-                    <button type="button" id="btnRestartInventory"
-                        class="btn btn-outline-primary btn-sm rounded-circle fw-bold <% if(username == 'NSPA') { %> disabled-button <% } %>">
-                        <i class="bi bi-arrow-repeat"></i></button>
-                    <div class="tooltip-custom">
-                        <i class="bi bi-question-circle"></i>
-                        <span class="tooltiptext">Restart inventory</span>
-                    </div>
+                        <button type="button" id="btnRestartInventory"
+                            class="btn btn-outline-primary btn-sm rounded-circle fw-bold <% if(username == 'NSPA') { %> disabled-button <% } %>">
+                            <i class="bi bi-arrow-repeat"></i></button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Restart inventory</span>
+                        </div>
                 </div>
             </h4>
 
             <div class="accordion" id="mainAccordion"></div>
+        </div>
+    </div>
+
+    <div id="uploadEditMultiAssetsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2 class="mb-3">Edit multiple assets <a href="/assets/editMultiAsset/download"><i
+                        class="bi bi-download"></i></a>
+            </h2>
+
+            <div class="mb-3">
+                <label for="fileEditMultiAssetsInput" class="form-label">Upload File <span
+                        class="text-danger">*</span></label>
+                <input type="file" id="fileEditMultiAssetsInput" class="form-control" accept=".xlsx">
+                <!-- Accept specific file types -->
+            </div>
+
+            <div class="progress-bar">
+                <div class="custom-progress" id="editMultiAssetsProgress">
+                </div>
+            </div>
+
+            <button type="button" id="upload-edit-multi-assets-btn" class="modal-button">
+                <i class="bi bi-upload"></i> Upload
+            </button>
+        </div>
+    </div>
+
+    <div id="uploadAddMultiAssetsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2 class="mb-3">Add multiple assets <a href="/assets/addMultiAsset/download"><i
+                        class="bi bi-download"></i></a>
+            </h2>
+
+            <div class="mb-3">
+                <label for="fileAddMultiAssetsInput" class="form-label">Upload File <span
+                        class="text-danger">*</span></label>
+                <input type="file" id="fileAddMultiAssetsInput" class="form-control" accept=".xlsx">
+                <!-- Accept specific file types -->
+            </div>
+
+            <div class="progress-bar">
+                <div class="custom-progress" id="addMultiAssetsProgress">
+                </div>
+            </div>
+
+            <button type="button" id="upload-add-multi-assets-btn" class="modal-button">
+                <i class="bi bi-upload"></i> Upload
+            </button>
         </div>
     </div>
 

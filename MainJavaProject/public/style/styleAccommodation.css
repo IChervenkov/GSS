@@ -39,6 +39,10 @@ body {
     height: calc(100vh - 50px);
 }
 
+.left-nav .btn-container {
+    background-color: #f4f4f4;
+}
+
 .transparent-bg {
     background-color: #f4f4f4;
 }
@@ -1633,7 +1637,7 @@ thead th input:focus {
 @media screen and (max-width: 1440px) and (min-width: 768px) {
 
     .left-nav {
-        width: 22%;
+        width: 23%;
         /* Adjust sidebar width */
         height: 94vh;
         /* Ensure full height */
@@ -1697,5 +1701,9 @@ thead th input:focus {
 
     #additionalItemModal {
         padding-top: 20px;
+    }
+
+    #keyModal .modal-content {
+        height: 70%;
     }
 }

@@ -198,27 +198,32 @@ td {
 }
 
 /* Custom Scrollbar */
-.table-container {
+.table-container,
+.table-container-second {
     height: 78vh;
     /* Set height relative to viewport */
     max-height: 78vh;
     overflow-y: auto;
     overflow-x: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
 }
 
-.table-container::-webkit-scrollbar {
+.table-container::-webkit-scrollbar,
+.table-container-second::-webkit-scrollbar {
     /* display: none; */
     width: 10px;
 }
 
-.table-container::-webkit-scrollbar-thumb {
+.table-container::-webkit-scrollbar-thumb,
+.table-container-second::-webkit-scrollbar-thumb {
     background-color: #28a745;
     border-radius: 4px;
 }
 
-.table-container::-webkit-scrollbar-thumb:hover {
+.table-container::-webkit-scrollbar-thumb:hover,
+.table-container-second::-webkit-scrollbar-thumb:hover {
     background-color: #28a745;
 }
 
@@ -235,7 +240,8 @@ td {
     padding-top: 0px;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
     max-height: calc(100vh - 50px);
 }
@@ -665,13 +671,15 @@ td {
 }
 
 /* Custom Scrollbar */
-.modal-content-report .table-container {
+.modal-content-report .table-container,
+.modal-content-report .table-container-second {
     height: 30vh;
     /* Set height relative to viewport */
     max-height: 30vh;
     overflow-y: auto;
     overflow-x: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
 }
 
@@ -722,6 +730,15 @@ td {
     transform: translateY(0);
     /* Slide into view */
     opacity: 1;
+}
+
+.button-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    /* Add space between the buttons */
+    gap: 10px;
+    /* Optional: adds space between buttons */
 }
 
 .modal-content-mess .button-container-mess {
@@ -877,7 +894,8 @@ input[type="checkbox"] {
     max-height: 200px;
     border: 1px solid #ddd;
     overflow-y: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
     display: none;
     position: absolute;
@@ -1054,6 +1072,9 @@ input[type="checkbox"] {
     /* Rounded corners for a modern look */
     min-width: 200px;
     /* Set a minimum width for consistency */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    /* space between items */
 }
 
 .dropdown-content label {
@@ -1079,7 +1100,7 @@ input[type="checkbox"] {
 }
 
 .custom-dropdown:hover .dropdown-content {
-    display: block;
+    display: grid;
 }
 
 .column-toggle:checked {
@@ -1214,7 +1235,8 @@ input[type="checkbox"] {
 .accordion {
     max-height: 700px;
     overflow-y: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
 }
 
@@ -1303,8 +1325,27 @@ input[type="checkbox"] {
     background: #fdfdfd;
 }
 
+#toggleFormButton {
+    display: none;
+    /* Hidden on larger screens */
+}
+
 /* Media Queries for mobile responsiveness */
 @media screen and (max-width: 768px) {
+
+    #form5.form-section {
+        display: none;
+        width: 100%;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .modal-content-report {
+        margin: 5% auto;
+        width: 90%;
+        max-width: none;
+    }
 
     #search-all-key-container.search-container {
         margin: 0px;
@@ -1498,11 +1539,13 @@ input[type="checkbox"] {
         padding: 6px;
     }
 
-    .table-container {
+    .table-container,
+    .table-container-second {
         max-height: 600px;
         height: 600px;
         overflow-y: auto;
-        scrollbar-width: auto; /* Firefox */
+        scrollbar-width: auto;
+        /* Firefox */
         scrollbar-color: #28a745 transparent;
     }
 
@@ -1510,7 +1553,7 @@ input[type="checkbox"] {
         padding-bottom: 16px;
     }
 
-    #additionalItemModal .modal-content {
+    #lostAssetsModal .modal-content {
         width: 100%;
         max-width: 350px;
         margin: 10px auto;
@@ -1519,63 +1562,63 @@ input[type="checkbox"] {
         flex-direction: column;
     }
 
-    #additionalItemModal h2 {
+    #lostAssetsModal h2 {
         font-size: 20px;
         text-align: center;
     }
 
-    #additionalItemModal .modal-body {
+    #lostAssetsModal .modal-body {
         padding: 10px;
         display: flex;
         flex-direction: column;
         gap: 15px;
     }
 
-    #additionalItemModal form {
+    #lostAssetsModal form {
         width: 100%;
         display: flex;
         flex-direction: column;
         gap: 10px;
     }
 
-    #additionalItemModal .form-control {
+    #lostAssetsModal .form-control {
         font-size: 14px;
         padding: 8px;
     }
 
-    #additionalItemModal .modal-button {
+    #lostAssetsModal .modal-button {
         width: 100%;
         padding: 10px;
         font-size: 16px;
     }
 
-    #additionalItemModal .table-section {
+    #lostAssetsModal .table-section {
         width: 100%;
         overflow-x: auto;
         margin-top: 15px;
     }
 
-    #additionalItemModal table {
+    #lostAssetsModal table {
         width: 100%;
         font-size: 12px;
     }
 
-    #additionalItemModal th,
-    #additionalItemModal td {
+    #lostAssetsModal th,
+    #lostAssetsModal td {
         padding: 6px;
         white-space: nowrap;
     }
 
-    #additionalItemModal .search-container {
+    #lostAssetsModal .search-container {
         margin-bottom: 10px;
     }
 
-    #additionalItemModal .d-flex {
+    #lostAssetsModal .d-flex {
         justify-content: center;
         gap: 10px;
     }
 
-    #additionalItemModal .close-btn {
+    #lostAssetsModal .close-btn {
         font-size: 22px;
         position: absolute;
         right: 10px;
@@ -1656,9 +1699,28 @@ input[type="checkbox"] {
         height: auto;
         margin-top: 0;
     }
+
+    #reportViewModal,
+    #editAssetsModal,
+    #addAssetsModal {
+        padding-top: 40px;
+    }
+
+    #lostAssetsModal,
+    #editAssetsModal,
+    #assetsModal {
+        padding-top: 20px;
+    }
 }
 
 @media screen and (max-width: 1440px) and (min-width: 768px) {
+
+    #addAssetsModal .modal-content,
+    #editAssetsModal .modal-content {
+        margin-left: 11%;
+        max-width: 80%;
+    }
+
     .left-nav {
         width: 20%;
         /* Adjust sidebar width */
@@ -1707,16 +1769,40 @@ input[type="checkbox"] {
     .container {
         width: 100%;
         overflow-y: auto;
-        scrollbar-width: auto; /* Firefox */
+        scrollbar-width: auto;
+        /* Firefox */
         scrollbar-color: #28a745 transparent;
     }
 
     #reportViewModal,
-    #editAssetsModal {
+    #editAssetsModal,
+    #addAssetsModal {
         padding-top: 40px;
     }
 
-    #lostAssetsModal {
+    #lostAssetsModal,
+    #editAssetsModal,
+    #assetsModal {
         padding-top: 20px;
+    }
+
+    .table-container-second {
+        height: 200px;
+        overflow-y: auto;
+        overflow-x: auto;
+        scrollbar-width: auto;
+        /* Firefox */
+        scrollbar-color: #28a745 transparent;
+    }
+
+    .modal-content-report .table-container {
+        height: 35vh;
+        /* Set height relative to viewport */
+        max-height: 40vh;
+        overflow-y: auto;
+        overflow-x: auto;
+        scrollbar-width: auto;
+        /* Firefox */
+        scrollbar-color: #28a745 transparent;
     }
 }

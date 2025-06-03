@@ -234,8 +234,10 @@
                                             <%= item.nameroom %>
                                         </td>
 
-                                        <td class="<%= item.countAllBeds == item.countFreeBeds || item.countFreeBeds != 0 ? 'undefined-data' : '' %>">
-                                            <%= item.countAllBeds == item.countFreeBeds ? 'Completely free' : item.countFreeBeds !=0 ? 'Free' : 'Occupied' %>
+                                        <td
+                                            class="<%= item.countAllBeds == item.countFreeBeds || item.countFreeBeds != 0 ? 'undefined-data' : '' %>">
+                                            <%= item.countAllBeds==item.countFreeBeds ? 'Completely free' :
+                                                item.countFreeBeds !=0 ? 'Free' : 'Occupied' %>
                                         </td>
 
                                         <td>
@@ -287,6 +289,17 @@
                         <div class="tooltip-custom">
                             <i class="bi bi-question-circle"></i>
                             <span class="tooltiptext">Reload keys</span>
+                        </div>
+                </div>
+                <div class="btn-container" <% if(username !='helpDeskNikolay' && username !='helpDeskAngel' && username
+                    !='admin' && username !='helpDeskElena' ) { %>
+                    style="cursor: not-allowed" <% } %>>
+                        <button type="button"
+                            class="btn btn-outline-warning btn-sm rounded-circle fw-bold <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin' && username !='helpDeskElena') { %> disabled-button <% } %>"
+                            id="releaseRoom"><i class="bi bi-door-open"></i></button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Release rooms</span>
                         </div>
                 </div>
             </h2>
@@ -803,8 +816,8 @@
 
                     <ul id="editUpcomingAccommodationRoomDropdown" class="list-group"></ul>
                     <!-- Custom dropdown for search -->
-                    <input type="hidden" id="selectedEditUpcomingAccommodationRoomId" name="editUpcomingAccommodationRoomId"
-                        value="">
+                    <input type="hidden" id="selectedEditUpcomingAccommodationRoomId"
+                        name="editUpcomingAccommodationRoomId" value="">
 
                     <div class="invalid-feedback"></div>
                     <div class="valid-feedback"></div>
@@ -1153,11 +1166,41 @@
             <input type="hidden" id="click-build-number" name="clickBuildNumber">
             <input type="hidden" id="click-build" name="clickBuild">
 
-            <button type="submit" id="add-room-btn" class="modal-button">
-                <i class="bi bi-plus-circle"></i> Add room
-            </button>
+            <div class="button-container">
+                <button type="submit" id="add-room-btn" class="modal-button">
+                    <i class="bi bi-plus-circle"></i> Add room
+                </button>
+                <button type="button" id="confirmReportBtnAddMultiRooms" class="modal-button">
+                    <i class="bi bi-plus-circle"></i> Add multiple rooms
+                </button>
+            </div>
 
         </form>
+    </div>
+
+    <div id="uploadRoomModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2>Add multiple rooms <a id="template-download" href="/accommodation/uploadRooms/download"><i
+                        class="bi bi-download"></i></a>
+            </h2>
+
+            <div class="mb-3">
+                <label for="fileInputRoom" class="form-label">Upload File <span class="text-danger">*</span></label>
+                <input type="file" id="fileInputRoom" class="form-control" accept=".xlsx">
+                <!-- Accept specific file types -->
+            </div>
+
+            <div class="progress-bar">
+                <div class="custom-progress" id="progress-multi-room">
+                </div>
+            </div>
+
+            <button type="button" id="upload-room-btn" class="modal-button">
+                <i class="bi bi-upload"></i> Upload
+            </button>
+        </div>
     </div>
 
     <!-- Modal Structure -->
@@ -1218,11 +1261,41 @@
 
             <input type="hidden" id="selected-room-for-key" name="selectedRoomForKey">
 
-            <button type="submit" id="add-room-btn" class="modal-button">
-                <i class="bi bi-plus-circle"></i> Add key
-            </button>
+            <div class="button-container">
+                <button type="submit" id="add-room-btn" class="modal-button">
+                    <i class="bi bi-plus-circle"></i> Add key
+                </button>
+                <button type="button" id="confirmReportBtnAddMultiKeys" class="modal-button">
+                    <i class="bi bi-plus-circle"></i> Add multiple keys
+                </button>
+            </div>
 
         </form>
+    </div>
+
+    <div id="uploadKeyModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2>Add multiple keys <a id="template-download" href="/accommodation/uploadKeys/download"><i
+                        class="bi bi-download"></i></a>
+            </h2>
+
+            <div class="mb-3">
+                <label for="fileInputKey" class="form-label">Upload File <span class="text-danger">*</span></label>
+                <input type="file" id="fileInputKey" class="form-control" accept=".xlsx">
+                <!-- Accept specific file types -->
+            </div>
+
+            <div class="progress-bar">
+                <div class="custom-progress" id="progress-multi-key">
+                </div>
+            </div>
+
+            <button type="button" id="upload-key-btn" class="modal-button">
+                <i class="bi bi-upload"></i> Upload
+            </button>
+        </div>
     </div>
 
     <!-- Modal Structure -->
@@ -1266,7 +1339,7 @@
 
             <h2 class="mb-0">Additional items</h2>
 
-            <div class="d-flex justify-content-end">
+            <div id="groupNav" class="d-flex justify-content-end">
                 <button type="button" id="prevBtnTherd"></button>
                 <span id="pageNumberTherd"></span>
                 <button type="button" id="nextBtnTherd"></button>
@@ -1346,6 +1419,30 @@
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="releaseRoomsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2>Release multiple rooms <a href="/accommodation/multiReleaseRooms/download"><i
+                        class="bi bi-download"></i></a></h2>
+
+            <div class="mb-3">
+                <label for="fileInputReleaseRooms" class="form-label">Upload File <span class="text-danger">*</span></label>
+                <input type="file" id="fileInputReleaseRooms" class="form-control" accept=".xlsx">
+                <!-- Accept specific file types -->
+            </div>
+
+            <div class="progress-bar">
+                <div class="custom-progress" id="progress-multi-release-rooms">
+                </div>
+            </div>
+
+            <button type="button" id="upload-multi-release-rooms-btn" class="modal-button">
+                <i class="bi bi-upload"></i> Upload
+            </button>
         </div>
     </div>
 

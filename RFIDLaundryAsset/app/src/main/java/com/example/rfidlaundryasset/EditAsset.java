@@ -10,6 +10,7 @@ import android.view.KeyEvent;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.SpinnerAdapter;
@@ -73,9 +74,21 @@ public class EditAsset extends AppCompatActivity {
     private EditText assetQuantityText;
     private EditText assetMrahText;
     private EditText assetOwnerText;
-    private Spinner assetStatusText;
+    private EditText assetStatusText;
     private Spinner assetExpandableText;
+    private EditText assetServiceText;
     private EditText assetDescriptionText;
+    private EditText assetM2InsideText;
+    private CheckBox assetIsFixedCheckbox;
+    private EditText assetDatePurchaseText;
+    private EditText assetDateWrittenOffText;
+    private EditText assetPurchasePriceText;
+    private EditText assetCommentsText;
+    private EditText assetReplacedOffText;
+    private EditText assetReplacedByText;
+    private EditText assetYearOfLifeCycleText;
+    private EditText assetRestOfLifeCycleText;
+    private EditText assetRestValueText;
     private final ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
 
     private void fetchCsrfToken() {
@@ -130,10 +143,22 @@ public class EditAsset extends AppCompatActivity {
         assetEpcText = findViewById(R.id.epcTextView);
         assetCategoriesText = findViewById(R.id.assetCategoriesText);
         assetQuantityText = findViewById(R.id.assetQuantityText);
+        assetYearOfLifeCycleText = findViewById(R.id.assetYearOfLifeCycleText);
+        assetRestOfLifeCycleText = findViewById(R.id.assetRestOfLifeCycleText);
+        assetRestValueText = findViewById(R.id.assetRestValueText);
         assetMrahText = findViewById(R.id.assetMrahText);
         assetOwnerText = findViewById(R.id.assetOwnerText);
+        assetCommentsText = findViewById(R.id.assetCommentsText);
+        assetReplacedOffText = findViewById(R.id.assetReplacedOffText);
+        assetReplacedByText = findViewById(R.id.assetReplacedByText);
+        assetM2InsideText = findViewById(R.id.assetM2InsideText);
+        assetPurchasePriceText = findViewById(R.id.assetPurchasePriceText);
+        assetIsFixedCheckbox = findViewById(R.id.assetIsFixedCheckbox);
+        assetDatePurchaseText = findViewById(R.id.assetDatePurchaseText);
+        assetDateWrittenOffText = findViewById(R.id.assetDateWrittenOffText);
         assetStatusText = findViewById(R.id.assetStatusText);
         assetExpandableText = findViewById(R.id.assetExpandableText);
+        assetServiceText = findViewById(R.id.assetServiceText);
         assetDescriptionText = findViewById(R.id.assetDescriptionText);
 
         assetSubLocationText.setEnabled(false);
@@ -151,20 +176,6 @@ public class EditAsset extends AppCompatActivity {
         // Apply the adapter to the spinner
         assetExpandableText.setAdapter(adapter);
         assetExpandableText.setSelection(0);
-
-        // Create an ArrayAdapter using the string array and a default spinner layout
-        ArrayAdapter<CharSequence> adapter_status = ArrayAdapter.createFromResource(
-                this,
-                R.array.asset_status_options,
-                android.R.layout.simple_spinner_item
-        );
-
-        // Specify the layout to use when the list of choices appears
-        adapter_status.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-
-        // Apply the adapter to the spinner
-        assetStatusText.setAdapter(adapter_status);
-        assetStatusText.setSelection(0);
 
         // Fetch asset type from the server
         fetchAssetType();
@@ -203,10 +214,22 @@ public class EditAsset extends AppCompatActivity {
             String assetSubLocation = subLocationAssetId;
             String assetCategories = assetCategoriesText.getText().toString().trim();
             String assetQuantity = assetQuantityText.getText().toString().trim();
+            String assetYearOfLifeCycle = assetYearOfLifeCycleText.getText().toString().trim();
+            String assetRestOfLifeCycle = assetRestOfLifeCycleText.getText().toString().trim();
+            String assetRestValue = assetRestValueText.getText().toString().trim();
             String assetMrah = assetMrahText.getText().toString().trim();
             String assetOwner = assetOwnerText.getText().toString().trim();
-            String assetStatus = assetStatusText.getSelectedItem().toString();
+            String assetComments = assetCommentsText.getText().toString().trim();
+            String assetReplacedOff = assetReplacedOffText.getText().toString().trim();
+            String assetReplacedBy = assetReplacedByText.getText().toString().trim();
+            String assetM2Inside = assetM2InsideText.getText().toString().trim();
+            String assetPurchasePrice = assetPurchasePriceText.getText().toString().trim();
+            boolean assetIsFixed = assetIsFixedCheckbox.isChecked();
+            String assetDatePurchase = assetDatePurchaseText.getText().toString().trim();
+            String assetDateWrittenOff = assetDateWrittenOffText.getText().toString().trim();
+            String assetStatus = assetStatusText.getText().toString();
             String assetExpandable = assetExpandableText.getSelectedItem().toString();
+            String assetService = assetServiceText.getText().toString().trim();
             String assetDescription = assetDescriptionText.getText().toString().trim();
 
             // Validation
@@ -216,16 +239,25 @@ public class EditAsset extends AppCompatActivity {
             if (isValidText(assetType, "asset type")) return;
             if (isValidText(assetLocation, "asset location")) return;
             if (assetSubLocationText.isEnabled() && isValidText(assetSubLocation, "asset sub-location")) return;
-            if (isValidText(assetCategories, "asset category", "^[a-zA-Z\\s]+$")) return;
-            if (isValidText(assetQuantity, "asset quantity")) return;
-            if (isValidText(assetMrah, "asset MRAH", "^[a-zA-Z\\s]+$")) return;
-            if (isValidText(assetOwner, "asset owner", "^[a-zA-Z\\s]+$")) return;
-            if (isValidText(assetStatus, "asset status")) return;
-            if (isValidText(assetExpandable, "asset expandable")) return;
+            if (isValidText(assetCategories, "asset category", "^[a-zA-Z\\s]*$")) return;
+            if (isValidText(assetQuantity, "asset quantity", "^[1-9]*$")) return;
+            if (isValidText(assetYearOfLifeCycle, "asset year of life cycle", "^[1-9]*$")) return;
+            if (isValidText(assetRestOfLifeCycle, "asset rest of life cycle", "^[1-9]*$")) return;
+            if (isValidText(assetRestValue, "asset rest value", "^[1-9]*$")) return;
+            if (isValidText(assetMrah, "asset MRAH", "^[a-zA-Z\\s]*$")) return;
+            if (isValidText(assetOwner, "asset owner", "^[a-zA-Z\\s]*$")) return;
+            if (isValidText(assetComments, "asset comments", "^[a-zA-Z0-9\\s]*$")) return;
+            if (isValidText(assetReplacedOff, "asset replaced off", "^[a-zA-Z0-9\\s]*$")) return;
+            if (isValidText(assetReplacedBy, "asset replaced by", "^[a-zA-Z0-9\\s]*$")) return;
+            if (isValidText(assetM2Inside, "asset M2 inside", "^([0-9]+,[0-9]+)?$")) return;
+            if (isValidText(assetPurchasePrice, "asset purchase price", "^([0-9]+,[0-9]+)?$")) return;
+            if (isValidText(assetStatus, "asset status", "^[a-zA-Z0-9]*$")) return;
+            if (isValidText(assetExpandable, "asset expandable", "^[a-zA-Z0-9]*$")) return;
+            if (isValidText(assetService, "asset service", "^[a-zA-Z\\s]*$")) return;
             if (isValidText(assetDescription, "asset description", "^[a-zA-Z0-9\\s]*$")) return;
 
             // Send data to server
-            sendDataToServer(oldEpcCode, newEpcCode, assetCode, assetName, assetType, assetLocation, assetSubLocation, assetCategories, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription);
+            sendDataToServer(oldEpcCode, newEpcCode, assetCode, assetName, assetType, assetLocation, assetSubLocation, assetCategories, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetService, assetDescription, assetM2Inside, assetIsFixed, assetDatePurchase, assetDateWrittenOff, assetPurchasePrice, assetComments, assetReplacedOff, assetYearOfLifeCycle, assetRestOfLifeCycle, assetReplacedBy, assetRestValue);
         });
     }
 
@@ -240,10 +272,6 @@ public class EditAsset extends AppCompatActivity {
 
     // Overloaded helper method with regex validation
     private boolean isValidText(String input, String fieldName, String regex) {
-        if (input.isEmpty()) {
-            Toast.makeText(this, "Please enter/select " + fieldName + "!", Toast.LENGTH_SHORT).show();
-            return true;
-        }
         if (!input.matches(regex)) {
             Toast.makeText(this, fieldName + " must contain only valid characters!", Toast.LENGTH_SHORT).show();
             return true;
@@ -252,7 +280,7 @@ public class EditAsset extends AppCompatActivity {
     }
 
     // Method to send EPC to the server using the persistent OkHttpClient connection
-    private void sendDataToServer(String oldEpcCode, String newEpcCode, String assetCode, String assetName, String assetType, String assetLocation, String assetSubLocation, String assetCategories, String assetQuantity, String assetMrah, String assetOwner, String assetStatus, String assetExpandable, String assetDescription) {
+    private void sendDataToServer(String oldEpcCode, String newEpcCode, String assetCode, String assetName, String assetType, String assetLocation, String assetSubLocation, String assetCategories, String assetQuantity, String assetMrah, String assetOwner, String assetStatus, String assetExpandable, String assetService, String assetDescription, String assetM2Inside, boolean assetIsFixed, String assetDatePurchase, String assetDateWrittenOff, String assetPurchasePrice, String assetComments, String assetReplacedOff, String assetYearOfLifeCycle, String assetRestOfLifeCycle, String assetReplacedBy, String assetRestValue) {
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(EditAsset.this);
@@ -279,7 +307,19 @@ public class EditAsset extends AppCompatActivity {
                 payload.put("owner", assetOwner);
                 payload.put("status", assetStatus);
                 payload.put("expandable", assetExpandable);
+                payload.put("service", assetService);
                 payload.put("description", assetDescription);
+                payload.put("m2Inside", assetM2Inside);
+                payload.put("isFixed", assetIsFixed);
+                payload.put("datePurchase", assetDatePurchase);
+                payload.put("dateWrittenOff", assetDateWrittenOff);
+                payload.put("purchasePrice", assetPurchasePrice);
+                payload.put("comments", assetComments);
+                payload.put("replacedOff", assetReplacedOff);
+                payload.put("yearOfLifeCycle", assetYearOfLifeCycle);
+                payload.put("restOfLifeCycle", assetRestOfLifeCycle);
+                payload.put("replacedBy", assetReplacedBy);
+                payload.put("restValue", assetRestValue);
                 payload.put("campId", GlobalVariable.getCamp(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
@@ -732,18 +772,30 @@ public class EditAsset extends AppCompatActivity {
 
             try {
                 // Extract data from the selected asset details
-                String assetName = selectedAssetDetails.optString("name_assets", "N/A");
-                String assetTypeName = selectedAssetDetails.optString("type_name", "N/A");
-                String assetLocationName = selectedAssetDetails.optString("location_name", "N/A");
-                String assetSubLocationName = selectedAssetDetails.optString("sub_location_name", "N/A");
-                String assetEPC = selectedAssetDetails.optString("id", "N/A");
-                String assetCategory = selectedAssetDetails.optString("categorie", "N/A");
-                String assetQuantity = selectedAssetDetails.optString("quantity", "N/A");
-                String assetMrah = selectedAssetDetails.optString("mrah", "N/A");
-                String assetOwner = selectedAssetDetails.optString("owner", "N/A");
-                String assetStatus = selectedAssetDetails.optString("status", "N/A");
-                String assetExpandable = selectedAssetDetails.optString("expandable", "N/A");
-                String assetDescription = selectedAssetDetails.optString("description", "N/A");
+                String assetName = selectedAssetDetails.optString("name_assets", "");
+                String assetTypeName = selectedAssetDetails.optString("type_name", "");
+                String assetLocationName = selectedAssetDetails.optString("location_name", "");
+                String assetSubLocationName = selectedAssetDetails.optString("sub_location_name", "");
+                String assetEPC = selectedAssetDetails.optString("id", "");
+                String assetCategory = selectedAssetDetails.optString("categorie", "");
+                String assetQuantity = selectedAssetDetails.optString("quantity", "");
+                String assetYearOfLifeCycle = selectedAssetDetails.optString("year_of_life_cycle", "");
+                String assetRestOfLifeCycle = selectedAssetDetails.optString("rest_of_life_cycle", "");
+                String assetRestValue = selectedAssetDetails.optString("rest_value", "");
+                String assetMrah = selectedAssetDetails.optString("mrah", "");
+                String assetOwner = selectedAssetDetails.optString("owner", "");
+                String assetComments = selectedAssetDetails.optString("comments", "");
+                String assetReplacedOff = selectedAssetDetails.optString("replaced_off", "");
+                String assetReplacedBy = selectedAssetDetails.optString("replaced_by", "");
+                String assetM2Inside = selectedAssetDetails.optString("m2_inside", "");
+                String assetPurchasePrice = selectedAssetDetails.optString("purchase_price", "");
+                boolean assetIsFixed = selectedAssetDetails.optBoolean("is_fixed");
+                String assetDatePurchase = selectedAssetDetails.optString("date_purchase", "");
+                String assetDateWrittenOff = selectedAssetDetails.optString("date_written_off", "");
+                String assetStatus = selectedAssetDetails.optString("status", "");
+                String assetExpandable = selectedAssetDetails.optString("expandable", "");
+                String assetService = selectedAssetDetails.optString("service", "");
+                String assetDescription = selectedAssetDetails.optString("description", "");
 
                 // Update UI fields
                 assetNameText.setText(assetName);
@@ -756,18 +808,19 @@ public class EditAsset extends AppCompatActivity {
                 assetQuantityText.setText(assetQuantity);
                 assetMrahText.setText(assetMrah);
                 assetOwnerText.setText(assetOwner);
-
-                SpinnerAdapter rawAdapter = assetStatusText.getAdapter();
-                if (rawAdapter instanceof ArrayAdapter<?>) {
-                    @SuppressWarnings("unchecked")
-                    ArrayAdapter<String> adapterSpinnerStatus = (ArrayAdapter<String>) rawAdapter;
-
-                    // Now you can safely use adapterSpinnerStatus
-                    int positionStatus = adapterSpinnerStatus.getPosition(assetStatus);
-                    assetStatusText.setSelection(positionStatus);
-                } else {
-                    Log.w("EditAsset", "Unexpected adapter type for assetStatusText");
-                }
+                assetCommentsText.setText(assetComments);
+                assetReplacedOffText.setText(assetReplacedOff);
+                assetReplacedByText.setText(assetReplacedBy);
+                assetM2InsideText.setText(assetM2Inside);
+                assetPurchasePriceText.setText(assetPurchasePrice);
+                assetIsFixedCheckbox.setChecked(assetIsFixed);
+                assetDatePurchaseText.setText(assetDatePurchase);
+                assetDateWrittenOffText.setText(assetDateWrittenOff);
+                assetStatusText.setText(assetStatus);
+                assetServiceText.setText(assetService);
+                assetYearOfLifeCycleText.setText(assetYearOfLifeCycle);
+                assetRestOfLifeCycleText.setText(assetRestOfLifeCycle);
+                assetRestValueText.setText(assetRestValue);
 
                 SpinnerAdapter rawAdapterExpandable = assetExpandableText.getAdapter();
                 if (rawAdapterExpandable instanceof ArrayAdapter<?>) {
