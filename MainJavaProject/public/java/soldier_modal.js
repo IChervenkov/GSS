@@ -2990,6 +2990,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
+            if(percentage >= 100)
+                loadingIndicator.style.display = 'flex';
         };
 
         updateProgressBar(0);
@@ -3013,10 +3015,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
                     closeAddMultiSoldierModal();
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
+                loadingIndicator.style.display = 'none';
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3037,6 +3041,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
+            loadingIndicator.style.display = 'none';
             closeAddMultiSoldierModal();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
@@ -3059,6 +3064,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
+            if(percentage >= 100)
+                loadingIndicator.style.display = 'flex';
         };
 
         updateProgressBar(0);
@@ -3082,10 +3089,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
                     closeModalAddMultiRoom();
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
+                loadingIndicator.style.display = 'none';
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3106,6 +3115,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
+            loadingIndicator.style.display = 'none';
             closeModalAddMultiRoom();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
@@ -3128,6 +3138,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
+            if(percentage >= 100)
+                loadingIndicator.style.display = 'flex';
         };
 
         updateProgressBar(0);
@@ -3151,10 +3163,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
                     closeModalAddMultiKey();
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
+                loadingIndicator.style.display = 'none';
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3175,6 +3189,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
+            loadingIndicator.style.display = 'none';
             closeModalAddMultiKey();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
@@ -3197,6 +3212,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
+            if(percentage >= 100)
+                loadingIndicator.style.display = 'flex';
         };
 
         updateProgressBar(0);
@@ -3220,10 +3237,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
                     closeReleaseRoomsModal();
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
+                loadingIndicator.style.display = 'none';
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3244,6 +3263,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
+            loadingIndicator.style.display = 'none';
             closeReleaseRoomsModal();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
@@ -3266,6 +3286,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
+            if(percentage >= 100)
+                loadingIndicator.style.display = 'flex';
         };
 
         updateProgressBar(0);
@@ -3289,10 +3311,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
                     closeUploadMultiSoldierModal();
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
+                loadingIndicator.style.display = 'none';
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
 
@@ -3322,6 +3346,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
+            loadingIndicator.style.display = 'none';
             closeUploadMultiSoldierModal();
             showGlobalMess("Error", "An unexpected error occurred.");
         };

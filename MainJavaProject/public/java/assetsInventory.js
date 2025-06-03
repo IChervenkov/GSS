@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', function () {
             allAsset = await responseBike.json(); // Store fetched bikes in the global variable
 
         } catch (error) {
-            console.log(error);
+            console.error(error);
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
@@ -3134,6 +3134,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
+            if(percentage >= 100)
+                loadingIndicator.style.display = 'flex';
         };
 
         updateProgressBar(0);
@@ -3157,10 +3159,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
                     closeAddMultiCleanItemModal();
                     showMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
+                loadingIndicator.style.display = 'none';
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3181,6 +3185,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
+            loadingIndicator.style.display = 'none';
             closeAddMultiCleanItemModal();
             showMess("Error", "An unexpected error occurred.");
         };
@@ -3203,6 +3208,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
+            if (percentage >= 100)
+                loadingIndicator.style.display = 'flex';
         };
 
         updateProgressBar(0);
@@ -3226,10 +3233,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
                     closeEditMultiAssetsModal();
                     showMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
+                loadingIndicator.style.display = 'none';
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3250,6 +3259,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
+            loadingIndicator.style.display = 'none';
             closeEditMultiAssetsModal();
             showMess("Error", "An unexpected error occurred.");
         };
@@ -3272,6 +3282,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
+            if (percentage >= 100)
+                loadingIndicator.style.display = 'flex';
         };
 
         updateProgressBar(0);
@@ -3295,10 +3307,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
                     closeAddMultiAssetsModal();
                     showMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
+                loadingIndicator.style.display = 'none';
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3308,7 +3322,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         } else if (error.type === 'Validation') {
                             closeAddMultiAssetsModal();
                             showMess("Error", `Invalid data in row with item code: ${error.row.assetCode}. Check the syntax of all columns in this row.`);
-                            console.log(error.details);
                         }
                     });
                 } else {
@@ -3320,6 +3333,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
+            loadingIndicator.style.display = 'none';
             closeAddMultiAssetsModal();
             showMess("Error", "An unexpected error occurred.");
         };

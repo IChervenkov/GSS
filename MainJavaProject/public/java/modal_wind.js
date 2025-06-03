@@ -2354,6 +2354,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
+            if(percentage >= 100)
+                loadingIndicator.style.display = 'flex';
         };
 
         updateProgressBar(0);
@@ -2377,6 +2379,7 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
                     document.getElementById("progress-multi-bike").style.width = 0 + "%";
                     document.getElementById('fileInputBike').value = '';
                     closeModal(modalAddMultiBike, modalAddMultiBikeContent);
@@ -2387,6 +2390,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } else {
 
+                loadingIndicator.style.display = 'none';
                 const data = JSON.parse(xhr.responseText);
 
                 if (data.errors) {
@@ -2422,6 +2426,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
+            loadingIndicator.style.display = 'none';
             document.getElementById("progress-multi-bike").style.width = 0 + "%";
             document.getElementById('fileInputBike').value = '';
             closeModal(modalAddMultiBike, modalAddMultiBikeContent);
@@ -2457,6 +2462,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
+            if(percentage >= 100)
+                loadingIndicator.style.display = 'flex';
         };
 
         updateProgressBar(0);
@@ -2480,6 +2487,7 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
                     document.getElementById("progress-multi-helmet").style.width = 0 + "%";
                     document.getElementById('fileInputHelmet').value = '';
                     closeModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
@@ -2490,6 +2498,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } else {
 
+                loadingIndicator.style.display = 'none';
                 const data = JSON.parse(xhr.responseText);
 
                 if (data.errors) {
@@ -2525,6 +2534,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         xhr.onerror = function () {
             console.error('Error:', xhr.statusText);
+            loadingIndicator.style.display = 'none';
             document.getElementById("progress-multi-helemet").style.width = 0 + "%";
             document.getElementById('fileInputHelmet').value = '';
             closeModal(modalAddMultiHelmet, modalAddMultiHelmetContent);

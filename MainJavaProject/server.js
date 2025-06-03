@@ -7894,7 +7894,7 @@ class Server {
                 await client.query('BEGIN');
 
                 const result_asset_quantity = await client.query(`SELECT quantity FROM assets WHERE id = $1;`, [assetId]);
-                const asset_quantity = result_asset_quantity.rows[0].quantity;
+                const asset_quantity = Number(result_asset_quantity.rows[0].quantity);
 
                 if (assetSubLocation !== '') {
                     await client.query(`UPDATE assets SET 
@@ -7934,29 +7934,71 @@ class Server {
                     );
                 }
 
+                const result_into = await client.query(`SELECT * FROM assets WHERE id = $1;`, [assetId]);
+                const new_quantity = Number(assetQuantity);
+                const item_into = result_into.rows[0];
+
                 const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [req.session.camp]);
+
+                const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE item_id = $1;`, [item_into.id]);
 
                 const queries = [];
 
                 if (result_exist_date.rows.length > 0) {
-                    if (asset_quantity === assetQuantity)
-                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [assetQuantity, req.session.camp]));
+                    if (asset_quantity === new_quantity)
+                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [new_quantity, req.session.camp]));
 
-                    else if (asset_quantity > assetQuantity)
-                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [asset_quantity - assetQuantity, req.session.camp]));
+                    else if (asset_quantity > new_quantity) {
+                        const lostQuantity = asset_quantity - new_quantity;
+                        queries.push(client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [lostQuantity, req.session.camp]));
 
-                    else
-                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [assetQuantity - asset_quantity, req.session.camp]));
+                        if (get_exist_lost_item.rows.length > 0) {
+                            queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE item_id = $2;`, [lostQuantity, item_into.id]));
+                        } else {
+                            queries.push(client.query(`INSERT INTO lostitem VALUES (
+                            (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
+                                [
+                                    item_into.code, 'Remove by editing', lostQuantity, item_into.id,
+                                    item_into.name_assets, item_into.type_id, item_into.location_room, item_into.location_key,
+                                    item_into.categorie, item_into.mrah, item_into.asset_owner, item_into.status,
+                                    item_into.expandable, item_into.description, item_into.camp_id, item_into.create_date,
+                                    item_into.last_inventory_date, item_into.service, item_into.m2_inside, item_into.is_fixed,
+                                    item_into.date_purchase, item_into.date_written_off, item_into.purchase_price, item_into.comments,
+                                    item_into.replaced_off, item_into.year_of_life_cycle, item_into.rest_of_life_cycle, item_into.replaced_by,
+                                    item_into.rest_value
+                                ]));
+                        }
+                    } else
+                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [new_quantity - asset_quantity, req.session.camp]));
 
                 } else {
-                    if (asset_quantity === assetQuantity)
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1, $2);`, [assetQuantity, req.session.camp]));
+                    if (asset_quantity === new_quantity)
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1, $2);`, [new_quantity, req.session.camp]));
 
-                    else if (asset_quantity > assetQuantity)
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [asset_quantity - assetQuantity, req.session.camp]));
+                    else if (asset_quantity > new_quantity) {
+                        const lostQuantity = asset_quantity - new_quantity;
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0, $2);`, [lostQuantity, req.session.camp]));
+
+                        if (get_exist_lost_item.rows.length > 0) {
+                            queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE item_id = $2;`, [lostQuantity, item_into.id]));
+                        } else {
+                            queries.push(client.query(`INSERT INTO lostitem VALUES (
+                            (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
+                                [
+                                    item_into.code, 'Remove by editing', lostQuantity, item_into.id,
+                                    item_into.name_assets, item_into.type_id, item_into.location_room, item_into.location_key,
+                                    item_into.categorie, item_into.mrah, item_into.asset_owner, item_into.status,
+                                    item_into.expandable, item_into.description, item_into.camp_id, item_into.create_date,
+                                    item_into.last_inventory_date, item_into.service, item_into.m2_inside, item_into.is_fixed,
+                                    item_into.date_purchase, item_into.date_written_off, item_into.purchase_price, item_into.comments,
+                                    item_into.replaced_off, item_into.year_of_life_cycle, item_into.rest_of_life_cycle, item_into.replaced_by,
+                                    item_into.rest_value
+                                ]));
+                        }
+                    }
 
                     else
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [assetQuantity - asset_quantity, req.session.camp]));
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [new_quantity - asset_quantity, req.session.camp]));
                 }
 
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -8002,7 +8044,8 @@ class Server {
                 await client.query('BEGIN');
 
                 const result_asset_quantity = await client.query(`SELECT * FROM assets WHERE id = $1;`, [oldCode]);
-                const asset_quantity = result_asset_quantity.rows[0].quantity;
+                const asset_quantity = Number(result_asset_quantity.rows[0].quantity);
+                const new_quantity = Number(quantity);
                 const oldCampId = result_asset_quantity.rows[0].camp_id;
                 const inventory_status = result_asset_quantity.rows[0].inventory_status;
                 const create_date = result_asset_quantity.rows[0].create_date;
@@ -8079,6 +8122,8 @@ class Server {
                         );
                     }
 
+                    await client.query(`UPDATE lostitem SET item_id = $1 WHERE item_id = $2`, [newCode, oldCode])
+
                     await client.query(`DELETE FROM assets WHERE id = $1`,
                         [oldCode]
                     );
@@ -8086,27 +8131,51 @@ class Server {
 
                 const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [campId]);
 
+                const result_asset = await client.query(`SELECT * FROM assets WHERE id = $1;`, [newCode]);
+                const item_into = result_asset
+
+                const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE item_id = $1;`, [item_into.id]);
+
                 const queries = [];
 
                 if (result_exist_date.rows.length > 0) {
-                    if (asset_quantity === quantity)
-                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [quantity, campId]));
+                    if (asset_quantity === new_quantity)
+                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [new_quantity, campId]));
 
-                    else if (asset_quantity > quantity)
-                        queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [asset_quantity - quantity, campId]));
+                    else if (asset_quantity > new_quantity) {
+                        const lostQuantity = asset_quantity - new_quantity;
+                        queries.push(client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [lostQuantity, campId]));
+
+                        if (get_exist_lost_item.rows.length > 0) {
+                            queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE item_id = $2;`, [lostQuantity, item_into.id]));
+                        } else {
+                            queries.push(client.query(`INSERT INTO lostitem VALUES (
+                            (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
+                                [
+                                    item_into.code, 'Remove by editing', lostQuantity, item_into.id,
+                                    item_into.name_assets, item_into.type_id, item_into.location_room, item_into.location_key,
+                                    item_into.categorie, item_into.mrah, item_into.asset_owner, item_into.status,
+                                    item_into.expandable, item_into.description, item_into.camp_id, item_into.create_date,
+                                    item_into.last_inventory_date, item_into.service, item_into.m2_inside, item_into.is_fixed,
+                                    item_into.date_purchase, item_into.date_written_off, item_into.purchase_price, item_into.comments,
+                                    item_into.replaced_off, item_into.year_of_life_cycle, item_into.rest_of_life_cycle, item_into.replaced_by,
+                                    item_into.rest_value
+                                ]));
+                        }
+                    }
 
                     else
-                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [quantity - asset_quantity, campId]));
+                        queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [new_quantity - asset_quantity, campId]));
 
                 } else {
-                    if (asset_quantity === quantity)
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1, $2);`, [quantity, campId]));
+                    if (asset_quantity === new_quantity)
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, $1, $2);`, [new_quantity, campId]));
 
-                    else if (asset_quantity > quantity)
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [asset_quantity - quantity, campId]));
+                    else if (asset_quantity > new_quantity)
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0, $2);`, [asset_quantity - new_quantity, campId]));
 
                     else
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [quantity - asset_quantity, campId]));
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [new_quantity - asset_quantity, campId]));
                 }
 
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -8409,12 +8478,12 @@ class Server {
                 const result = await client.query(`SELECT * FROM assets WHERE code = $1 AND camp_id = $2;`, [itemName, req.session.camp]);
                 const item_into = result.rows[0];
 
-                const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE nameitem = $1 AND camp_id = $2;`, [itemName, req.session.camp]);
+                const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE item_id = $1;`, [item_into.id]);
 
                 const queries = [];
 
                 if (get_exist_lost_item.rows.length > 0) {
-                    queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2 AND camp_id = $3;`, [lostQuantity, itemName, req.session.camp]));
+                    queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE item_id = $2;`, [lostQuantity, item_into.id]));
                 } else {
                     queries.push(client.query(`INSERT INTO lostitem VALUES (
                         (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
@@ -8430,20 +8499,21 @@ class Server {
                         ]));
                 }
 
-                const asset_quantity = result.rows[0].quantity;
+                const asset_quantity = Number(result.rows[0].quantity);
+                const lost_quantity = Number(lostQuantity);
                 const asset_id = result.rows[0].id;
 
                 const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [req.session.camp]);
 
                 if (result.rows.length > 0) {
                     if (result_exist_date.rows.length > 0) {
-                        queries.push(client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [lostQuantity, req.session.camp]));
+                        queries.push(client.query(`UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [lost_quantity, req.session.camp]));
                     } else {
-                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0, $2);`, [lostQuantity, req.session.camp]));
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0, $2);`, [lost_quantity, req.session.camp]));
                     }
 
-                    if (asset_quantity - lostQuantity > 0) {
-                        queries.push(client.query(`UPDATE assets SET quantity = quantity::NUMERIC - $1 WHERE id = $2`, [lostQuantity, asset_id]));
+                    if (asset_quantity - lost_quantity > 0) {
+                        queries.push(client.query(`UPDATE assets SET quantity = quantity::NUMERIC - $1 WHERE id = $2`, [lost_quantity, asset_id]));
                     } else {
                         queries.push(client.query(`DELETE FROM assets WHERE id = $1`, [asset_id]));
                     }
@@ -9297,7 +9367,7 @@ class Server {
                 const queries = [];
 
                 const assetQuantity = await client.query(`SELECT quantity FROM assets WHERE id = $1`, [id]);
-                const asset_quantity = assetQuantity.rows[0].quantity;
+                const asset_quantity = Number(assetQuantity.rows[0].quantity);
 
                 if (newQuantity === asset_quantity) {
                     await client.query(`UPDATE assets SET inventory_status = 'discovered', last_inventory_date = CURRENT_TIMESTAMP WHERE id = $1`, [id]);
@@ -9305,15 +9375,15 @@ class Server {
                     return res.status(200).json({ message: 'The asset quantity was successfully update' });
                 }
 
-                const result = await client.query(`SELECT * FROM assets WHERE id = $1 AND camp_id = $2;`, [id, campId]);
+                const result = await client.query(`SELECT * FROM assets WHERE id = $1;`, [id]);
                 const item_into = result.rows[0];
 
-                const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE nameitem = $1 AND camp_id = $2;`, [item_into.code, campId]);
+                const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE item_id = $1;`, [item_into.id]);
 
                 if (newQuantity === 0) {
 
                     if (get_exist_lost_item.rows.length > 0) {
-                        queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2 AND camp_id = $3;`, [asset_quantity, item_into.code, campId]));
+                        queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE item_id = $2;`, [asset_quantity, item_into.id]));
                     } else {
                         queries.push(client.query(`INSERT INTO lostitem VALUES (
                         (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
@@ -9342,7 +9412,7 @@ class Server {
                     const quantityRemoved = asset_quantity - newQuantity;
 
                     if (get_exist_lost_item.rows.length > 0) {
-                        queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE nameitem = $2 AND camp_id = $3;`, [quantityRemoved, item_into.code, campId]));
+                        queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE item_id = $2;`, [quantityRemoved, item_into.id]));
                     } else {
                         queries.push(client.query(`INSERT INTO lostitem VALUES (
                         (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
@@ -9763,6 +9833,7 @@ class Server {
                 );
 
                 let hasActionRow = result_exist_date.rows.length > 0;
+
                 const query = [];
 
                 data.map(async (row) => {
@@ -9883,6 +9954,12 @@ class Server {
                     const asset_quantity = Number(old.quantity);
                     const current_quantity = Number(quantity);
 
+                    const result = await client.query(`SELECT * FROM assets WHERE id = $1;`, [id]);
+                    const item_into = result.rows[0];
+
+                    const result_exist_lost_date = await client.query(`SELECT * FROM lostitem WHERE item_id = $1;`, [id]);
+                    const hasActionLostRow = result_exist_lost_date.rows.length > 0;
+
                     if (hasActionRow) {
                         if (asset_quantity === current_quantity) {
                             query.push(client.query(
@@ -9890,10 +9967,29 @@ class Server {
                                 [current_quantity, req.session.camp]
                             ));
                         } else if (asset_quantity > current_quantity) {
+                            const lostQuantity = asset_quantity - current_quantity;
+
                             query.push(client.query(
-                                `UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`,
-                                [asset_quantity - current_quantity, req.session.camp]
+                                `UPDATE asset_actions SET change_lost_asset_quantity = change_lost_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`,
+                                [lostQuantity, req.session.camp]
                             ));
+
+                            if (hasActionLostRow > 0) {
+                                query.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE item_id = $2;`, [lostQuantity, id]));
+                            } else {
+                                query.push(client.query(`INSERT INTO lostitem VALUES (
+                                (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
+                                    [
+                                        item_into.code, 'Remove by editing', lostQuantity, item_into.id,
+                                        item_into.name_assets, item_into.type_id, item_into.location_room, item_into.location_key,
+                                        item_into.categorie, item_into.mrah, item_into.asset_owner, item_into.status,
+                                        item_into.expandable, item_into.description, item_into.camp_id, item_into.create_date,
+                                        item_into.last_inventory_date, item_into.service, item_into.m2_inside, item_into.is_fixed,
+                                        item_into.date_purchase, item_into.date_written_off, item_into.purchase_price, item_into.comments,
+                                        item_into.replaced_off, item_into.year_of_life_cycle, item_into.rest_of_life_cycle, item_into.replaced_by,
+                                        item_into.rest_value
+                                    ]));
+                            }
                         } else {
                             query.push(client.query(
                                 `UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`,
@@ -9907,10 +10003,29 @@ class Server {
                                 [current_quantity, req.session.camp]
                             ));
                         } else if (asset_quantity > current_quantity) {
+                            const lostQuantity = asset_quantity - current_quantity;
+
                             query.push(client.query(
-                                `INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`,
-                                [asset_quantity - current_quantity, req.session.camp]
+                                `INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0, $2);`,
+                                [lostQuantity, req.session.camp]
                             ));
+
+                            if (hasActionLostRow > 0) {
+                                query.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC + $1 WHERE item_id = $2;`, [lostQuantity, id]));
+                            } else {
+                                query.push(client.query(`INSERT INTO lostitem VALUES (
+                                (SELECT COALESCE(MAX(id)::integer, 0) + 1 FROM lostitem), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29);`,
+                                    [
+                                        item_into.code, 'Remove by editing', lostQuantity, item_into.id,
+                                        item_into.name_assets, item_into.type_id, item_into.location_room, item_into.location_key,
+                                        item_into.categorie, item_into.mrah, item_into.asset_owner, item_into.status,
+                                        item_into.expandable, item_into.description, item_into.camp_id, item_into.create_date,
+                                        item_into.last_inventory_date, item_into.service, item_into.m2_inside, item_into.is_fixed,
+                                        item_into.date_purchase, item_into.date_written_off, item_into.purchase_price, item_into.comments,
+                                        item_into.replaced_off, item_into.year_of_life_cycle, item_into.rest_of_life_cycle, item_into.replaced_by,
+                                        item_into.rest_value
+                                    ]));
+                            }
                         } else {
                             query.push(client.query(
                                 `INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`,
