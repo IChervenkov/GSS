@@ -23,7 +23,6 @@ import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.rscja.deviceapi.RFIDWithUHFUART;
@@ -48,8 +47,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import okhttp3.Call;
-import okhttp3.Callback;
 import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -400,22 +397,11 @@ public class Inventory extends AppCompatActivity {
         loadingDialog.show();
 
         String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/getInventoryLocation?isValidCode=" + GlobalVariable.getVariable(this) + "&campId=" + GlobalVariable.getCamp(this))
-                .build();
+        String url = baseUrl + "/getInventoryLocation?isValidCode=" + GlobalVariable.getVariable(this) + "&campId=" + GlobalVariable.getCamp(this);
 
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(Inventory.this, "Error fetching location: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                loadingDialog.dismiss();
+        executorService.execute(() -> {
+            Request request = new Request.Builder().url(url).build();
+            try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful() && response.body() != null) {
                     String responseData = response.body().string();
                     runOnUiThread(() -> {
@@ -424,13 +410,21 @@ public class Inventory extends AppCompatActivity {
                         } catch (JSONException e) {
                             Log.e("Inventory", "Error: " + e.getMessage());
                             Toast.makeText(Inventory.this, "JSON Parsing Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        } finally {
+                            loadingDialog.dismiss();
                         }
                     });
                 } else {
-                    runOnUiThread(() ->
-                            Toast.makeText(Inventory.this, "Error fetching inventory data, code: " + response.code(), Toast.LENGTH_SHORT).show()
-                    );
+                    runOnUiThread(() -> {
+                        loadingDialog.dismiss();
+                        Toast.makeText(Inventory.this, "Error fetching inventory data, code: " + response.code(), Toast.LENGTH_SHORT).show();
+                    });
                 }
+            } catch (IOException e) {
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    Toast.makeText(Inventory.this, "Error fetching location: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
             }
         });
     }
@@ -455,9 +449,9 @@ public class Inventory extends AppCompatActivity {
     private void loadAssetData(String locationId) {
 
         String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/assets/getSortedAssets?numRoom=" + locationId + "&campId=" + GlobalVariable.getCamp(this) + "&isValidCode=" + GlobalVariable.getVariable(this))
-                .build();
+        String url = baseUrl + "/assets/getSortedAssets?numRoom=" + locationId
+                + "&campId=" + GlobalVariable.getCamp(this)
+                + "&isValidCode=" + GlobalVariable.getVariable(this);
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(Inventory.this);
@@ -466,36 +460,36 @@ public class Inventory extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+        executorService.execute(() -> {
+            Request request = new Request.Builder().url(url).build();
+            try (Response response = client.newCall(request).execute()) {
+                String responseData = response.body() != null ? response.body().string() : "";
+
+                if (response.isSuccessful() && !responseData.isEmpty()) {
+                    try {
+                        JSONArray assetsArray = new JSONArray(responseData);
+                        runOnUiThread(() -> {
+                            loadingDialog.dismiss();
+                            updateTableLayout(assetsArray);
+                        });
+                    } catch (JSONException e) {
+                        Log.e("Inventory", "Error: " + e.getMessage());
+                        runOnUiThread(() -> {
+                            loadingDialog.dismiss();
+                            Toast.makeText(Inventory.this, "Error parsing data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                } else {
+                    runOnUiThread(() -> {
+                        loadingDialog.dismiss();
+                        Toast.makeText(Inventory.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show();
+                    });
+                }
+            } catch (IOException e) {
                 runOnUiThread(() -> {
                     loadingDialog.dismiss();
                     Toast.makeText(Inventory.this, "Error fetching data from server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-
-                runOnUiThread(loadingDialog::dismiss);
-
-                if (response.isSuccessful() && response.body() != null) {
-                    String responseData = response.body().string();
-                    try {
-                        JSONArray assetsArray = new JSONArray(responseData);
-                        runOnUiThread(() -> updateTableLayout(assetsArray));
-                    } catch (JSONException e) {
-                        Log.e("Inventory", "Error: " + e.getMessage());
-                        runOnUiThread(() ->
-                                Toast.makeText(Inventory.this, "Error parsing data: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                        );
-                    }
-                } else {
-                    runOnUiThread(() ->
-                            Toast.makeText(Inventory.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show()
-                    );
-                }
             }
         });
     }
@@ -503,9 +497,8 @@ public class Inventory extends AppCompatActivity {
     private void updateAdditionalAssetTable(String epc) {
 
         String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/getDataForAdditionalAsset?assetId=" + epc + "&isValidCode=" + GlobalVariable.getVariable(this))
-                .build();
+        String url = baseUrl + "/getDataForAdditionalAsset?assetId=" + epc
+                + "&isValidCode=" + GlobalVariable.getVariable(this);
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(Inventory.this);
@@ -514,41 +507,42 @@ public class Inventory extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(Inventory.this, "Error fetching additional asset data from server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-            }
+        executorService.execute(() -> {
+            Request request = new Request.Builder().url(url).build();
+            try (Response response = client.newCall(request).execute()) {
+                String responseData = response.body() != null ? response.body().string() : "";
 
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-
-                runOnUiThread(loadingDialog::dismiss);
-
-                if (response.isSuccessful() && response.body() != null) {
-                    String responseData = response.body().string();
+                if (response.isSuccessful() && !responseData.isEmpty()) {
                     try {
                         JSONObject newObject = new JSONObject(responseData);
 
                         synchronized (additionalAssetsArrayList) {
-                            additionalAssetsArrayList.add(newObject); // Add to the list
+                            additionalAssetsArrayList.add(newObject);
                         }
 
-                        runOnUiThread(() -> updateAdditionalTableLayout(additionalAssetsArrayList)); // Optionally update UI with this batch
+                        runOnUiThread(() -> {
+                            loadingDialog.dismiss();
+                            updateAdditionalTableLayout(additionalAssetsArrayList);
+                        });
+
                     } catch (JSONException e) {
-                        Log.e("Inventory", "Error: " + e.getMessage());
-                        runOnUiThread(() ->
-                                Toast.makeText(Inventory.this, "Error parsing data: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                        );
+                        Log.e("Inventory", "JSON Error: " + e.getMessage());
+                        runOnUiThread(() -> {
+                            loadingDialog.dismiss();
+                            Toast.makeText(Inventory.this, "Error parsing data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        });
                     }
                 } else {
-                    runOnUiThread(() ->
-                            Toast.makeText(Inventory.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show()
-                    );
+                    runOnUiThread(() -> {
+                        loadingDialog.dismiss();
+                        Toast.makeText(Inventory.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show();
+                    });
                 }
+            } catch (IOException e) {
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    Toast.makeText(Inventory.this, "Error fetching additional asset data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
             }
         });
     }
@@ -687,34 +681,29 @@ public class Inventory extends AppCompatActivity {
     }
 
     private void updateAdditionalAssetLocation(String assetId, String locationId) {
-        try {
+        executorService.execute(() -> {
+            try {
+                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+                JSONObject payload = new JSONObject();
+                payload.put("id", assetId);
+                payload.put("locationId", locationId);
+                payload.put("username", GlobalVariable.getUsername(this));
+                payload.put("isValidCode", GlobalVariable.getVariable(this));
+                payload.put("campId", GlobalVariable.getCamp(this));
 
-            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-            JSONObject payload = new JSONObject();
-            payload.put("id", assetId);
-            payload.put("locationId", locationId);
-            payload.put("isValidCode", GlobalVariable.getVariable(this));
-            payload.put("campId", GlobalVariable.getCamp(this));
+                RequestBody body = RequestBody.create(payload.toString(), JSON);
+                String baseUrl = getString(R.string.base_url);
+                Request request = new Request.Builder()
+                        .url(baseUrl + "/updateAssetLocation")
+                        .addHeader("X-CSRF-Token", csrfToken)
+                        .post(body)
+                        .build();
 
-            RequestBody body = RequestBody.create(payload.toString(), JSON);
-            String baseUrl = getString(R.string.base_url);
-            Request request = new Request.Builder()
-                    .url(baseUrl + "/updateAssetLocation")
-                    .addHeader("X-CSRF-Token", csrfToken)
-                    .post(body)
-                    .build();
-
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    runOnUiThread(() -> Toast.makeText(Inventory.this, "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-                }
-
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try (Response response = client.newCall(request).execute()) {
                     if (response.isSuccessful()) {
                         runOnUiThread(() -> {
                             loadAssetData(curentLocation);
+
                             synchronized (additionalAssetsArrayList) {
                                 for (int i = 0; i < additionalAssetsArrayList.size(); i++) {
                                     JSONObject obj = additionalAssetsArrayList.get(i);
@@ -724,19 +713,21 @@ public class Inventory extends AppCompatActivity {
                                     }
                                 }
 
-                                runOnUiThread(() -> updateAdditionalTableLayout(new ArrayList<>(additionalAssetsArrayList)));
+                                updateAdditionalTableLayout(new ArrayList<>(additionalAssetsArrayList));
                             }
                         });
                     } else {
                         runOnUiThread(() -> Toast.makeText(Inventory.this, "Cannot update location of this asset", Toast.LENGTH_SHORT).show());
                     }
+                } catch (IOException e) {
+                    runOnUiThread(() -> Toast.makeText(Inventory.this, "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
                 }
-            });
 
-        } catch (Exception e) {
-            Log.e("Inventory", "Error: " + e.getMessage());
-            Toast.makeText(this, "Error updating asset location: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
+            } catch (Exception e) {
+                Log.e("Inventory", "Error: " + e.getMessage());
+                runOnUiThread(() -> Toast.makeText(this, "Error updating asset location: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
     @SuppressLint("SetTextI18n")
@@ -891,42 +882,38 @@ public class Inventory extends AppCompatActivity {
     }
 
     private void EditQuantity(String newQuantity, String assetId) {
-        try {
+        executorService.execute(() -> {
+            try {
+                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+                JSONObject payload = new JSONObject();
+                payload.put("id", assetId);
+                payload.put("newQuantity", newQuantity);
+                payload.put("username", GlobalVariable.getUsername(this));
+                payload.put("isValidCode", GlobalVariable.getVariable(this));
+                payload.put("campId", GlobalVariable.getCamp(this));
 
-            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-            JSONObject payload = new JSONObject();
-            payload.put("id", assetId);
-            payload.put("newQuantity", newQuantity);
-            payload.put("isValidCode", GlobalVariable.getVariable(this));
-            payload.put("campId", GlobalVariable.getCamp(this));
+                RequestBody body = RequestBody.create(payload.toString(), JSON);
+                String baseUrl = getString(R.string.base_url);
+                Request request = new Request.Builder()
+                        .url(baseUrl + "/updateAssetQuantity")
+                        .addHeader("X-CSRF-Token", csrfToken)
+                        .post(body)
+                        .build();
 
-            RequestBody body = RequestBody.create(payload.toString(), JSON);
-            String baseUrl = getString(R.string.base_url);
-            Request request = new Request.Builder()
-                    .url(baseUrl + "/updateAssetQuantity")
-                    .addHeader("X-CSRF-Token", csrfToken)
-                    .post(body)
-                    .build();
-
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    runOnUiThread(() -> Toast.makeText(Inventory.this, "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-                }
-
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try (Response response = client.newCall(request).execute()) {
                     if (response.isSuccessful()) {
                         runOnUiThread(() -> loadAssetData(curentLocation));
                     } else {
                         runOnUiThread(() -> Toast.makeText(Inventory.this, "Cannot update quantity of this asset", Toast.LENGTH_SHORT).show());
                     }
+                } catch (IOException e) {
+                    runOnUiThread(() -> Toast.makeText(Inventory.this, "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
                 }
-            });
 
-        } catch (Exception e) {
-            Log.e("Inventory", "Error: " + e.getMessage());
-            Toast.makeText(this, "Error updating asset quantity: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
+            } catch (Exception e) {
+                Log.e("Inventory", "Error: " + e.getMessage());
+                runOnUiThread(() -> Toast.makeText(this, "Error updating asset quantity: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 }

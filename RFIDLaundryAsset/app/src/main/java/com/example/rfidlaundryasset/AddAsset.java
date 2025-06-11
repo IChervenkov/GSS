@@ -328,6 +328,7 @@ public class AddAsset extends AppCompatActivity {
                 payload.put("assetAddRestOfLifeCycle", restOfLifeCycle);
                 payload.put("assetAddReplacedBy", replacedBy);
                 payload.put("assetAddRestValue", restValue);
+                payload.put("username", GlobalVariable.getUsername(this));
                 payload.put("campId", GlobalVariable.getCamp(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 

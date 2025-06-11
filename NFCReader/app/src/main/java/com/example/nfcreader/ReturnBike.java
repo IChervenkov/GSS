@@ -272,6 +272,7 @@ public class ReturnBike extends AppCompatActivity {
             jsonData.put("nfcData", nfcData);
             jsonData.put("date", date);
             jsonData.put("time", time);
+            jsonData.put("username", GlobalVariable.getUsername(this));
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
         } catch (JSONException e) {
             Log.e("ReturnBike", "Error: " + e.getMessage());

@@ -15,6 +15,7 @@ public class GlobalVariable {
     private static final String PREF_NAME = "secure_app_preferences";
     private static final String KEY_DESTINATION = "destination";
     private static final String KEY_CAMP = "camp";
+    private static final String KEY_USERNAME = "username";
 
     private static SharedPreferences getEncryptedSharedPreferences(Context context)
             throws GeneralSecurityException, IOException {
@@ -67,6 +68,27 @@ public class GlobalVariable {
         try {
             SharedPreferences sharedPreferences = getEncryptedSharedPreferences(context);
             return sharedPreferences.getString(KEY_CAMP, "");
+        } catch (Exception e) {
+            Log.e("GlobalVariable", "Error: " + e.getMessage());
+            return "";
+        }
+    }
+
+    public static void saveUsername(Context context, String username) {
+        try {
+            SharedPreferences sharedPreferences = getEncryptedSharedPreferences(context);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putString(KEY_USERNAME, username);
+            editor.apply();
+        } catch (Exception e) {
+            Log.e("GlobalVariable", "Error: " + e.getMessage());
+        }
+    }
+
+    public static String getUsername(Context context) {
+        try {
+            SharedPreferences sharedPreferences = getEncryptedSharedPreferences(context);
+            return sharedPreferences.getString(KEY_USERNAME, "");
         } catch (Exception e) {
             Log.e("GlobalVariable", "Error: " + e.getMessage());
             return "";

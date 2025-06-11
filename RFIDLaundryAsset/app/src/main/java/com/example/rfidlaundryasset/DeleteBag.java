@@ -310,6 +310,7 @@ public class DeleteBag extends AppCompatActivity {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
                 payload.put("code", epc);
+                payload.put("username", GlobalVariable.getUsername(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
                 RequestBody body = RequestBody.create(payload.toString(), JSON);

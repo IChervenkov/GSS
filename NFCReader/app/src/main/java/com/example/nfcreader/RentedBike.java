@@ -84,9 +84,7 @@ public class RentedBike extends AppCompatActivity {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    Toast.makeText(RentedBike.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(() -> Toast.makeText(RentedBike.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
 
             @Override
@@ -489,6 +487,7 @@ public class RentedBike extends AppCompatActivity {
             jsonData.put("time", time);
             jsonData.put("selectClient", selectedClientId);
             jsonData.put("helmetId", nfcHelmetDate);
+            jsonData.put("username", GlobalVariable.getUsername(this));
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 
             RequestBody body = RequestBody.create(jsonData.toString(), JSON);

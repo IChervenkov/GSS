@@ -276,6 +276,14 @@ public class SettingsActivity extends AppCompatActivity {
         powerValueText = findViewById(R.id.powerValueText);
         Button saveButton = findViewById(R.id.saveButton);
         Button btnUpdate = findViewById(R.id.btnUpdate);
+        Button logOut = findViewById(R.id.btnLogOut);
+
+        logOut.setOnClickListener(v -> {
+            GlobalVariable.saveValidatationData(this, false);
+
+            Intent intent = new Intent(SettingsActivity.this, MainActivity.class);
+            startActivity(intent);
+        });
 
         btnUpdate.setOnClickListener(v -> checkForUpdate());
 

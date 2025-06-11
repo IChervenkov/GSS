@@ -265,6 +265,7 @@ public class RemoveBike extends AppCompatActivity {
         JSONObject jsonData = new JSONObject();
         try {
             jsonData.put("bikeRemoveId", nfcContent);
+            jsonData.put("username", GlobalVariable.getUsername(this));
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 
             RequestBody body = RequestBody.create(jsonData.toString(), JSON);
@@ -333,6 +334,7 @@ public class RemoveBike extends AppCompatActivity {
         JSONObject jsonData = new JSONObject();
         try {
             jsonData.put("code", nfcContent);
+            jsonData.put("username", GlobalVariable.getUsername(this));
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 
             RequestBody body = RequestBody.create(jsonData.toString(), JSON);

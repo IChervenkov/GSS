@@ -280,6 +280,7 @@ public class EditBike extends AppCompatActivity {
             jsonData.put("oldBikeId", oldNfcContent);
             jsonData.put("newBikeId", newNfcContent);
             jsonData.put("bikeName", bikeName);
+            jsonData.put("username", GlobalVariable.getCamp(this));
             jsonData.put("campId", GlobalVariable.getCamp(this));
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 
@@ -354,6 +355,7 @@ public class EditBike extends AppCompatActivity {
             jsonData.put("oldHelmetId", oldNfcContent);
             jsonData.put("newHelmetId", newNfcContent);
             jsonData.put("helmetName", helmetName);
+            jsonData.put("username", GlobalVariable.getUsername(this));
             jsonData.put("campId", GlobalVariable.getCamp(this));
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 

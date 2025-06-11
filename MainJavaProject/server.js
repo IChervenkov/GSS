@@ -12,6 +12,8 @@ const XLSX = require('xlsx');
 const hpp = require('hpp');
 const moment = require('moment');
 const csurf = require('csurf');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
 
 // const RedisStore = require('connect-redis').default;
 // const redis = require('redis');
@@ -104,6 +106,7 @@ const editCleanItemSchema = Joi.object({
 const shemaUpdateQuantityAsset = Joi.object({
     id: Joi.string().alphanum().required(),
     newQuantity: Joi.number().integer().required(),
+    username: Joi.string().alphanum().required(),
     isValidCode: Joi.bool().required(),
     campId: Joi.string().alphanum().required()
 });
@@ -111,6 +114,7 @@ const shemaUpdateQuantityAsset = Joi.object({
 const shemaUpdateLocationAsset = Joi.object({
     id: Joi.string().alphanum().required(),
     locationId: Joi.string().alphanum().required(),
+    username: Joi.string().alphanum().required(),
     isValidCode: Joi.bool().required(),
     campId: Joi.string().alphanum().required()
 });
@@ -165,6 +169,7 @@ const schemaAddBag = Joi.object({
     code: Joi.string().alphanum().required(),
     type: Joi.string().regex(/^[a-zA-Z0-9\s]+$/).required(),
     maxcount: Joi.number().required(),
+    username: Joi.string().alphanum().optional(),
     campId: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
@@ -191,6 +196,7 @@ const schemaEditPhoneBag = Joi.object({
     code: Joi.string().alphanum().required(),
     type: Joi.string().regex(/^[a-zA-Z0-9 ]+$/).required(),
     maxcount: Joi.number().required(),
+    username: Joi.string().alphanum().required(),
     isValidCode: Joi.bool().required()
 });
 
@@ -208,6 +214,7 @@ const schemaNFCRent = Joi.object({
     time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), // time should be in HH:MM format and is required
     selectClient: Joi.string().pattern(/^[a-zA-Z0-9]+$/).required(), // selectClient should be a string and is required
     helmetId: Joi.string().allow('').alphanum().required(),
+    username: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -215,6 +222,7 @@ const schemaNFCReturn = Joi.object({
     nfcData: Joi.string().required(), // nfcData should be a string and is required
     date: Joi.date().iso().required(), // date should be a valid ISO date and is required
     time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), // time should be in HH:MM format and is required
+    username: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -244,6 +252,7 @@ const schemaReportBike = Joi.object({
 const schemaAddBike = Joi.object({
     bikeAddId: Joi.string().alphanum().required(),
     bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
+    username: Joi.string().alphanum().optional(),
     campId: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
@@ -251,6 +260,7 @@ const schemaAddBike = Joi.object({
 const schemaAddHelmet = Joi.object({
     helmetAddId: Joi.string().alphanum().required(),
     helmetName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
+    username: Joi.string().alphanum().optional(),
     campId: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
@@ -259,6 +269,7 @@ const schemaEditParameturBike = Joi.object({
     oldBikeId: Joi.string().alphanum().required(),
     newBikeId: Joi.string().alphanum().required(),
     bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
+    username: Joi.string().alphanum().optional(),
     campId: Joi.string().alphanum().required(),
     isValidCode: Joi.bool().optional()
 });
@@ -267,6 +278,7 @@ const schemaEditParameturHelmet = Joi.object({
     oldHelmetId: Joi.string().alphanum().required(),
     newHelmetId: Joi.string().alphanum().required(),
     helmetName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
+    username: Joi.string().alphanum().optional(),
     campId: Joi.string().alphanum().required(),
     isValidCode: Joi.bool().optional()
 });
@@ -283,6 +295,7 @@ const schemaUploadHelmet = Joi.object({
 
 const schemaRemoveBike = Joi.object({
     bikeRemoveId: Joi.string().alphanum().required(),
+    username: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -362,6 +375,7 @@ const schemaSpecialAssets = Joi.object({
 
 const schemaDeleteAsets = Joi.object({
     code: Joi.string().alphanum().required(),
+    username: Joi.string().alphanum().optional(),
     campId: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
@@ -417,6 +431,7 @@ const schemaAddAsset = Joi.object({
     assetAddRestOfLifeCycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
     assetAddReplacedBy: Joi.string().allow('').pattern(safeStringPattern).required(),
     assetAddRestValue: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    username: Joi.string().alphanum().optional(),
     campId: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
@@ -487,6 +502,7 @@ const schemaEditAssetDevice = Joi.object({
     restOfLifeCycle: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
     replacedBy: Joi.string().allow('').pattern(safeStringPattern).required(),
     restValue: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
+    username: Joi.string().alphanum().optional(),
     campId: Joi.string().alphanum().required(),
     isValidCode: Joi.bool().optional()
 });
@@ -628,6 +644,7 @@ const schemaRemoveSoldier = Joi.object({
 
 const schemaRemoveHelmet = Joi.object({
     code: Joi.string().alphanum().required(),
+    username: Joi.string().alphanum().optional(),
     isValidCode: Joi.bool().optional()
 });
 
@@ -899,25 +916,6 @@ class Server {
 
     }
 
-    // Check if the IP or user is blocked due to too many failed login attempts
-    isBlocked(username) {
-        const record = failedLoginAttempts[username];
-
-        if (record) {
-            const { failedAttempts, blockExpiresAt } = record;
-
-            if (failedAttempts >= MAX_FAILED_ATTEMPTS && blockExpiresAt > Date.now()) {
-                return true; // User is still blocked
-            }
-
-            if (blockExpiresAt && blockExpiresAt <= Date.now()) {
-                // Block period has expired, reset the record
-                failedLoginAttempts[username] = { failedAttempts: 0 };
-            }
-        }
-        return false;
-    }
-
     // Middleware to check if the user is logged in
     isLoggedIn(req, res, next) {
         if (req.session && req.session.username && req.session.username !== 'PhoneUser') {
@@ -1078,27 +1076,34 @@ class Server {
             res.render('index', { title: "LogIn", errorMessage: null });
         });
 
+        function isBlockedSession(req) {
+            const record = req.session.failedLogin || { failedAttempts: 0, blockExpiresAt: null };
+
+            if (record.failedAttempts >= MAX_FAILED_ATTEMPTS) {
+                if (record.blockExpiresAt > Date.now()) {
+                    return true; // Still blocked
+                } else {
+                    // Block expired, reset
+                    req.session.failedLogin = { failedAttempts: 0, blockExpiresAt: null };
+                }
+            }
+
+            return false;
+        }
+
         // POST route for login with brute-force protection
         this.app.post('/login', async (req, res) => {
-
             const { error } = schemaLogIn.validate(req.body, { allowUnknown: true });
             if (error) {
-                return res.render('index', { title: 'LogIn', errorMessage: 'Invalid username or password, username and password must contain only a-z, A-Z, 0-9 symbols' });
+                return res.render('index', { title: 'LogIn', errorMessage: 'Invalid input' });
             }
 
             const { username, password } = req.body;
-
-            // Get a client from the pool
             const client = await pool.connect();
-
             try {
-
                 await client.query('BEGIN');
 
-                // Query the database for the user
                 const result = await client.query("SELECT * FROM users WHERE username = $1", [username]);
-
-                // Check if the user exists in the result
                 if (result.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.render('index', { title: 'LogIn', errorMessage: 'Invalid username or password' });
@@ -1106,42 +1111,90 @@ class Server {
 
                 const user = result.rows[0];
 
-                // Check if the user is blocked due to failed login attempts
-                if (this.isBlocked(username)) {
+                if (isBlockedSession(req)) {
                     await client.query('ROLLBACK');
-                    return res.render('index', { title: 'LogIn', errorMessage: 'Too many failed attempts. Please try again later.' });
+                    return res.render('index', { title: 'LogIn', errorMessage: 'Too many failed attempts. Try again later.' });
                 }
 
-                // Verify the password
                 const passwordMatches = bcrypt.compareSync(password, user.password);
-                if (passwordMatches) {
-                    req.session.username = username;
-                    req.session.firstLogin = true;
-
-                    // Reset failed login attempts on successful login
-                    failedLoginAttempts[username] = { failedAttempts: 0 };
-
-                    await client.query('COMMIT');
-                    return res.redirect('/');
-                } else {
-                    // Increment failed attempts or initialize tracking
-                    const record = failedLoginAttempts[username] || { failedAttempts: 0 };
-
+                if (!passwordMatches) {
+                    let record = req.session.failedLogin || { failedAttempts: 0, blockExpiresAt: null };
                     record.failedAttempts += 1;
+
                     if (record.failedAttempts >= MAX_FAILED_ATTEMPTS) {
                         record.blockExpiresAt = Date.now() + BLOCK_TIME;
                     }
-                    failedLoginAttempts[username] = record;
+
+                    req.session.failedLogin = record;
 
                     await client.query('ROLLBACK');
                     return res.render('index', { title: 'LogIn', errorMessage: 'Invalid username or password' });
                 }
+
+                failedLoginAttempts[username] = { failedAttempts: 0 };
+                req.session.pendingUser = username;
+                req.session.pendingUserId = user.id;
+
+                await client.query('COMMIT');
+                return res.redirect('/2fa-verificated');
+
             } catch (err) {
                 await client.query('ROLLBACK');
-                console.error('Error querying the database', err);
-                return res.render('index', { title: 'LogIn', errorMessage: 'An error occurred. Please try again later.' });
+                console.error(err);
+                return res.render('index', { title: 'LogIn', errorMessage: 'An error occurred.' });
             } finally {
                 client.release();
+            }
+        });
+
+        this.app.get('/2fa-verificated', async (req, res) => {
+            if (!req.session.secret) {
+                req.session.secret = speakeasy.generateSecret({
+                    name: process.env.SECRET_NAME
+                });
+            }
+
+            const qrCodeDataURL = await qrcode.toDataURL(req.session.secret.otpauth_url);
+            req.session.qrCodeDataURL = qrCodeDataURL;
+
+            res.render('verifyQRCode', {
+                qrCodeDataURL,
+                csrfToken: req.csrfToken(),
+                errorMessage: null
+            });
+        });
+
+        this.app.post('/verify', (req, res) => {
+            const { code } = req.body;
+            const userSecret = req.session.secret;
+
+            if (!userSecret) {
+                return res.redirect('/login'); // Session expired or tampered
+            }
+
+            const verified = speakeasy.totp.verify({
+                secret: userSecret.base32,
+                encoding: 'base32',
+                token: code,
+                window: 1
+            });
+
+            if (verified) {
+                req.session.username = req.session.pendingUser;
+                req.session.userId = req.session.pendingUserId;
+                req.session.firstLogin = true;
+                delete req.session.qrCodeDataURL;
+                delete req.session.secret;
+                delete req.session.pendingUser;
+                delete req.session.pendingUserId;
+                req.session.failedLogin = { failedAttempts: 0, blockExpiresAt: null };
+                return res.redirect('/');
+            } else {
+                return res.render('verifyQRCode', {
+                    qrCodeDataURL: req.session.qrCodeDataURL,
+                    csrfToken: req.csrfToken(),
+                    errorMessage: 'Invalid code. Try again.'
+                });
             }
         });
 
@@ -1154,6 +1207,21 @@ class Server {
     }
 
     defineRoutesRFID() {
+
+        function isBlockedSession(req) {
+            const record = req.session.failedLogin || { failedAttempts: 0, blockExpiresAt: null };
+
+            if (record.failedAttempts >= MAX_FAILED_ATTEMPTS) {
+                if (record.blockExpiresAt > Date.now()) {
+                    return true; // Still blocked
+                } else {
+                    // Block expired, reset
+                    req.session.failedLogin = { failedAttempts: 0, blockExpiresAt: null };
+                }
+            }
+
+            return false;
+        }
 
         this.app.get('/getAllCamp', async (req, res) => {
 
@@ -1202,38 +1270,73 @@ class Server {
                 const user = result.rows[0];
 
                 // Check if the user is blocked due to failed login attempts
-                if (this.isBlocked(username)) {
+                if (isBlockedSession(req)) {
                     await client.query('ROLLBACK');
-                    return res.status(403).json({ success: false, message: 'Too many failed attempts. Please try again later.' });
+                    return res.render('index', { title: 'LogIn', errorMessage: 'Too many failed attempts. Try again later.' });
                 }
 
                 const passwordMatches = bcrypt.compareSync(password, user.password);
-                if (passwordMatches) {
+                if (!passwordMatches) {
 
-                    // Reset failed login attempts on successful login
-                    failedLoginAttempts[username] = { failedAttempts: 0 };
-
-                    await client.query('COMMIT');
-                    res.status(200).json({ success: true, validUsername: true });
-
-                } else {
-
-                    // Increment failed attempts or initialize tracking
-                    const record = failedLoginAttempts[username] || { failedAttempts: 0 };
-
+                    let record = req.session.failedLogin || { failedAttempts: 0, blockExpiresAt: null };
                     record.failedAttempts += 1;
+
                     if (record.failedAttempts >= MAX_FAILED_ATTEMPTS) {
                         record.blockExpiresAt = Date.now() + BLOCK_TIME;
                     }
-                    failedLoginAttempts[username] = record;
+
+                    req.session.failedLogin = record;
 
                     await client.query('ROLLBACK');
-                    res.status(401).json({ success: false, validUsername: true });
+                    return res.status(401).json({ success: false, validUsername: true });
+
                 }
+
+                req.session.failedLogin = { failedAttempts: 0, blockExpiresAt: null };
+
+                await client.query('COMMIT');
+                return res.status(200).json({ success: true, validUsername: true });
 
             } catch (err) {
                 console.error(err);
                 return res.status(500).json({ success: false, message: 'Server error occurred.' });
+            }
+        });
+
+        this.app.get('/2fa-verificated-device', async (req, res) => {
+            if (!req.session.secret) {
+                req.session.secret = speakeasy.generateSecret({
+                    name: process.env.SECRET_NAME
+                });
+            }
+
+            const qrCodeDataURL = await qrcode.toDataURL(req.session.secret.otpauth_url);
+            req.session.qrCodeDataURL = qrCodeDataURL;
+
+            res.json({ qrCodeDataURL });
+        });
+
+        this.app.post('/verify-device', (req, res) => {
+            const { code } = req.body;
+            const userSecret = req.session.secret;
+
+            if (!userSecret) {
+                return res.status(401).json({ success: false, message: 'Invalid user credentials' });
+            }
+
+            const verified = speakeasy.totp.verify({
+                secret: userSecret.base32,
+                encoding: 'base32',
+                token: code,
+                window: 1
+            });
+
+            if (verified) {
+                delete req.session.qrCodeDataURL;
+                delete req.session.secret;
+                return res.status(200).json({ success: true });
+            } else {
+                return res.status(401).json({ success: false, message: 'Invalid code. Try again.' });
             }
         });
 
@@ -1409,8 +1512,8 @@ class Server {
                         [nfcData, selectClient, recDate, newStatus, helmetId ? helmetId : null]
                     ),
                     client.query(
-                        `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
-                        [`Rented Bike with name ${bikeResult.rows[0].namebike}`]
+                        `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)`,
+                        [req.body.username, `Rented Bike with name ${bikeResult.rows[0].namebike}`]
                     )
                 ]);
 
@@ -1460,8 +1563,8 @@ class Server {
                         [recDate, nfcData]
                     ),
                     client.query(
-                        `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
-                        [`Return Bike with name ${bikeResult.rows[0].namebike}`]
+                        `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)`,
+                        [req.body.username, `Return Bike with name ${bikeResult.rows[0].namebike}`]
                     )
                 ]);
 
@@ -1502,8 +1605,8 @@ class Server {
                             [bikeName, oldBikeId]
                         ),
                         client.query(
-                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
-                            [`Edit Bike name with code ${oldBikeId}`]
+                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)`,
+                            [req.body.username, `Edit Bike name with code ${oldBikeId}`]
                         )
                     ]);
 
@@ -1522,8 +1625,8 @@ class Server {
                             [oldBikeId]
                         ),
                         client.query(
-                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
-                            [`Edit Bike with name ${bikeName}, replace old NFC ${oldBikeId} with new NFC ${newBikeId}`]
+                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)`,
+                            [req.body.username, `Edit Bike with name ${bikeName}, replace old NFC ${oldBikeId} with new NFC ${newBikeId}`]
                         )
                     ]);
                 }
@@ -1565,8 +1668,8 @@ class Server {
                             [helmetName, oldHelmetId]
                         ),
                         client.query(
-                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
-                            [`Edit Helmet name with code ${oldHelmetId}`]
+                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)`,
+                            [req.body.username, `Edit Helmet name with code ${oldHelmetId}`]
                         )
                     ]);
 
@@ -1585,8 +1688,8 @@ class Server {
                             [oldHelmetId]
                         ),
                         client.query(
-                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)`,
-                            [`Edit Bike with name ${helmetName}, replace old NFC ${oldHelmetId} with new NFC ${newHelmetId}`]
+                            `INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)`,
+                            [req.body.username, `Edit Bike with name ${helmetName}, replace old NFC ${oldHelmetId} with new NFC ${newHelmetId}`]
                         )
                     ]);
                 }
@@ -1608,7 +1711,7 @@ class Server {
 
         // Serve APK file from local directory
         this.app.get('/download-apk-bike', (req, res) => {
-            const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.1-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.2-release.apk');
 
             // Check APK file existence and legality
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -1617,7 +1720,7 @@ class Server {
 
             // Serve the APK with proper headers
             res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-            res.setHeader('Content-Disposition', 'attachment; filename="NFCReader-1.1-release.apk"');
+            res.setHeader('Content-Disposition', 'attachment; filename="NFCReader-1.2-release.apk"');
             res.download(apkFilePath, (err) => {
                 if (err) {
                     console.error('Error during APK download:', err);
@@ -1627,7 +1730,7 @@ class Server {
         });
 
         this.app.get('/apk-bike-version', (req, res) => {
-            res.json({ version: "1.1", apkUrl: "/download-apk-bike" });
+            res.json({ version: "1.2", apkUrl: "/download-apk-bike" });
         });
 
         // Section bicycles
@@ -2335,11 +2438,13 @@ class Server {
                 // Insert new bike if bikeAddId doesn't exist
                 await client.query(`INSERT INTO bicycles VALUES ($1, $2, 'Available', $3);`, [bikeAddId, bikeName, campId]);
 
+                const username = req.session.username ? req.session.username : req.body.username;
+
                 // Query the database for the user
                 await client.query(
                     `INSERT INTO usermonitoring (user_id, location)
-                    VALUES ( COALESCE((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = 'PhoneUser')), $2)`,
-                    [req.session.username, `Add Bike with name ${bikeName}`]
+                    VALUES ((SELECT id FROM users WHERE username = $1), $2)`,
+                    [username, `Add Bike with name ${bikeName}`]
                 );
 
                 await client.query('COMMIT');
@@ -2388,11 +2493,13 @@ class Server {
                 // Insert new bike if bikeAddId doesn't exist
                 await client.query(`INSERT INTO helmets VALUES ($1, $2, $3);`, [helmetAddId, helmetName, campId]);
 
+                const username = req.session.username ? req.session.username : req.body.username;
+
                 // Query the database for the user
                 await client.query(
                     `INSERT INTO usermonitoring (user_id, location)
-                    VALUES ( COALESCE((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = 'PhoneUser')), $2)`,
-                    [req.session.username, `Add Helmet with name ${helmetName}`]
+                    VALUES ((SELECT id FROM users WHERE username = $1), $2)`,
+                    [username, `Add Helmet with name ${helmetName}`]
                 );
 
                 await client.query('COMMIT');
@@ -2436,9 +2543,11 @@ class Server {
                     client.query(`DELETE FROM helmets WHERE id = $1`, [code])
                 ]);
 
+                const username = req.session.username ? req.session.username : req.body.username;
+
                 // Query the database for the user
                 await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.session.username, `Remove helmet ${code}`]);
+                    [username, `Remove helmet ${code}`]);
 
                 await client.query('COMMIT');
                 return res.status(200).json({ message: 'Helmet removed successfully' });
@@ -2472,14 +2581,13 @@ class Server {
 
                 const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1`, [bikeRemoveId]);
 
+                const username = req.session.username ? req.session.username : req.body.username;
+
                 await Promise.all([
                     client.query(
                         `INSERT INTO usermonitoring (user_id, location)
-                        VALUES (
-                            COALESCE((SELECT id FROM users WHERE username = $1), (SELECT id FROM users WHERE username = 'PhoneUser')),
-                            $2
-                        )`,
-                        [req.session.username, `Remove Bike with number ${bikeResult.rows[0].namebike}`]
+                        VALUES ((SELECT id FROM users WHERE username = $1), $2)`,
+                        [username, `Remove Bike with number ${bikeResult.rows[0].namebike}`]
                     ),
                     client.query(`DELETE FROM bicycles WHERE id = $1;`, [bikeRemoveId])
                 ]);
@@ -3966,6 +4074,8 @@ class Server {
                 });
             };
 
+            const client = await pool.connect();
+
             try {
 
                 // Filter both datasets
@@ -3975,6 +4085,7 @@ class Server {
                 const workbook = new excelJS.Workbook();
                 const worksheet1 = workbook.addWorksheet('Information about soldiers');
                 const worksheet2 = workbook.addWorksheet('Movement soldiers information');
+                const worksheet3 = workbook.addWorksheet('Buildings information');
 
                 const headers1 = ['Key Number', 'Soldier Name', 'Country', 'Accommodation Date', 'Release Date', 'Meal card', 'Laundry bag'];
                 worksheet1.addRow(headers1).eachCell((cell) => {
@@ -4000,8 +4111,21 @@ class Server {
                     };
                 });
 
+                const headers3 = ['Room Name', 'Room Status'];
+                worksheet3.addRow(headers3).eachCell((cell) => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
+                worksheet3.columns = headers3.map(header => ({ header, width: header.length + 10 }));
 
                 await Promise.all(filteredSoldier.map(async ({ roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag }, index) => {
                     const dataRow = worksheet1.addRow([roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag]);
@@ -4049,6 +4173,68 @@ class Server {
                     }
                 }));
 
+                await client.query('BEGIN');
+
+                const resultData = await client.query(`
+                    SELECT 
+                        nameroom,
+                        CASE 
+                            WHEN COUNT(CASE WHEN a.location_key IS NOT NULL AND k.soldierid IS NULL THEN k.id END) = COUNT(CASE WHEN a.location_key IS NOT NULL THEN k.id END) 
+                                THEN 'Completely free'
+                            WHEN COUNT(CASE WHEN a.location_key IS NOT NULL AND k.soldierid IS NULL THEN k.id END) != 0 
+                                THEN 'Free'
+                            ELSE 'Occupied'
+                        END AS status
+                    FROM 
+                        rooms r
+                    LEFT JOIN 
+                        roomskey rk ON r.id = rk.roomid
+                    LEFT JOIN 
+                        key k ON k.id = rk.keyid
+                    LEFT JOIN 
+                        soldier s ON s.id = k.soldierid
+                    LEFT JOIN 
+                        buildroom br ON br.roomid = r.id
+                    LEFT JOIN 
+                        buildings b ON br.buildid = b.id
+                    LEFT JOIN
+                        assets a ON a.location_key = k.id
+                    WHERE 
+                        nameroom NOT SIMILAR TO '%/(E|D)[0-9]*'
+                        AND b.type = 'Accommodation'
+                        AND b.camp_id = $1
+                    GROUP BY 
+                        nameroom
+                    ORDER BY 
+                        nameroom;`, [req.session.camp]);
+
+                const filteredBuildingsInfo = resultData.rows;
+
+                await client.query('COMMIT');
+
+                await Promise.all(filteredBuildingsInfo.map(async (data, index) => {
+                    const dataRow = worksheet3.addRow(Object.values(data));
+
+                    // Apply borders and alternating row color
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                }));
+
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                 res.setHeader('Content-Disposition', 'attachment; filename="report_accommodation.xlsx"');
 
@@ -4058,6 +4244,8 @@ class Server {
             } catch (error) {
                 console.error(error);
                 res.status(500).send('Failed to generate the report.');
+            } finally {
+                client.release();
             }
 
         });
@@ -6228,7 +6416,7 @@ class Server {
         // Serve APK file from local directory
         this.app.get('/download-apk-laundry', (req, res) => {
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.1-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.2-release.apk');
 
             // Check legality and existence of the APK file
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -6237,7 +6425,7 @@ class Server {
 
             // Set proper headers for an APK file
             res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
-            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.1-release.apk"'); // Force download with custom filename
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.2-release.apk"'); // Force download with custom filename
 
             // Use res.download() to send the file to the client
             res.download(apkFilePath, (err) => {
@@ -6249,7 +6437,7 @@ class Server {
         });
 
         this.app.get('/apk-laundry-version', (req, res) => {
-            res.json({ version: "1.1", apkUrl: "/download-apk-laundry" });
+            res.json({ version: "1.2", apkUrl: "/download-apk-laundry" });
         });
 
         this.app.get('/laundry', this.isLoggedIn.bind(this), async (req, res) => {
@@ -7164,7 +7352,7 @@ class Server {
                     [epc, code, type, maxcount, campId]
                 );
 
-                const username = req.session.username ? req.session.username : "PhoneUser";
+                const username = req.session.username ? req.session.username : req.body.username;
 
                 // Query the database for the user
                 await Promise.all([
@@ -7217,7 +7405,7 @@ class Server {
                     return res.status(401).json({ message: 'This bag is set to the soldier!' });
                 }
 
-                const username = req.session.username ? req.session.username : "PhoneUser";
+                const username = req.session.username ? req.session.username : req.body.username;
 
                 await Promise.all([
                     client.query(`DELETE FROM laundryreport WHERE bag_id = $1`, [code]),
@@ -7305,8 +7493,8 @@ class Server {
                     await client.query(`UPDATE laundrybags SET code = $1, type = $2, maxcountlandry = $3 WHERE id = $4;`, [code, type, maxcount, oldCode]);
 
                     // Query the database for the user
-                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
-                        [`Edit bag with code ${oldCode} set code ${code}, type ${type} and max washed ${maxcount}`]);
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.body.username, `Edit bag with code ${oldCode} set code ${code}, type ${type} and max washed ${maxcount}`]);
                 } else {
 
                     const result = await client.query(`SELECT * FROM laundrybags WHERE id = $1;`, [oldCode]);
@@ -7337,8 +7525,8 @@ class Server {
                     ]);
 
                     // Query the database for the user
-                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = 'PhoneUser'), $1)",
-                        [`Replace bag with code ${oldCode} to new code ${newCode}, type=${type}, max washed=${maxcount}`]);
+                    await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.body.username, `Replace bag with code ${oldCode} to new code ${newCode}, type=${type}, max washed=${maxcount}`]);
                 }
 
                 await client.query('COMMIT');
@@ -7360,7 +7548,7 @@ class Server {
         // Serve APK file from local directory
         this.app.get('/download-apk-asset', (req, res) => {
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.1-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.2-release.apk');
 
             // Check legality and existence of the APK file
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -7369,7 +7557,7 @@ class Server {
 
             // Set proper headers for an APK file
             res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
-            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryAsset-1.1-release.apk"'); // Force download with custom filename
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryAsset-1.2-release.apk"'); // Force download with custom filename
 
             // Use res.download() to send the file to the client
             res.download(apkFilePath, (err) => {
@@ -7381,7 +7569,7 @@ class Server {
         });
 
         this.app.get('/apk-asset-version', (req, res) => {
-            res.json({ version: "1.1", apkUrl: "/download-apk-asset" });
+            res.json({ version: "1.2", apkUrl: "/download-apk-asset" });
         });
 
         this.app.get('/allAssets', async (req, res) => {
@@ -8179,7 +8367,7 @@ class Server {
                 }
 
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    ['PhoneUser', `Edit asset with code ${oldCode} set code ${newCode}, type=${type}, location=${location}, sublocation=${subLocation}, category=${category}, quantity=${quantity}, mrah=${mrah}, owner=${owner}, status=${status}, expandable=${expandable}, description=${description}, service=${service}, m2_inside=${m2Inside}`]));
+                    [req.body.username, `Edit asset with code ${oldCode} set code ${newCode}, type=${type}, location=${location}, sublocation=${subLocation}, category=${category}, quantity=${quantity}, mrah=${mrah}, owner=${owner}, status=${status}, expandable=${expandable}, description=${description}, service=${service}, m2_inside=${m2Inside}`]));
 
                 await Promise.all(queries);
 
@@ -8266,7 +8454,7 @@ class Server {
                     queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [assetQuantity, campId]));
                 }
 
-                const username = req.session.username ? req.session.username : 'PhoneUser';
+                const username = req.session.username ? req.session.username : req.body.username;
 
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [username, `Add asset with code ${assetEps} and name ${assetAddName}`]));
@@ -8318,7 +8506,7 @@ class Server {
 
                 queries.push(client.query(`DELETE FROM assets WHERE id = $1`, [code]));
 
-                const username = req.session.username ? req.session.username : 'PhoneUser';
+                const username = req.session.username ? req.session.username : req.body.username;
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                     [username, `Remove asset with code ${code}`]));
 
@@ -8892,6 +9080,8 @@ class Server {
             } catch (error) {
                 console.error('Error generating the report:', error);
                 res.status(500).send('Failed to generate the report.');
+            } finally {
+                client.release();
             }
         });
 
@@ -9447,6 +9637,9 @@ class Server {
                     queries.push(client.query(`UPDATE assets SET quantity = $1, inventory_status = 'edited' WHERE id = $2`, [newQuantity, id]));
                 }
 
+                queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.body.username, `Change asset quantity with epc: ${id} in inventory`]));
+
                 await Promise.all(queries);
 
                 await client.query('COMMIT');
@@ -9607,6 +9800,9 @@ class Server {
                 }
 
                 queries.push(client.query(`UPDATE assets SET location_room = $1, inventory_status = 'edited' WHERE id = $2`, [locationId, id]));
+
+                queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                    [req.body.username, `Change asset location with epc: ${id} and new location with id: ${locationId} in inventory`]));
 
                 await Promise.all(queries);
 

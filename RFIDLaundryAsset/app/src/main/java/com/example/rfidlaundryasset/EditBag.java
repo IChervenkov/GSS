@@ -305,6 +305,7 @@ public class EditBag extends AppCompatActivity {
                 payload.put("code", code);
                 payload.put("type", type);
                 payload.put("maxcount", maxcount);
+                payload.put("username", GlobalVariable.getUsername(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
                 RequestBody body = RequestBody.create(payload.toString(), JSON);

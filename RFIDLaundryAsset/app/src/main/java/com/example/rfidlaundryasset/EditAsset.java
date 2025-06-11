@@ -320,6 +320,7 @@ public class EditAsset extends AppCompatActivity {
                 payload.put("restOfLifeCycle", assetRestOfLifeCycle);
                 payload.put("replacedBy", assetReplacedBy);
                 payload.put("restValue", assetRestValue);
+                payload.put("username", GlobalVariable.getUsername(this));
                 payload.put("campId", GlobalVariable.getCamp(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 

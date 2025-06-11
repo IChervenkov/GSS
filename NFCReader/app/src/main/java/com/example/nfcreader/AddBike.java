@@ -175,6 +175,7 @@ public class AddBike extends AppCompatActivity {
         try {
             jsonData.put("bikeAddId", nfcContent);
             jsonData.put("bikeName", bikeName);
+            jsonData.put("username", GlobalVariable.getUsername(this));
             jsonData.put("campId", GlobalVariable.getCamp(this));
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 
@@ -259,6 +260,7 @@ public class AddBike extends AppCompatActivity {
         try {
             jsonData.put("helmetAddId", nfcContent);
             jsonData.put("helmetName", helmetName);
+            jsonData.put("username", GlobalVariable.getUsername(this));
             jsonData.put("campId", GlobalVariable.getCamp(this));
             jsonData.put("isValidCode", GlobalVariable.getVariable(this));
 

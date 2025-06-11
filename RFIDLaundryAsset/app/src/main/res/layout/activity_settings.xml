@@ -67,4 +67,14 @@
         android:textColor="@android:color/white"
         tools:ignore="HardcodedText" />
 
+    <Button
+        android:id="@+id/btnLogOut"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Log Out"
+        android:backgroundTint="@color/green"
+        android:textColor="@android:color/white"
+        tools:ignore="HardcodedText" />
+
 </LinearLayout>

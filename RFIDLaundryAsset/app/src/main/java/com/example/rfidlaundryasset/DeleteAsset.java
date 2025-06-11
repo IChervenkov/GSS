@@ -306,6 +306,7 @@ public class DeleteAsset extends AppCompatActivity {
                 JSONObject payload = new JSONObject();
                 payload.put("code", epc);
                 payload.put("campId", GlobalVariable.getCamp(this));
+                payload.put("username", GlobalVariable.getUsername(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 
                 RequestBody body = RequestBody.create(payload.toString(), JSON);

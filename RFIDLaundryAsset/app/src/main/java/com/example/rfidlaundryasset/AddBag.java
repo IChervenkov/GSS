@@ -268,6 +268,7 @@ public class AddBag extends AppCompatActivity {
                 payload.put("code", code);
                 payload.put("type", type);
                 payload.put("maxcount", maxcount);
+                payload.put("username", GlobalVariable.getUsername(this));
                 payload.put("campId", GlobalVariable.getCamp(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
 

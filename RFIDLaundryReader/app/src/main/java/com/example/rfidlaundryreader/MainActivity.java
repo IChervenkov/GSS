@@ -4,13 +4,18 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.text.InputType;
+import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.Spinner;
@@ -215,7 +220,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (valid) {
-                checkLoginToServer(usernameInput, passwordInput, username, password, dialog);
+                checkLoginToServer(usernameInput, passwordInput, username, password);
             }
         }));
 
@@ -228,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    private void checkLoginToServer(EditText usernameInput, EditText passwordInput, String username, String password, AlertDialog dialog) {
+    private void checkLoginToServer(EditText usernameInput, EditText passwordInput, String username, String password) {
         executorService.execute(()-> {
             try {
 
@@ -250,24 +255,107 @@ public class MainActivity extends AppCompatActivity {
                     JSONObject jsonResponse = new JSONObject(responseData);
                     boolean isValidLogin = jsonResponse.optBoolean("success", false);
                     boolean isValidUsername = jsonResponse.optBoolean("validUsername", false);
-                    GlobalVariable.saveValidatationData(this, isValidLogin);
 
                     runOnUiThread(() -> {
-                        if (isValidLogin) {
-                            usernameInput.setError(null);
-                            passwordInput.setError(null);
-                            dialog.dismiss();
-                        } else if(!isValidUsername) {
+                        if (!isValidUsername) {
                             usernameInput.setError("Invalid username");
-                        } else {
-                            usernameInput.setError(null);
+                        } else if (!isValidLogin) {
                             passwordInput.setError("Invalid password");
+                        } else {
+                            fetchQRCodeFor2FA();
                         }
                     });
                 }
             } catch (Exception e) {
                 Log.e("MainActivity", "Error: " + e.getMessage());
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
+            }
+        });
+    }
+
+    private void fetchQRCodeFor2FA() {
+        executorService.execute(() -> {
+            Request request = new Request.Builder()
+                    .url(getString(R.string.base_url) + "/2fa-verificated-device")
+                    .get()
+                    .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                String json = Objects.requireNonNull(response.body()).string();
+                JSONObject obj = new JSONObject(json);
+                String qrBase64 = obj.getString("qrCodeDataURL").split(",")[1]; // remove data:image/png;base64,
+
+                byte[] decodedBytes = Base64.decode(qrBase64, Base64.DEFAULT);
+                Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+
+                runOnUiThread(() -> showQRCodeDialog(bitmap));
+            } catch (Exception e) {
+                runOnUiThread(() -> showPopupWindow("Error","Failed to load QR code: " + e.getMessage()));
+            }
+        });
+    }
+
+    private void showQRCodeDialog(Bitmap qrBitmap) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Scan QR Code with Google Authenticator");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+
+        ImageView imageView = new ImageView(this);
+        imageView.setImageBitmap(qrBitmap);
+        layout.addView(imageView);
+
+        final EditText input = new EditText(this);
+        input.setHint("Enter 6-digit code");
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        layout.addView(input);
+
+        builder.setView(layout);
+
+        builder.setPositiveButton("Verify", (dialog, which) -> {
+            String code = input.getText().toString().trim();
+            if (!code.isEmpty()) {
+                verifyTOTPCode(code);
+            } else {
+                input.setError("Please enter the code");
+            }
+        });
+
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void verifyTOTPCode(String code) {
+        executorService.execute(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("code", code);
+
+                RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+
+                Request request = new Request.Builder()
+                        .url(getString(R.string.base_url) + "/verify-device")
+                        .addHeader("X-CSRF-Token", csrfToken)
+                        .post(body)
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    String responseData = Objects.requireNonNull(response.body()).string();
+                    JSONObject jsonResponse = new JSONObject(responseData);
+                    boolean success = jsonResponse.optBoolean("success", false);
+
+                    runOnUiThread(() -> {
+                        if (success) {
+                            GlobalVariable.saveValidatationData(this, true);
+                            finish();
+                        } else {
+                            showPopupWindow("Error", "Invalid 2FA code.");
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> showPopupWindow("Error", "Error verifying 2FA: " + e.getMessage()));
             }
         });
     }
