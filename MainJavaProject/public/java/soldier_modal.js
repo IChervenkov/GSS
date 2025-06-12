@@ -1747,6 +1747,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function openUpcomingActionSoldierListModal() {
 
+        const formatDate = (date) => {
+            const accommodationDate = new Date(date);
+            const year = accommodationDate.getFullYear();
+            const month = String(accommodationDate.getMonth() + 1).padStart(2, "0");
+            const day = String(accommodationDate.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
         // Add the slide-in effect by adding the necessary classes
         modalUpcomingActionSoldierList.classList.add('show');
         modalUpcomingActionSoldierListContent.classList.add('show');
@@ -1790,16 +1798,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.appendChild(upcoming_key);
 
                     const upcoming_accommodation = document.createElement("td");
-                    const accommodationDate = new Date(item.upcoming_accommodation);
+                    const accommodationDate = formatDate(item.upcoming_accommodation);
                     upcoming_accommodation.textContent = item.upcoming_accommodation
-                        ? accommodationDate.toLocaleDateString()
+                        ? accommodationDate
                         : 'N/A';
                     row.appendChild(upcoming_accommodation);
 
                     const upcoming_release = document.createElement("td");
-                    const releaseDate = new Date(item.upcoming_release);
+                    const releaseDate = formatDate(item.upcoming_release);
                     upcoming_release.textContent = item.upcoming_release
-                        ? releaseDate.toLocaleDateString()
+                        ? releaseDate
                         : 'N/A';
                     row.appendChild(upcoming_release);
 
@@ -2990,7 +2998,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
-            if(percentage >= 100)
+            if (percentage >= 100)
                 loadingIndicator.style.display = 'flex';
         };
 
@@ -3064,7 +3072,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
-            if(percentage >= 100)
+            if (percentage >= 100)
                 loadingIndicator.style.display = 'flex';
         };
 
@@ -3138,7 +3146,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
-            if(percentage >= 100)
+            if (percentage >= 100)
                 loadingIndicator.style.display = 'flex';
         };
 
@@ -3212,7 +3220,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
-            if(percentage >= 100)
+            if (percentage >= 100)
                 loadingIndicator.style.display = 'flex';
         };
 
@@ -3286,7 +3294,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
-            if(percentage >= 100)
+            if (percentage >= 100)
                 loadingIndicator.style.display = 'flex';
         };
 
@@ -4890,15 +4898,72 @@ document.addEventListener('DOMContentLoaded', function () {
         let form = document.getElementById("form12");
         let table = document.getElementById("additonalItemTable");
         let groupNav = document.getElementById("groupNav");
-        
+
         form.style.display = form.style.display === "none" || form.style.display === "" ? "flex" : "none";
-        table.style.display = form.style.display === "flex" ? "none" : "flex";
+        table.style.display = form.style.display === "flex" ? "none" : "table";
 
         if (form.style.display === "flex") {
             groupNav.classList.remove('d-flex');
             groupNav.style.display = 'none';
         } else {
             groupNav.classList.add('d-flex');
+        }
+    });
+
+    document.getElementById('downloadUpcomingActions').addEventListener("click", async function () {
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+            const table = document.getElementById("upcomingActionTable");
+            const rows = Array.from(table.querySelectorAll("tbody tr"));
+
+            const data = rows
+                .map((row) => {
+                    const cells = row.querySelectorAll("td");
+                    return {
+                        soldierName: cells[0]?.innerText.trim(),
+                        bagCode: cells[1]?.innerText.trim(),
+                        mealCard: cells[2]?.innerText.trim(),
+                        upcomingKey: cells[3]?.innerText.trim(),
+                        upcomingAccommodationDate: cells[4]?.innerText.trim(),
+                        upcomingReleaseDate: cells[5]?.innerText.trim()
+                    };
+                }).filter(row => row.soldierName); // Exclude empty rows
+
+            // Collect filter values if the search inputs are visible
+            const filtersSoldier = {};
+            document.querySelectorAll('.search-input-upcoming-action').forEach(input => {
+                filtersSoldier[input.name || input.id] = input.value.trim();
+            });
+
+            const response = await fetch('/accommodation/downloadUpcomingSoldier', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ result: data, filtersSoldier: filtersSoldier })
+            });
+
+            if (!response.ok) throw new Error(await response.text());
+
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = 'upcoming_actions_soldiers.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message || 'Failed to download the file.');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     });
 });

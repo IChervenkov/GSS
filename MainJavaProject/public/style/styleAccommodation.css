@@ -1507,12 +1507,6 @@ thead th input:focus {
         font-size: 12px;
     }
 
-    #additionalItemModal th,
-    #additionalItemModal td {
-        padding: 6px;
-        white-space: nowrap;
-    }
-
     #additionalItemModal .search-container {
         margin-bottom: 10px;
     }

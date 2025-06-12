@@ -707,7 +707,16 @@
         <div class="modal-content">
             <span class="close-btn">&times;</span>
 
-            <h2>List of Upcoming Actions for Soldiers</h2>
+            <h2>List of Upcoming Actions for Soldiers
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold"
+                        id="downloadUpcomingActions"><i class="bi bi-download"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Download the list of upcoming actions.</span>
+                    </div>
+                </div>
+            </h2>
 
             <div class="d-flex justify-content-end mt-2 mb-2">
                 <button type="button" id="prevBtnFourth"></button>
@@ -1430,7 +1439,8 @@
                         class="bi bi-download"></i></a></h2>
 
             <div class="mb-3">
-                <label for="fileInputReleaseRooms" class="form-label">Upload File <span class="text-danger">*</span></label>
+                <label for="fileInputReleaseRooms" class="form-label">Upload File <span
+                        class="text-danger">*</span></label>
                 <input type="file" id="fileInputReleaseRooms" class="form-control" accept=".xlsx">
                 <!-- Accept specific file types -->
             </div>

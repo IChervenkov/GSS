@@ -708,6 +708,11 @@ const schemaAccommodationReport = Joi.object({
     filtersSoldierMove: Joi.object().required()
 });
 
+const schemaUpcomingSoldierAction = Joi.object({
+    result: Joi.array().items(Joi.object()).required(),
+    filtersSoldier: Joi.object().required()
+});
+
 const navItems = [];
 
 const horizontalNavItems = [
@@ -1176,7 +1181,7 @@ class Server {
                 secret: userSecret.base32,
                 encoding: 'base32',
                 token: code,
-                window: 1
+                window: 0
             });
 
             if (verified) {
@@ -1328,7 +1333,7 @@ class Server {
                 secret: userSecret.base32,
                 encoding: 'base32',
                 token: code,
-                window: 1
+                window: 0
             });
 
             if (verified) {
@@ -4579,7 +4584,7 @@ class Server {
 
                     if (row.upcomingKey) {
                         const result_check_key = await client.query(`
-                            SELECT * FROM key 
+                            SELECT key.* FROM key 
                             LEFT JOIN roomskey rk ON key.id = rk.keyid
                             LEFT JOIN buildroom br ON br.roomid = rk.roomid
                             LEFT JOIN buildings b ON br.buildid = b.id
@@ -6081,6 +6086,83 @@ class Server {
             } finally {
                 client.release();
             }
+        });
+
+        this.app.post("/accommodation/downloadUpcomingSoldier", this.isLoggedIn.bind(this), async (req, res) => {
+
+            const { error } = schemaUpcomingSoldierAction.validate(req.body);
+            if (error) {
+                return res.status(400).send('Invalid input data.');
+            }
+
+            const { result, filtersSoldier } = req.body;
+
+            // Function to filter data based on inputs
+            const filterData = (data, filters) => {
+                return data.filter(item => {
+                    return Object.keys(filters).every(key => {
+                        if (!filters[key]) return true; // Skip empty filters
+                        return String(item[key] || '').toLowerCase().includes(filters[key].toLowerCase());
+                    });
+                });
+            };
+
+            try {
+
+                // Filter both datasets
+                const filteredSoldier = filterData(result, filtersSoldier);
+
+                const workbook = new excelJS.Workbook();
+                const worksheet = workbook.addWorksheet('Upcoming Actions for Soldiers');
+
+                const headers = ['Soldier Name', 'Bag Code', 'Meal Card', 'Upcoming Key', 'Upcoming Accommodation Date', 'Upcoming Release Date'];
+                worksheet.addRow(headers).eachCell((cell) => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
+                worksheet.columns = headers.map(header => ({ header, width: header.length + 10 }));
+
+                await Promise.all(filteredSoldier.map(async ({ soldierName, bagCode, mealCard, upcomingKey, upcomingAccommodationDate, upcomingReleaseDate }, index) => {
+                    const dataRow = worksheet.addRow([soldierName, bagCode, mealCard, upcomingKey, upcomingAccommodationDate, upcomingReleaseDate]);
+
+                    // Apply borders and alternating row color
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                }));
+
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                res.setHeader('Content-Disposition', 'attachment; filename="upcoming_actions_soldiers.xlsx"');
+
+                await workbook.xlsx.write(res);
+                res.end();
+
+            } catch (error) {
+                console.error(error);
+                res.status(500).send('Failed to generate the file.');
+            }
+
         });
     }
 
@@ -8945,6 +9027,8 @@ class Server {
                 const worksheet1 = workbook.addWorksheet('Assets Data');
                 const worksheet2 = workbook.addWorksheet('Assets Traceability');
                 const worksheet3 = workbook.addWorksheet('Lost Assets Data');
+                const worksheet4 = workbook.addWorksheet('Traceability of cleaning agents');
+                const worksheet5 = workbook.addWorksheet('Inventory Sections');
 
                 // Dynamically create headers for worksheet1 (Assets Data) based on the first item of result
                 const headers1 = Object.keys(filteredAssets.length > 0 ? filteredAssets[0] : filtersAssets); // Get keys of the first object as headers
@@ -8987,6 +9071,19 @@ class Server {
                     };
                 });
                 worksheet3.columns = headers3.map(header => ({ header, width: header.length + 10 }));
+
+                const headers4 = ['Item Name', 'Item Amount', 'Date Change', 'Description'];
+                worksheet4.addRow(headers3).eachCell((cell) => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+                worksheet4.columns = headers4.map(header => ({ header, width: header.length + 25 }));
 
                 // Add data to worksheet1 (Assets Data)
                 await Promise.all(filteredAssets.map(async (data, index) => {
@@ -9068,6 +9165,136 @@ class Server {
                         });
                     }
                 }));
+
+                const result_clean_item = await client.query(`
+                    SELECT item_name, amount, date_change, description FROM cleanitemtraceability WHERE camp_id = $1;`
+                    , [req.session.camp]);
+
+                const filteredCleanItems = result_clean_item.rows;
+
+                await Promise.all(filteredCleanItems.map(async (item, index) => {
+                    // Format the date_change column
+                    let rowData = Object.values(item);
+                    if (item.date_change) {
+                        const date = new Date(item.date_change);
+                        const formattedDate = date.toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        });
+                        // Assuming date_change is the 3rd column (index 3)
+                        rowData[2] = formattedDate;
+                    }
+                    const row = worksheet4.addRow(rowData);
+                    row.eachCell((cell) => {
+                        cell.alignment = { horizontal: 'center' };
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+
+                    if (index % 2 === 0) {
+                        row.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey for alternating rows
+                            };
+                        });
+                    }
+                }));
+
+                const result_inventory_data = await client.query(`
+                    SELECT a.inventory_status, code, name_assets, nameroom
+                    FROM assets a
+                    LEFT JOIN rooms r ON r.id = a.location_room
+                    LEFT JOIN buildroom br ON br.roomid = a.location_room
+                    JOIN buildings b ON b.id = br.buildid AND b.camp_id = $1
+                    ORDER BY nameroom;
+                `, [req.session.camp]);
+
+                const filteredInventory = result_inventory_data.rows;
+
+                // Mapping inventory_status strings to icons
+                const statusMap = {
+                    undiscovered: '❌',
+                    edited: '⏳',
+                    discovered: '✅'
+                };
+
+                // Add legend at the top
+                worksheet5.addRow(['Legend: ❌ - Undiscovered, ⏳ - Edited, ✅ - Discovered']);
+                worksheet5.mergeCells('A1:D1');
+                const legendRow = worksheet5.getRow(1);
+                legendRow.eachCell(cell => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFFFF2CC' }, // light yellow
+                    };
+                });
+
+                // Add header row
+                const headerRow = worksheet5.addRow(['Inventory Status', 'Code', 'Asset Name', 'Room Name']);
+                headerRow.eachCell(cell => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFCCE5FF' }, // light blue
+                    };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
+                await Promise.all(filteredInventory.map(async (data, index) => {
+                    const iconStatus = statusMap[data.inventory_status.trim()] || '';
+                    const rowData = [
+                        iconStatus,
+                        data.code,
+                        data.name_assets,
+                        data.nameroom
+                    ];
+
+                    const row = worksheet5.addRow(rowData);
+                    row.eachCell((cell) => {
+                        cell.alignment = { horizontal: 'center' };
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+
+                    if ((index + 1) % 2 === 0) { // +1 to skip header row
+                        row.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey for alternating rows
+                            };
+                        });
+                    }
+                }));
+
+                worksheet5.getColumn(1).width = 20;
+                worksheet5.getColumn(2).width = 20;
+                worksheet5.getColumn(3).width = 30;
+                worksheet5.getColumn(4).width = 25;
 
                 // Set headers for download and send the file
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

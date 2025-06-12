@@ -5236,7 +5236,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let groupNav = document.getElementById("groupNav");
 
         form.style.display = form.style.display === "none" || form.style.display === "" ? "flex" : "none";
-        table.style.display = form.style.display === "flex" ? "none" : "flex";
+        table.style.display = form.style.display === "flex" ? "none" : "table";
 
         if (form.style.display === "flex") {
             groupNav.classList.remove('d-flex');
