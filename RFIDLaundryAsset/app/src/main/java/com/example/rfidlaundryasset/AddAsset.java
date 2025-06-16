@@ -340,19 +340,20 @@ public class AddAsset extends AppCompatActivity {
                         .post(body)
                         .build();
 
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful()) {
-                    String responseData = Objects.requireNonNull(response.body()).string();
-                    response.body().close(); // Ensure the response is closed
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful()) {
+                        String responseData = Objects.requireNonNull(response.body()).string();
+                        response.body().close(); // Ensure the response is closed
 
-                    JSONObject jsonResponse = new JSONObject(responseData);
-                    String message = jsonResponse.optString("message", "Asset has been added successfully.");
-                    runOnUiThread(() -> {
-                        Toast.makeText(AddAsset.this, message, Toast.LENGTH_SHORT).show();
-                        navigateToAssets();
-                    });
-                } else {
-                    handleError(response);
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String message = jsonResponse.optString("message", "Asset has been added successfully.");
+                        runOnUiThread(() -> {
+                            Toast.makeText(AddAsset.this, message, Toast.LENGTH_SHORT).show();
+                            navigateToAssets();
+                        });
+                    } else {
+                        handleError(response);
+                    }
                 }
             } catch (Exception e) {
                 Log.e("AddAsset", "Error: " + e.getMessage());

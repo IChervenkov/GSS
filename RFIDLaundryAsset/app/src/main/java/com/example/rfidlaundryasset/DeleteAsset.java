@@ -317,19 +317,20 @@ public class DeleteAsset extends AppCompatActivity {
                         .delete(body)
                         .build();
 
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful()) {
-                    String responseData = Objects.requireNonNull(response.body()).string();
-                    response.body().close(); // Ensure the response is closed
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful()) {
+                        String responseData = Objects.requireNonNull(response.body()).string();
+                        response.body().close(); // Ensure the response is closed
 
-                    JSONObject jsonResponse = new JSONObject(responseData);
-                    String message = jsonResponse.optString("message", "Asset has been delete successfully.");
-                    runOnUiThread(() -> {
-                        Toast.makeText(DeleteAsset.this, message, Toast.LENGTH_SHORT).show();
-                        navigateToAssets();
-                    });
-                } else {
-                    handleError(response);
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String message = jsonResponse.optString("message", "Asset has been delete successfully.");
+                        runOnUiThread(() -> {
+                            Toast.makeText(DeleteAsset.this, message, Toast.LENGTH_SHORT).show();
+                            navigateToAssets();
+                        });
+                    } else {
+                        handleError(response);
+                    }
                 }
             } catch (Exception e) {
                 Log.e("DeleteAsset", "Error: " + e.getMessage());

@@ -10,6 +10,8 @@ import android.os.Bundle;
 import android.text.InputType;
 import android.util.Base64;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -225,7 +227,7 @@ public class MainActivity extends AppCompatActivity {
         }));
 
         dialog.setOnDismissListener(dialogInterface -> {
-            if (!isValidCode) {
+            if (!GlobalVariable.getValidatationData(this)) {
                 finish(); // Close the app if login fails or is canceled
             }
         });
@@ -297,12 +299,22 @@ public class MainActivity extends AppCompatActivity {
 
     private void showQRCodeDialog(Bitmap qrBitmap) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Scan QR Code with Google Authenticator");
+        builder.setTitle("Scan QR Code with Authenticator");
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 40, 50, 10);
 
         ImageView imageView = new ImageView(this);
+
+        int size = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 250, getResources().getDisplayMetrics()); // 250dp
+
+        LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(size, size);
+        imageParams.gravity = Gravity.CENTER;
+        imageParams.setMargins(0, 0, 0, 30); // bottom margin for spacing
+        imageView.setLayoutParams(imageParams);
+
         imageView.setImageBitmap(qrBitmap);
         layout.addView(imageView);
 
@@ -475,44 +487,45 @@ public class MainActivity extends AppCompatActivity {
                                             .post(body)
                                             .build();
 
-                                    Response response = client.newCall(request).execute();
+                                    try (Response response = client.newCall(request).execute()) {
 
-                                    if (response.isSuccessful()) {
-                                        String responseData = Objects.requireNonNull(response.body()).string();
-                                        JSONObject jsonResponse = new JSONObject(responseData);
-                                        String code = jsonResponse.getString("code");
-                                        String soldierId = jsonResponse.getString("soldierId");
+                                        if (response.isSuccessful()) {
+                                            String responseData = Objects.requireNonNull(response.body()).string();
+                                            JSONObject jsonResponse = new JSONObject(responseData);
+                                            String code = jsonResponse.getString("code");
+                                            String soldierId = jsonResponse.getString("soldierId");
 
-                                        boolean isNewEpc;
-                                        synchronized (uniqueEpcSet) {
-                                            // Only add to the set if validation is successful
-                                            isNewEpc = uniqueEpcSet.add(epc); // Returns true only if the EPC is newly added
-                                        }
-
-                                        if (isNewEpc) {
-                                            // Add row only for new EPCs
-                                            runOnUiThread(() -> addRowToTable(code, soldierId));
-                                        }
-                                    } else {
-                                        // Extract the error message from the server response
-                                        String errorMessage = "Unknown error";
-                                        try {
-                                            if (response.body() != null) {
-                                                String responseBody = response.body().string();
-                                                JSONObject errorJson = new JSONObject(responseBody);
-                                                errorMessage = errorJson.optString("message", "Internal server error");
+                                            boolean isNewEpc;
+                                            synchronized (uniqueEpcSet) {
+                                                // Only add to the set if validation is successful
+                                                isNewEpc = uniqueEpcSet.add(epc); // Returns true only if the EPC is newly added
                                             }
-                                        } catch (Exception e) {
-                                            Log.e("MainActivity", "Error: " + e.getMessage());
-                                        }
 
-                                        // Mark the EPC as invalid and skip it in future scans
-                                        synchronized (invalidEpcSet) {
-                                            invalidEpcSet.add(epc);
-                                        }
+                                            if (isNewEpc) {
+                                                // Add row only for new EPCs
+                                                runOnUiThread(() -> addRowToTable(code, soldierId));
+                                            }
+                                        } else {
+                                            // Extract the error message from the server response
+                                            String errorMessage = "Unknown error";
+                                            try {
+                                                if (response.body() != null) {
+                                                    String responseBody = response.body().string();
+                                                    JSONObject errorJson = new JSONObject(responseBody);
+                                                    errorMessage = errorJson.optString("message", "Internal server error");
+                                                }
+                                            } catch (Exception e) {
+                                                Log.e("MainActivity", "Error: " + e.getMessage());
+                                            }
 
-                                        String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
-                                        runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
+                                            // Mark the EPC as invalid and skip it in future scans
+                                            synchronized (invalidEpcSet) {
+                                                invalidEpcSet.add(epc);
+                                            }
+
+                                            String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
+                                            runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
+                                        }
                                     }
 
                                 } catch (InterruptedIOException e) {
@@ -596,19 +609,20 @@ public class MainActivity extends AppCompatActivity {
                         .post(body)
                         .build();
 
-                Response response = client.newCall(request).execute();
+                try (Response response = client.newCall(request).execute()) {
 
-                if (!response.isSuccessful()) {
-                    String errorMessage = "Unknown error";
-                    if (response.body() != null) {
-                        String responseBody = response.body().string();
-                        JSONObject errorJson = new JSONObject(responseBody);
-                        errorMessage = errorJson.optString("message", "Internal server error");
+                    if (!response.isSuccessful()) {
+                        String errorMessage = "Unknown error";
+                        if (response.body() != null) {
+                            String responseBody = response.body().string();
+                            JSONObject errorJson = new JSONObject(responseBody);
+                            errorMessage = errorJson.optString("message", "Internal server error");
+                        }
+
+                        final String finalErrorMessage = errorMessage;
+                        runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
+                        success = false;
                     }
-
-                    final String finalErrorMessage = errorMessage;
-                    runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
-                    success = false;
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
@@ -773,27 +787,28 @@ public class MainActivity extends AppCompatActivity {
                     .post(body)
                     .build();
 
-            Response response = client.newCall(request).execute();
+            try (Response response = client.newCall(request).execute()) {
 
-            if (response.isSuccessful()) {
-                String responseData = Objects.requireNonNull(response.body()).string();
-                JSONObject jsonResponse = new JSONObject(responseData);
-                return jsonResponse.getBoolean("exists");
-            } else {
-                // Extract the error message from the server response
-                String errorMessage = "Unknown error";
-                try {
-                    if (response.body() != null) {
-                        String responseBody = response.body().string();
-                        JSONObject errorJson = new JSONObject(responseBody);
-                        errorMessage = errorJson.optString("message", "Internal server error");
+                if (response.isSuccessful()) {
+                    String responseData = Objects.requireNonNull(response.body()).string();
+                    JSONObject jsonResponse = new JSONObject(responseData);
+                    return jsonResponse.getBoolean("exists");
+                } else {
+                    // Extract the error message from the server response
+                    String errorMessage = "Unknown error";
+                    try {
+                        if (response.body() != null) {
+                            String responseBody = response.body().string();
+                            JSONObject errorJson = new JSONObject(responseBody);
+                            errorMessage = errorJson.optString("message", "Internal server error");
+                        }
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Error: " + e.getMessage());
                     }
-                } catch (Exception e) {
-                    Log.e("MainActivity", "Error: " + e.getMessage());
-                }
 
-                String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
-                runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
+                    String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
+                    runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
+                }
             }
 
         } catch (InterruptedIOException e) {
@@ -847,21 +862,22 @@ public class MainActivity extends AppCompatActivity {
                         .post(body)
                         .build();
 
-                Response response = client.newCall(request).execute();
+                try (Response response = client.newCall(request).execute()) {
 
-                if (response.isSuccessful()) {
-                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "All bags have been moved successfully.", Toast.LENGTH_SHORT).show());
-                } else {
-                    String errorMessage = "Unknown error";
-                    if (response.body() != null) {
-                        String responseBody = response.body().string();
-                        JSONObject errorJson = new JSONObject(responseBody);
-                        errorMessage = errorJson.optString("message", "Internal server error");
+                    if (response.isSuccessful()) {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "All bags have been moved successfully.", Toast.LENGTH_SHORT).show());
+                    } else {
+                        String errorMessage = "Unknown error";
+                        if (response.body() != null) {
+                            String responseBody = response.body().string();
+                            JSONObject errorJson = new JSONObject(responseBody);
+                            errorMessage = errorJson.optString("message", "Internal server error");
+                        }
+
+                        String finalErrorMessage = errorMessage;
+                        runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
+                        success[0] = false;
                     }
-
-                    String finalErrorMessage = errorMessage;
-                    runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
-                    success[0] = false;
                 }
             } catch (Exception e) {
                 Log.e("MainActivity", "Error: " + e.getMessage());

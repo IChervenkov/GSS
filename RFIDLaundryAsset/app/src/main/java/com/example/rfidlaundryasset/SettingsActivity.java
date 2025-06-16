@@ -276,6 +276,7 @@ public class SettingsActivity extends AppCompatActivity {
             GlobalVariable.saveUsername(this, "");
 
             Intent intent = new Intent(SettingsActivity.this, MainActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
         });
 

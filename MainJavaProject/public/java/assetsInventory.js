@@ -177,17 +177,17 @@ document.addEventListener('DOMContentLoaded', function () {
     let sortPriorityAsset = [];
     let allAsset = [];
 
-    var nameroomSetCount;
-    var nameAssetSetCount;
-    var assetType;
-    var assetLocation;
-    var assetSubLocation;
-    var uniqueRooms;
-    var lostAssetsCode;
-    var cleanItems;
+    var nameroomSetCount = [];
+    var nameAssetSetCount = [];
+    var assetType = [];
+    var assetLocation = [];
+    var assetSubLocation = [];
+    var uniqueRooms = [];
+    var lostAssetsCode = [];
+    var cleanItems = [];
     var isTotalAmound;
-    var lostAssetsLocation;
-    var allLostItems;
+    var lostAssetsLocation = [];
+    var allLostItems = [];
     var oldEditAssetId = "";
 
     var allCheckedRow = [];
@@ -2425,7 +2425,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             subAccordionItem.className = 'accordion-item';
 
                             const subAccordionHeader = document.createElement('button');
-                            subAccordionHeader.className = 'accordion-header';
+                            subAccordionHeader.className = 'sub-accordion-header';
                             subAccordionHeader.innerHTML = `
                                 <span>${room.inventory_status === 'unfinished' ? '❌' :
                                     room.inventory_status === 'actions' ? '⏳' : '✅'} ${room.nameroom}</span>
@@ -2480,12 +2480,17 @@ document.addEventListener('DOMContentLoaded', function () {
         // Close all accordions (trigger transition)
         const openBodies = inventoryModal.querySelectorAll('.accordion-body.open');
         const activeHeaders = inventoryModal.querySelectorAll('.accordion-header.active');
+        const activeSubHeaders = inventoryModal.querySelectorAll('.sub-accordion-header.active');
 
         openBodies.forEach(body => {
             body.classList.remove('open'); // triggers transition (max-height, opacity)
         });
 
         activeHeaders.forEach(header => {
+            header.classList.remove('active');
+        });
+
+        activeSubHeaders.forEach(header => {
             header.classList.remove('active');
         });
 
@@ -3134,7 +3139,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
-            if(percentage >= 100)
+            if (percentage >= 100)
                 loadingIndicator.style.display = 'flex';
         };
 
@@ -5202,18 +5207,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function setupAccordion(scope = document) {
         const headers = scope.querySelectorAll('.accordion-header');
+        const subHeaders = scope.querySelectorAll('.sub-accordion-header');
+
+        function resizeMainBody(mainBody) {
+            // Set maxHeight to scrollHeight to fit all open content inside
+            mainBody.style.maxHeight = 10 * Number(mainBody.scrollHeight) + 'px';
+        }
 
         headers.forEach(header => {
             header.addEventListener('click', () => {
                 const body = header.nextElementSibling;
                 const isOpen = body.classList.contains('open');
 
+                // Close other accordions within the same accordion container
                 headers.forEach(h => {
                     const b = h.nextElementSibling;
                     if (h !== header && h.closest('.accordion') === header.closest('.accordion')) {
                         h.classList.remove('active');
                         b.classList.remove('open');
                         b.style.maxHeight = null;
+
+                        // Also close sub-accordions inside the closed main accordion
+                        const openSubs = b.querySelectorAll('.sub-accordion-header.active');
+                        openSubs.forEach(subH => {
+                            subH.classList.remove('active');
+                            const subBody = subH.nextElementSibling;
+                            if (subBody) {
+                                subBody.classList.remove('open');
+                                subBody.style.maxHeight = null;
+                            }
+                        });
                     }
                 });
 
@@ -5225,6 +5248,31 @@ document.addEventListener('DOMContentLoaded', function () {
                     header.classList.add('active');
                     body.classList.add('open');
                     body.style.maxHeight = body.scrollHeight + 'px';
+                }
+            });
+        });
+
+        // Sub accordion logic:
+        subHeaders.forEach(subHeader => {
+            subHeader.addEventListener('click', () => {
+                const subBody = subHeader.nextElementSibling;
+                const isSubOpen = subBody.classList.contains('open');
+
+                if (isSubOpen) {
+                    subHeader.classList.remove('active');
+                    subBody.classList.remove('open');
+                    subBody.style.maxHeight = null;
+                } else {
+                    subHeader.classList.add('active');
+                    subBody.classList.add('open');
+                    subBody.style.maxHeight = subBody.scrollHeight + 'px';
+                }
+
+                // After toggling sub-accordion, resize the main accordion body
+                // Find the main accordion body (parent of this subHeader)
+                const mainBody = subHeader.closest('.accordion-body'); // assuming this class on main accordion content
+                if (mainBody) {
+                    resizeMainBody(mainBody);
                 }
             });
         });

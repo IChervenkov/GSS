@@ -316,19 +316,20 @@ public class EditBag extends AppCompatActivity {
                         .put(body)
                         .build();
 
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful()) {
-                    String responseData = Objects.requireNonNull(response.body()).string();
-                    response.body().close(); // Ensure the response is closed
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful()) {
+                        String responseData = Objects.requireNonNull(response.body()).string();
+                        response.body().close(); // Ensure the response is closed
 
-                    JSONObject jsonResponse = new JSONObject(responseData);
-                    String message = jsonResponse.optString("message", "Bag has been edited successfully.");
-                    runOnUiThread(() -> {
-                        Toast.makeText(EditBag.this, message, Toast.LENGTH_SHORT).show();
-                        navigateToLaundry();
-                    });
-                } else {
-                    handleError(response);
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String message = jsonResponse.optString("message", "Bag has been edited successfully.");
+                        runOnUiThread(() -> {
+                            Toast.makeText(EditBag.this, message, Toast.LENGTH_SHORT).show();
+                            navigateToLaundry();
+                        });
+                    } else {
+                        handleError(response);
+                    }
                 }
             } catch (Exception e) {
                 Log.e("EditBag", "Error: " + e.getMessage());

@@ -332,19 +332,20 @@ public class EditAsset extends AppCompatActivity {
                         .post(body)
                         .build();
 
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful()) {
-                    String responseData = Objects.requireNonNull(response.body()).string();
-                    response.body().close(); // Ensure the response is closed
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful()) {
+                        String responseData = Objects.requireNonNull(response.body()).string();
+                        response.body().close(); // Ensure the response is closed
 
-                    JSONObject jsonResponse = new JSONObject(responseData);
-                    String message = jsonResponse.optString("message", "Asset has been edited successfully.");
-                    runOnUiThread(() -> {
-                        Toast.makeText(EditAsset.this, message, Toast.LENGTH_SHORT).show();
-                        navigateToAssets();
-                    });
-                } else {
-                    handleError(response);
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String message = jsonResponse.optString("message", "Asset has been edited successfully.");
+                        runOnUiThread(() -> {
+                            Toast.makeText(EditAsset.this, message, Toast.LENGTH_SHORT).show();
+                            navigateToAssets();
+                        });
+                    } else {
+                        handleError(response);
+                    }
                 }
             } catch (Exception e) {
                 Log.e("EditAsset", "Error: " + e.getMessage());
@@ -805,23 +806,23 @@ public class EditAsset extends AppCompatActivity {
                 assetLocationText.setText(assetLocationName, false);
                 assetSubLocationText.setText(assetSubLocationName, false);
                 assetEpcText.setText("EPC code: " + assetEPC);
-                assetCategoriesText.setText(assetCategory);
+                assetCategoriesText.setText(!assetCategory.equals("null") && !assetCategory.isEmpty() ? assetCategory : "");
                 assetQuantityText.setText(assetQuantity);
-                assetMrahText.setText(assetMrah);
-                assetOwnerText.setText(assetOwner);
-                assetCommentsText.setText(assetComments);
-                assetReplacedOffText.setText(assetReplacedOff);
-                assetReplacedByText.setText(assetReplacedBy);
-                assetM2InsideText.setText(assetM2Inside);
-                assetPurchasePriceText.setText(assetPurchasePrice);
+                assetMrahText.setText(!assetMrah.equals("null") && !assetMrah.isEmpty() ? assetMrah : "");
+                assetOwnerText.setText(!assetOwner.equals("null") && !assetOwner.isEmpty() ? assetOwner : "");
+                assetCommentsText.setText(!assetComments.equals("null") && !assetComments.isEmpty() ? assetComments : "");
+                assetReplacedOffText.setText(!assetReplacedOff.equals("null") && !assetReplacedOff.isEmpty() ? assetReplacedOff : "");
+                assetReplacedByText.setText(!assetReplacedBy.equals("null") && !assetReplacedBy.isEmpty() ? assetReplacedBy : "");
+                assetM2InsideText.setText(!assetM2Inside.equals("null") && !assetM2Inside.isEmpty() ? assetM2Inside : "");
+                assetPurchasePriceText.setText(!assetPurchasePrice.equals("null") && !assetPurchasePrice.isEmpty() ? assetPurchasePrice : "");
                 assetIsFixedCheckbox.setChecked(assetIsFixed);
-                assetDatePurchaseText.setText(assetDatePurchase);
-                assetDateWrittenOffText.setText(assetDateWrittenOff);
-                assetStatusText.setText(assetStatus);
-                assetServiceText.setText(assetService);
-                assetYearOfLifeCycleText.setText(assetYearOfLifeCycle);
-                assetRestOfLifeCycleText.setText(assetRestOfLifeCycle);
-                assetRestValueText.setText(assetRestValue);
+                assetDatePurchaseText.setText(!assetDatePurchase.equals("null") && !assetDatePurchase.isEmpty() ? assetDatePurchase : "");
+                assetDateWrittenOffText.setText(!assetDateWrittenOff.equals("null") && !assetDateWrittenOff.isEmpty() ? assetDateWrittenOff : "");
+                assetStatusText.setText(!assetStatus.equals("null") && !assetStatus.isEmpty() ? assetStatus : "");
+                assetServiceText.setText(!assetService.equals("null") && !assetService.isEmpty() ? assetService : "");
+                assetYearOfLifeCycleText.setText(!assetYearOfLifeCycle.equals("null") && !assetYearOfLifeCycle.isEmpty() ? assetYearOfLifeCycle : "");
+                assetRestOfLifeCycleText.setText(!assetRestOfLifeCycle.equals("null") && !assetRestOfLifeCycle.isEmpty() ? assetRestOfLifeCycle : "");
+                assetRestValueText.setText(!assetRestValue.equals("null") && !assetRestValue.isEmpty() ? assetRestValue : "");
 
                 SpinnerAdapter rawAdapterExpandable = assetExpandableText.getAdapter();
                 if (rawAdapterExpandable instanceof ArrayAdapter<?>) {

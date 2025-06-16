@@ -12,6 +12,8 @@ import android.os.Bundle;
 import android.text.InputType;
 import android.util.Base64;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.widget.EditText;
 import android.widget.ImageButton;
 
@@ -220,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
         }));
 
         dialog.setOnDismissListener(dialogInterface -> {
-            if (!isValidCode) {
+            if (!GlobalVariable.getVariable(this)) {
                 finish(); // Close the app if login fails or is canceled
             }
         });
@@ -321,12 +323,22 @@ public class MainActivity extends AppCompatActivity {
 
     private void showQRCodeDialog(Bitmap qrBitmap) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Scan QR Code with Google Authenticator");
+        builder.setTitle("Scan QR Code with Authenticator");
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 40, 50, 10);
 
         ImageView imageView = new ImageView(this);
+
+        int size = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 250, getResources().getDisplayMetrics()); // 250dp
+
+        LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(size, size);
+        imageParams.gravity = Gravity.CENTER;
+        imageParams.setMargins(0, 0, 0, 30); // bottom margin for spacing
+        imageView.setLayoutParams(imageParams);
+
         imageView.setImageBitmap(qrBitmap);
         layout.addView(imageView);
 

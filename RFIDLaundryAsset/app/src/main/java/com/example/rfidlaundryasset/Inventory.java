@@ -254,47 +254,47 @@ public class Inventory extends AppCompatActivity {
                                         .post(body)
                                         .build();
 
-                                Response response = client.newCall(request).execute();
+                                try (Response response = client.newCall(request).execute()) {
 
-                                if (response.isSuccessful()) {
-                                    String responseData = Objects.requireNonNull(response.body()).string();
-                                    JSONObject jsonResponse = new JSONObject(responseData);
-                                    boolean isAdditionalAsset = jsonResponse.getBoolean("isAdditionalAsset");
+                                    if (response.isSuccessful()) {
+                                        String responseData = Objects.requireNonNull(response.body()).string();
+                                        JSONObject jsonResponse = new JSONObject(responseData);
+                                        boolean isAdditionalAsset = jsonResponse.getBoolean("isAdditionalAsset");
 
-                                    boolean isNewEpc;
-                                    synchronized (scanningEpcSet) {
-                                        isNewEpc = scanningEpcSet.add(epc);
-                                    }
-
-                                    if (isNewEpc && !isAdditionalAsset) {
-                                        runOnUiThread(() -> loadAssetData(curentLocation));
-
-                                    } else if (isNewEpc) {
-                                        runOnUiThread(() -> updateAdditionalAssetTable(epc));
-                                    }
-
-                                } else {
-                                    // Extract the error message from the server response
-                                    String errorMessage = "Unknown error";
-                                    try {
-                                        if (response.body() != null) {
-                                            String responseBody = response.body().string();
-                                            JSONObject errorJson = new JSONObject(responseBody);
-                                            errorMessage = errorJson.optString("message", "Internal server error");
+                                        boolean isNewEpc;
+                                        synchronized (scanningEpcSet) {
+                                            isNewEpc = scanningEpcSet.add(epc);
                                         }
-                                    } catch (Exception e) {
-                                        Log.e("MainActivity", "Error: " + e.getMessage());
-                                    }
 
-                                    // Mark the EPC as invalid and skip it in future scans
-                                    synchronized (invalidEpcSet) {
-                                        invalidEpcSet.add(epc);
-                                    }
+                                        if (isNewEpc && !isAdditionalAsset) {
+                                            runOnUiThread(() -> loadAssetData(curentLocation));
 
-                                    String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
-                                    runOnUiThread(() -> showPopupWindow(finalErrorMessage));
+                                        } else if (isNewEpc) {
+                                            runOnUiThread(() -> updateAdditionalAssetTable(epc));
+                                        }
+
+                                    } else {
+                                        // Extract the error message from the server response
+                                        String errorMessage = "Unknown error";
+                                        try {
+                                            if (response.body() != null) {
+                                                String responseBody = response.body().string();
+                                                JSONObject errorJson = new JSONObject(responseBody);
+                                                errorMessage = errorJson.optString("message", "Internal server error");
+                                            }
+                                        } catch (Exception e) {
+                                            Log.e("MainActivity", "Error: " + e.getMessage());
+                                        }
+
+                                        // Mark the EPC as invalid and skip it in future scans
+                                        synchronized (invalidEpcSet) {
+                                            invalidEpcSet.add(epc);
+                                        }
+
+                                        String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
+                                        runOnUiThread(() -> showPopupWindow(finalErrorMessage));
+                                    }
                                 }
-
 
                             } catch (Exception e) {
                                 Log.e("Inventory", "Error: " + e.getMessage());
@@ -342,27 +342,28 @@ public class Inventory extends AppCompatActivity {
                     .post(body)
                     .build();
 
-            Response response = client.newCall(request).execute();
+            try (Response response = client.newCall(request).execute()) {
 
-            if (response.isSuccessful()) {
-                String responseData = Objects.requireNonNull(response.body()).string();
-                JSONObject jsonResponse = new JSONObject(responseData);
-                return jsonResponse.getBoolean("exists");
-            } else {
-                // Extract the error message from the server response
-                String errorMessage = "Unknown error";
-                try {
-                    if (response.body() != null) {
-                        String responseBody = response.body().string();
-                        JSONObject errorJson = new JSONObject(responseBody);
-                        errorMessage = errorJson.optString("message", "Internal server error");
+                if (response.isSuccessful()) {
+                    String responseData = Objects.requireNonNull(response.body()).string();
+                    JSONObject jsonResponse = new JSONObject(responseData);
+                    return jsonResponse.getBoolean("exists");
+                } else {
+                    // Extract the error message from the server response
+                    String errorMessage = "Unknown error";
+                    try {
+                        if (response.body() != null) {
+                            String responseBody = response.body().string();
+                            JSONObject errorJson = new JSONObject(responseBody);
+                            errorMessage = errorJson.optString("message", "Internal server error");
+                        }
+                    } catch (Exception e) {
+                        Log.e("Inventory", "Error: " + e.getMessage());
                     }
-                } catch (Exception e) {
-                    Log.e("Inventory", "Error: " + e.getMessage());
-                }
 
-                String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
-                runOnUiThread(() -> showPopupWindow(finalErrorMessage));
+                    String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
+                    runOnUiThread(() -> showPopupWindow(finalErrorMessage));
+                }
             }
 
         } catch (InterruptedIOException e) {
