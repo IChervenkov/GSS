@@ -37,15 +37,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 switch (buttonId) {
                     case 'downloadBtn':
                         url = '/download-apk-bike';
-                        appName = 'NFCReader-1.2-release.apk';
+                        appName = 'NFCReader-1.3-release.apk';
                         break;
                     case 'downloadRFIDAppBtn':
                         url = '/download-apk-laundry';
-                        appName = 'RFIDLaundryReader-1.2-release.apk';
+                        appName = 'RFIDLaundryReader-1.3-release.apk';
                         break;
                     case 'downloadRFIDAppBtnAsset':
                         url = '/download-apk-asset';
-                        appName = 'RFIDLaundryAsset-1.2-release.apk';
+                        appName = 'RFIDLaundryAsset-1.3-release.apk';
                         break;
                     case 'downloadTabletAppBtn':
                         url = '/download-apk-gym';

@@ -255,10 +255,16 @@ public class SettingsActivity extends AppCompatActivity {
         executorService.shutdown(); // Ensure executor shuts down when activity is destroyed
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
+
+        if (getIntent().hasExtra("apkUrl")) {
+            String apkUrl = getIntent().getStringExtra("apkUrl");
+            promptUpdate(apkUrl);
+        }
 
         // Initialize RFID reader
         try {

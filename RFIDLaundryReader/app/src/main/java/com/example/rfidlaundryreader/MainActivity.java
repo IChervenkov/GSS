@@ -1,11 +1,19 @@
 package com.example.rfidlaundryreader;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Base64;
@@ -26,7 +34,10 @@ import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
 
 import com.rscja.deviceapi.RFIDWithUHFUART;
 import com.rscja.deviceapi.entity.UHFTAGInfo;
@@ -35,6 +46,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
@@ -50,6 +62,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -108,6 +122,74 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void checkForUpdate() {
+        executorService.execute(() -> {
+            try {
+                String baseUrl = getString(R.string.base_url);
+                Request request = new Request.Builder()
+                        .url(baseUrl + "/apk-bike-version")
+                        .build();
+
+                client.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        Log.e("UpdateCheck", "Error: " + e.getMessage());
+                    }
+
+                    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        if (response.isSuccessful()) {
+                            String resBody = Objects.requireNonNull(response.body()).string();
+                            try {
+                                JSONObject json = new JSONObject(resBody);
+                                String latestVersion = json.getString("version");
+                                String apkUrl = json.getString("apkUrl");
+
+                                PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+                                String currentVersion = pInfo.versionName;
+
+                                if (!currentVersion.equals(latestVersion)) {
+                                    runOnUiThread(() -> sendUpdateNotification(apkUrl));
+                                }
+                            } catch (Exception e) {
+                                Log.e("UpdateCheck", "JSON error: " + e.getMessage());
+                            }
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                Log.e("UpdateCheck", "Exception: " + e.getMessage());
+            }
+        });
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+    private void sendUpdateNotification(String apkUrl) {
+        String channelId = "update_channel";
+        String channelName = "App Updates";
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        NotificationChannel channel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH);
+        notificationManager.createNotificationChannel(channel);
+
+        Intent intent = new Intent(this, SettingsActivity.class);
+        intent.putExtra("apkUrl", apkUrl);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(R.drawable.ic_update) // use your icon
+                .setContentTitle("New Version Available")
+                .setContentText("Tap to update the app.")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true);
+
+        notificationManager.notify(1001, builder.build());
+    }
+
     @SuppressLint("WrongViewCast")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,6 +206,14 @@ public class MainActivity extends AppCompatActivity {
             showLoginDialog();
             return;
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 100);
+            }
+        }
+
+        checkForUpdate();
 
         ImageButton settingsButton = findViewById(R.id.settingsButton);
 

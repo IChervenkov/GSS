@@ -241,10 +241,16 @@ public class SettingsActivity extends AppCompatActivity {
         registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
+
+        if (getIntent().hasExtra("apkUrl")) {
+            String apkUrl = getIntent().getStringExtra("apkUrl");
+            promptUpdate(apkUrl);
+        }
 
         campSpinner = findViewById(R.id.campSpinner);
         Button saveButton = findViewById(R.id.saveButton);

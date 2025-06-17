@@ -1716,7 +1716,7 @@ class Server {
 
         // Serve APK file from local directory
         this.app.get('/download-apk-bike', (req, res) => {
-            const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.2-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.3-release.apk');
 
             // Check APK file existence and legality
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -1725,7 +1725,7 @@ class Server {
 
             // Serve the APK with proper headers
             res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-            res.setHeader('Content-Disposition', 'attachment; filename="NFCReader-1.2-release.apk"');
+            res.setHeader('Content-Disposition', 'attachment; filename="NFCReader-1.3-release.apk"');
             res.download(apkFilePath, (err) => {
                 if (err) {
                     console.error('Error during APK download:', err);
@@ -1735,7 +1735,7 @@ class Server {
         });
 
         this.app.get('/apk-bike-version', (req, res) => {
-            res.json({ version: "1.2", apkUrl: "/download-apk-bike" });
+            res.json({ version: "1.3", apkUrl: "/download-apk-bike" });
         });
 
         // Section bicycles
@@ -6498,7 +6498,7 @@ class Server {
         // Serve APK file from local directory
         this.app.get('/download-apk-laundry', (req, res) => {
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.2-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.3-release.apk');
 
             // Check legality and existence of the APK file
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -6507,7 +6507,7 @@ class Server {
 
             // Set proper headers for an APK file
             res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
-            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.2-release.apk"'); // Force download with custom filename
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.3-release.apk"'); // Force download with custom filename
 
             // Use res.download() to send the file to the client
             res.download(apkFilePath, (err) => {
@@ -6519,7 +6519,7 @@ class Server {
         });
 
         this.app.get('/apk-laundry-version', (req, res) => {
-            res.json({ version: "1.2", apkUrl: "/download-apk-laundry" });
+            res.json({ version: "1.3", apkUrl: "/download-apk-laundry" });
         });
 
         this.app.get('/laundry', this.isLoggedIn.bind(this), async (req, res) => {
@@ -7630,7 +7630,7 @@ class Server {
         // Serve APK file from local directory
         this.app.get('/download-apk-asset', (req, res) => {
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.2-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.3-release.apk');
 
             // Check legality and existence of the APK file
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -7639,7 +7639,7 @@ class Server {
 
             // Set proper headers for an APK file
             res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
-            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryAsset-1.2-release.apk"'); // Force download with custom filename
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryAsset-1.3-release.apk"'); // Force download with custom filename
 
             // Use res.download() to send the file to the client
             res.download(apkFilePath, (err) => {
@@ -7651,7 +7651,7 @@ class Server {
         });
 
         this.app.get('/apk-asset-version', (req, res) => {
-            res.json({ version: "1.2", apkUrl: "/download-apk-asset" });
+            res.json({ version: "1.3", apkUrl: "/download-apk-asset" });
         });
 
         this.app.get('/allAssets', async (req, res) => {
