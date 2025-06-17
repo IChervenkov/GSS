@@ -137,6 +137,8 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.left-nav ul li button').forEach(btn => btn.classList.remove('pinClass'));
             event.target.classList.add('pinClass');
 
+            loadingIndicator.style.display = 'flex';
+
             try {
                 const response = await fetch('/setCampValue', {
                     method: 'POST',
@@ -160,6 +162,8 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 showMess('Error', 'Network error or server is unavailable.');
                 console.error('Fetch error:', error);
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         });
     });    

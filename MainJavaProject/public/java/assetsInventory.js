@@ -850,6 +850,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const expandable = selectedAllAsset.getAttribute('data-expandable');
             const description = selectedAllAsset.getAttribute('data-description');
 
+            loadingIndicator.style.display = 'flex';
+
             fetch(`/assets/getSortedAssets`, {
                 method: 'GET'
             })
@@ -867,7 +869,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         year_of_life_cycle, rest_of_life_cycle, replaced_by, rest_value
                     );
                 })
-                .catch(error => console.error("Error fetching keys:", error));
+                .catch(error => console.error("Error fetching keys:", error))
+                .finally(() => {
+                    loadingIndicator.style.display = 'none';
+                });
 
             selectAllAssetInput.value = '';
             selectAllAssetDropdown.style.display = 'none';

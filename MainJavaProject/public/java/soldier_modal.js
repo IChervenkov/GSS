@@ -4521,6 +4521,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     function handleSoldierRelocation() {
+
+        loadingIndicator.style.display = 'flex';
+
         try {
 
             const keyId = document.getElementById('previewKey')?.value;
@@ -4610,6 +4613,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } catch (error) {
             console.error('Error handling soldier relocation:', error);
+        } finally {
+            loadingIndicator.style.display = 'none';
         }
     }
 
