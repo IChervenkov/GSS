@@ -1153,20 +1153,46 @@ class Server {
         });
 
         this.app.get('/2fa-verificated', async (req, res) => {
-            if (!req.session.secret) {
-                req.session.secret = speakeasy.generateSecret({
-                    name: process.env.SECRET_NAME
+            const client = await pool.connect();
+            try {
+                const result = await client.query("SELECT totp_secret FROM users WHERE id = $1", [req.session.pendingUserId]);
+                let secret;
+
+                if (result.rows[0].totp_secret) {
+                    // User already has a TOTP secret
+                    secret = {
+                        base32: result.rows[0].totp_secret,
+                        otpauth_url: speakeasy.otpauthURL({
+                            secret: result.rows[0].totp_secret,
+                            label: process.env.SECRET_NAME,
+                            encoding: 'base32'
+                        })
+                    };
+                } else {
+                    // Generate and save new secret
+                    secret = speakeasy.generateSecret({ name: process.env.SECRET_NAME });
+
+                    await client.query("UPDATE users SET totp_secret = $1 WHERE id = $2", [
+                        secret.base32,
+                        req.session.pendingUserId
+                    ]);
+                }
+
+                req.session.secret = secret;
+                const qrCodeDataURL = await qrcode.toDataURL(secret.otpauth_url);
+                req.session.qrCodeDataURL = qrCodeDataURL;
+
+                res.render('verifyQRCode', {
+                    qrCodeDataURL,
+                    csrfToken: req.csrfToken(),
+                    errorMessage: null
                 });
+            } catch (err) {
+                console.error(err);
+                res.redirect('/login');
+            } finally {
+                client.release();
             }
-
-            const qrCodeDataURL = await qrcode.toDataURL(req.session.secret.otpauth_url);
-            req.session.qrCodeDataURL = qrCodeDataURL;
-
-            res.render('verifyQRCode', {
-                qrCodeDataURL,
-                csrfToken: req.csrfToken(),
-                errorMessage: null
-            });
         });
 
         this.app.post('/verify', (req, res) => {
@@ -1309,16 +1335,42 @@ class Server {
         });
 
         this.app.get('/2fa-verificated-device', async (req, res) => {
-            if (!req.session.secret) {
-                req.session.secret = speakeasy.generateSecret({
-                    name: process.env.SECRET_NAME
-                });
+            const client = await pool.connect();
+            try {
+                const result = await client.query("SELECT totp_secret FROM users WHERE id = $1", [req.session.pendingUserId]);
+                let secret;
+
+                if (result.rows[0].totp_secret) {
+                    // Use existing secret
+                    secret = {
+                        base32: result.rows[0].totp_secret,
+                        otpauth_url: speakeasy.otpauthURL({
+                            secret: result.rows[0].totp_secret,
+                            label: process.env.SECRET_NAME,
+                            encoding: 'base32'
+                        })
+                    };
+                } else {
+                    // Generate and store a new secret
+                    secret = speakeasy.generateSecret({ name: process.env.SECRET_NAME });
+
+                    await client.query("UPDATE users SET totp_secret = $1 WHERE id = $2", [
+                        secret.base32,
+                        req.session.pendingUserId
+                    ]);
+                }
+
+                req.session.secret = secret;
+                const qrCodeDataURL = await qrcode.toDataURL(secret.otpauth_url);
+                req.session.qrCodeDataURL = qrCodeDataURL;
+
+                res.json({ qrCodeDataURL });
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ error: 'An error occurred while generating QR code.' });
+            } finally {
+                client.release();
             }
-
-            const qrCodeDataURL = await qrcode.toDataURL(req.session.secret.otpauth_url);
-            req.session.qrCodeDataURL = qrCodeDataURL;
-
-            res.json({ qrCodeDataURL });
         });
 
         this.app.post('/verify-device', (req, res) => {
