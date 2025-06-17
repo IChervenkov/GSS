@@ -467,11 +467,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered soldiers in the dropdown
     function filterAdditionalItemSoldiers(query) {
         additionalItemSoldierSearchDropdown.innerHTML = '';
-        const filteredSoldier = soldiers.filter(soldier => soldier.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredSoldier = soldiers.filter(soldier => (soldier.date_accommodation !== '' && soldier.date_free === '') && soldier.name.toLowerCase().includes(query.toLowerCase()));
+        const uniqueSoldiers = Array.from(
+            new Map(filteredSoldier.map(s => [s.name.toLowerCase(), s])).values()
+        );
 
-        if (filteredSoldier.length > 0) {
+        if (uniqueSoldiers.length > 0) {
             additionalItemSoldierSearchDropdown.style.display = 'block';
-            filteredSoldier.forEach(soldier => {
+            uniqueSoldiers.forEach(soldier => {
                 const li = document.createElement('li');
                 li.textContent = soldier.name;
                 li.setAttribute('data-id', soldier.id);
@@ -507,11 +510,27 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered soldiers in the dropdown
     function filterSoldiers(query) {
         soldierSearchDropdown.innerHTML = '';
-        const filteredSoldier = soldiers.filter(soldier => ((soldier.date_accommodation === '' && soldier.date_free === '') || (soldier.date_accommodation !== '' && soldier.date_free !== '')) && soldier.name.toLowerCase().includes(query.toLowerCase()));
 
-        if (filteredSoldier.length > 0) {
+        let filteredSoldier;
+
+        switch (typeBuild.value) {
+            case "Accommodation":
+            case "":
+                filteredSoldier = soldiers.filter(soldier => ((soldier.date_accommodation === '' && soldier.date_free === '') || (soldier.date_accommodation !== '' && soldier.date_free !== '')) && soldier.name.toLowerCase().includes(query.toLowerCase()));
+                break;
+
+            default:
+                filteredSoldier = soldiers.filter(soldier => (soldier.name.toLowerCase().includes(query.toLowerCase())));
+                break;
+        }
+
+        const uniqueSoldiers = Array.from(
+            new Map(filteredSoldier.map(s => [s.name.toLowerCase(), s])).values()
+        );
+
+        if (uniqueSoldiers.length > 0) {
             soldierSearchDropdown.style.display = 'block';
-            filteredSoldier.forEach(soldier => {
+            uniqueSoldiers.forEach(soldier => {
                 const li = document.createElement('li');
                 li.textContent = soldier.name;
                 li.setAttribute('data-id', soldier.id);
@@ -1024,7 +1043,6 @@ document.addEventListener('DOMContentLoaded', function () {
         function handleOtherInputs() {
             moveButton.style.display = 'none';
             additionalItemButtoon.style.display = 'none';
-            saveButton.style.display = 'block';
         }
 
         function handleSoldierInputs(soldierName) {
@@ -1039,6 +1057,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 selectedSoldierId.value = soldiers.find(soldier => soldier.name === soldierInput.value).id;
 
             }
+
+            moveButton.style.display = 'block';
+            additionalItemButtoon.style.display = 'block';
         }
 
         additionalItemButtoon.setAttribute('soldier-id', selectedSoldierId.value);
@@ -1193,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalItemModalContent.classList.add('slide-in');
 
         const soldierId = additionalItemButtoon.getAttribute('soldier-id') || additionalItemEditSoldierButtoon.getAttribute('soldier-id');
-        additionalItemSoldierSearchInput.value = soldiers.filter(soldier => soldier.id === soldierId)[0].name;
+        additionalItemSoldierSearchInput.value = soldierId ? soldiers.filter(soldier => soldier.id === soldierId)[0].name : '';
         additionalItemSelectedSoldierId.value = soldierId;
 
         const tableBody = document.getElementById("additionalItemTableBody");
@@ -1500,8 +1521,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => response.json())
             .then(data => {
                 // Parse the JSON string into an array of objects
-                var soldierListData = data;
-                soldierListData = soldierListData.filter(item => item.id !== '4');
+                var soldierListData = data.filter(item => item.id !== '4');
+                soldierListData = Array.from(
+                    new Map(soldierListData.map(s => [s.name.toLowerCase(), s])).values()
+                );
 
                 const tbody = document.getElementById('tableBodyModal');
                 const assetTableBody = document.getElementById('soldierTable').getElementsByTagName('tbody')[0];

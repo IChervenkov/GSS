@@ -3917,7 +3917,14 @@ class Server {
 
                 await client.query('BEGIN');
 
-                if (soldierId !== '' && countryId === 'None') {
+                const key_build_type = await client.query(`
+                    SELECT b.type FROM buildings b
+                    LEFT JOIN buildroom br ON br.buildid = b.id
+                    JOIN roomskey rk ON rk.roomid = br.roomid AND rk.keyid = $1`, [keyCodeId]);
+
+                const buildType = key_build_type.rows[0].type;
+
+                if (soldierId !== '' && buildType !== 'Accommodation') {
                     await client.query(
                         "UPDATE key SET soldierid = $1 where id = $2;",
                         [soldierId, keyCodeId]
@@ -3927,7 +3934,7 @@ class Server {
                     await client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
                         [req.session.username, `Give key ${keyCodeId} to ${soldierId}`]);
 
-                } else if (soldierId !== '' && countryId !== 'None') {
+                } else if (soldierId !== '' && buildType === 'Accommodation') {
 
                     const get_bag_soldier = await client.query(`
                         SELECT l.status, l.id FROM laundrybags l 
@@ -3978,7 +3985,7 @@ class Server {
                             [req.session.username, `Accommodated soldier with number ${soldierId} with meal card ${mealCardId} and bag ${bagsRes.rows[0].code}`]);
                     }
 
-                } else if (soldierId === '' && countryId !== 'None') {
+                } else if (soldierId === '' && buildType === 'Accommodation') {
 
                     const res_query = await client.query(
                         "SELECT soldierid FROM key WHERE id = $1;",

@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const editDateFrom = document.getElementById('editDateFrom');
 
     const csrfToken = document.getElementsByName('_csrf')[0].value;
-    
+
     var editBikeSearchId;
 
     // Get the modal
@@ -602,9 +602,13 @@ document.addEventListener('DOMContentLoaded', function () {
             client.namekey.toLowerCase().includes(query.toLowerCase())
         ));
 
-        if (filteredSoldiers.length > 0) {
+        const uniqueSoldiers = Array.from(
+            new Map(filteredSoldiers.map(s => [s.name.toLowerCase(), s])).values()
+        );
+
+        if (uniqueSoldiers.length > 0) {
             editSoldierSearchDropdown.style.display = 'block';
-            filteredSoldiers.forEach(soldier => {
+            uniqueSoldiers.forEach(soldier => {
                 const li = document.createElement('li');
                 li.textContent = soldier.name;
                 li.setAttribute('data-id', soldier.id);
@@ -658,9 +662,13 @@ document.addEventListener('DOMContentLoaded', function () {
             client.namekey.toLowerCase().includes(query.toLowerCase())
         ));
 
-        if (filteredClients.length > 0) {
+        const uniqueSoldiers = Array.from(
+            new Map(filteredClients.map(s => [s.name.toLowerCase(), s])).values()
+        );
+
+        if (uniqueSoldiers.length > 0) {
             clientSearchDropdown.style.display = 'block';
-            filteredClients.forEach(client => {
+            uniqueSoldiers.forEach(client => {
                 const li = document.createElement('li');
                 li.textContent = client.name;
                 li.setAttribute('data-id', client.id);
@@ -1481,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var isRemove = false;
         var isError = false;
         var result = {};
-        
+
         const icon = document.getElementById('mess-icon-rep');
         const message = document.getElementById('mess-text-rep');
         const btnYes = document.getElementById('btnMess');
@@ -2354,7 +2362,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
-            if(percentage >= 100)
+            if (percentage >= 100)
                 loadingIndicator.style.display = 'flex';
         };
 
@@ -2462,7 +2470,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
-            if(percentage >= 100)
+            if (percentage >= 100)
                 loadingIndicator.style.display = 'flex';
         };
 

@@ -49,9 +49,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class RentedBike extends AppCompatActivity {
 
@@ -251,6 +253,8 @@ public class RentedBike extends AppCompatActivity {
         keyIdMap.clear();
         keyIdCountMap.clear();
 
+        Set<String> seenNames = new HashSet<>();
+
         for (int i = 0; i < bikes.length(); i++) {
             JSONObject bike = bikes.getJSONObject(i);
             String bikeId = bike.getString("id");
@@ -258,6 +262,12 @@ public class RentedBike extends AppCompatActivity {
             String bikeName = bike.getString("namesoldier");
             String soldierKey = bike.getString("namekey");
             String countGetBikes = bike.getString("count_get_bike");
+
+            if (seenNames.contains(bikeName)) {
+                continue;
+            }
+
+            seenNames.add(bikeName);
 
             BikeInfo bikeInfo = new BikeInfo(bikeName, soldierKey);
 
