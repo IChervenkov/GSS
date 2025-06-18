@@ -52,6 +52,10 @@ const shemaChangeCamp = Joi.object({
     campId: Joi.string().alphanum().optional()
 });
 
+const schema2FAVerify = Joi.object({
+    code: Joi.string().alphanum().required()
+});
+
 const schemaAddCamp = Joi.object({
     campName: Joi.string().alphanum().required()
 });
@@ -1196,6 +1200,12 @@ class Server {
         });
 
         this.app.post('/verify', (req, res) => {
+
+            const { error } = schema2FAVerify.validate(req.body, { allowUnknown: true });
+            if (error) {
+                return res.render('index', { title: 'LogIn', errorMessage: 'Invalid input' });
+            }
+
             const { code } = req.body;
             const userSecret = req.session.secret;
 
@@ -1374,6 +1384,12 @@ class Server {
         });
 
         this.app.post('/verify-device', (req, res) => {
+
+            const { error } = schema2FAVerify.validate(req.body, { allowUnknown: true });
+            if (error) {
+                return res.render('index', { title: 'LogIn', errorMessage: 'Invalid input' });
+            }
+
             const { code } = req.body;
             const userSecret = req.session.secret;
 
