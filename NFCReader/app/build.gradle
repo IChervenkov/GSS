@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    namespace 'com.example.nfcreader'
-    compileSdk 34
+    namespace = 'com.example.nfcreader'
+    compileSdk = 34
 
     defaultConfig {
         applicationId "com.example.nfcreader"
-        minSdk 30
-        targetSdk 34
+        minSdk = 30
+        targetSdk = 34
         versionCode 4
         versionName "1.3"
 

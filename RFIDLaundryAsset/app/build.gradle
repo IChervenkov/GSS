@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    namespace 'com.example.rfidlaundryasset'
-    compileSdk 34
+    namespace = 'com.example.rfidlaundryasset'
+    compileSdk = 34
 
     defaultConfig {
         applicationId "com.example.rfidlaundryasset"
-        minSdk 30
-        targetSdk 34
+        minSdk = 30
+        targetSdk = 34
         versionCode 4
         versionName "1.3"
 
@@ -18,7 +18,7 @@ android {
 
     buildTypes {
         release {
-            shrinkResources true
+            shrinkResources = true
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

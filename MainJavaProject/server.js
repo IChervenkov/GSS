@@ -118,6 +118,7 @@ const shemaUpdateQuantityAsset = Joi.object({
 const shemaUpdateLocationAsset = Joi.object({
     id: Joi.string().alphanum().required(),
     locationId: Joi.string().alphanum().required(),
+    sublocationId: Joi.string().alphanum().allow('').optional(),
     username: Joi.string().alphanum().required(),
     isValidCode: Joi.bool().required(),
     campId: Joi.string().alphanum().required()
@@ -1334,6 +1335,8 @@ class Server {
                 }
 
                 req.session.failedLogin = { failedAttempts: 0, blockExpiresAt: null };
+                req.session.pendingUserId = user.id;
+                req.session.pendingUser = username;
 
                 await client.query('COMMIT');
                 return res.status(200).json({ success: true, validUsername: true });
@@ -1407,6 +1410,8 @@ class Server {
             if (verified) {
                 delete req.session.qrCodeDataURL;
                 delete req.session.secret;
+                delete req.session.username
+                delete req.session.userId;
                 return res.status(200).json({ success: true });
             } else {
                 return res.status(401).json({ success: false, message: 'Invalid code. Try again.' });
@@ -1506,7 +1511,7 @@ class Server {
                     (SELECT COUNT(*) FROM bikesoldier WHERE soldierid = s.id AND datefrom IS NOT NULL AND dateto IS NULL) AS count_get_bike
                     FROM soldier s
                     LEFT JOIN key k ON k.soldierid = s.id
-                    WHERE date_accommodation IS NOT NULL AND date_free IS NULL AND s.camp_id = $1`, [campId]);
+                    WHERE s.camp_id = $1`, [campId]);
 
                 await client.query('COMMIT');
                 res.status(200).json(result.rows);
@@ -4165,7 +4170,8 @@ class Server {
                 const workbook = new excelJS.Workbook();
                 const worksheet1 = workbook.addWorksheet('Information about soldiers');
                 const worksheet2 = workbook.addWorksheet('Movement soldiers information');
-                const worksheet3 = workbook.addWorksheet('Buildings information');
+                const worksheet3 = workbook.addWorksheet('Rooms information');
+                const worksheet4 = workbook.addWorksheet('Additional keys');
 
                 const headers1 = ['Key Number', 'Soldier Name', 'Country', 'Accommodation Date', 'Release Date', 'Meal card', 'Laundry bag'];
                 worksheet1.addRow(headers1).eachCell((cell) => {
@@ -4203,9 +4209,22 @@ class Server {
                     };
                 });
 
+                const headers4 = ['Key Number', 'Soldier Name'];
+                worksheet4.addRow(headers4).eachCell((cell) => {
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+
                 worksheet1.columns = headers1.map(header => ({ header, width: header.length + 10 }));
                 worksheet2.columns = headers2.map(header => ({ header, width: header.length + 10 }));
                 worksheet3.columns = headers3.map(header => ({ header, width: header.length + 10 }));
+                worksheet4.columns = headers4.map(header => ({ header, width: header.length + 10 }));
 
                 await Promise.all(filteredSoldier.map(async ({ roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag }, index) => {
                     const dataRow = worksheet1.addRow([roomNumber, soldierName, country, dateIn, dateOut, mealCard, laundryBag]);
@@ -4290,8 +4309,6 @@ class Server {
 
                 const filteredBuildingsInfo = resultData.rows;
 
-                await client.query('COMMIT');
-
                 await Promise.all(filteredBuildingsInfo.map(async (data, index) => {
                     const dataRow = worksheet3.addRow(Object.values(data));
 
@@ -4314,6 +4331,42 @@ class Server {
                         });
                     }
                 }));
+
+                const resultAdditionalKey = await client.query(`
+                    SELECT k.namekey, s.namesoldier FROM key k
+                    LEFT JOIN soldier s ON s.id = k.soldierid
+                    LEFT JOIN roomskey rk ON rk.keyid = k.id
+                    LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                    LEFT JOIN buildings b ON b.id = br.buildid
+                    WHERE b.type <> 'Accommodation' AND k.soldierid IS NOT NULL AND b.camp_id = $1
+                    ORDER BY k.namekey`, [req.session.camp]);
+
+                const filteredAdditionalKey = resultAdditionalKey.rows;
+
+                await Promise.all(filteredAdditionalKey.map(async (data, index) => {
+                    const dataRow = worksheet4.addRow(Object.values(data));
+
+                    // Apply borders and alternating row color
+                    dataRow.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' },
+                        };
+                    });
+                    if (index % 2 === 0) {
+                        dataRow.eachCell((cell) => {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFDDDDDD' }, // Light grey
+                            };
+                        });
+                    }
+                }));
+
+                await client.query('COMMIT');
 
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                 res.setHeader('Content-Disposition', 'attachment; filename="report_accommodation.xlsx"');
@@ -8162,17 +8215,34 @@ class Server {
                    SELECT r.id, nameroom FROM rooms r
                     LEFT JOIN buildroom br ON br.roomid = r.id
                     LEFT JOIN buildings b ON b.id = br.buildid
-                    WHERE b.camp_id = $1 
-                    AND r.nameroom NOT SIMILAR TO '[0-9]+/[0-9]+/E[0-9]+'
+                    WHERE b.camp_id = $1
                     ORDER BY r.nameroom;`, [value.campId]);
 
-                const result_location = result.rows.map(row => ({
+                const result_sublocation = await client.query(`
+                    SELECT k.id, namekey, rk.roomid FROM key k
+                    LEFT JOIN roomskey rk ON rk.keyid = k.id
+                    LEFT JOIN buildroom br ON br.roomid = rk.roomid
+                    LEFT JOIN buildings b ON b.id = br.buildid
+					WHERE b.camp_id = $1 
+                    AND k.id NOT IN (SELECT location_key FROM assets WHERE location_key IS NOT NULL)
+                    ORDER BY k.namekey;`, [value.campId]);
+
+                const locations = result.rows.map(row => ({
                     id: row.id,
                     nameroom: row.nameroom
                 }));
 
+                const sublocations = result_sublocation.rows.map(row => ({
+                    id: row.id,
+                    namekey: row.namekey,
+                    roomid: row.roomid
+                }));
+
                 await client.query('COMMIT');
-                res.status(200).json(result_location);
+                res.status(200).json({
+                    locations,
+                    sublocations
+                });
 
             } catch (error) {
                 await client.query('ROLLBACK');
@@ -8313,8 +8383,13 @@ class Server {
                                     item_into.rest_value
                                 ]));
                         }
-                    } else
+                    } else {
                         queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [new_quantity - asset_quantity, req.session.camp]));
+                        if (get_exist_lost_item.rows.length > 0) {
+                            queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [new_quantity - asset_quantity, item_into.id]));
+                            queries.push(client.query(`DELETE FROM lostitem WHERE lost_quantity::NUMERIC = 0;`));
+                        }
+                    }
 
                 } else {
                     if (asset_quantity === new_quantity)
@@ -8342,8 +8417,13 @@ class Server {
                         }
                     }
 
-                    else
+                    else {
                         queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [new_quantity - asset_quantity, req.session.camp]));
+                        if (get_exist_lost_item.rows.length > 0) {
+                            queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [new_quantity - asset_quantity, item_into.id]));
+                            queries.push(client.query(`DELETE FROM lostitem WHERE lost_quantity::NUMERIC = 0;`));
+                        }
+                    }
                 }
 
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -8509,8 +8589,13 @@ class Server {
                         }
                     }
 
-                    else
+                    else {
                         queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [new_quantity - asset_quantity, campId]));
+                        if (get_exist_lost_item.rows.length > 0) {
+                            queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [new_quantity - asset_quantity, item_into.id]));
+                            queries.push(client.query(`DELETE FROM lostitem WHERE lost_quantity::NUMERIC = 0;`));
+                        }
+                    }
 
                 } else {
                     if (asset_quantity === new_quantity)
@@ -8519,8 +8604,13 @@ class Server {
                     else if (asset_quantity > new_quantity)
                         queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, $1, 0, $2);`, [asset_quantity - new_quantity, campId]));
 
-                    else
+                    else {
                         queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [new_quantity - asset_quantity, campId]));
+                        if (get_exist_lost_item.rows.length > 0) {
+                            queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [new_quantity - asset_quantity, item_into.id]));
+                            queries.push(client.query(`DELETE FROM lostitem WHERE lost_quantity::NUMERIC = 0;`));
+                        }
+                    }
                 }
 
                 queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
@@ -9936,6 +10026,12 @@ class Server {
                         queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [quantityAdded, campId]));
                     }
 
+                    const get_exist_lost_item = await client.query(`SELECT * FROM lostitem WHERE item_id = $1;`, [item_into.id]);
+                    if (get_exist_lost_item.rows.length > 0) {
+                        queries.push(client.query(`UPDATE lostitem SET lost_quantity = lost_quantity::NUMERIC - $1 WHERE item_id = $2;`, [quantityAdded, item_into.id]));
+                        queries.push(client.query(`DELETE FROM lostitem WHERE lost_quantity::NUMERIC = 0;`));
+                    }
+
                     queries.push(client.query(`UPDATE assets SET quantity = $1, inventory_status = 'edited' WHERE id = $2`, [newQuantity, id]));
                 }
 
@@ -9976,9 +10072,10 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result = await client.query(
-                    'SELECT * FROM assets WHERE id = $1',
-                    [code]
+                const result = await client.query(`
+                    SELECT id FROM assets WHERE id = $1
+                    UNION ALL
+                    SELECT id FROM lostitem WHERE item_id = $1;`, [code]
                 );
 
                 if (result.rows.length > 0) {
@@ -10056,10 +10153,14 @@ class Server {
                 await client.query('BEGIN');
 
                 const result = await client.query(`
-                    SELECT a.id, code, name_assets, r.nameroom AS location_name 
+                    SELECT a.id, code, name_assets, r.nameroom AS location_name, type_id::TEXT
                     FROM assets a
                     LEFT JOIN rooms r ON a.location_room = r.id
-                    WHERE a.id = $1`, [id]);
+                    WHERE a.id = $1
+                    UNION ALL
+                    SELECT item_id, nameitem, item_name, 'Lost Items' AS location_name, item_type_id
+                    FROM lostitem
+                    WHERE item_id = $1;`, [id]);
 
                 await client.query('COMMIT');
                 res.status(200).json(result.rows[0]);
@@ -10081,7 +10182,7 @@ class Server {
                 return res.status(400).json({ message: error.details[0].message });
             }
 
-            const { id, locationId, isValidCode, campId } = req.body;
+            const { id, locationId, sublocationId, isValidCode, campId } = req.body;
 
             if (!isValidCode)
                 return res.status(402).json({ message: "Invalid product code!" });
@@ -10092,19 +10193,45 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [campId]);
                 const queries = [];
 
-                if (result_exist_date.rows.length > 0) {
-                    queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + 1 WHERE date_change = CURRENT_DATE AND camp_id = $1;`, [campId]));
+                const result_restor_data = await client.query(`SELECT * FROM lostitem WHERE item_id = $1`, [id]);
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [campId]);
+
+                if (result_restor_data.rows.length > 0) {
+
+                    const restor_data = result_restor_data.rows[0];
+                    const lost_quantity = Number(restor_data.lost_quantity);
+
+                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'discovered', $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)`, [
+                        restor_data.item_id, restor_data.nameitem, restor_data.item_name, restor_data.item_type_id,
+                        locationId, sublocationId || null, restor_data.item_category, lost_quantity,
+                        restor_data.item_mrah, restor_data.item_owner, restor_data.item_status, restor_data.item_expandable,
+                        restor_data.item_description, restor_data.camp_id, restor_data.item_create_date, restor_data.item_last_inventory_date,
+                        restor_data.item_service, restor_data.item_m2_inside, restor_data.item_is_fixed, restor_data.item_date_purchase,
+                        restor_data.item_date_written_off, restor_data.item_purchase_price, restor_data.item_comments, restor_data.item_replaced_off,
+                        restor_data.item_year_of_life_cycle, restor_data.item_rest_of_life_cycle, restor_data.item_replaced_by, restor_data.item_rest_value
+                    ]));
+                    queries.push(client.query(`DELETE FROM lostitem WHERE item_id = $1;`, [restor_data.item_id]));
+                    result_exist_date.rows.length > 0
+                        ? queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [lost_quantity, campId]))
+                        : queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [lost_quantity, campId]))
+
+                    queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.body.username, `Restor lost asset with epc: ${id} in new location with id: ${locationId} in inventory`]));
                 } else {
-                    queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, 1, $2);`, [campId]));
+
+                    if (result_exist_date.rows.length > 0) {
+                        queries.push(client.query(`UPDATE asset_actions SET change_modificate_asset_quantity = change_modificate_asset_quantity::NUMERIC + 1 WHERE date_change = CURRENT_DATE AND camp_id = $1;`, [campId]));
+                    } else {
+                        queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, 1, $2);`, [campId]));
+                    }
+
+                    queries.push(client.query(`UPDATE assets SET location_room = $1, location_key = $3 inventory_status = 'edited' WHERE id = $2`, [locationId, id, sublocationId || null]));
+
+                    queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
+                        [req.body.username, `Change asset location with epc: ${id} and new location with id: ${locationId} in inventory`]));
                 }
-
-                queries.push(client.query(`UPDATE assets SET location_room = $1, inventory_status = 'edited' WHERE id = $2`, [locationId, id]));
-
-                queries.push(client.query("INSERT INTO usermonitoring (user_id, location) VALUES ((SELECT id FROM users WHERE username = $1), $2)",
-                    [req.body.username, `Change asset location with epc: ${id} and new location with id: ${locationId} in inventory`]));
 
                 await Promise.all(queries);
 

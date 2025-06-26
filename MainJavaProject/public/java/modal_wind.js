@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered bikes in the dropdown
     function filterEditSoldiers(query) {
         editSoldierSearchDropdown.innerHTML = '';
-        const filteredSoldiers = clients.filter(client => (client.id === '4' || (client.date_accommodation !== '' && client.date_free === '')) && (
+        const filteredSoldiers = clients.filter(client => (
             client.name.toLowerCase().includes(query.toLowerCase()) ||
             client.namekey.toLowerCase().includes(query.toLowerCase())
         ));
@@ -657,7 +657,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered bikes in the dropdown
     function filterClient(query) {
         clientSearchDropdown.innerHTML = '';
-        const filteredClients = clients.filter(client => (client.id === '4' || (client.date_accommodation !== '' && client.date_free === '')) && (
+        const filteredClients = clients.filter(client => (
             client.name.toLowerCase().includes(query.toLowerCase()) ||
             client.namekey.toLowerCase().includes(query.toLowerCase())
         ));

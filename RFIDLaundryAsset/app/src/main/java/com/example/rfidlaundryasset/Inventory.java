@@ -65,6 +65,7 @@ public class Inventory extends AppCompatActivity {
             .build();
     private final ArrayList<String> ownerList = new ArrayList<>();
     private final Map<String, String> locationIdMap = new HashMap<>();
+    private final Map<String, Map<String, String>> sublocationIdMap = new HashMap<>();
     private AutoCompleteTextView locationAutoCompleteTextView;
     private String csrfToken = null;
     private String curentLocation = null;
@@ -204,7 +205,7 @@ public class Inventory extends AppCompatActivity {
 
                     if (uhftagInfo == null) {
                         try {
-                            Thread.sleep(20);
+                            Thread.sleep(5);
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt(); // Properly interrupt the thread
                             break;
@@ -407,7 +408,12 @@ public class Inventory extends AppCompatActivity {
                     String responseData = response.body().string();
                     runOnUiThread(() -> {
                         try {
-                            populateLocationAutoComplete(new JSONArray(responseData));
+                            JSONObject jsonObject = new JSONObject(responseData);
+                            JSONArray locationsArray = jsonObject.getJSONArray("locations");
+                            JSONArray sublocationsArray = jsonObject.getJSONArray("sublocations");
+
+                            populateLocationAutoComplete(locationsArray);
+                            populateSublocations(sublocationsArray);
                         } catch (JSONException e) {
                             Log.e("Inventory", "Error: " + e.getMessage());
                             Toast.makeText(Inventory.this, "JSON Parsing Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -436,15 +442,31 @@ public class Inventory extends AppCompatActivity {
 
         for (int i = 0; i < locations.length(); i++) {
             JSONObject location = locations.getJSONObject(i);
-            String locationId = location.getString("id");
-            String locationName = location.getString("nameroom");
+            String id = location.getString("id");
+            String name = location.getString("nameroom");
 
-            ownerList.add(locationName);
-            locationIdMap.put(locationName, locationId);
+            ownerList.add(name);
+            locationIdMap.put(name, id);
         }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_dropdown_item_1line, ownerList);
         locationAutoCompleteTextView.setAdapter(adapter);
+    }
+
+    private void populateSublocations(JSONArray keys) throws JSONException {
+        sublocationIdMap.clear();
+
+        for (int i = 0; i < keys.length(); i++) {
+            JSONObject k  = keys.getJSONObject(i);
+            String keyId  = k.getString("id");
+            String keyName= k.getString("namekey");
+            String roomId = k.getString("roomid");
+
+            // Build the nested map: roomId → (keyName → keyId)
+            Map<String, String> map = sublocationIdMap.computeIfAbsent(roomId, r -> new HashMap<>());
+            map.put(keyName, keyId);
+        }
     }
 
     private void loadAssetData(String locationId) {
@@ -577,9 +599,10 @@ public class Inventory extends AppCompatActivity {
                 String assetCode = asset.getString("code");
                 String assetName = asset.getString("name_assets");
                 String assetLocation = asset.getString("location_name");
+                String assetTypeId = asset.getString("type_id");
 
-                    TableRow row = new TableRow(this);
-                    row.setPadding(10, 10, 10, 10);
+                TableRow row = new TableRow(this);
+                row.setPadding(10, 10, 10, 10);
 
                     // Code
                     TextView codeView = new TextView(this);
@@ -610,70 +633,127 @@ public class Inventory extends AppCompatActivity {
                     row.addView(changeButton);
 
                     // Handle button click
-                    changeButton.setOnClickListener(v -> {
+                changeButton.setOnClickListener(v -> {
 
-                        if (isScaning) {
-                            Toast.makeText(this, "Please stop scanning before relocation asset", Toast.LENGTH_SHORT).show();
-                            return;
+                    if (isScaning) {
+                        Toast.makeText(this, "Please stop scanning before relocating asset", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Edit Location");
+
+                    // Container for dropdowns
+                    LinearLayout container = new LinearLayout(this);
+                    container.setOrientation(LinearLayout.VERTICAL);
+                    container.setPadding(50, 40, 50, 10);
+
+                    // Room dropdown
+                    AutoCompleteTextView input = new AutoCompleteTextView(this);
+                    input.setHint("Select Room");
+                    input.setInputType(InputType.TYPE_NULL);
+                    input.setFocusable(false);
+                    input.setOnClickListener(view -> input.showDropDown());
+
+                    ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                            android.R.layout.simple_dropdown_item_1line, ownerList);
+                    input.setAdapter(adapter);
+
+                    // Key dropdown
+                    AutoCompleteTextView inputKey = new AutoCompleteTextView(this);
+                    inputKey.setHint("Select Key");
+                    inputKey.setInputType(InputType.TYPE_NULL);
+                    inputKey.setFocusable(false);
+                    inputKey.setOnClickListener(view -> inputKey.showDropDown());
+
+                    ArrayAdapter<String> adapterKey = new ArrayAdapter<>(this,
+                            android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
+                    inputKey.setAdapter(adapterKey);
+
+                    // Pre-select current location if available
+                    String roomId = null;
+                    for (Map.Entry<String, String> entry : locationIdMap.entrySet()) {
+                        if (entry.getValue().equals(curentLocation)) {
+                            input.setText(entry.getKey(), false);
+                            roomId = entry.getValue();
+                            break;
                         }
+                    }
 
-                        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                        builder.setTitle("Edit Location");
-
-                        // Create a container layout to hold the AutoCompleteTextView
-                        LinearLayout layout = new LinearLayout(this);
-                        layout.setOrientation(LinearLayout.VERTICAL);
-                        layout.setPadding(50, 40, 50, 10);
-
-                        AutoCompleteTextView input = new AutoCompleteTextView(this);
-                        input.setHint("Select Room");
-
-                        // Set adapter for dropdown list
-                        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                                android.R.layout.simple_dropdown_item_1line, ownerList);
-                        input.setAdapter(adapter);
-                        input.setInputType(InputType.TYPE_NULL); // Prevent keyboard
-                        input.setFocusable(false);               // Only show dropdown
-
-                        // Show dropdown when clicked
-                        input.setOnClickListener(view -> input.showDropDown());
-
-                        // Set default selection based on currentLocation
-                        for (Map.Entry<String, String> entry : locationIdMap.entrySet()) {
-                            if (entry.getValue().equals(curentLocation)) {
-                                input.setText(entry.getKey(), false); // Set default value without filtering
-                                break;
-                            }
+                    // Initialize key dropdown for current room
+                    if (roomId != null) {
+                        Map<String, String> keysForRoom = sublocationIdMap.get(roomId);
+                        adapterKey.clear();
+                        if (assetTypeId.equals("1")) {
+                            adapterKey.addAll(Objects.requireNonNull(keysForRoom).keySet());
+                            inputKey.setEnabled(true);
+                            inputKey.setHint("Select Key");
+                        } else {
+                            inputKey.setEnabled(false);
+                            inputKey.setText("Select Key");
                         }
+                    }
 
-                        layout.addView(input);
-                        builder.setView(layout);
+                    // When user selects a different room
+                    input.setOnItemClickListener((parent, view, position, id) -> {
+                        String selectedRoom = adapter.getItem(position);
+                        String selectedRoomId = locationIdMap.get(selectedRoom);
 
-                        // Buttons
-                        builder.setPositiveButton("OK", null); // We override later
-                        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+                        Map<String, String> keysForRoom = sublocationIdMap.get(selectedRoomId);
+                        adapterKey.clear();
 
-                        AlertDialog dialog = builder.create();
-                        dialog.setOnShowListener(dialogInterface -> {
-                            Button okButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-                            okButton.setOnClickListener(view -> {
-                                String selectedRoom = input.getText().toString();
-
-                                if (locationIdMap.containsKey(selectedRoom)) {
-                                    String locationId = locationIdMap.get(selectedRoom);
-                                    runOnUiThread(() -> updateAdditionalAssetLocation(assetId, locationId));
-                                    dialog.dismiss();
-                                } else {
-                                    input.setError("Please select a valid room.");
-                                }
-                            });
-                        });
-
-                        dialog.show();
-
+                        if (assetTypeId.equals("1")) {
+                            adapterKey.addAll(Objects.requireNonNull(keysForRoom).keySet());
+                            inputKey.setEnabled(true);
+                            inputKey.setHint("Select Key");
+                        } else {
+                            inputKey.setEnabled(false);
+                            inputKey.setText("Select Key");
+                        }
                     });
 
-                    tableLayout.addView(row);
+                    // Add inputs to the dialog
+                    container.addView(input);
+                    container.addView(inputKey);
+                    builder.setView(container);
+
+                    builder.setPositiveButton("OK", null);
+                    builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+
+                    AlertDialog dialog = builder.create();
+                    dialog.setOnShowListener(dialogInterface -> {
+                        Button okButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                        okButton.setOnClickListener(view -> {
+                            String selectedRoomName = input.getText().toString();
+
+                            if (locationIdMap.containsKey(selectedRoomName)) {
+                                String locationId = locationIdMap.get(selectedRoomName);
+
+                                if (!inputKey.isEnabled()) {
+                                    runOnUiThread(() -> updateAdditionalAssetLocation(assetId, locationId, ""));
+                                    dialog.dismiss();
+                                } else {
+                                    String selectedKeyName = inputKey.getText().toString();
+                                    Map<String, String> keysForRoom = sublocationIdMap.get(locationId);
+
+                                    if (keysForRoom != null && keysForRoom.containsKey(selectedKeyName)) {
+                                        String keyId = keysForRoom.get(selectedKeyName);
+                                        runOnUiThread(() -> updateAdditionalAssetLocation(assetId, locationId, keyId));
+                                        dialog.dismiss();
+                                    } else {
+                                        inputKey.setError("Please select a valid key.");
+                                    }
+                                }
+                            } else {
+                                input.setError("Please select a valid room.");
+                            }
+                        });
+                    });
+
+                    dialog.show();
+                });
+
+                tableLayout.addView(row);
             }
         } catch (JSONException e) {
             Log.e("Inventory", "Error: " + e.getMessage());
@@ -681,13 +761,14 @@ public class Inventory extends AppCompatActivity {
         }
     }
 
-    private void updateAdditionalAssetLocation(String assetId, String locationId) {
+    private void updateAdditionalAssetLocation(String assetId, String locationId, String sublocationId) {
         executorService.execute(() -> {
             try {
                 MediaType JSON = MediaType.parse("application/json; charset=utf-8");
                 JSONObject payload = new JSONObject();
                 payload.put("id", assetId);
                 payload.put("locationId", locationId);
+                payload.put("sublocationId", sublocationId);
                 payload.put("username", GlobalVariable.getUsername(this));
                 payload.put("isValidCode", GlobalVariable.getVariable(this));
                 payload.put("campId", GlobalVariable.getCamp(this));
@@ -858,12 +939,9 @@ public class Inventory extends AppCompatActivity {
                         Button okButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
                         okButton.setOnClickListener(view -> {
                             String newQuantity = input.getText().toString().trim();
-                            String currentQuantity = quantityView.getText().toString();
 
                             if (newQuantity.isEmpty()) {
                                 input.setError("Quantity cannot be empty");
-                            } else if (newQuantity.equals(currentQuantity)) {
-                                input.setError("New quantity must be different");
                             } else {
                                 EditQuantity(newQuantity, assetId);
                                 dialog.dismiss();

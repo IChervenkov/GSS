@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url(baseUrl + "/apk-bike-version")
+                        .url(baseUrl + "/apk-laundry-version")
                         .build();
 
                 client.newCall(request).enqueue(new Callback() {
@@ -258,6 +258,12 @@ public class MainActivity extends AppCompatActivity {
             Log.e("MainActivity", "Error: " + e.getMessage());
             Toast.makeText(MainActivity.this, "Error initializing RFID Reader", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        fetchCsrfToken();
     }
 
     private void showLoginDialog() {

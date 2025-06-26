@@ -98,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url(baseUrl + "/apk-bike-version")
+                        .url(baseUrl + "/apk-asset-version")
                         .build();
 
                 client.newCall(request).enqueue(new Callback() {
@@ -217,6 +217,12 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        fetchCsrfToken();
     }
 
     private void showLoginDialog() {
