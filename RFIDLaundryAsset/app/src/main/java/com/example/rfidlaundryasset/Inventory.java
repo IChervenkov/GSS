@@ -143,6 +143,12 @@ public class Inventory extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        fetchCsrfToken();
+    }
+
+    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == 293) {
             if (isScaning) {

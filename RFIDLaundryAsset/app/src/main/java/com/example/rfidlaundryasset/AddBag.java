@@ -131,6 +131,12 @@ public class AddBag extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        fetchCsrfToken();
+    }
+
     private boolean isValidText(String text, String fieldName, EditText field, String regex) {
         if (text.isEmpty()) {
             field.requestFocus();

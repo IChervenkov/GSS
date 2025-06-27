@@ -261,6 +261,12 @@ public class EditAsset extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        fetchCsrfToken();
+    }
+
     // Helper method for validation
     private boolean isValidText(String input, String fieldName) {
         if (input.isEmpty()) {

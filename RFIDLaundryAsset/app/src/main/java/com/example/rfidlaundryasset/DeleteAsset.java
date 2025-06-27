@@ -126,6 +126,12 @@ public class DeleteAsset extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        fetchCsrfToken();
+    }
+
     private void fetchAllAsset() {
 
         // Create and show the loading dialog

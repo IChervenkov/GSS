@@ -159,6 +159,12 @@ public class EditBag extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        fetchCsrfToken();
+    }
+
     // Helper method for text validation
     private boolean isValidText(String input, String fieldName) {
         if (input.isEmpty()) {

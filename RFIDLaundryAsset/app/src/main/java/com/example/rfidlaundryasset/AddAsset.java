@@ -270,6 +270,12 @@ public class AddAsset extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        fetchCsrfToken();
+    }
+
     // Helper method to validate text fields
     private boolean isValidText(String input, String fieldName, EditText field, String regex) {
         if (!input.matches(regex)) {

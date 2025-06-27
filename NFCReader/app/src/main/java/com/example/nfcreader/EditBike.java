@@ -420,6 +420,8 @@ public class EditBike extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
+        fetchCsrfToken();
+
         Intent intent = new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
         IntentFilter[] intentFilters = new IntentFilter[]{};

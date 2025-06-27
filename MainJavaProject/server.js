@@ -615,7 +615,7 @@ const schemaAddSoldier = Joi.object({
     soldierId: Joi.string().alphanum().required(),
     soldierName: Joi.string().pattern(/^[A-Za-z0-9\s\-éÉàÀèÈùÙâÂêÊîÎôÔûÛçÇÖöäÄåÅøØ]+$/).required(),
     soldierCountry: Joi.string().alphanum().required(),
-    upcomingKey: Joi.string().pattern(/^[0-9]+\/[0-9]+\/[0-9]+$|^[a-zA-Z0-9]+$/).optional(),
+    upcomingKey: Joi.string().pattern(/^[0-9]+\/[0-9]+\/[0-9]+$|^[a-zA-Z0-9]+$/).allow('').optional(),
     soldierBag: Joi.string().alphanum().allow('').optional(),
     soldierMealCard: Joi.alternatives().try(Joi.string().alphanum(), Joi.number()).allow('').optional(),
     upcomingAccommodationDate: Joi.date().allow('').iso().optional(),
@@ -1344,6 +1344,8 @@ class Server {
             } catch (err) {
                 console.error(err);
                 return res.status(500).json({ success: false, message: 'Server error occurred.' });
+            } finally {
+                client.release();
             }
         });
 
@@ -1354,7 +1356,6 @@ class Server {
                 let secret;
 
                 if (result.rows[0].totp_secret) {
-                    // Use existing secret
                     secret = {
                         base32: result.rows[0].totp_secret,
                         otpauth_url: speakeasy.otpauthURL({
@@ -1364,9 +1365,7 @@ class Server {
                         })
                     };
                 } else {
-                    // Generate and store a new secret
                     secret = speakeasy.generateSecret({ name: process.env.SECRET_NAME });
-
                     await client.query("UPDATE users SET totp_secret = $1 WHERE id = $2", [
                         secret.base32,
                         req.session.pendingUserId
@@ -1375,12 +1374,11 @@ class Server {
 
                 req.session.secret = secret;
                 const qrCodeDataURL = await qrcode.toDataURL(secret.otpauth_url);
-                req.session.qrCodeDataURL = qrCodeDataURL;
 
                 res.json({ qrCodeDataURL });
             } catch (err) {
-                console.error(err);
-                res.status(500).json({ error: 'An error occurred while generating QR code.' });
+                console.error('2FA Error:', err);
+                res.status(500).json({ error: 'An error occurred while processing 2FA' });
             } finally {
                 client.release();
             }
@@ -1408,10 +1406,9 @@ class Server {
             });
 
             if (verified) {
-                delete req.session.qrCodeDataURL;
                 delete req.session.secret;
-                delete req.session.username
-                delete req.session.userId;
+                delete req.session.pendingUser;
+                delete req.session.pendingUserId;
                 return res.status(200).json({ success: true });
             } else {
                 return res.status(401).json({ success: false, message: 'Invalid code. Try again.' });

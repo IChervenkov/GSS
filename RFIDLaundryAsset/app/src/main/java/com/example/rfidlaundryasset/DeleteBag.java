@@ -127,6 +127,12 @@ public class DeleteBag extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        fetchCsrfToken();
+    }
+
+    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == 139 || keyCode == 280 || keyCode == 293) { // KeyCode may vary based on your Chainway device configuration
             if (isInventory) {
