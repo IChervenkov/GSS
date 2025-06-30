@@ -1163,7 +1163,7 @@ class Server {
                 const result = await client.query("SELECT totp_secret FROM users WHERE id = $1", [req.session.pendingUserId]);
                 let secret;
 
-                if (result.rows[0].totp_secret) {
+                if (result.rows.length > 0) {
                     // User already has a TOTP secret
                     secret = {
                         base32: result.rows[0].totp_secret,
@@ -1355,7 +1355,7 @@ class Server {
                 const result = await client.query("SELECT totp_secret FROM users WHERE id = $1", [req.session.pendingUserId]);
                 let secret;
 
-                if (result.rows[0].totp_secret) {
+                if (result.rows.length > 0) {
                     secret = {
                         base32: result.rows[0].totp_secret,
                         otpauth_url: speakeasy.otpauthURL({
