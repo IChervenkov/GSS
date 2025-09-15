@@ -580,7 +580,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let filteredSoldier;
 
-        const isSpecialKey = /^(\d+\/\d+\/E\/\d+|\d+\/D\d*\/\d+)$/.test(keynum);
+        const isSpecialKey = /^(\d+\/\d+\/E\d*\/\d+|\d+\/D\d*\/\d+)$/.test(keynum);
 
         if (!isSpecialKey && (typeBuild.value === 'Accommodation' || typeBuild.value === ''))
             filteredSoldier = soldiers.filter(soldier => ((soldier.date_accommodation === '' && soldier.date_free === '') || (soldier.date_accommodation !== '' && soldier.date_free !== '')) && soldier.name.toLowerCase().includes(query.toLowerCase()));
@@ -1090,7 +1090,7 @@ document.addEventListener('DOMContentLoaded', function () {
         soldierInput.value = soldierName === "Free" ? '' : soldierName;
         selectedSoldierId.value = soldierName === "Free" ? '' : soldiers.find(soldier => soldier.name === soldierInput.value).id;
 
-        const isSpecialKey = /^(\d+\/\d+\/E\/\d+|\d+\/D\d*\/\d+)$/.test(keynum);
+        const isSpecialKey = /^(\d+\/\d+\/E\d*\/\d+|\d+\/D\d*\/\d+)$/.test(keynum);
 
         // Handle input change
         soldierSearchInput.addEventListener('input', function () {
@@ -1209,7 +1209,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const header_tr = document.querySelector("#keyModal .modal-content thead tr");
             const headerCells = Array.from(header_tr.children);
             const lastTwoCells = headerCells.slice(-2);
-            const isSpecialKey = /^(\d+\/\d+\/E|\d+\/D\d*)$/.test(cleanedRoomNumber);
+            const isSpecialKey = /^(\d+\/\d+\/E\d*|\d+\/D\d*)$/.test(cleanedRoomNumber);
             const isAccommodation = typeBuild.value === 'Accommodation' || typeBuild.value === '';
 
             tableBody.innerHTML = "";

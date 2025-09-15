@@ -6077,7 +6077,7 @@ class Server {
                 let totalFreeBeds = 0;
                 let totalOccupiedBeds = 0;
                 nameroomSetCount.forEach(room => {
-                    if (!/^(\d+\/\d+\/E|\d+\/D\d*)$/.test(room.nameroom)) {
+                    if (!/^(\d+\/\d+\/E\d*|\d+\/D\d*)$/.test(room.nameroom)) {
                         totalFreeBeds += parseInt(room.countFreeBeds, 10);
                         totalOccupiedBeds += (parseInt(room.countAllBeds, 10) - parseInt(room.countFreeBeds, 10));
                     }
