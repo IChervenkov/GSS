@@ -4492,14 +4492,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault(); // Prevent default form submission
 
-        const soldierId = document.getElementById('selectedSoldierId').value;
-        const bagId = document.getElementById('selectedBagId').value;
-
-        if (soldierId && bagId && !bags.find(bag => bag.id === bagId)) {
-            showGlobalMess('Error', 'This bag was given to another soldier');
-            return;
-        }
-
         const data = {
             keyCodeId: document.getElementById('key-code-value').value,
             soldierId: document.getElementById('selectedSoldierId').value,

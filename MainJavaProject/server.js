@@ -6348,9 +6348,22 @@ class Server {
                 }
 
                 const check_exist_bag = await client.query(`SELECT * FROM laundrybags WHERE id = $1;`, [bagId]);
-                if (check_exist_bag.rows.length === 0) {
+                if (bagId !== '' && check_exist_bag.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.status(400).json({ message: 'This bag is not exist. It has probably been modified.' });
+                }
+
+                const result_check_bag_soldier = await client.query(`
+                    SELECT * FROM soldier s 
+                    LEFT JOIN additionalitem ai ON s.id = ai.soldier_id
+                    LEFT JOIN laundrybags l ON s.laundry_bag_id = l.id OR l.id = ai.bag_id
+                    WHERE l.code = $1 AND (
+                        s.id IS NOT NULL 
+                        AND (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND date_free IS NULL))) AND l.camp_id = $2;`, [bagId, req.session.camp]);
+
+                if (bagId !== '' && result_check_bag_soldier.rows.length > 0 && result_check_bag_soldier.rows[0].id !== soldierId) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: `This bag was given to another soldier` });
                 }
 
                 const checkPermission = await client.query(`
@@ -7459,7 +7472,7 @@ class Server {
                             errors.push({ type: 'CheckBag', message: `The bag with number '${row.soldierBag}' is not exists.` });
                             return;
 
-                        } else if (result_check_bag_soldier.rows.length > 0) {
+                        } else if (result_check_bag_soldier.rows.length > 0 && result_check_bag_soldier.rows[0].id !== row.soldierId) {
                             errors.push({ type: 'CheckBag', message: `The bag with number '${row.soldierBag}' has already been taken by someone.` });
                             return;
                         } else {
@@ -7773,7 +7786,7 @@ class Server {
                             errors.push({ type: 'CheckBag', message: `The bag with number '${row.laundrybag}' is not exists.` });
                             return;
 
-                        } else if (result_check_bag_soldier.rows.length > 0) {
+                        } else if (result_check_bag_soldier.rows.length > 0 && result_check_bag_soldier.rows[0].id !== row.soldierid) {
                             errors.push({ type: 'CheckBag', message: `The bag with number '${row.laundrybag}' has already been taken by someone.` });
                             return;
                         } else {
