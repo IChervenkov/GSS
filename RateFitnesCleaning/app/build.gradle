@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    namespace 'com.example.ratefitnescleaning'
-    compileSdk 34
+    namespace = 'com.example.ratefitnescleaning'
+    compileSdk = 36
 
     defaultConfig {
         applicationId "com.example.ratefitnescleaning"
-        minSdk 30
-        targetSdk 34
+        minSdk = 30
+        targetSdk = 36
         versionCode 1
         versionName "1.0"
 
@@ -58,6 +58,7 @@ dependencies {
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 
-    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
-    implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.12.0'
+    implementation libs.security.crypto
+    implementation libs.okhttp
+    implementation libs.okhttp.urlconnection
 }

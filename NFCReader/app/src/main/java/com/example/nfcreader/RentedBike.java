@@ -4,15 +4,18 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.os.Build;
 import android.os.Bundle;
 
-import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -55,8 +58,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public class RentedBike extends AppCompatActivity {
+public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
 
+    private boolean isValidCode;
+    private String campId;
+    private String username;
     private NfcAdapter nfcAdapter;
     private TextView nfcTextView;
     private TextView nfcHelmetCode;
@@ -70,13 +76,58 @@ public class RentedBike extends AppCompatActivity {
     private final Map<String, String> keyIdCountMap = new HashMap<>();
     private final CookieManager cookieManager = new CookieManager();
     private final OkHttpClient client = new OkHttpClient.Builder()
+            .addInterceptor(new CsrfInterceptor(this))
             .cookieJar(new JavaNetCookieJar(cookieManager))
             .build();
     private String csrfToken = null;
     private AutoCompleteTextView clientAutoCompleteTextView;
     private final ArrayList<BikeInfo> ownerList = new ArrayList<>();
 
-    private void fetchCsrfToken() {
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return true;
+
+        Network network = cm.getActiveNetwork();
+        if (network == null) return true;
+
+        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+        return capabilities == null ||
+                (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+    }
+
+    @Override
+    public synchronized String getCsrfToken() {
+        return csrfToken;
+    }
+
+    @Override
+    public synchronized void refreshCsrfTokenSync() {
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
+            csrfToken = jsonObject.getString("csrfToken");
+
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
+        }
+    }
+
+    private void fetchCsrfToken(Runnable onSuccess) {
+
+        if (isNetworkAvailable())
+            return;
+
+        Dialog loadingDialog = new Dialog(RentedBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
@@ -86,22 +137,25 @@ public class RentedBike extends AppCompatActivity {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> Toast.makeText(RentedBike.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
 
-                if (response.isSuccessful() && response.body() != null) {
-                    try {
-                        String responseBody = response.body().string();
-                        JSONObject jsonObject = new JSONObject(responseBody);
-                        csrfToken = jsonObject.getString("csrfToken");
-                    } catch (JSONException e) {
-                        runOnUiThread(() -> Toast.makeText(RentedBike.this, "Error parsing token", Toast.LENGTH_SHORT).show());
-                    }
-                } else {
-                    runOnUiThread(() -> Toast.makeText(RentedBike.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+                try {
+                    String responseBody = response.body().string();
+                    JSONObject jsonObject = new JSONObject(responseBody);
+
+                    csrfToken = jsonObject.getString("csrfToken");
+                    if (onSuccess != null)
+                        runOnUiThread(onSuccess);
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         });
@@ -116,6 +170,12 @@ public class RentedBike extends AppCompatActivity {
 
         cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
 
+        isValidCode = GlobalVariable.getVariable(this);
+        campId = GlobalVariable.getCamp(this);
+        username = GlobalVariable.getUsername(this);
+
+        fetchCsrfToken(null);
+
         clientAutoCompleteTextView = findViewById(R.id.clientAutoCompleteTextView);
         nfcTextView = findViewById(R.id.nfcTextView);
         nfcHelmetCode = findViewById(R.id.nfcHelmetCode);
@@ -125,7 +185,7 @@ public class RentedBike extends AppCompatActivity {
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
-            Toast.makeText(this, "NFC is not available on this device.", Toast.LENGTH_SHORT).show();
+            showPopupWindow("NFC is not available on this device.");
             finish();
             return;
         }
@@ -149,143 +209,154 @@ public class RentedBike extends AppCompatActivity {
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
-            if (!nfcContent.isEmpty()) {
-                // Get selected date and time
-                int day = datePicker.getDayOfMonth();
-                int month = datePicker.getMonth() + 1; // Month is 0-based
-                int year = datePicker.getYear();
-                int hour = timePicker.getHour();
-                int minute = timePicker.getMinute();
 
-                // Check if date and time are set
-                if (day == 0 || month == 0 || year == 0) {
-                    Toast.makeText(this, "Please select a valid date!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                // Check if the bike type is selected
-                String selectedClientName  = clientAutoCompleteTextView.getText().toString();
-
-                if (selectedClientName.isEmpty()) {
-                    Toast.makeText(this, "Please select a client!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                // Find the selected BikeInfo
-                BikeInfo selectedBikeInfo = null;
-                for (BikeInfo bike : ownerList) {
-                    if (selectedClientName.equals(bike.toString())) {
-                        selectedBikeInfo = bike;
-                        break;
-                    }
-                }
-
-                // Get the ID of the selected bike
-                String selectedClientId = clientIdMap.get(selectedBikeInfo);
-
-                String date = year + "-" + (month < 10 ? "0" + month : month) + "-" + (day < 10 ? "0" + day : day);
-                String time = (hour < 10 ? "0" + hour : hour) + ":" + (minute < 10 ? "0" + minute : minute);
-
-                checkBikeRented(nfcContent, date, time, selectedClientId, nfcHelmetContent);
-
-            } else {
-                Toast.makeText(this, "No NFC content detected!", Toast.LENGTH_SHORT).show();
+            if (nfcContent.isEmpty()) {
+                showPopupWindow("Please scan a NFC tag");
+                return;
             }
+
+            // Get selected date and time
+            int day = datePicker.getDayOfMonth();
+            int month = datePicker.getMonth() + 1; // Month is 0-based
+            int year = datePicker.getYear();
+            int hour = timePicker.getHour();
+            int minute = timePicker.getMinute();
+
+            // Check if date and time are set
+            if (day == 0 || month == 0 || year == 0) {
+                showPopupWindow("Please select a valid date!");
+                return;
+            }
+
+            // Check if the bike type is selected
+            String selectedClientName = clientAutoCompleteTextView.getText().toString();
+
+            if (selectedClientName.isEmpty()) {
+                showPopupWindow("Please select a soldier!");
+                return;
+            }
+
+            // Find the selected BikeInfo
+            BikeInfo selectedBikeInfo = null;
+            for (BikeInfo bike : ownerList) {
+                if (selectedClientName.equals(bike.toString())) {
+                    selectedBikeInfo = bike;
+                    break;
+                }
+            }
+
+            // Get the ID of the selected bike
+            String selectedClientId = clientIdMap.get(selectedBikeInfo);
+
+            String date = year + "-" + (month < 10 ? "0" + month : month) + "-" + (day < 10 ? "0" + day : day);
+            String time = (hour < 10 ? "0" + hour : hour) + ":" + (minute < 10 ? "0" + minute : minute);
+
+            new androidx.appcompat.app.AlertDialog.Builder(RentedBike.this)
+                    .setTitle("Attention")
+                    .setMessage("Are you sure you want to rent this bike?")
+                    .setPositiveButton("Yes", (dialog, which) ->
+                            checkBikeRented(nfcContent, date, time, selectedClientId, nfcHelmetContent))
+                    .setNegativeButton("No", (dialog, which) -> {
+                        // Do nothing, just dismiss the dialog
+                        dialog.dismiss();
+                    })
+                    .show();
         });
     }
 
     private void fetchAvailableBikes() {
-        runOnUiThread(() -> {
-            Dialog loadingDialog = new Dialog(RentedBike.this);
-            loadingDialog.setContentView(R.layout.progress_dialog);
-            loadingDialog.setCancelable(false);
-            Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
-            loadingDialog.show();
 
-            String baseUrl = getString(R.string.base_url);
-            Request request = new Request.Builder()
-                    .url(baseUrl + "/getClient?campId=" + GlobalVariable.getCamp(this) + "&isValidCode=" + GlobalVariable.getVariable(this))
-                    .build();
+        if (isNetworkAvailable())
+            return;
 
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    runOnUiThread(() -> {
-                        loadingDialog.dismiss();
-                        Toast.makeText(RentedBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
-                }
+        Dialog loadingDialog = new Dialog(RentedBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
 
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) {
-                    try (response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            String responseData = response.body().string();
-                            runOnUiThread(() -> {
-                                loadingDialog.dismiss();
-                                try {
-                                    populateBikeAutoComplete(new JSONArray(responseData));
-                                } catch (JSONException e) {
-                                    Log.e("RentedBike", "Error: " + e.getMessage());
-                                }
-                            });
-                        } else {
-                            runOnUiThread(() -> {
-                                loadingDialog.dismiss();
-                                Toast.makeText(RentedBike.this, "Error fetching client", Toast.LENGTH_SHORT).show();
-                            });
-                        }
-                    } catch (Exception e) {
-                        Log.e("RentedBike", "Error: " + e.getMessage());
-                        runOnUiThread(() -> {
-                            loadingDialog.dismiss();
-                            Toast.makeText(RentedBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        });
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/getClient?campId=" + campId + "&isValidCode=" + isValidCode)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Failed to fetch soldier. Please connect to the support."));
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+
+                    String responseData = response.body().string();
+
+                    if (!response.isSuccessful()) {
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
                     }
+
+                    JSONArray allSoldier = new JSONArray(responseData);
+                    runOnUiThread(() -> populateBikeAutoComplete(allSoldier));
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Failed to fetch soldier. Please connect to the support."));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
-            });
+            }
         });
     }
 
-    private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
-        ownerList.clear();
-        clientIdMap.clear();
-        keyIdMap.clear();
-        keyIdCountMap.clear();
+    private void populateBikeAutoComplete(JSONArray bikes) {
 
-        Set<String> seenNames = new HashSet<>();
+        try {
+            ownerList.clear();
+            clientIdMap.clear();
+            keyIdMap.clear();
+            keyIdCountMap.clear();
 
-        for (int i = 0; i < bikes.length(); i++) {
-            JSONObject bike = bikes.getJSONObject(i);
-            String bikeId = bike.getString("id");
-            String keyId = bike.getString("keyid");
-            String bikeName = bike.getString("namesoldier");
-            String soldierKey = bike.getString("namekey");
-            String countGetBikes = bike.getString("count_get_bike");
+            Set<String> seenNames = new HashSet<>();
 
-            if (seenNames.contains(bikeName)) {
-                continue;
+            for (int i = 0; i < bikes.length(); i++) {
+                JSONObject bike = bikes.getJSONObject(i);
+                String bikeId = bike.getString("id");
+                String keyId = bike.getString("keyid");
+                String bikeName = bike.getString("namesoldier");
+                String soldierKey = bike.getString("namekey");
+                String countGetBikes = bike.getString("count_get_bike");
+
+                if (seenNames.contains(bikeName)) {
+                    continue;
+                }
+
+                seenNames.add(bikeName);
+
+                BikeInfo bikeInfo = new BikeInfo(bikeName, !soldierKey.equals("null") ? soldierKey : "No key");
+
+                ownerList.add(bikeInfo);
+                clientIdMap.put(bikeInfo, bikeId);
+                keyIdMap.put(bikeInfo, keyId);
+                keyIdCountMap.put(keyId, countGetBikes);
             }
 
-            seenNames.add(bikeName);
+            ArrayAdapter<BikeInfo> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
+            clientAutoCompleteTextView.setAdapter(adapter);
 
-            BikeInfo bikeInfo = new BikeInfo(bikeName, soldierKey);
-
-            ownerList.add(bikeInfo);
-            clientIdMap.put(bikeInfo, bikeId);
-            keyIdMap.put(bikeInfo, keyId);
-            keyIdCountMap.put(keyId, countGetBikes);
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Failed to parsed soldier. Please connect to the support."));
         }
-
-        ArrayAdapter<BikeInfo> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
-        clientAutoCompleteTextView.setAdapter(adapter);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        fetchCsrfToken();
+        fetchCsrfToken(null);
 
         Intent intent = new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
@@ -314,7 +385,7 @@ public class RentedBike extends AppCompatActivity {
             byte[] tagId = tag.getId();
             String nfcId = bytesToHex(tagId);
 
-            if(scanningIndex % 2 == 0) {
+            if (scanningIndex % 2 == 0) {
                 String selectedClientName = null;
 
                 for (Map.Entry<BikeInfo, String> entry : keyIdMap.entrySet()) {
@@ -325,7 +396,8 @@ public class RentedBike extends AppCompatActivity {
                 }
 
                 if (selectedClientName == null) {
-                    Toast.makeText(this, "Soldier not found!", Toast.LENGTH_SHORT).show();
+                    runOnUiThread(() -> showPopupWindow("Soldier not found!"));
+                    scanningIndex++;
                     return;
                 }
 
@@ -363,63 +435,71 @@ public class RentedBike extends AppCompatActivity {
 
     // Method to call the API endpoint
     private void readBikeDataFromServer(String nfcData) {
-        runOnUiThread(() -> {
-            Dialog loadingDialog = new Dialog(RentedBike.this);
-            loadingDialog.setContentView(R.layout.progress_dialog);
-            loadingDialog.setCancelable(false);
-            Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
-            loadingDialog.show();
 
-            String baseUrl = getString(R.string.base_url);
-            Request request = new Request.Builder()
-                    .url(baseUrl + "/readBikeNfc?nfcData=" + nfcData + "&isValidCode=" + GlobalVariable.getVariable(this))  // Replace with your server URL
-                    .build();
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
 
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    runOnUiThread(() -> {
-                        loadingDialog.dismiss();
-                        Toast.makeText(RentedBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
-                    });
-                }
+        Dialog loadingDialog = new Dialog(RentedBike.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
 
-                @SuppressLint("SetTextI18n")
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/readBikeNfc?nfcData=" + nfcData + "&isValidCode=" + isValidCode)  // Replace with your server URL
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Failed to read bike data. Please connect to the support!"));
+            }
+
+            @SuppressLint("SetTextI18n")
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+
+                try {
                     String responseData = Objects.requireNonNull(response.body()).string();
-                    runOnUiThread(() -> {
-                        loadingDialog.dismiss();
-                        try {
-                            JSONObject jsonResponse = new JSONObject(responseData);
-                            String bikeName = jsonResponse.getString("namebike");
-                            String helmetCode = jsonResponse.getString("code");
+                    JSONObject jsonResponse = new JSONObject(responseData);
 
-                            if(!bikeName.isEmpty()) {
-                                nfcTextView.setText("Bike code: " + bikeName);
-                                nfcContent = nfcData;
-                            }
-                            else if(!helmetCode.isEmpty()) {
-                                nfcHelmetCode.setText("Helmet code: " + helmetCode);
-                                nfcHelmetContent = nfcData;
-                            }
+                    if (!response.isSuccessful()) {
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
+                    }
 
-                        } catch (JSONException e) {
-                            Log.e("RentedBike", "Error: " + e.getMessage());
-                        }
-                    });
+                    String bikeName = jsonResponse.getString("namebike");
+                    String helmetCode = jsonResponse.getString("code");
+
+                    if (!bikeName.isEmpty()) {
+                        runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
+                        nfcContent = nfcData;
+
+                    } else if (!helmetCode.isEmpty()) {
+                        runOnUiThread(() -> nfcHelmetCode.setText("Helmet code: " + helmetCode));
+                        nfcHelmetContent = nfcData;
+                    }
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Failed to read bike data. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
-            });
+            }
         });
     }
 
     private void checkBikeRented(String nfcData, String date, String time, String selectedClientId, String nfcHelmetDate) {
 
-        // Define the request
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/checkBike?bikeId=" + nfcData + "&isValidCode=" + GlobalVariable.getVariable(this))  // Replace with your server URL
-                .build();
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(RentedBike.this);
@@ -428,43 +508,44 @@ public class RentedBike extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
+        // Define the request
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/checkBike?bikeId=" + nfcData + "&isValidCode=" + isValidCode)  // Replace with your server URL
+                .build();
+
         // Make the network call asynchronously
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e("RentedBike", "Error: " + e.getMessage());
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(RentedBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Failed to read bike data. Please connect to the support!"));
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
 
-                runOnUiThread(loadingDialog::dismiss);
-
-                if (response.isSuccessful()) {
+                try {
                     String responseData = Objects.requireNonNull(response.body()).string();
-                    try {
-                        JSONObject jsonResponse = new JSONObject(responseData);
-                        final String status = jsonResponse.getString("status");
+                    JSONObject jsonResponse = new JSONObject(responseData);
 
-                        if(isPastDateTime(date, time)) {
-                            runOnUiThread(() -> Toast.makeText(RentedBike.this, "The select date is incorrect!", Toast.LENGTH_SHORT).show());
-                        } else if(!status.equals("Available")) {
-                            runOnUiThread(() -> Toast.makeText(RentedBike.this, "The bike is already rented!", Toast.LENGTH_SHORT).show());
-                        } else {
-                            // Send data to the server
-                            fetchCsrfToken();
-                            sendDataToServer(nfcContent, date, time, selectedClientId, nfcHelmetDate);
-                        }
-
-                    } catch (JSONException e) {
-                        Log.e("RentedBike", "Error: " + e.getMessage());
+                    if (!response.isSuccessful()) {
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
                     }
-                } else {
-                    runOnUiThread(() -> Toast.makeText(RentedBike.this, "Bike not found", Toast.LENGTH_SHORT).show());
+
+                    if (isPastDateTime(date, time)) {
+                        runOnUiThread(() -> showPopupWindow("The select date is incorrect!"));
+                        return;
+                    }
+
+                    sendDataToServer(nfcContent, date, time, selectedClientId, nfcHelmetDate);
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Failed to read bike data. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         });
@@ -484,60 +565,92 @@ public class RentedBike extends AppCompatActivity {
 
             return parsedDate != null && parsedDate.after(currentDate);
         } catch (ParseException e) {
-            Log.e("RentedBike", "Error: " + e.getMessage());
             return false;
         }
     }
 
     private void sendDataToServer(String nfcData, String date, String time, String selectedClientId, String nfcHelmetDate) {
 
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
+
+        if (csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(() -> performSendData(nfcData, date, time, selectedClientId, nfcHelmetDate));
+        } else {
+            performSendData(nfcData, date, time, selectedClientId, nfcHelmetDate);
+        }
+    }
+
+    private void performSendData(String nfcData, String date, String time, String selectedClientId, String nfcHelmetDate) {
+
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject jsonData = new JSONObject();
+
         try {
-            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-            JSONObject jsonData = new JSONObject();
             jsonData.put("nfcData", nfcData);
             jsonData.put("date", date);
             jsonData.put("time", time);
             jsonData.put("selectClient", selectedClientId);
             jsonData.put("helmetId", nfcHelmetDate);
-            jsonData.put("username", GlobalVariable.getUsername(this));
-            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
-
-            RequestBody body = RequestBody.create(jsonData.toString(), JSON);
-
-            String baseUrl = getString(R.string.base_url);
-            Request request = new Request.Builder()
-                    .url(baseUrl + "/nfcRent")
-                    .addHeader("X-CSRF-Token", csrfToken)
-                    .post(body)
-                    .build();
-
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    Log.e("RentedBike", "Error: " + e.getMessage());
-                    runOnUiThread(() -> Toast.makeText(RentedBike.this, "Error sending data: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-                }
-
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-
-                    if (response.isSuccessful()) {
-                        String responseData = Objects.requireNonNull(response.body()).string();
-                        runOnUiThread(() -> {
-                            Toast.makeText(RentedBike.this, "Server response: " + responseData, Toast.LENGTH_SHORT).show();
-                            Intent intent = new Intent(RentedBike.this, MainActivity.class);
-                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(intent);
-                            finish();
-                        });
-                    } else {
-                        runOnUiThread(() -> Toast.makeText(RentedBike.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show());
-                    }
-                }
-            });
+            jsonData.put("username", username);
+            jsonData.put("isValidCode", isValidCode);
         } catch (JSONException e) {
-            Log.e("RentedBike", "Error: " + e.getMessage());
-            runOnUiThread(() -> Toast.makeText(RentedBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            runOnUiThread(() -> showPopupWindow("Error creating request data. Please contact support!"));
+            return;
         }
+
+        RequestBody body = RequestBody.create(jsonData.toString(), JSON);
+
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/nfcRent")
+                .addHeader("X-CSRF-Token", csrfToken)
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error to sending data. Please connect to the support!"));
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+
+                try {
+                    String responseData = Objects.requireNonNull(response.body()).string();
+                    JSONObject jsonResponse = new JSONObject(responseData);
+                    String message = jsonResponse.optString("message", "Server error occurred.");
+
+                    if (!response.isSuccessful()) {
+                        runOnUiThread(() -> showPopupWindow(message));
+                        return;
+                    }
+
+                    runOnUiThread(() -> {
+                        Toast.makeText(RentedBike.this, message, Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(RentedBike.this, MainActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        finish();
+                    });
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Error to sending data. Please connect to the support!"));
+                }
+            }
+        });
+    }
+
+    private void showPopupWindow(String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Error");
+        builder.setMessage(message);
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            // Reset the flag once the error dialog is clos
+        });
+        builder.show();
     }
 }

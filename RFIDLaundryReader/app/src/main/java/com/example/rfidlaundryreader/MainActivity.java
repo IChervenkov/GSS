@@ -13,11 +13,16 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.InputFilter;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.util.Base64;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -47,7 +52,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.util.ArrayList;
@@ -60,7 +64,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -71,95 +74,163 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements CsrfTokenProvider {
 
     private RFIDWithUHFUART rfidReader;
     private boolean isInventory = false;
+    private boolean shouldStopScanning;
     private String destination;
     private String prev_destination;
     private String campId;
-    private final int perm_count = 1;
     private TextView title;
     private Boolean isSuccesful;
     private final HashSet<String> uniqueEpcSet = new HashSet<>();
     private TableLayout tableLayout;
     private final CookieManager cookieManager = new CookieManager();
     private final OkHttpClient client = new OkHttpClient.Builder()
+            .addInterceptor(new CsrfInterceptor(this))
             .cookieJar(new JavaNetCookieJar(cookieManager))
             .build();
     private String csrfToken = null;
+    private String globalUsername;
     private boolean isValidCode;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    private void fetchCsrfToken() {
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return true;
+
+        Network network = cm.getActiveNetwork();
+        if (network == null) return true;
+
+        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+        return capabilities == null ||
+                (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+    }
+
+    @Override
+    public synchronized String getCsrfToken() {
+        return csrfToken;
+    }
+
+    @Override
+    public synchronized void refreshCsrfTokenSync() {
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
+            csrfToken = jsonObject.getString("csrfToken");
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Error","Token error. Please restart the app and try again."));
+        }
+    }
+
+    private void fetchCsrfToken(Runnable onSuccess) {
+
+        if(isNetworkAvailable())
+            return;
+
         Dialog loadingDialog = new Dialog(MainActivity.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        executorService.execute(() -> {
-            try {
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/csrf-token")
-                        .build();
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
 
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful() && response.body() != null) {
-                    String responseBody = response.body().string();
-                    JSONObject jsonObject = new JSONObject(responseBody);
-                    csrfToken = jsonObject.getString("csrfToken");
-
-                } else {
-                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
-                }
-            } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            } finally {
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error", "Token error. Please connect to the support."));
                 runOnUiThread(loadingDialog::dismiss);
+            }
+
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+
+                    String responseBody = Objects.requireNonNull(response.body()).string();
+                    JSONObject jsonObject = new JSONObject(responseBody);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = jsonObject.optString("message", "Error when fetch token. Please connect to the support.");
+                        runOnUiThread(() -> showPopupWindow("Error", serverMessage));
+                        return;
+                    }
+
+                    csrfToken = jsonObject.getString("csrfToken");
+                    if(onSuccess != null)
+                        runOnUiThread(onSuccess);
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error", "Token error. Please connect to the support."));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
             }
         });
     }
 
     private void checkForUpdate() {
-        executorService.execute(() -> {
-            try {
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/apk-laundry-version")
-                        .build();
 
-                client.newCall(request).enqueue(new Callback() {
-                    @Override
-                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        Log.e("UpdateCheck", "Error: " + e.getMessage());
+        if(isNetworkAvailable())
+            return;
+
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/apk-laundry-version?isValidCode=" + isValidCode)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error", "There is a problem with app update. Please connect to the support."));
+                runOnUiThread(loadingDialog::dismiss);
+            }
+
+            @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+
+                try {
+
+                    String resBody = Objects.requireNonNull(response.body()).string();
+                    JSONObject json = new JSONObject(resBody);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = json.optString("message", "There is a problem with app update. Please connect to the support.");
+                        runOnUiThread(() -> showPopupWindow("Error", serverMessage));
+                        return;
                     }
 
-                    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-                    @Override
-                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                        if (response.isSuccessful()) {
-                            String resBody = Objects.requireNonNull(response.body()).string();
-                            try {
-                                JSONObject json = new JSONObject(resBody);
-                                String latestVersion = json.getString("version");
-                                String apkUrl = json.getString("apkUrl");
+                    String latestVersion = json.getString("version");
+                    String apkUrl = json.getString("apkUrl");
 
-                                PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
-                                String currentVersion = pInfo.versionName;
+                    PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+                    String currentVersion = pInfo.versionName;
 
-                                if (!currentVersion.equals(latestVersion)) {
-                                    runOnUiThread(() -> sendUpdateNotification(apkUrl));
-                                }
-                            } catch (Exception e) {
-                                Log.e("UpdateCheck", "JSON error: " + e.getMessage());
-                            }
-                        }
+                    if (!Objects.equals(currentVersion, latestVersion)) {
+                        runOnUiThread(() -> sendUpdateNotification(apkUrl));
                     }
-                });
-            } catch (Exception e) {
-                Log.e("UpdateCheck", "Exception: " + e.getMessage());
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error", "There is a problem with the app update process. Please connect to the support."));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
             }
         });
     }
@@ -198,11 +269,11 @@ public class MainActivity extends AppCompatActivity {
 
         cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
 
-        fetchCsrfToken();
+        fetchCsrfToken(null);
 
-        isValidCode = GlobalVariable.getValidatationData(this);
+        isValidCode = GlobalVariable.getValidationData(this);
 
-        if(!isValidCode) {
+        if (!isValidCode) {
             showLoginDialog();
             return;
         }
@@ -228,12 +299,11 @@ public class MainActivity extends AppCompatActivity {
         prev_destination = GlobalVariable.getPrevDestination(this);  // Retrieving the previous destination
         campId = GlobalVariable.getCamp(this);
 
-        if(campId.isEmpty()) {
+        if (campId.isEmpty()) {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
-            Toast.makeText(MainActivity.this, "No set camp. Set a camp to start scanning.", Toast.LENGTH_SHORT).show();
-            return;
+            runOnUiThread(() -> Toast.makeText(MainActivity.this, "No set camp. Set a camp to start scanning.", Toast.LENGTH_SHORT).show());
+            finish();
         }
 
         title.setText(destination);
@@ -253,17 +323,15 @@ public class MainActivity extends AppCompatActivity {
             rfidReader.free();
             rfidReader.init();
 
-            Toast.makeText(MainActivity.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Log.e("MainActivity", "Error: " + e.getMessage());
-            Toast.makeText(MainActivity.this, "Error initializing RFID Reader", Toast.LENGTH_SHORT).show();
+            runOnUiThread(() -> showPopupWindow("Error", "Error initializing RFID Reader"));
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        fetchCsrfToken();
+        fetchCsrfToken(null);
     }
 
     private void showLoginDialog() {
@@ -323,7 +391,7 @@ public class MainActivity extends AppCompatActivity {
         }));
 
         dialog.setOnDismissListener(dialogInterface -> {
-            if (!GlobalVariable.getValidatationData(this)) {
+            if (!isValidCode) {
                 finish(); // Close the app if login fails or is canceled
             }
         });
@@ -332,63 +400,128 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkLoginToServer(EditText usernameInput, EditText passwordInput, String username, String password) {
-        executorService.execute(()-> {
-            try {
 
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                JSONObject payload = new JSONObject();
-                payload.put("username", username);
-                payload.put("password", password);
+        if(isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("Error", "You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
 
-                RequestBody body = RequestBody.create(payload.toString(), JSON);
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/checkLogInApp")
-                        .addHeader("X-CSRF-Token", csrfToken)
-                        .post(body)
-                        .build();
+        if(csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(() -> performLogin(usernameInput, passwordInput, username, password));
+        } else {
+            performLogin(usernameInput, passwordInput, username, password);
+        }
+    }
 
-                try (Response response = client.newCall(request).execute()) {
+    private void performLogin(EditText usernameInput, EditText passwordInput, String username, String password) {
+
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject payload = new JSONObject();
+
+        try {
+            payload.put("username", username);
+            payload.put("password", password);
+
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Error", "Error when parse data. Please connect to the support."));
+            runOnUiThread(loadingDialog::dismiss);
+            return;
+        }
+
+        RequestBody body = RequestBody.create(payload.toString(), JSON);
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/checkLogInApp")
+                .addHeader("X-CSRF-Token", csrfToken)
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error", "Error when login. Please connect to the support."));
+                runOnUiThread(loadingDialog::dismiss);
+            }
+
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
                     String responseData = Objects.requireNonNull(response.body()).string();
                     JSONObject jsonResponse = new JSONObject(responseData);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = jsonResponse.optString("message", "Error when login. Please connect to the support.");
+                        runOnUiThread(() -> showPopupWindow("Error", serverMessage));
+                        return;
+                    }
+
                     boolean isValidLogin = jsonResponse.optBoolean("success", false);
                     boolean isValidUsername = jsonResponse.optBoolean("validUsername", false);
 
-                    runOnUiThread(() -> {
-                        if (!isValidUsername) {
-                            usernameInput.setError("Invalid username");
-                        } else if (!isValidLogin) {
-                            passwordInput.setError("Invalid password");
-                        } else {
-                            fetchQRCodeFor2FA();
-                        }
-                    });
+                    if (!isValidUsername) {
+                        runOnUiThread(() -> usernameInput.setError("Invalid username"));
+                    } else if (!isValidLogin) {
+                        runOnUiThread(() -> passwordInput.setError("Invalid password"));
+                    } else {
+                        globalUsername = username;
+                        fetchQRCodeFor2FA();
+                    }
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error", "Error when login. Please connect to the support."));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
-            } catch (Exception e) {
-                Log.e("MainActivity", "Error: " + e.getMessage());
-                runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
             }
         });
     }
 
     private void fetchQRCodeFor2FA() {
-        executorService.execute(() -> {
-            Request request = new Request.Builder()
-                    .url(getString(R.string.base_url) + "/2fa-verificated-device")
-                    .get()
-                    .build();
 
-            try (Response response = client.newCall(request).execute()) {
-                String json = Objects.requireNonNull(response.body()).string();
-                JSONObject obj = new JSONObject(json);
-                String qrBase64 = obj.getString("qrCodeDataURL").split(",")[1]; // remove data:image/png;base64,
+        if(isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("Error", "You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
 
-                byte[] decodedBytes = Base64.decode(qrBase64, Base64.DEFAULT);
-                Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+        Request request = new Request.Builder()
+                .url(getString(R.string.base_url) + "/2fa-verificated-device")
+                .get()
+                .build();
 
-                runOnUiThread(() -> showQRCodeDialog(bitmap));
-            } catch (Exception e) {
-                runOnUiThread(() -> showPopupWindow("Error","Failed to load QR code: " + e.getMessage()));
+        client.newCall(request).enqueue(new Callback() {
+
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error", "Failed to load QR code, Please connect to support!"));
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+                    String json = Objects.requireNonNull(response.body()).string();
+                    JSONObject obj = new JSONObject(json);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = obj.optString("message", "Failed to load QR code, Please connect to support!");
+                        runOnUiThread(() -> showPopupWindow("Error", serverMessage));
+                        return;
+                    }
+
+                    String qrBase64 = obj.getString("qrCodeDataURL").split(",")[1]; // remove data:image/png;base64,
+
+                    byte[] decodedBytes = Base64.decode(qrBase64, Base64.DEFAULT);
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+
+                    runOnUiThread(() -> showQRCodeDialog(bitmap));
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error", "Failed to load QR code, Please connect to support!"));
+                }
             }
         });
     }
@@ -400,70 +533,150 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(50, 40, 50, 10);
+        layout.setGravity(Gravity.CENTER_HORIZONTAL);
 
+        // QR Image
         ImageView imageView = new ImageView(this);
-
         int size = (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 250, getResources().getDisplayMetrics()); // 250dp
-
+                TypedValue.COMPLEX_UNIT_DIP, 250, getResources().getDisplayMetrics());
         LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(size, size);
         imageParams.gravity = Gravity.CENTER;
-        imageParams.setMargins(0, 0, 0, 30); // bottom margin for spacing
+        imageParams.setMargins(0, 0, 0, 30);
         imageView.setLayoutParams(imageParams);
-
         imageView.setImageBitmap(qrBitmap);
         layout.addView(imageView);
 
-        final EditText input = new EditText(this);
-        input.setHint("Enter 6-digit code");
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
-        layout.addView(input);
+        // Container for 6-digit input
+        LinearLayout pinLayout = new LinearLayout(this);
+        pinLayout.setOrientation(LinearLayout.HORIZONTAL);
+        pinLayout.setGravity(Gravity.CENTER);
+        int digitWidth = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 40, getResources().getDisplayMetrics());
+        int digitMargin = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 8, getResources().getDisplayMetrics());
 
-        builder.setView(layout);
+        EditText[] digits = new EditText[6];
 
-        builder.setPositiveButton("Verify", (dialog, which) -> {
-            String code = input.getText().toString().trim();
-            if (!code.isEmpty()) {
-                verifyTOTPCode(code);
-            } else {
-                input.setError("Please enter the code");
-            }
-        });
+        // Create the dialog first
+        AlertDialog dialog = builder.setView(layout)
+                .setNegativeButton("Cancel", null)
+                .create();
 
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
+        for (int i = 0; i < 6; i++) {
+            final int index = i;
+            digits[i] = new EditText(this);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(digitWidth, LinearLayout.LayoutParams.WRAP_CONTENT);
+            params.setMargins(digitMargin, 0, digitMargin, 0);
+            digits[i].setLayoutParams(params);
+            digits[i].setGravity(Gravity.CENTER);
+            digits[i].setInputType(InputType.TYPE_CLASS_NUMBER);
+            digits[i].setMaxLines(1);
+            digits[i].setFilters(new InputFilter[]{new InputFilter.LengthFilter(1)});
+            digits[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+            digits[i].setEms(1);
+
+            // Move focus to next digit and auto-verify
+            digits[i].addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (s.length() == 1 && index < 5) {
+                        digits[index + 1].requestFocus();
+                    }
+                    // If all digits entered, auto-verify
+                    StringBuilder code = new StringBuilder();
+                    for (EditText d : digits) {
+                        if (d.getText().toString().isEmpty()) return;
+                        code.append(d.getText().toString());
+                    }
+                    verifyTOTPCode(code.toString());
+                    dialog.dismiss(); // now dialog is accessible
+                }
+            });
+
+            pinLayout.addView(digits[i]);
+        }
+
+        layout.addView(pinLayout);
+        dialog.show();
     }
 
     private void verifyTOTPCode(String code) {
-        executorService.execute(() -> {
-            try {
-                JSONObject payload = new JSONObject();
-                payload.put("code", code);
 
-                RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+        if(isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("Error", "You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
 
-                Request request = new Request.Builder()
-                        .url(getString(R.string.base_url) + "/verify-device")
-                        .addHeader("X-CSRF-Token", csrfToken)
-                        .post(body)
-                        .build();
+        if(csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(() -> performTOTPVerify(code));
+        } else {
+            performTOTPVerify(code);
+        }
+    }
 
-                try (Response response = client.newCall(request).execute()) {
+    private void performTOTPVerify(String code) {
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        JSONObject payload = new JSONObject();
+
+        try {
+            payload.put("code", code);
+
+        } catch (JSONException e) {
+            runOnUiThread(() -> showPopupWindow("Error", "Error when parsed. Please connect to support!"));
+            runOnUiThread(loadingDialog::dismiss);
+            return;
+        }
+
+        RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+
+        Request request = new Request.Builder()
+                .url(getString(R.string.base_url) + "/verify-device")
+                .addHeader("X-CSRF-Token", csrfToken)
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error", "Error verifying 2FA. Please connect to support!"));
+                runOnUiThread(loadingDialog::dismiss);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
                     String responseData = Objects.requireNonNull(response.body()).string();
                     JSONObject jsonResponse = new JSONObject(responseData);
-                    boolean success = jsonResponse.optBoolean("success", false);
 
-                    runOnUiThread(() -> {
-                        if (success) {
-                            GlobalVariable.saveValidatationData(this, true);
-                            finish();
-                        } else {
-                            showPopupWindow("Error", "Invalid 2FA code.");
-                        }
-                    });
+                    if (!response.isSuccessful()) {
+                        String serverMessage = jsonResponse.optString("message", "Error verifying 2FA. Please connect to support!");
+                        runOnUiThread(() -> showPopupWindow("Error", serverMessage));
+                        return;
+                    }
+
+                    GlobalVariable.saveValidationData(MainActivity.this, true);
+                    GlobalVariable.saveUsername(MainActivity.this, globalUsername);
+
+                    Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "No set camp. Set a camp to start scanning.", Toast.LENGTH_SHORT).show());
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error", "Error verifying 2FA. Please connect to support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
-            } catch (Exception e) {
-                runOnUiThread(() -> showPopupWindow("Error", "Error verifying 2FA: " + e.getMessage()));
             }
         });
     }
@@ -475,186 +688,166 @@ public class MainActivity extends AppCompatActivity {
                 isSuccesful = true;
                 stopInventoryThread();
             } else if (destination.equals("No set mode")) {
-                showPopupWindow("Error", "First you need to select a destination in the upper right corner");
+                runOnUiThread(() -> showPopupWindow("Error", "First you need to select a destination in the upper right corner"));
             } else {
-                executorService.execute(() -> {
-                    final boolean serverActive = isServerActive();
-                    runOnUiThread(() -> {
-                        if (serverActive) {
-                            startInventoryThread();
-                        } else {
-                            Toast.makeText(MainActivity.this, "Server is not active. Cannot start scan.", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                });
+                startInventoryThread();
             }
             return true;
 
-        } else if (keyCode == 139) {
+        } else if (keyCode == 139 && !isInventory) {
             runOnUiThread(this::showPopupWindowService);
             return true;
         }
         return super.onKeyDown(keyCode, event);
     }
 
-    // Method to check if the server is active
-    private boolean isServerActive() {
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl)
-                .get()
-                .build();
+    // Method to start inventory (scanning)
+    private void startInventoryThread() {
+        title.setText(destination.equals("None") ? "Picked up" : destination);
+        resetData(); // Clear data before starting a new scan
 
-        try {
-            Response response = client.newCall(request).execute(); // Reuse the OkHttpClient instance
-            return response.isSuccessful();
-        } catch (Exception e) {
-            Log.e("MainActivity", "Error: " + e.getMessage());
-            return false;
+        if(isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("Error", "You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
+
+        if(csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(this::performStartScanning);
+        } else {
+            performStartScanning();
         }
     }
 
-    // Method to start inventory (scanning)
-    private void startInventoryThread() {
-        title.setText(destination.equals("None") ? "Taking from soldier" : destination);
-        resetData(); // Clear data before starting a new scan
+    private void performStartScanning() {
+        if (!rfidReader.startInventoryTag()) {
+            runOnUiThread(() -> showPopupWindow("Error", "Failed to start scanning. Check if device supports RFID reader"));
+            return;
+        }
 
-        if (rfidReader.startInventoryTag()) {
-            isInventory = true;
+        shouldStopScanning = false;
+        runOnUiThread(() -> Toast.makeText(this, "Start scanning", Toast.LENGTH_SHORT).show());
 
-            // Submit the RFID scanning task to the executor
-            executorService.execute(() -> {
+        isInventory = true;
 
-                final Set<String> invalidEpcSet = Collections.synchronizedSet(new HashSet<>()); // To store invalid EPCs
+        final Set<String> processingEpcSet = Collections.synchronizedSet(new HashSet<>());
 
-                    while (isInventory && !Thread.currentThread().isInterrupted()) {
-                        UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
-                        if (uhftagInfo == null) {
-                            try {
-                                Thread.sleep(0); // Wait for 0 milliseconds before reading the next tag
-                            } catch (InterruptedException e) {
-                                Log.e("MainActivity", "Error: " + e.getMessage());
-                                if (Thread.interrupted()) {
-                                    return; // Exit the thread if it's interrupted
+        executorService.execute(() -> {
+            while (isInventory && !shouldStopScanning && !Thread.currentThread().isInterrupted()) {
+                UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
+
+                if (uhftagInfo == null) {
+                    try {
+                        Thread.sleep(50); // reduce CPU usage
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    continue;
+                }
+
+                String epc = uhftagInfo.getEPC();
+                if (epc == null || epc.isEmpty()) {
+                    continue;
+                }
+
+                // Skip already invalid EPCs
+                if (processingEpcSet.contains(epc)) {
+                    continue;
+                }
+
+                processingEpcSet.add(epc);
+
+                // Send to server asynchronously
+                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+                JSONObject jsonPayload = new JSONObject();
+
+                try {
+                    int perm_count = 1;
+                    jsonPayload.put("code", epc);
+                    jsonPayload.put("prev_destination", prev_destination);
+                    jsonPayload.put("destination", destination);
+                    jsonPayload.put("permCount", perm_count);
+                    jsonPayload.put("isValidCode", isValidCode);
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error", "Error preparing request. Please connect to support!"));
+                    stopInventoryThread();
+                    return;
+                }
+
+                String jsonData = jsonPayload.toString();
+                RequestBody body = RequestBody.create(jsonData, JSON);
+
+                String baseUrl = getString(R.string.base_url);
+                Request request = new Request.Builder()
+                        .url(baseUrl + "/checkScaningCode")
+                        .addHeader("X-CSRF-Token", csrfToken)
+                        .post(body)
+                        .build();
+
+                // Use enqueue (async) instead of execute (blocking)
+                client.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        runOnUiThread(() -> showPopupWindow("Error", "Network error. Please connect to support!"));
+                        stopInventoryThread();
+                    }
+
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response) {
+                        try {
+
+                            String responseBody = response.body().string();
+
+                            if (!response.isSuccessful()) {
+                                // Handle server error
+                                String errorMessage = "Internal server error";
+
+                                JSONObject errorJson = new JSONObject(responseBody);
+                                errorMessage = errorJson.optString("message", errorMessage);
+
+                                String globalErrorHeader = response.header("X-Global-Error");
+                                if ("true".equalsIgnoreCase(globalErrorHeader)) {
+                                    shouldStopScanning = true;
                                 }
-                            }
-                            continue;
-                        }
 
-                        String epc = uhftagInfo.getEPC();
+                                String finalErrorMessage = errorMessage;
+                                runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
 
-                        if (epc != null && !epc.isEmpty()) {
-                            // Skip invalid EPCs that have already been marked
-                            synchronized (invalidEpcSet) {
-                                if (invalidEpcSet.contains(epc)) {
-                                    continue; // Skip rescanning invalid EPC
+                                if (shouldStopScanning) {
+                                    stopInventoryThread();
                                 }
+
+                                return;
                             }
 
-                            // Check if the EPC is already processed
+                            JSONObject jsonResponse = new JSONObject(responseBody);
+                            String code = jsonResponse.getString("code");
+                            String soldierId = jsonResponse.getString("soldierId");
+
+                            boolean isNewEpc;
                             synchronized (uniqueEpcSet) {
-                                if (uniqueEpcSet.contains(epc)) {
-                                    continue; // Skip processing for already handled EPCs
-                                }
+                                isNewEpc = uniqueEpcSet.add(epc);
                             }
 
-                            // Proceed only if EPC passes local validation
-                            if (checkBagCode(epc)) {
-                                try {
-                                    MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                                    JSONObject jsonPayload = new JSONObject();
-                                    try {
-                                        jsonPayload.put("code", epc);
-                                        jsonPayload.put("prev_destination", prev_destination);
-                                        jsonPayload.put("destination", destination);
-                                        jsonPayload.put("permCount", perm_count);
-                                        jsonPayload.put("isValidCode", isValidCode);
-                                    } catch (JSONException e) {
-                                        Log.e("MainActivity", "Error: " + e.getMessage());
-                                    }
-
-                                    String jsonData = jsonPayload.toString();
-                                    RequestBody body = RequestBody.create(jsonData, JSON);
-
-                                    String baseUrl = getString(R.string.base_url);
-                                    Request request = new Request.Builder()
-                                            .url(baseUrl + "/checkScaningCode")
-                                            .addHeader("X-CSRF-Token", csrfToken)
-                                            .post(body)
-                                            .build();
-
-                                    try (Response response = client.newCall(request).execute()) {
-
-                                        if (response.isSuccessful()) {
-                                            String responseData = Objects.requireNonNull(response.body()).string();
-                                            JSONObject jsonResponse = new JSONObject(responseData);
-                                            String code = jsonResponse.getString("code");
-                                            String soldierId = jsonResponse.getString("soldierId");
-
-                                            boolean isNewEpc;
-                                            synchronized (uniqueEpcSet) {
-                                                // Only add to the set if validation is successful
-                                                isNewEpc = uniqueEpcSet.add(epc); // Returns true only if the EPC is newly added
-                                            }
-
-                                            if (isNewEpc) {
-                                                // Add row only for new EPCs
-                                                runOnUiThread(() -> addRowToTable(code, soldierId));
-                                            }
-                                        } else {
-                                            // Extract the error message from the server response
-                                            String errorMessage = "Unknown error";
-                                            try {
-                                                if (response.body() != null) {
-                                                    String responseBody = response.body().string();
-                                                    JSONObject errorJson = new JSONObject(responseBody);
-                                                    errorMessage = errorJson.optString("message", "Internal server error");
-                                                }
-                                            } catch (Exception e) {
-                                                Log.e("MainActivity", "Error: " + e.getMessage());
-                                            }
-
-                                            // Mark the EPC as invalid and skip it in future scans
-                                            synchronized (invalidEpcSet) {
-                                                invalidEpcSet.add(epc);
-                                            }
-
-                                            String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
-                                            runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
-                                        }
-                                    }
-
-                                } catch (InterruptedIOException e) {
-                                    // Log the error or handle it as needed
-                                    Log.e("MainActivity", "Error: " + e.getMessage());
-                                } catch (Exception e) {
-                                    Log.e("MainActivity", "Error: " + e.getMessage());
-                                    runOnUiThread(() -> showPopupWindow("Error", "Error checking bag code: " + e.getMessage()));
-
-                                    // Mark the EPC as invalid and skip it in future scans
-                                    synchronized (invalidEpcSet) {
-                                        invalidEpcSet.add(epc);
-                                    }
-                                }
-                            } else {
-                                // Mark the EPC as invalid if it fails local validation
-                                synchronized (invalidEpcSet) {
-                                    invalidEpcSet.add(epc);
-                                }
+                            if (isNewEpc) {
+                                runOnUiThread(() -> addRowToTable(code, soldierId));
                             }
+
+                        } catch (Exception e) {
+                            runOnUiThread(() -> showPopupWindow("Error", "Error processing server response."));
+                            stopInventoryThread();
                         }
                     }
-            });
-        } else {
-            runOnUiThread(() ->
-                    Toast.makeText(MainActivity.this, "Failed to start scanning", Toast.LENGTH_SHORT).show()
-            );
-        }
+                });
+            }
+        });
     }
 
     // Method to stop the background thread for reading tags
     private void stopInventoryThread() {
         if (isInventory) {
+            runOnUiThread(() -> Toast.makeText(this, "Stop scanning", Toast.LENGTH_SHORT).show());
             isInventory = false;
 
             if (rfidReader != null) {
@@ -662,73 +855,12 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (isSuccesful) {
-                executorService.execute(() -> {
-                    boolean success = sendAllEpcsToServer(uniqueEpcSet);
-                    runOnUiThread(() -> {
-                        if (success) {
-                            showPopupWindow("Scan Summary", "Total bags codes found: " + uniqueEpcSet.size());
-                        }
-                    });
+                sendAllEpcsToServer(uniqueEpcSet, () -> {
+                    runOnUiThread(() -> showPopupWindow("Scan Summary", "Total bags codes found: " + uniqueEpcSet.size()));
+                    isSuccesful = false;
                 });
-                isSuccesful = false;
             }
         }
-    }
-
-    private Future<Boolean> checkCountScanningCodes(Integer countScannedCode) {
-        return executorService.submit(() -> {
-            boolean success = true;
-
-            Dialog loadingDialog = new Dialog(MainActivity.this);
-            runOnUiThread(() -> {
-                loadingDialog.setContentView(R.layout.progress_dialog);
-                loadingDialog.setCancelable(false);
-                Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
-                loadingDialog.show();
-            });
-
-            try {
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-
-                JSONObject payload = new JSONObject();
-                payload.put("countScaneCode", countScannedCode);
-                payload.put("prev_destination", prev_destination);
-                payload.put("campId", campId);
-                payload.put("isValidCode", isValidCode);
-
-                RequestBody body = RequestBody.create(payload.toString(), JSON);
-
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/checkCountScanningCodes")
-                        .addHeader("X-CSRF-Token", csrfToken)
-                        .post(body)
-                        .build();
-
-                try (Response response = client.newCall(request).execute()) {
-
-                    if (!response.isSuccessful()) {
-                        String errorMessage = "Unknown error";
-                        if (response.body() != null) {
-                            String responseBody = response.body().string();
-                            JSONObject errorJson = new JSONObject(responseBody);
-                            errorMessage = errorJson.optString("message", "Internal server error");
-                        }
-
-                        final String finalErrorMessage = errorMessage;
-                        runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
-                        success = false;
-                    }
-                }
-            } catch (Exception e) {
-                runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
-                success = false;
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
-            }
-
-            return success;
-        });
     }
 
     // Method to reset the table and EPC set before starting a new scan
@@ -749,46 +881,57 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void fetchBag(Spinner bagSpinner) {
+
+        if(isNetworkAvailable()) {
+            return;
+        }
+
         Dialog loadingDialog = new Dialog(MainActivity.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        executorService.execute(() -> {
-            try {
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/bags?isValidCode=" + isValidCode + "&campId=" + campId)
+                .build();
 
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/bags?isValidCode=" + isValidCode + "&campId=" + campId)
-                        .build();
-
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful() && response.body() != null) {
-                    final String responseData = response.body().string();
-                    runOnUiThread(() -> {
-                        try {
-                            JSONObject responseJson = new JSONObject(responseData);
-                            JSONArray bags = responseJson.getJSONArray("allBags");
-                            populateBagSpinner(bags, bagSpinner);
-
-                        } catch (JSONException e) {
-                            Toast.makeText(MainActivity.this, "JSON parsing error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                } else {
-                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Error fetching data", Toast.LENGTH_SHORT).show());
-                }
-            } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            } finally {
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error", "Error to get bags. Please connect to the support!"));
                 runOnUiThread(loadingDialog::dismiss);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+
+                    String responseData = Objects.requireNonNull(response.body()).string();
+                    JSONObject responseJson = new JSONObject(responseData);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = responseJson.optString("message", "Error to get bags. Please connect to the support!");
+                        runOnUiThread(() -> showPopupWindow("Error", serverMessage));
+                        return;
+                    }
+
+                    JSONArray bags = responseJson.getJSONArray("allBags");
+                    runOnUiThread(() -> populateBagSpinner(bags, bagSpinner));
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error", "Error to get bags. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
             }
         });
     }
 
     private void showPopupWindowService() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        String previousDestination = destination; // save current value
 
         // Inflate the custom view
         View customView = getLayoutInflater().inflate(R.layout.popup_spinner_layout, null);
@@ -809,12 +952,15 @@ public class MainActivity extends AppCompatActivity {
                         if (selectedBagCode != null) {
                             String selectedBagId = bagIdMap.get(selectedBagCode);
                             uniqueEpcSet.add(selectedBagId);
-                            sendAllEpcsToServer(uniqueEpcSet);
+                            sendAllEpcsToServer(uniqueEpcSet, () -> {
+                                destination = previousDestination;
+                                runOnUiThread(() -> showPopupWindow("Information", "Operation completed successfully"));
+                            });
                             dialog.dismiss();
-                            showPopupWindow("Information", "Operation completed successfully");
                         }
                     } else {
-                        Log.w("MainActivity", "Unexpected tag type: " + tag.getClass().getSimpleName());
+                        runOnUiThread(() -> showPopupWindow("Error", "Unexpected tag type. Connect to the support!"));
+                        destination = previousDestination;
                     }
                 })
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
@@ -827,28 +973,33 @@ public class MainActivity extends AppCompatActivity {
         fetchBag(bagSpinner);
     }
 
-    private void populateBagSpinner(JSONArray bags, Spinner bagSpinner) throws JSONException {
-        List<String> bagCodes = new ArrayList<>();
-        Map<String, String> bagIdMap = new HashMap<>(); // Maps code to id
+    private void populateBagSpinner(JSONArray bags, Spinner bagSpinner) {
+        try {
+            List<String> bagCodes = new ArrayList<>();
+            Map<String, String> bagIdMap = new HashMap<>(); // Maps code to id
 
-        for (int i = 0; i < bags.length(); i++) {
-            JSONObject bag = bags.getJSONObject(i);
-            String bagCode = bag.getString("name");
-            String bagId = bag.getString("id");
-            String bagStatus = bag.getString("status");
+            for (int i = 0; i < bags.length(); i++) {
+                JSONObject bag = bags.getJSONObject(i);
+                String bagCode = bag.getString("name");
+                String bagId = bag.getString("id");
+                String bagStatus = bag.getString("status");
 
-            if (!bagStatus.equals("None")) {
-                bagCodes.add(bagCode);
-                bagIdMap.put(bagCode, bagId); // Store id associated with the code
+                if (!bagStatus.equals("None")) {
+                    bagCodes.add(bagCode);
+                    bagIdMap.put(bagCode, bagId); // Store id associated with the code
+                }
             }
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, bagCodes);
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            bagSpinner.setAdapter(adapter);
+
+            // Store the bagIdMap somewhere accessible if you need the selected bag ID later
+            bagSpinner.setTag(bagIdMap);
+
+        } catch (JSONException e) {
+            runOnUiThread(() -> showPopupWindow("Error", "Invalid bag data from server!"));
         }
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, bagCodes);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        bagSpinner.setAdapter(adapter);
-
-        // Store the bagIdMap somewhere accessible if you need the selected bag ID later
-        bagSpinner.setTag(bagIdMap);
     }
 
     @Override
@@ -862,127 +1013,102 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean checkBagCode(String epc) {
-        try {
-            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-            JSONObject jsonPayload = new JSONObject();
-            try {
-                jsonPayload.put("code", epc);
-                jsonPayload.put("isValidCode", isValidCode);
-            } catch (JSONException e) {
-                Log.e("MainActivity", "Error: " + e.getMessage());
-            }
-            String jsonData = jsonPayload.toString();
+    // Method to send EPC to the server using the persistent OkHttpClient connection
+    private void sendAllEpcsToServer(HashSet<String> epcs, Runnable onComplete) {
 
-            RequestBody body = RequestBody.create(jsonData, JSON);
-
-            String baseUrl = getString(R.string.base_url);
-            Request request = new Request.Builder()
-                    .url(baseUrl + "/check-bag") // Use the new endpoint
-                    .addHeader("X-CSRF-Token", csrfToken)
-                    .post(body)
-                    .build();
-
-            try (Response response = client.newCall(request).execute()) {
-
-                if (response.isSuccessful()) {
-                    String responseData = Objects.requireNonNull(response.body()).string();
-                    JSONObject jsonResponse = new JSONObject(responseData);
-                    return jsonResponse.getBoolean("exists");
-                } else {
-                    // Extract the error message from the server response
-                    String errorMessage = "Unknown error";
-                    try {
-                        if (response.body() != null) {
-                            String responseBody = response.body().string();
-                            JSONObject errorJson = new JSONObject(responseBody);
-                            errorMessage = errorJson.optString("message", "Internal server error");
-                        }
-                    } catch (Exception e) {
-                        Log.e("MainActivity", "Error: " + e.getMessage());
-                    }
-
-                    String finalErrorMessage = errorMessage; // Pass the extracted message to UI thread
-                    runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
-                }
-            }
-
-        } catch (InterruptedIOException e) {
-            // Log the error or handle it as needed
-            Log.e("MainActivity", "Error: " + e.getMessage());
-            return false;
-
-        } catch (Exception e) {
-            Log.e("MainActivity", "Error: " + e.getMessage());
-            runOnUiThread(() -> showPopupWindow("Error", "Error checking bag code: " + e.getMessage()));
+        if(isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("Error", "You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
         }
 
-        return false; // Default to false if there's an error
+        if(csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(() -> performSendEpc(epcs, onComplete));
+        } else {
+            performSendEpc(epcs, onComplete);
+        }
     }
 
-    // Method to send EPC to the server using the persistent OkHttpClient connection
-    private boolean sendAllEpcsToServer(HashSet<String> epcs) {
-        final boolean[] success = {true};
+    private void performSendEpc(HashSet<String> epcs, Runnable onComplete) {
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
 
-        executorService.execute(() -> {
-            try {
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
-                // Create a JSON array for the EPCs
-                JSONArray epcArray = new JSONArray();
-                for (String epc : epcs) {
-                    epcArray.put(epc);
-                }
+        // Create a JSON array for the EPCs
+        JSONArray epcArray = new JSONArray();
+        for (String epc : epcs) {
+            epcArray.put(epc);
+        }
 
-                JSONObject payload = new JSONObject();
-                payload.put("codes", epcArray); // Send the EPC array to the server
-                payload.put("destination", destination);
-                payload.put("prev_destination", prev_destination);
-                payload.put("campId", campId);
-                payload.put("isValidCode", isValidCode);
+        JSONObject payload = new JSONObject();
 
-                String url;
-                String baseUrl = getString(R.string.base_url);
+        try {
+            payload.put("codes", epcArray); // Send the EPC array to the server
+            payload.put("destination", destination);
+            payload.put("prev_destination", prev_destination);
+            payload.put("campId", campId);
+            payload.put("isValidCode", isValidCode);
 
-                if("Linen Exchange service".equals(destination)) {
-                    url = baseUrl + "/changeEndToEndStatus";
-                } else {
-                    url = baseUrl + "/changeStatusBulk";
-                }
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Error", "Error to parsed data. Please connect to the support!"));
+            runOnUiThread(loadingDialog::dismiss);
+            if (onComplete != null) onComplete.run();
+            return;
+        }
 
-                RequestBody body = RequestBody.create(payload.toString(), JSON);
+        String url;
+        String baseUrl = getString(R.string.base_url);
 
-                Request request = new Request.Builder()
-                        .url(url)
-                        .addHeader("X-CSRF-Token", csrfToken)
-                        .post(body)
-                        .build();
+        if ("Linen Exchange service".equals(destination)) {
+            url = baseUrl + "/changeEndToEndStatus";
+        } else {
+            url = baseUrl + "/changeStatusBulk";
+        }
 
-                try (Response response = client.newCall(request).execute()) {
+        RequestBody body = RequestBody.create(payload.toString(), JSON);
 
-                    if (response.isSuccessful()) {
-                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "All bags have been moved successfully.", Toast.LENGTH_SHORT).show());
-                    } else {
-                        String errorMessage = "Unknown error";
-                        if (response.body() != null) {
-                            String responseBody = response.body().string();
-                            JSONObject errorJson = new JSONObject(responseBody);
-                            errorMessage = errorJson.optString("message", "Internal server error");
-                        }
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("X-CSRF-Token", csrfToken)
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error", "Error when send data. Please connect to the support!"));
+                runOnUiThread(loadingDialog::dismiss);
+                if (onComplete != null) onComplete.run();
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+
+                    if (!response.isSuccessful()) {
+                        String errorMessage;
+                        String responseBody = response.body().string();
+                        JSONObject errorJson = new JSONObject(responseBody);
+                        errorMessage = errorJson.optString("message", "Internal server error");
 
                         String finalErrorMessage = errorMessage;
                         runOnUiThread(() -> showPopupWindow("Error", finalErrorMessage));
-                        success[0] = false;
+                        return;
                     }
+
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "All bags have been moved successfully.", Toast.LENGTH_SHORT).show());
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error", "Error when send data. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                    if (onComplete != null) onComplete.run();
                 }
-            } catch (Exception e) {
-                Log.e("MainActivity", "Error: " + e.getMessage());
-                runOnUiThread(() -> showPopupWindow("Error", "Error sending EPCs to server: " + e.getMessage()));
-                success[0] = false;
             }
         });
-
-        return success[0];
     }
 
     private int getRowCount() {
@@ -992,7 +1118,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     private void updateTitleWithRowCount() {
         int rowCount = getRowCount();
-        title.setText((destination.equals("None") ? "Taking from soldier" : destination) + "\n" + rowCount + " scanned bags");
+        title.setText((destination.equals("None") ? "Picked up" : destination) + "\n" + rowCount + " scanned bags");
     }
 
     // Method to add a new row to the table with only the last five characters of the EPC code
@@ -1046,17 +1172,17 @@ public class MainActivity extends AppCompatActivity {
                 resetData();
                 return true;
 
-            } else if (itemId == R.id.menu_transportation_to_drop_off) {
-                updateMode("Transportation to drop off", "Laundry facility");
+            } else if (itemId == R.id.menu_transportation_to_pick_up) {
+                updateMode("Transportation to pick up", "Laundry facility");
                 resetData();
                 return true;
 
             } else if (itemId == R.id.menu_ready_to_pick_up) {
-                updateMode("Ready to pick up", "Transportation to drop off");
+                updateMode("Ready to pick up", "Transportation to pick up");
                 resetData();
                 return true;
 
-            } else if (itemId == R.id.menu_taking_from_soldier) {
+            } else if (itemId == R.id.menu_picked_up) {
                 updateMode("None", "Ready to pick up");
                 resetData();
                 return true;
@@ -1075,13 +1201,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateMode(String destination, String prevDestination) {
-        Toast.makeText(this, "Change mode to " + (destination.equals("None") ? "Taking from soldier" : destination), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Change mode to " + (destination.equals("None") ? "Picked up" : destination), Toast.LENGTH_SHORT).show();
         this.destination = destination;
         if (prevDestination != null) {
             this.prev_destination = prevDestination;
             GlobalVariable.savePrevDestination(this, prevDestination);
         }
-        title.setText(destination.equals("None") ? "Taking from soldier" : destination);
+        title.setText(destination.equals("None") ? "Picked up" : destination);
 
         GlobalVariable.saveVariable(this, destination);
     }

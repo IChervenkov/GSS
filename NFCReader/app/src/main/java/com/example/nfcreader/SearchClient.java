@@ -3,21 +3,23 @@ package com.example.nfcreader;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Typeface;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -44,6 +46,8 @@ import okhttp3.Response;
 
 public class SearchClient extends AppCompatActivity {
 
+    private boolean isValidCode;
+    private String campId;
     private final OkHttpClient client = new OkHttpClient();
     private final ArrayList<BikeInfo> ownerList = new ArrayList<>();
     private final Map<BikeInfo, String> clientIdMap = new HashMap<>();
@@ -52,21 +56,38 @@ public class SearchClient extends AppCompatActivity {
     private AutoCompleteTextView clientAutoCompleteTextView;
     private NfcAdapter nfcAdapter;
 
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return true;
+
+        Network network = cm.getActiveNetwork();
+        if (network == null) return true;
+
+        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+        return capabilities == null ||
+                (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_client);
 
+        campId = GlobalVariable.getCamp(this);
+        isValidCode = GlobalVariable.getVariable(this);
+
         clientAutoCompleteTextView = findViewById(R.id.clientAutoCompleteTextView);
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
-            Toast.makeText(this, "NFC is not available on this device.", Toast.LENGTH_SHORT).show();
+            showPopupWindow("NFC is not available on this device.");
             finish();
             return;
         }
-                
+
         // Fetch client from the server
         fetchAvailableBikes();
 
@@ -99,6 +120,12 @@ public class SearchClient extends AppCompatActivity {
     }
 
     private void fetchAvailableBikes() {
+
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
+
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(SearchClient.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -108,81 +135,87 @@ public class SearchClient extends AppCompatActivity {
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/getClient?campId=" + GlobalVariable.getCamp(this) + "&isValidCode=" + GlobalVariable.getVariable(this))
+                .url(baseUrl + "/getClient?campId=" + campId + "&isValidCode=" + isValidCode)
                 .build();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(SearchClient.this, "Error fetching client: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Error when fetching soldier. Please connect to the support!"));
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                loadingDialog.dismiss();
-                if (response.isSuccessful() && response.body() != null) {
+
+                try {
                     String responseData = response.body().string();
-                    runOnUiThread(() -> {
-                        try {
-                            populateBikeAutoComplete(new JSONArray(responseData));
-                        } catch (JSONException e) {
-                            Log.e("SearchClient", "Error: " + e.getMessage());
-                            Toast.makeText(SearchClient.this, "JSON Parsing Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                } else {
-                    runOnUiThread(() ->
-                            Toast.makeText(SearchClient.this, "Error fetching client, code: " + response.code(), Toast.LENGTH_SHORT).show()
-                    );
+
+                    if (!response.isSuccessful()) {
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
+                    }
+
+                    JSONArray allSoldier = new JSONArray(responseData);
+                    runOnUiThread(() -> populateBikeAutoComplete(allSoldier));
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Error when fetching soldier. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         });
     }
 
-    private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
-        ownerList.clear();
-        clientIdMap.clear();
-        keyIdMap.clear();
-        keyIdCountMap.clear();
+    private void populateBikeAutoComplete(JSONArray bikes) {
 
-        Set<String> seenNames = new HashSet<>();
+        try {
+            ownerList.clear();
+            clientIdMap.clear();
+            keyIdMap.clear();
+            keyIdCountMap.clear();
 
-        for (int i = 0; i < bikes.length(); i++) {
-            JSONObject bike = bikes.getJSONObject(i);
-            String bikeId = bike.getString("id");
-            String keyId = bike.getString("keyid");
-            String bikeName = bike.getString("namesoldier");
-            String soldierKey = bike.getString("namekey");
-            String countGetBikes = bike.getString("count_get_bike");
+            Set<String> seenNames = new HashSet<>();
 
-            if (seenNames.contains(bikeName)) {
-                continue;
+            for (int i = 0; i < bikes.length(); i++) {
+                JSONObject bike = bikes.getJSONObject(i);
+                String bikeId = bike.getString("id");
+                String keyId = bike.getString("keyid");
+                String bikeName = bike.getString("namesoldier");
+                String soldierKey = bike.getString("namekey");
+                String countGetBikes = bike.getString("count_get_bike");
+
+                if (seenNames.contains(bikeName)) {
+                    continue;
+                }
+
+                seenNames.add(bikeName);
+
+                BikeInfo bikeInfo = new BikeInfo(bikeName, !soldierKey.equals("null") ? soldierKey : "No key");
+
+                ownerList.add(bikeInfo);
+                clientIdMap.put(bikeInfo, bikeId);
+                keyIdMap.put(bikeInfo, keyId);
+                keyIdCountMap.put(keyId, countGetBikes);
             }
 
-            seenNames.add(bikeName);
+            ArrayAdapter<BikeInfo> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
+            clientAutoCompleteTextView.setAdapter(adapter);
 
-            BikeInfo bikeInfo = new BikeInfo(bikeName, soldierKey);
-
-            ownerList.add(bikeInfo);
-            clientIdMap.put(bikeInfo, bikeId);
-            keyIdMap.put(bikeInfo, keyId);
-            keyIdCountMap.put(keyId, countGetBikes);
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Failed to fetch soldier. Please connect to the support."));
         }
-
-        ArrayAdapter<BikeInfo> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
-        clientAutoCompleteTextView.setAdapter(adapter);
     }
+
 
     private void loadBikeData(String bikeId) {
 
-        // Make network request to your server endpoint
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/searchClient?id=" + bikeId + "&isValidCode=" + GlobalVariable.getVariable(this))
-                .build();
+        if (isNetworkAvailable()) {
+            return;
+        }
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(SearchClient.this);
@@ -191,45 +224,50 @@ public class SearchClient extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
+        // Make network request to your server endpoint
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/searchClient?id=" + bikeId + "&isValidCode=" + isValidCode)
+                .build();
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(SearchClient.this, "Error fetching data from server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Error fetching data from server. Please connect to the support!"));
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
 
-                runOnUiThread(loadingDialog::dismiss);
-
-                if (response.isSuccessful() && response.body() != null) {
+                try {
                     String responseData = response.body().string();
-                    try {
-                        JSONArray bikesArray = new JSONArray(responseData);
-                        runOnUiThread(() -> updateTableLayout(bikesArray));
-                    } catch (JSONException e) {
-                        Log.e("SearchClient", "Error: " + e.getMessage());
-                        runOnUiThread(() ->
-                                Toast.makeText(SearchClient.this, "Error parsing data: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                        );
+
+                    if (!response.isSuccessful()) {
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
                     }
-                } else {
-                    runOnUiThread(() ->
-                            Toast.makeText(SearchClient.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show()
-                    );
+
+                    JSONArray bikesArray = new JSONArray(responseData);
+                    runOnUiThread(() -> updateTableLayout(bikesArray));
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Error fetching data from server. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         });
     }
 
     private void updateTableLayout(JSONArray bikesArray) {
+
         try {
             TableLayout tableLayout = findViewById(R.id.table_layout);
             tableLayout.removeAllViews();
-            tableLayout.setPadding(0,0,0,10);
+            tableLayout.setPadding(0, 0, 0, 10);
 
             // Iterate through the JSON array to extract each bike's data
             for (int i = 0; i < bikesArray.length(); i++) {
@@ -248,8 +286,7 @@ public class SearchClient extends AppCompatActivity {
 
             }
         } catch (JSONException e) {
-            Log.e("SearchClient", "Error: " + e.getMessage());
-            Toast.makeText(this, "Error updating UI: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            runOnUiThread(() -> showPopupWindow("Error when updating UI. Please connect ot the support!"));
         }
     }
 
@@ -312,25 +349,24 @@ public class SearchClient extends AppCompatActivity {
             byte[] tagId = tag.getId();
             String nfcId = bytesToHex(tagId);
 
-                String selectedClientName = null;
-                BikeInfo selectedClientInfoId = null;
+            String selectedClientName = null;
+            BikeInfo selectedClientInfoId = null;
 
-                for (Map.Entry<BikeInfo, String> entry : keyIdMap.entrySet()) {
-                    if (entry.getValue().equals(nfcId)) {
-                        selectedClientInfoId = entry.getKey();
-                        selectedClientName = entry.getKey().toString(); // Assuming BikeInfo's toString() returns the name
-                        break;
-                    }
+            for (Map.Entry<BikeInfo, String> entry : keyIdMap.entrySet()) {
+                if (entry.getValue().equals(nfcId)) {
+                    selectedClientInfoId = entry.getKey();
+                    selectedClientName = entry.getKey().toString(); // Assuming BikeInfo's toString() returns the name
+                    break;
                 }
+            }
 
-                if (selectedClientName == null) {
-                    Toast.makeText(this, "Soldier not found!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+            if (selectedClientName == null) {
+                showPopupWindow("Soldier not found!");
+                return;
+            }
 
-                clientAutoCompleteTextView.setText(selectedClientName);
-
-
+            clientAutoCompleteTextView.setText(selectedClientName);
+            
             // Get the ID of the selected bike
             String selectedClientCount = keyIdCountMap.get(nfcId);
             String selectedClientId = clientIdMap.get(selectedClientInfoId);
@@ -350,5 +386,15 @@ public class SearchClient extends AppCompatActivity {
             sb.append(String.format("%02X", b));
         }
         return sb.toString();
+    }
+
+    private void showPopupWindow(String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Error");
+        builder.setMessage(message);
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            // Reset the flag once the error dialog is clos
+        });
+        builder.show();
     }
 }

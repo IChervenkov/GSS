@@ -3,6 +3,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalContentMess = modalMess.querySelector('.modal-content-mess');
     const loadingIndicator = document.getElementById('loadingIndicator');
 
+    const checkForGlobalError = (response, responseBody) => {
+        if (response.headers.get('X-Global-Error') === 'true')
+            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+    };
+
     function showLoading() {
         loadingIndicator.style.display = 'flex';
     }
@@ -37,15 +42,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 switch (buttonId) {
                     case 'downloadBtn':
                         url = '/download-apk-bike';
-                        appName = 'NFCReader-1.3-release.apk';
+                        appName = 'NFCReader-1.4-release.apk';
                         break;
                     case 'downloadRFIDAppBtn':
                         url = '/download-apk-laundry';
-                        appName = 'RFIDLaundryReader-1.3-release.apk';
+                        appName = 'RFIDLaundryReader-1.4-release.apk';
                         break;
                     case 'downloadRFIDAppBtnAsset':
                         url = '/download-apk-asset';
-                        appName = 'RFIDLaundryAsset-1.3-release.apk';
+                        appName = 'RFIDLaundryAsset-1.4-release.apk';
                         break;
                     case 'downloadTabletAppBtn':
                         url = '/download-apk-gym';
@@ -53,18 +58,19 @@ document.addEventListener('DOMContentLoaded', function () {
                         break;
                 }
 
-                fetch(url)
-                    .then(response => {
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-Is-Fetch': 'true'
+                    }
+                })
+                    .then(async response => {
                         if (!response.ok) {
-                            return response.text().then(text => {
-                                try {
-                                    const data = JSON.parse(text);
-                                    throw new Error(data.message || 'Failed to download file');
-                                } catch {
-                                    throw new Error(text || 'Failed to download file');
-                                }
-                            });
+                            const errorData = await response.json();
+                            checkForGlobalError(response, errorData);
+                            throw new Error(data.message || 'Failed to download file');
                         }
+
                         return response.blob();
                     })
                     .then(blob => {

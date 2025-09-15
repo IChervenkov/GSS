@@ -14,12 +14,17 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
 
+import android.text.Editable;
+import android.text.InputFilter;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.util.Base64;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.widget.EditText;
@@ -41,8 +46,6 @@ import java.io.IOException;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -53,16 +56,55 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements CsrfTokenProvider {
     private final CookieManager cookieManager = new CookieManager();
     private final OkHttpClient client = new OkHttpClient.Builder()
+            .addInterceptor(new CsrfInterceptor(this))
             .cookieJar(new JavaNetCookieJar(cookieManager))
             .build();
     private String csrfToken = null;
+    private boolean isValidCode;
     private String globalUsername = "";
-    private final ExecutorService executorService = Executors.newSingleThreadExecutor(); // Adjust pool size as needed
 
-    private void fetchCsrfToken() {
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return true;
+
+        Network network = cm.getActiveNetwork();
+        if (network == null) return true;
+
+        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+        return capabilities == null ||
+                (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+    }
+
+    @Override
+    public synchronized String getCsrfToken() {
+        return csrfToken;
+    }
+
+    @Override
+    public synchronized void refreshCsrfTokenSync() {
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
+            csrfToken = jsonObject.getString("csrfToken");
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
+        }
+    }
+
+    private void fetchCsrfToken(Runnable onSuccess) {
+
+        if (isNetworkAvailable())
+            return;
+
         Dialog loadingDialog = new Dialog(MainActivity.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
@@ -77,69 +119,81 @@ public class MainActivity extends AppCompatActivity {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(MainActivity.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
             }
 
             @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                runOnUiThread(loadingDialog::dismiss); // Always dismiss dialog first
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
 
-                if (response.isSuccessful() && response.body() != null) {
-                    try {
-                        String responseBody = response.body().string();
-                        JSONObject jsonObject = new JSONObject(responseBody);
-                        csrfToken = jsonObject.getString("csrfToken");
-                    } catch (JSONException e) {
-                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Error parsing token", Toast.LENGTH_SHORT).show());
-                    }
-                } else {
-                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+                try {
+
+                    String responseBody = response.body().string();
+                    JSONObject jsonObject = new JSONObject(responseBody);
+                    csrfToken = jsonObject.getString("csrfToken");
+                    if (onSuccess != null)
+                        runOnUiThread(onSuccess);
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         });
     }
 
     private void checkForUpdate() {
-        executorService.execute(() -> {
-            try {
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/apk-bike-version")
-                        .build();
 
-                client.newCall(request).enqueue(new Callback() {
-                    @Override
-                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        Log.e("UpdateCheck", "Error: " + e.getMessage());
+        if (isNetworkAvailable())
+            return;
+
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/apk-bike-version?isValidCode=" + isValidCode)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("There is a problem with app update. Please connect to the support."));
+                runOnUiThread(loadingDialog::dismiss);
+            }
+
+            @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+
+                try {
+                    String resBody = Objects.requireNonNull(response.body()).string();
+                    JSONObject json = new JSONObject(resBody);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = json.optString("message", "There is a problem with app update. Please connect to the support.");
+                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        return;
                     }
 
-                    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-                    @Override
-                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                        if (response.isSuccessful()) {
-                            String resBody = Objects.requireNonNull(response.body()).string();
-                            try {
-                                JSONObject json = new JSONObject(resBody);
-                                String latestVersion = json.getString("version");
-                                String apkUrl = json.getString("apkUrl");
+                    String latestVersion = json.getString("version");
+                    String apkUrl = json.getString("apkUrl");
 
-                                PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
-                                String currentVersion = pInfo.versionName;
+                    PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+                    String currentVersion = pInfo.versionName;
 
-                                if (!currentVersion.equals(latestVersion)) {
-                                    runOnUiThread(() -> sendUpdateNotification(apkUrl));
-                                }
-                            } catch (Exception e) {
-                                Log.e("UpdateCheck", "JSON error: " + e.getMessage());
-                            }
-                        }
+                    if (!Objects.equals(currentVersion, latestVersion)) {
+                        runOnUiThread(() -> sendUpdateNotification(apkUrl));
                     }
-                });
-            } catch (Exception e) {
-                Log.e("UpdateCheck", "Exception: " + e.getMessage());
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("There is a problem with the app update process. Please connect to the support."));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
             }
         });
     }
@@ -178,11 +232,12 @@ public class MainActivity extends AppCompatActivity {
 
         cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
 
-        fetchCsrfToken();
+        fetchCsrfToken(null);
 
-        boolean isValidCode = GlobalVariable.getVariable(this);
+        isValidCode = GlobalVariable.getVariable(this);
+        String campId = GlobalVariable.getCamp(this);
 
-        if(!isValidCode) {
+        if (!isValidCode) {
             showLoginDialog();
             return;
         }
@@ -195,14 +250,11 @@ public class MainActivity extends AppCompatActivity {
 
         checkForUpdate();
 
-        String campId = GlobalVariable.getCamp(this);
-
-        if(campId.isEmpty()) {
+        if (campId.isEmpty()) {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             Toast.makeText(MainActivity.this, "No set camp. Set a camp to start scanning.", Toast.LENGTH_SHORT).show();
-            return;
+            finish();
         }
 
         findViewById(R.id.buttonPage1).setOnClickListener(v -> {
@@ -256,7 +308,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        fetchCsrfToken();
+        fetchCsrfToken(null);
     }
 
     private void showLoginDialog() {
@@ -316,7 +368,7 @@ public class MainActivity extends AppCompatActivity {
         }));
 
         dialog.setOnDismissListener(dialogInterface -> {
-            if (!GlobalVariable.getVariable(this)) {
+            if (!isValidCode) {
                 finish(); // Close the app if login fails or is canceled
             }
         });
@@ -326,61 +378,95 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkLoginToServer(EditText usernameInput, EditText passwordInput, String username, String password) {
 
-            try {
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
 
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                JSONObject payload = new JSONObject();
-                payload.put("username", username);
-                payload.put("password", password);
+        if (csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(() -> performLogin(usernameInput, passwordInput, username, password));
+        } else {
+            performLogin(usernameInput, passwordInput, username, password);
+        }
+    }
 
-                RequestBody body = RequestBody.create(payload.toString(), JSON);
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/checkLogInApp")
-                        .addHeader("X-CSRF-Token", csrfToken)
-                        .post(body)
-                        .build();
+    private void performLogin(EditText usernameInput, EditText passwordInput, String username, String password) {
 
-                client.newCall(request).enqueue(new Callback() {
-                    @Override
-                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        runOnUiThread(() ->
-                                showPopupWindow("Login error: " + e.getMessage())
-                        );
-                    }
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
 
-                    @Override
-                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                        String responseData = Objects.requireNonNull(response.body()).string();
-                        try {
-                            JSONObject jsonResponse = new JSONObject(responseData);
-                            boolean isValidLogin = jsonResponse.optBoolean("success", false);
-                            boolean isValidUsername = jsonResponse.optBoolean("validUsername", false);
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject payload = new JSONObject();
 
-                            runOnUiThread(() -> {
-                                if (!isValidUsername) {
-                                    usernameInput.setError("Invalid username");
-                                } else if (!isValidLogin) {
-                                    passwordInput.setError("Invalid password");
-                                } else {
-                                    globalUsername = username;
-                                    fetchQRCodeFor2FA();
-                                }
-                            });
+        try {
+            payload.put("username", username);
+            payload.put("password", password);
 
-                        } catch (JSONException e) {
-                            runOnUiThread(() -> showPopupWindow("Parsing error: " + e.getMessage()));
-                        }
-                    }
-                });
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Error when login. Please connect to the support."));
+            runOnUiThread(loadingDialog::dismiss);
+            return;
+        }
 
-            } catch (Exception e) {
-                Log.e("MainActivity", "Error: " + e.getMessage());
-                runOnUiThread(() -> showPopupWindow("Error sending EPCs to server: " + e.getMessage()));
+        RequestBody body = RequestBody.create(payload.toString(), JSON);
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/checkLogInApp")
+                .addHeader("X-CSRF-Token", csrfToken)
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error when login. Please connect to the support."));
+                runOnUiThread(loadingDialog::dismiss);
             }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+
+                try {
+                    String responseData = Objects.requireNonNull(response.body()).string();
+                    JSONObject jsonResponse = new JSONObject(responseData);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = jsonResponse.optString("message", "Error when login. Please connect to the support.");
+                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        return;
+                    }
+
+                    boolean isValidLogin = jsonResponse.optBoolean("success", false);
+                    boolean isValidUsername = jsonResponse.optBoolean("validUsername", false);
+
+                    if (!isValidUsername) {
+                        runOnUiThread(() -> usernameInput.setError("Invalid username"));
+                    } else if (!isValidLogin) {
+                        runOnUiThread(() -> passwordInput.setError("Invalid password"));
+                    } else {
+                        globalUsername = username;
+                        fetchQRCodeFor2FA();
+                    }
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Error when login. Please connect to the support."));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
+            }
+        });
     }
 
     private void fetchQRCodeFor2FA() {
+
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
+
         Request request = new Request.Builder()
                 .url(getString(R.string.base_url) + "/2fa-verificated-device")
                 .get()
@@ -389,27 +475,31 @@ public class MainActivity extends AppCompatActivity {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Failed to load QR code: " + e.getMessage()));
+                runOnUiThread(() -> showPopupWindow("Failed to load QR code, Please connect to support!"));
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) {
-                if (!response.isSuccessful()) {
-                    runOnUiThread(() -> showPopupWindow("Failed to load QR code: HTTP " + response.code()));
-                    return;
-                }
 
                 try {
                     String json = Objects.requireNonNull(response.body()).string();
                     JSONObject obj = new JSONObject(json);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = obj.optString("message", "Failed to load QR code, Please connect to support!");
+                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        return;
+                    }
+
                     String qrBase64 = obj.getString("qrCodeDataURL").split(",")[1]; // remove data:image/png;base64,
 
                     byte[] decodedBytes = Base64.decode(qrBase64, Base64.DEFAULT);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
 
                     runOnUiThread(() -> showQRCodeDialog(bitmap));
+
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error parsing QR code: " + e.getMessage()));
+                    runOnUiThread(() -> showPopupWindow("Failed to load QR code, Please connect to support!"));
                 }
             }
         });
@@ -422,83 +512,153 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(50, 40, 50, 10);
+        layout.setGravity(Gravity.CENTER_HORIZONTAL);
 
+        // QR Image
         ImageView imageView = new ImageView(this);
-
         int size = (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 250, getResources().getDisplayMetrics()); // 250dp
-
+                TypedValue.COMPLEX_UNIT_DIP, 250, getResources().getDisplayMetrics());
         LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(size, size);
         imageParams.gravity = Gravity.CENTER;
-        imageParams.setMargins(0, 0, 0, 30); // bottom margin for spacing
+        imageParams.setMargins(0, 0, 0, 30);
         imageView.setLayoutParams(imageParams);
-
         imageView.setImageBitmap(qrBitmap);
         layout.addView(imageView);
 
-        final EditText input = new EditText(this);
-        input.setHint("Enter 6-digit code");
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
-        layout.addView(input);
+        // Container for 6-digit input
+        LinearLayout pinLayout = new LinearLayout(this);
+        pinLayout.setOrientation(LinearLayout.HORIZONTAL);
+        pinLayout.setGravity(Gravity.CENTER);
+        int digitWidth = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 40, getResources().getDisplayMetrics());
+        int digitMargin = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 8, getResources().getDisplayMetrics());
 
-        builder.setView(layout);
+        EditText[] digits = new EditText[6];
 
-        builder.setPositiveButton("Verify", (dialog, which) -> {
-            String code = input.getText().toString().trim();
-            if (!code.isEmpty()) {
-                verifyTOTPCode(code);
-            } else {
-                input.setError("Please enter the code");
-            }
-        });
+        // Create the dialog first
+        AlertDialog dialog = builder.setView(layout)
+                .setNegativeButton("Cancel", null)
+                .create();
 
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
+        for (int i = 0; i < 6; i++) {
+            final int index = i;
+            digits[i] = new EditText(this);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(digitWidth, LinearLayout.LayoutParams.WRAP_CONTENT);
+            params.setMargins(digitMargin, 0, digitMargin, 0);
+            digits[i].setLayoutParams(params);
+            digits[i].setGravity(Gravity.CENTER);
+            digits[i].setInputType(InputType.TYPE_CLASS_NUMBER);
+            digits[i].setMaxLines(1);
+            digits[i].setFilters(new InputFilter[]{new InputFilter.LengthFilter(1)});
+            digits[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+            digits[i].setEms(1);
+
+            // Move focus to next digit and auto-verify
+            digits[i].addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (s.length() == 1 && index < 5) {
+                        digits[index + 1].requestFocus();
+                    }
+                    // If all digits entered, auto-verify
+                    StringBuilder code = new StringBuilder();
+                    for (EditText d : digits) {
+                        if (d.getText().toString().isEmpty()) return;
+                        code.append(d.getText().toString());
+                    }
+                    verifyTOTPCode(code.toString());
+                    dialog.dismiss(); // now dialog is accessible
+                }
+            });
+
+            pinLayout.addView(digits[i]);
+        }
+
+        layout.addView(pinLayout);
+        dialog.show();
     }
 
     private void verifyTOTPCode(String code) {
-        try {
-            JSONObject payload = new JSONObject();
-            payload.put("code", code);
 
-            RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-
-            Request request = new Request.Builder()
-                    .url(getString(R.string.base_url) + "/verify-device")
-                    .addHeader("X-CSRF-Token", csrfToken)
-                    .post(body)
-                    .build();
-
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    runOnUiThread(() -> showPopupWindow("Error verifying 2FA: " + e.getMessage()));
-                }
-
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) {
-                    try {
-                        String responseData = Objects.requireNonNull(response.body()).string();
-                        JSONObject jsonResponse = new JSONObject(responseData);
-                        boolean success = jsonResponse.optBoolean("success", false);
-
-                        runOnUiThread(() -> {
-                            if (success) {
-                                GlobalVariable.saveVariable(MainActivity.this, true);
-                                GlobalVariable.saveUsername(MainActivity.this, globalUsername);
-                                finish();
-                            } else {
-                                showPopupWindow("Invalid 2FA code.");
-                            }
-                        });
-                    } catch (Exception e) {
-                        runOnUiThread(() -> showPopupWindow("Error parsing response: " + e.getMessage()));
-                    }
-                }
-            });
-        } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Error preparing request: " + e.getMessage()));
+        if(isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
         }
+
+        if(csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(() -> performTOTPVerify(code));
+        } else {
+            performTOTPVerify(code);
+        }
+    }
+
+    private void performTOTPVerify(String code) {
+
+        Dialog loadingDialog = new Dialog(MainActivity.this);
+        loadingDialog.setContentView(R.layout.progress_dialog);
+        loadingDialog.setCancelable(false);
+        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        loadingDialog.show();
+
+        JSONObject payload = new JSONObject();
+
+        try {
+            payload.put("code", code);
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Error verifying 2FA. Please connect to support!"));
+        }
+
+        RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+
+        Request request = new Request.Builder()
+                .url(getString(R.string.base_url) + "/verify-device")
+                .addHeader("X-CSRF-Token", csrfToken)
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error verifying 2FA. Please connect to support!"));
+                runOnUiThread(loadingDialog::dismiss);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+                    String responseData = Objects.requireNonNull(response.body()).string();
+                    JSONObject jsonResponse = new JSONObject(responseData);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = jsonResponse.optString("message", "Error verifying 2FA. Please connect to support!");
+                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        return;
+                    }
+
+                    GlobalVariable.saveVariable(MainActivity.this, true);
+                    GlobalVariable.saveUsername(MainActivity.this, globalUsername);
+
+                    Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "No set camp. Set a camp to start scanning.", Toast.LENGTH_SHORT).show());
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error verifying 2FA. Please connect to support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
+            }
+        });
     }
 
     private void showPopupWindow(String message) {

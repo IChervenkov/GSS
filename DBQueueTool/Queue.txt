@@ -8,7 +8,9 @@ CREATE TABLE users (
 	id TEXT PRIMARY KEY NOT NULL,
 	username TEXT,
 	password TEXT,
-	totp_secret TEXT
+	totp_secret TEXT,
+	temporary_password TEXT,
+	status TEXT
 );
 
 CREATE TABLE Soldier (
@@ -125,10 +127,9 @@ CREATE TABLE fitnes (
 );
 
 CREATE TABLE usermonitoring (
-	user_id TEXT,
+	username TEXT,
 	location TEXT,
-	accept_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	FOREIGN KEY(user_id) REFERENCES users(id)
+	accept_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE laundryreport (
@@ -268,4 +269,16 @@ CREATE TABLE cleanitemtraceability (
 	description TEXT,
 	camp_id TEXT,
 	FOREIGN KEY (camp_id) REFERENCES camps(id)
+);
+
+CREATE TABLE permission (
+	id TEXT NOT NULL PRIMARY KEY,
+	permission_name TEXT
+);
+
+CREATE TABLE user_permission (
+	user_id TEXT,
+	perm_id TEXT,
+	FOREIGN KEY (user_id) REFERENCES users(id),
+	FOREIGN KEY (perm_id) REFERENCES permission(id)
 );

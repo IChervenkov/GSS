@@ -1,21 +1,24 @@
 package com.example.nfcreader;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Typeface;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -38,9 +41,24 @@ import okhttp3.Response;
 
 public class SearchHelmet extends AppCompatActivity {
 
+    private boolean isValidCode;
     private NfcAdapter nfcAdapter;
     private TextView nfcTextView;
     private final OkHttpClient client = new OkHttpClient();
+
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return true;
+
+        Network network = cm.getActiveNetwork();
+        if (network == null) return true;
+
+        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+        return capabilities == null ||
+                (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+    }
 
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
@@ -48,13 +66,15 @@ public class SearchHelmet extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_helmet);
 
+        isValidCode = GlobalVariable.getVariable(this);
+
         nfcTextView = findViewById(R.id.helmet_info);
 
         // Initialize NFC Adapter
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
-            Toast.makeText(this, "NFC is not available on this device.", Toast.LENGTH_LONG).show();
+            showPopupWindow("NFC is not available on this device.");
             finish();
             return;
         }
@@ -111,11 +131,10 @@ public class SearchHelmet extends AppCompatActivity {
 
     private void readHelmetDataFromServer(String nfcData) {
 
-        // Define the request
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/readBikeNfc?nfcData=" + nfcData + "&isValidCode=" + GlobalVariable.getVariable(this))
-                .build();
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(SearchHelmet.this);
@@ -124,37 +143,44 @@ public class SearchHelmet extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
+        // Define the request
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/readBikeNfc?nfcData=" + nfcData + "&isValidCode=" + isValidCode)
+                .build();
+
         // Make the network call asynchronously
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e("SearchHelmet", "Error: " + e.getMessage());
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(SearchHelmet.this, "Failed to read helmet data", Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Failed to read helmet data. Please connect to the support!"));
             }
 
             @SuppressLint("SetTextI18n")
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
 
-                runOnUiThread(loadingDialog::dismiss);
-
-                if (response.isSuccessful()) {
+                try {
+                    // Parse the response if it's JSON
                     String responseData = Objects.requireNonNull(response.body()).string();
-                    try {
-                        // Parse the response if it's JSON
-                        JSONObject jsonResponse = new JSONObject(responseData);
-                        final String helmetName = jsonResponse.getString("code");
+                    JSONObject jsonResponse = new JSONObject(responseData);
 
-                        // Update the UI with the bike name
-                        runOnUiThread(() -> nfcTextView.setText("Helmet code: " + helmetName));
-                    } catch (JSONException e) {
-                        Log.e("SearchHelmet", "Error: " + e.getMessage());
+                    if (!response.isSuccessful()) {
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
                     }
-                } else {
-                    runOnUiThread(() -> Toast.makeText(SearchHelmet.this, "Helmet not found", Toast.LENGTH_SHORT).show());
+
+                    final String helmetName = jsonResponse.getString("code");
+
+                    // Update the UI with the bike name
+                    runOnUiThread(() -> nfcTextView.setText("Helmet code: " + helmetName));
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Failed to read helmet data. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         });
@@ -162,11 +188,9 @@ public class SearchHelmet extends AppCompatActivity {
 
     private void loadHelmetData(String bikeId) {
 
-        // Make network request to your server endpoint
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/searchHelmet?id=" + bikeId + "&isValidCode=" + GlobalVariable.getVariable(this))
-                .build();
+        if (isNetworkAvailable()) {
+            return;
+        }
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(SearchHelmet.this);
@@ -175,35 +199,39 @@ public class SearchHelmet extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
+        // Make network request to your server endpoint
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/searchHelmet?id=" + bikeId + "&isValidCode=" + isValidCode)
+                .build();
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(SearchHelmet.this, "Error fetching data from server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Error fetching data from server. Please connect to the support!"));
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
 
-                runOnUiThread(loadingDialog::dismiss);
-
-                if (response.isSuccessful() && response.body() != null) {
+                try {
                     String responseData = response.body().string();
-                    try {
-                        JSONArray helmetsArray = new JSONArray(responseData);
-                        runOnUiThread(() -> updateTableLayout(helmetsArray));
-                    } catch (JSONException e) {
-                        Log.e("SearchHelmet", "Error: " + e.getMessage());
-                        runOnUiThread(() ->
-                                Toast.makeText(SearchHelmet.this, "Error parsing data: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                        );
+
+                    if (!response.isSuccessful()) {
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
                     }
-                } else {
-                    runOnUiThread(() ->
-                            Toast.makeText(SearchHelmet.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show()
-                    );
+
+                    JSONArray helmetsArray = new JSONArray(responseData);
+                    runOnUiThread(() -> updateTableLayout(helmetsArray));
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Error fetching data from server. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         });
@@ -213,7 +241,7 @@ public class SearchHelmet extends AppCompatActivity {
         try {
             TableLayout tableLayout = findViewById(R.id.table_layout);
             tableLayout.removeAllViews();
-            tableLayout.setPadding(0,0,0,10);
+            tableLayout.setPadding(0, 0, 0, 10);
 
             // Iterate through the JSON array to extract each bike's data
             for (int i = 0; i < helmetsArray.length(); i++) {
@@ -231,8 +259,7 @@ public class SearchHelmet extends AppCompatActivity {
 
             }
         } catch (JSONException e) {
-            Log.e("SearchHelmet", "Error: " + e.getMessage());
-            Toast.makeText(this, "Error updating UI: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            runOnUiThread(() -> showPopupWindow("Error updating UI. Please connect to the support!"));
         }
     }
 
@@ -261,5 +288,15 @@ public class SearchHelmet extends AppCompatActivity {
         TableRow.LayoutParams params = new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, 100); // Height of the spacer
         spacer.setLayoutParams(params);
         return spacer;
+    }
+
+    private void showPopupWindow(String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Error");
+        builder.setMessage(message);
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            // Reset the flag once the error dialog is clos
+        });
+        builder.show();
     }
 }

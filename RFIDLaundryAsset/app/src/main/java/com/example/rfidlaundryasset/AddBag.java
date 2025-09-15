@@ -3,29 +3,35 @@ package com.example.rfidlaundryasset;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.rscja.deviceapi.RFIDWithUHFUART;
 import com.rscja.deviceapi.entity.UHFTAGInfo;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -33,12 +39,17 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class AddBag extends AppCompatActivity {
+public class AddBag extends AppCompatActivity implements CsrfTokenProvider {
+
+    private boolean isValidCode;
+    private String campId;
+    private String username;
 
     private RFIDWithUHFUART rfidReader;
     private boolean isInventory = false;
     private final CookieManager cookieManager = new CookieManager();
     private final OkHttpClient client = new OkHttpClient.Builder()
+            .addInterceptor(new CsrfInterceptor(this))
             .cookieJar(new JavaNetCookieJar(cookieManager))
             .build();
     private String csrfToken = null;
@@ -46,35 +57,87 @@ public class AddBag extends AppCompatActivity {
     private EditText bagCodeText;
     private EditText bagTypeText;
     private EditText bagMaxWashText;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    private void fetchCsrfToken() {
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return true;
+
+        Network network = cm.getActiveNetwork();
+        if (network == null) return true;
+
+        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+        return capabilities == null ||
+                (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+    }
+
+    @Override
+    public synchronized String getCsrfToken() {
+        return csrfToken;
+    }
+
+    @Override
+    public synchronized void refreshCsrfTokenSync() {
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
+            csrfToken = jsonObject.getString("csrfToken");
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
+        }
+    }
+
+    private void fetchCsrfToken(Runnable onSuccess) {
+
+        if (isNetworkAvailable())
+            return;
+
         Dialog loadingDialog = new Dialog(AddBag.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        executorService.execute(() -> {
-            try {
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/csrf-token")
-                        .build();
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
 
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful() && response.body() != null) {
-                    String responseBody = response.body().string();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
+                runOnUiThread(loadingDialog::dismiss);
+            }
+
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+
+                    String responseBody = Objects.requireNonNull(response.body()).string();
                     JSONObject jsonObject = new JSONObject(responseBody);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = jsonObject.optString("message", "Error when fetch token. Please connect to the support.");
+                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        return;
+                    }
+
                     csrfToken = jsonObject.getString("csrfToken");
 
-                } else {
-                    runOnUiThread(() -> Toast.makeText(AddBag.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+                    if (onSuccess != null)
+                        runOnUiThread(onSuccess);
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
-            } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(AddBag.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
             }
         });
     }
@@ -86,7 +149,11 @@ public class AddBag extends AppCompatActivity {
 
         cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
 
-        fetchCsrfToken();
+        isValidCode = GlobalVariable.getVariable(this);
+        campId = GlobalVariable.getCamp(this);
+        username = GlobalVariable.getUsername(this);
+
+        fetchCsrfToken(null);
 
         // Initialize OkHttpClient (single instance)
         Button submitButton = findViewById(R.id.addButton);
@@ -97,19 +164,18 @@ public class AddBag extends AppCompatActivity {
         // Initialize RFID reader
         try {
             rfidReader = RFIDWithUHFUART.getInstance();
+            rfidReader.free();
             rfidReader.init();
 
-            Toast.makeText(AddBag.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Log.e("AddBag", "Error: " + e.getMessage());
-            Toast.makeText(AddBag.this, "Error initializing RFID Reader", Toast.LENGTH_SHORT).show();
+            showPopupWindow("Error initializing RFID Reader");
         }
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
             // Check for EPC content
             if (epc.isEmpty()) {
-                Toast.makeText(this, "No EPC content detected!", Toast.LENGTH_SHORT).show();
+                showPopupWindow("No EPC content detected!");
                 return;
             }
 
@@ -122,30 +188,39 @@ public class AddBag extends AppCompatActivity {
             if (isValidText(bagCode, "Bag code", bagCodeText, "^[a-zA-Z0-9]+$")) return;
             if (isValidText(bagType, "Bag type", bagTypeText, "^[a-zA-Z0-9\\s]+$")) return;
             if (bagMaxWash.isEmpty()) {
-                Toast.makeText(this, "Please enter a maximum wash number!", Toast.LENGTH_SHORT).show();
+                showPopupWindow("Please enter a maximum wash number!");
                 return;
             }
 
-            // Send data to server
-            sendDataToServer(epc, bagCode, bagType, bagMaxWash);
+            new androidx.appcompat.app.AlertDialog.Builder(AddBag.this)
+                    .setTitle("Attention")
+                    .setMessage("Are you sure you want to add this bag?")
+                    .setPositiveButton("Yes", (dialog, which) ->
+                            sendDataToServer(epc, bagCode, bagType, bagMaxWash))
+                    .setNegativeButton("No", (dialog, which) -> {
+                        // Do nothing, just dismiss the dialog
+                        dialog.dismiss();
+                    })
+                    .show();
         });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        fetchCsrfToken();
+        fetchCsrfToken(null);
     }
 
     private boolean isValidText(String text, String fieldName, EditText field, String regex) {
         if (text.isEmpty()) {
             field.requestFocus();
-            Toast.makeText(this, "Please enter a " + fieldName + "!", Toast.LENGTH_SHORT).show();
+            runOnUiThread(() -> showPopupWindow("Please enter a " + fieldName + "!"));
             return true;
         }
+
         if (!text.matches(regex)) {
             field.requestFocus();
-            Toast.makeText(this, fieldName + " is invalid. Please use the correct format!", Toast.LENGTH_SHORT).show();
+            runOnUiThread(() -> showPopupWindow(fieldName + " is invalid. Please use the correct format!"));
             return true;
         }
         return false;
@@ -157,43 +232,11 @@ public class AddBag extends AppCompatActivity {
             if (isInventory) {
                 stopInventoryThread();
             } else {
-                executorService.execute(() -> {
-                    final boolean serverActive;
-                    try {
-                        serverActive = isServerActive();
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                    runOnUiThread(() -> {
-                        if (serverActive) {
-                            startInventoryThread();
-                        } else {
-                            Toast.makeText(AddBag.this, "Server is not active. Cannot start scan.", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                });
+                startInventoryThread();
             }
             return true;
         }
         return super.onKeyDown(keyCode, event);
-    }
-
-    // Method to check if the server is active
-    private boolean isServerActive() throws JSONException {
-
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl)
-                .get()
-                .build();
-
-        try {
-            Response response = client.newCall(request).execute(); // Reuse the OkHttpClient instance
-            return response.isSuccessful();
-        } catch (Exception e) {
-            Log.e("AddBag", "Error: " + e.getMessage());
-            return false;
-        }
     }
 
     // Method to start inventory (scanning)
@@ -201,13 +244,20 @@ public class AddBag extends AppCompatActivity {
 
         // Start inventory tag reading
         if (rfidReader.startInventoryTag()) {
-            isInventory = true;
+            runOnUiThread(() -> showPopupWindow("Failed to start scanning. Check if device supports RFID reader"));
+            return;
+        }
+
+        isInventory = true;
+        runOnUiThread(() -> Toast.makeText(this, "Start scanning", Toast.LENGTH_SHORT).show());
+
+        executorService.execute(() -> {
 
             while (isInventory && !Thread.currentThread().isInterrupted()) {
                 UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
                 if (uhftagInfo == null) {
                     try {
-                        Thread.sleep(20);
+                        Thread.sleep(50);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt(); // Properly interrupt the thread
                         break;
@@ -219,17 +269,16 @@ public class AddBag extends AppCompatActivity {
                 if (epc != null && !epc.isEmpty()) {
                     stopInventoryThread(); // Stop the inventory scanning when EPC is found
                     runOnUiThread(() -> updateEpcTextView(epc)); // Update UI with EPC code
+                    break;
                 }
             }
-
-        } else {
-            Toast.makeText(AddBag.this, "Failed to start scanning", Toast.LENGTH_SHORT).show();
-        }
+        });
     }
 
     // Method to stop the background thread for reading tags
     private void stopInventoryThread() {
         if (isInventory) {
+            runOnUiThread(() -> Toast.makeText(this, "Stop scanning", Toast.LENGTH_SHORT).show());
             isInventory = false; // Set flag to false to stop the loop in the thread
             if (rfidReader != null) {
                 rfidReader.stopInventory(); // Stop the RFID inventory
@@ -258,6 +307,20 @@ public class AddBag extends AppCompatActivity {
     // Method to send EPC to the server using the persistent OkHttpClient connection
     private void sendDataToServer(String epc, String code, String type, String maxcount) {
 
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
+
+        if (csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(() -> performSendData(epc, code, type, maxcount));
+        } else {
+            performSendData(epc, code, type, maxcount);
+        }
+    }
+
+    private void performSendData(String epc, String code, String type, String maxcount) {
+
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(AddBag.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -265,47 +328,62 @@ public class AddBag extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        executorService.execute(() -> {
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject payload = new JSONObject();
 
-            try {
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                JSONObject payload = new JSONObject();
-                payload.put("epc", epc);
-                payload.put("code", code);
-                payload.put("type", type);
-                payload.put("maxcount", maxcount);
-                payload.put("username", GlobalVariable.getUsername(this));
-                payload.put("campId", GlobalVariable.getCamp(this));
-                payload.put("isValidCode", GlobalVariable.getVariable(this));
+        try {
+            payload.put("epc", epc);
+            payload.put("code", code);
+            payload.put("type", type);
+            payload.put("maxcount", maxcount);
+            payload.put("username", username);
+            payload.put("campId", campId);
+            payload.put("isValidCode", isValidCode);
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Error to parsed data. Please connect to the support!"));
+            runOnUiThread(loadingDialog::dismiss);
+            return;
+        }
 
-                RequestBody body = RequestBody.create(payload.toString(), JSON);
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/laundry/addBag")
-                        .addHeader("X-CSRF-Token", csrfToken)
-                        .post(body)
-                        .build();
+        RequestBody body = RequestBody.create(payload.toString(), JSON);
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/laundry/addBag")
+                .addHeader("X-CSRF-Token", csrfToken)
+                .post(body)
+                .build();
 
-                try (Response response = client.newCall(request).execute()) {
-                    if (response.isSuccessful()) {
-                        String responseData = Objects.requireNonNull(response.body()).string();
-                        response.body().close(); // Ensure the response is closed
-
-                        JSONObject jsonResponse = new JSONObject(responseData);
-                        String message = jsonResponse.optString("message", "Bag has been added successfully.");
-                        runOnUiThread(() -> {
-                            Toast.makeText(AddBag.this, message, Toast.LENGTH_SHORT).show();
-                            navigateToLaundry();
-                        });
-                    } else {
-                        handleError(response);
-                    }
-                }
-            } catch (Exception e) {
-                Log.e("AddBag", "Error: " + e.getMessage());
-                runOnUiThread(() -> showPopupWindow("Error sending EPCs to server: " + e.getMessage()));
-            } finally {
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error when send data. Please connect to the support!"));
                 runOnUiThread(loadingDialog::dismiss);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+
+                    if (!response.isSuccessful()) {
+                        handleError(response);
+                        return;
+                    }
+
+                    String responseData = Objects.requireNonNull(response.body()).string();
+                    response.body().close(); // Ensure the response is closed
+
+                    JSONObject jsonResponse = new JSONObject(responseData);
+                    String message = jsonResponse.optString("message", "Bag has been added successfully.");
+                    runOnUiThread(() -> {
+                        Toast.makeText(AddBag.this, message, Toast.LENGTH_SHORT).show();
+                        navigateToLaundry();
+                    });
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error when send data. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
             }
         });
     }
@@ -319,21 +397,16 @@ public class AddBag extends AppCompatActivity {
 
     private void handleError(Response response) {
         try {
-            String errorMessage = "Unknown error occurred";
-            if (response.body() != null) {
-                String responseBody = response.body().string(); // Read response body
-                JSONObject errorJson = new JSONObject(responseBody);
-                errorMessage = errorJson.optString("message", "Internal server error");
-            }
+            String errorMessage;
+            String responseBody = response.body().string(); // Read response body
+            JSONObject errorJson = new JSONObject(responseBody);
+            errorMessage = errorJson.optString("message", "Internal server error");
             String finalErrorMessage = errorMessage;
             runOnUiThread(() -> showPopupWindow(finalErrorMessage));
         } catch (Exception e) {
-            Log.e("AddBag", "Error: " + e.getMessage());
-            runOnUiThread(() -> showPopupWindow("Failed to process error response: " + e.getMessage()));
+            runOnUiThread(() -> showPopupWindow("Failed to process error response. Please connect to the support!"));
         } finally {
-            if (response.body() != null) {
-                response.body().close(); // Ensure the response body is closed
-            }
+            response.body().close(); // Ensure the response body is closed
         }
     }
 
@@ -341,5 +414,10 @@ public class AddBag extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         executorService.shutdown(); // Shutdown executor properly
+
+        stopInventoryThread();
+        if (rfidReader != null) {
+            rfidReader.free();
+        }
     }
 }

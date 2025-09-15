@@ -10,14 +10,14 @@
         android:id="@+id/menu_laundry"
         android:title="Laundry" />
     <item
-        android:id="@+id/menu_transportation_to_drop_off"
-        android:title="Transportation to drop off" />
+        android:id="@+id/menu_transportation_to_pick_up"
+        android:title="Transportation to pick up" />
     <item
         android:id="@+id/menu_ready_to_pick_up"
         android:title="Ready to pick up" />
     <item
-        android:id="@+id/menu_taking_from_soldier"
-        android:title="Тaking from soldier" />
+        android:id="@+id/menu_picked_up"
+        android:title="Picked up" />
     <item
         android:id="@+id/linen_exchange_service"
         android:title="Linen Exchange service" />

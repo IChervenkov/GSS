@@ -7,9 +7,8 @@
   <title>Bicycles</title>
   <link rel="stylesheet" href="/style/stylesBicycles.css" />
   <link rel="icon" href="/icon/logoPage.png">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
 
 </head>
@@ -17,6 +16,8 @@
 <body>
 
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="isFirstTime" value="false">
+  <input type="hidden" id="totalCount" value="<%= totalCount %>">
 
   <!-- Horizontal Navigation Bar -->
   <div class="horizontal-nav">
@@ -192,8 +193,9 @@
             </div>
         </h3>
 
-        <div class="virtual-warehouse-labels"> <label class="virtual-warehouse-label"
-            style="pointer-events: none;">Total Bike: <%= totalBike %></label>
+        <div class="virtual-warehouse-labels">
+          <label id="totalBike" class="virtual-warehouse-label" style="pointer-events: none;">Total Bike: <%= totalBike
+              %></label>
 
           <div class="btn-container">
             <label id="rentedBike" class="virtual-warehouse-label w-100 w-md-auto text-center">Rented: <%= rentedBike %>
@@ -236,6 +238,9 @@
             </div>
           </div>
 
+        </div>
+        <div class="virtual-warehouse-labels">
+
           <div class="btn-container">
             <button type="button" id="btnReport" class="login-btn-report">
               <i class="bi bi-file-earmark-text"></i> Reports
@@ -246,9 +251,9 @@
             </div>
           </div>
 
-          <div class="btn-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
+          <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of helmet'))) { %> style="cursor: not-allowed" <% } %>>
               <button type="button" id="btnListHelmet"
-                class="login-btn-report <% if(username == 'NSPA') { %> disabled-button <% } %>">
+                class="login-btn-report <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of helmet'))) { %> disabled-button <% } %>">
                 <i class="bi bi-list-ul"></i> List of Helmet
               </button>
               <div class="tooltip-custom">
@@ -257,15 +262,19 @@
               </div>
           </div>
         </div>
-        <div class="button-container-report">
+        <div class="button-container-report w-100 w-md-auto">
           <button type="button" id="btnReportPhone" class="login-btn-report"><i class="bi bi-file-earmark-text"></i>
             Reports</button>
-          <button type="button" id="btnListHelmetPhone"
-            class="login-btn-report <% if(username == 'NSPA') { %> disabled-button <% } %>"><i
-              class="bi bi-list-ul"></i>
-            List of Helmet</button>
-          <button type="button" class="download-btn <% if(username == 'NSPA') { %> disabled-button <% } %>"
-            id="downloadBtn"><i class="bi bi-download"></i> Download App</button>
+          <span class="w-100 w-md-auto" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of helmet'))) { %> style="cursor: not-allowed" <% } %>>
+            <button type="button" id="btnListHelmetPhone"
+              class="login-btn-report w-100 w-md-auto <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of helmet'))) { %> disabled-button <% } %>"><i
+                class="bi bi-list-ul"></i>
+              List of Helmet</button>
+          </span>
+          <span class="w-100 w-md-auto" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Download bicycle app'))) { %> style="cursor: not-allowed" <% } %>>
+            <button type="button" class="download-btn w-100 w-md-auto <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Download bicycle app'))) { %> disabled-button <% } %>"
+              id="downloadBtn"><i class="bi bi-download"></i> Download App</button>
+          </span>
         </div>
       </div>
 
@@ -273,21 +282,21 @@
         <table id="mainTable">
           <thead>
             <tr>
-              <th>Bike Name</th>
-              <th>Status</th>
-              <th>Hired by</th>
-              <th>Helmet</th>
-              <th>Date From</th>
+              <th><input type="text" class="search-input" placeholder="Search...">Bike Name</th>
+              <th><input type="text" class="search-input" placeholder="Search...">Status</th>
+              <th><input type="text" class="search-input" placeholder="Search...">Hired by</th>
+              <th><input type="text" class="search-input" placeholder="Search...">Helmet</th>
+              <th><input type="text" class="search-input" placeholder="Search...">Date From</th>
             </tr>
           </thead>
           <% if (data) { %>
             <tbody id="tableBody">
               <% data.forEach(function(item) { %>
                 <tr class="data-bike">
-                  <td>
+                  <td style="max-width: 200px;" class="text-wrap">
                     <%= item.name %>
                   </td>
-                  <td data-status="<%= item.status %>">
+                  <td style="max-width: 200px;" class="text-wrap" data-status="<%= item.status %>">
                     <% if(item.status=="Available" ) { %>
                       <img src="/icon/available.png" alt="Available" class="table-icon">
                       <% } %>
@@ -308,13 +317,13 @@
                                       <img src="/icon/long-term.png" alt="Long-term" class="table-icon">
                                       <% } %>
                   </td>
-                  <td>
+                  <td style="max-width: 200px;" class="text-wrap">
                     <%= item.hiredby %>
                   </td>
-                  <td>
+                  <td style="max-width: 200px;" class="text-wrap">
                     <%= item.helmet %>
                   </td>
-                  <td>
+                  <td style="max-width: 200px;" class="text-wrap">
                     <%= item.datefrom %>
                   </td>
                 </tr>
@@ -332,8 +341,8 @@
 
   <!-- The Modal -->
   <div id="myModal" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
+    <form action="/bikeAction" method="POST" id="form1" class="modal-content">
+      <span class="close-btn">&times;</span>
       <label>Select Date:</label>
       <p name="modalText" id="modalText">None</p>
 
@@ -394,35 +403,18 @@
       </div>
 
       <!-- "Check" Button in New Line -->
-      <div class="button-container " <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
-          <button type="button" id="checkBtn" class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
+      <div class="button-container " <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Save bike status'))) { %> style="cursor: not-allowed" <% } %>>
+          <button type="submit" id="checkBtn" class="login-btn <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Save bike status'))) { %> disabled-button <% } %>">
             <i class="bi bi-save"></i> Save
           </button>
       </div>
-    </div>
+    </form>
   </div>
-
-
-  <!-- The Modal Message -->
-  <form action="/bikeAction" method="POST" id="form1">
-    <div id="myMessage" class="modal">
-      <div class="modal-content-mess">
-        <span class="close">&times;</span>
-
-        <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon">
-        <p id="mess-text">Are you sure you want to proceed?</p>
-        <div class="button-container-mess">
-          <button id="btnYes" type="submit" class="login-btn-mess confirm-btn">Ok</button>
-        </div>
-      </div>
-    </div>
-
-  </form>
 
   <!-- The Modal for Reports -->
   <div id="reportModal" class="modal">
     <div class="modal-content-multi-calendar">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
       <h3 class="header-modal-report">Reports - Select Date Range (From/To Date)</h3>
 
       <!-- Container for two side-by-side calendars -->
@@ -482,7 +474,7 @@
   <!-- The Modal for Reports View -->
   <div id="reportViewModal" class="modal">
     <form class="modal-content-view" action="/bicycles/report" method="POST" id="form2">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
       <h3 class="header-modal-report">Reports View</h3>
 
       <!-- Left and Right Navigation Buttons -->
@@ -555,38 +547,26 @@
   <!-- The Modal for Reports -->
   <div id="totalRentBikeModal" class="modal">
     <div class="modal-content-total-info">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
       <h3 class="header-modal-report">All Rented Bike</h3>
+
+      <div class="d-flex justify-content-end mt-2 mb-2">
+        <button type="button" id="prevBtnTherd"></button>
+        <span id="pageNumberTherd"></span>
+        <button type="button" id="nextBtnTherd"></button>
+      </div>
+
       <div class="table-container">
-        <table>
+        <table id="allRentedBikeTable">
           <thead>
             <tr>
-              <th>Id</th>
-              <th>Bike Name</th>
-              <th>Hired by</th>
-              <th>Rented date</th>
+              <th><input type="text" class="all-rented-bike-search-input" placeholder="Search...">Bike Name</th>
+              <th><input type="text" class="all-rented-bike-search-input" placeholder="Search...">Hired by</th>
+              <th><input type="text" class="all-rented-bike-search-input" placeholder="Search...">Rented date</th>
             </tr>
           </thead>
-          <% if (data) { %>
-            <tbody>
-              <% data.forEach(function(item, index) { if (item.status==="Rented" ) {%>
-                <tr>
-                  <td>
-                    <%= index + 1 %>
-                  </td>
-                  <td>
-                    <%= item.name %>
-                  </td>
-                  <td>
-                    <%= item.hiredby %>
-                  </td>
-                  <td>
-                    <%= item.datefrom %>
-                  </td>
-                </tr>
-                <% } %>
-                  <% }); } %>
-            </tbody>
+          <tbody id="allRentedBikeTableBody">
+          </tbody>
         </table>
       </div>
     </div>
@@ -595,30 +575,25 @@
   <!-- The Modal for Reports -->
   <div id="totalAvailableBikeModal" class="modal">
     <div class="modal-content-total-info">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
       <h3 class="header-modal-report">All Available Bike</h3>
+
+      <div class="d-flex justify-content-end mt-2 mb-2">
+        <button type="button" id="prevBtnFourth"></button>
+        <span id="pageNumberFourth"></span>
+        <button type="button" id="nextBtnFourth"></button>
+      </div>
+
       <div class="table-container">
-        <table>
+        <table id="allAvailableBikeTable">
           <thead>
             <tr>
-              <th>Id</th>
-              <th>Bike Name</th>
+              <th><input type="text" class="all-available-bike-search-input" placeholder="Search...">Bike Name</th>
+              <th><input type="text" class="all-available-bike-search-input" placeholder="Search...">Hired by</th>
+              <th><input type="text" class="all-available-bike-search-input" placeholder="Search...">Rented date</th>
             </tr>
           </thead>
-          <% if (data) { %>
-            <tbody>
-              <% data.forEach(function(item, index) { if (item.status==="Available" ) {%>
-                <tr>
-                  <td>
-                    <%= index + 1 %>
-                  </td>
-                  <td>
-                    <%= item.name %>
-                  </td>
-                </tr>
-                <% } %>
-                  <% }); } %>
-            </tbody>
+          <tbody id="allAvailableBikeTableBody"></tbody>
         </table>
       </div>
     </div>
@@ -627,38 +602,25 @@
   <!-- The Modal for Reports -->
   <div id="totalRepireBikeModal" class="modal">
     <div class="modal-content-total-info">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
       <h3 class="header-modal-report">All Repire Bike</h3>
+
+      <div class="d-flex justify-content-end mt-2 mb-2">
+        <button type="button" id="prevBtnFifth"></button>
+        <span id="pageNumberFifth"></span>
+        <button type="button" id="nextBtnFifth"></button>
+      </div>
+
       <div class="table-container">
-        <table>
+        <table id="allRepireBikeTable">
           <thead>
             <tr>
-              <th>Id</th>
-              <th>Bike Name</th>
-              <th>Hired by</th>
-              <th>Rented date</th>
+              <th><input type="text" class="all-repire-bike-search-input" placeholder="Search...">Bike Name</th>
+              <th><input type="text" class="all-repire-bike-search-input" placeholder="Search...">Hired by</th>
+              <th><input type="text" class="all-repire-bike-search-input" placeholder="Search...">Rented date</th>
             </tr>
           </thead>
-          <% if (data) { %>
-            <tbody>
-              <% data.forEach(function(item, index) { if (item.status==="Repair" ) {%>
-                <tr>
-                  <td>
-                    <%= index + 1 %>
-                  </td>
-                  <td>
-                    <%= item.name %>
-                  </td>
-                  <td>
-                    <%= item.hiredby %>
-                  </td>
-                  <td>
-                    <%= item.datefrom %>
-                  </td>
-                </tr>
-                <% } %>
-                  <% }); } %>
-            </tbody>
+          <tbody id="allRepireBikeTableBody"></tbody>
         </table>
       </div>
     </div>
@@ -667,38 +629,25 @@
   <!-- The Modal for Reports -->
   <div id="totalLateBikeModal" class="modal">
     <div class="modal-content-total-info">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
       <h3 class="header-modal-report">All Late Bike</h3>
+
+      <div class="d-flex justify-content-end mt-2 mb-2">
+        <button type="button" id="prevBtnSixth"></button>
+        <span id="pageNumberSixth"></span>
+        <button type="button" id="nextBtnSixth"></button>
+      </div>
+
       <div class="table-container">
-        <table>
+        <table id="allLateBikeTable">
           <thead>
             <tr>
-              <th>Id</th>
-              <th>Bike Name</th>
-              <th>Hired by</th>
-              <th>Rented date</th>
+              <th><input type="text" class="all-late-bike-search-input" placeholder="Search...">Bike Name</th>
+              <th><input type="text" class="all-late-bike-search-input" placeholder="Search...">Hired by</th>
+              <th><input type="text" class="all-late-bike-search-input" placeholder="Search...">Rented date</th>
             </tr>
           </thead>
-          <% if (data) { %>
-            <tbody>
-              <% data.forEach(function(item, index) { if (item.status==="Late" ) {%>
-                <tr>
-                  <td>
-                    <%= index + 1 %>
-                  </td>
-                  <td>
-                    <%= item.name %>
-                  </td>
-                  <td>
-                    <%= item.hiredby %>
-                  </td>
-                  <td>
-                    <%= item.datefrom %>
-                  </td>
-                </tr>
-                <% } %>
-                  <% }); } %>
-            </tbody>
+          <tbody id="allLateBikeTableBody"></tbody>
         </table>
       </div>
     </div>
@@ -707,38 +656,25 @@
   <!-- The Modal for Reports -->
   <div id="totalLongTermBikeModal" class="modal">
     <div class="modal-content-total-info">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
       <h3 class="header-modal-report">All Long Term Bike</h3>
+
+      <div class="d-flex justify-content-end mt-2 mb-2">
+        <button type="button" id="prevBtnSeventh"></button>
+        <span id="pageNumberSeventh"></span>
+        <button type="button" id="nextBtnSeventh"></button>
+      </div>
+
       <div class="table-container">
-        <table>
+        <table id="allLongTermBikeTable">
           <thead>
             <tr>
-              <th>Id</th>
-              <th>Bike Name</th>
-              <th>Hired by</th>
-              <th>Rented date</th>
+              <th><input type="text" class="all-long-term-bike-search-input" placeholder="Search...">Bike Name</th>
+              <th><input type="text" class="all-long-term-bike-search-input" placeholder="Search...">Hired by</th>
+              <th><input type="text" class="all-long-term-bike-search-input" placeholder="Search...">Rented date</th>
             </tr>
           </thead>
-          <% if (data) { %>
-            <tbody>
-              <% data.forEach(function(item, index) { if (item.status==="Long term" ) {%>
-                <tr>
-                  <td>
-                    <%= index + 1 %>
-                  </td>
-                  <td>
-                    <%= item.name %>
-                  </td>
-                  <td>
-                    <%= item.hiredby %>
-                  </td>
-                  <td>
-                    <%= item.datefrom %>
-                  </td>
-                </tr>
-                <% } %>
-                  <% }); } %>
-            </tbody>
+          <tbody id="allLongTermBikeTableBody"></tbody>
         </table>
       </div>
     </div>
@@ -746,7 +682,7 @@
 
   <div id="searchBikeModal" class="modal">
     <div class="modal-content-total-info">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
       <h3 class="header-modal-report">History of the bike</h3>
       <div class="table-container">
         <table>
@@ -764,7 +700,7 @@
 
   <div id="searchClientModal" class="modal">
     <div class="modal-content-total-info">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
       <h3 class="header-modal-report">History of the soldier</h3>
       <div class="table-container">
         <table>
@@ -782,7 +718,7 @@
 
   <div id="searchHelmetModal" class="modal">
     <div class="modal-content-total-info">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
       <h3 class="header-modal-report">History of the helmet</h3>
       <div class="table-container">
         <table>
@@ -801,7 +737,7 @@
   <!-- The Modal for Add Soldier -->
   <div id="addBikeModal" class="modal">
     <form class="modal-content" action="/bicycles/addBike" method="POST" id="form3">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
 
       <h2>Add bike</h2>
 
@@ -822,15 +758,22 @@
       </div>
 
       <!-- Buttons for confirming the selection -->
-      <div class="button-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
-          <button type="submit" id="confirmAddBikeBtn"
-            class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
-            <i class="bi bi-plus-circle"></i> Add bicycle
-          </button>
-          <button type="button" id="confirmAddMultiBikeBtn"
-            class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
-            <i class="bi bi-plus-circle"></i> Add multiple bicycles
-          </button>
+      <div class="button-container w-100 w-md-auto">
+
+          <span class="w-100 w-md-auto" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add bike'))) { %> style="cursor: not-allowed" <% } %>>
+            <button type="submit" id="confirmAddBikeBtn"
+              class="login-btn w-100 w-md-auto <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add bike'))) { %> disabled-button <% } %>">
+              <i class="bi bi-plus-circle"></i> Add bicycle
+            </button>
+          </span>
+
+          <span class="w-100 w-md-auto" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add bike'))) { %> style="cursor: not-allowed" <% } %>>
+            <button type="button" id="confirmAddMultiBikeBtn"
+              class="login-btn w-100 w-md-auto <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add bike'))) { %> disabled-button <% } %>">
+              <i class="bi bi-plus-circle"></i> Add multiple bicycles
+            </button>
+          </span>
+
       </div>
 
     </form>
@@ -839,7 +782,7 @@
   <!-- The Modal for Add Soldier -->
   <div id="removeBikeModal" class="modal">
     <form class="modal-content" action="/bicycles/removeBike" method="DELETE" id="form4">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
 
       <h2>Remove bike</h2>
 
@@ -855,9 +798,9 @@
       </div>
 
       <!-- Buttons for confirming the selection -->
-      <div class="button-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
+      <div class="button-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Remove bike'))) { %> style="cursor: not-allowed" <% } %>>
           <button type="submit" id="confirmRemoveBikeBtn"
-            class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
+            class="login-btn <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Remove bike'))) { %> disabled-button <% } %>">
             <i class="bi bi-trash"></i> Remove bicycle
           </button>
       </div>
@@ -868,7 +811,7 @@
   <!-- Modal Structure -->
   <div id="addMultiBikeModal" class="modal">
     <div class="modal-content">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
 
       <h2>Add multiple bicycles <a href="/bicycles/multiBike/download"><i class="bi bi-download"></i></a></h2>
 
@@ -891,7 +834,7 @@
 
   <div id="bikeEditModal" class="modal">
     <form action="/bicycles/editBike" method="PATCH" class="modal-content" id="form5">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
 
       <h2>Edit Bike</h2>
 
@@ -940,8 +883,8 @@
         <input type="datetime-local" id="editDateFrom" class="form-control" placeholder="Date From">
       </div>
 
-      <div class="button-container " <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
-          <button type="submit" class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>"
+      <div class="button-container " <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Edit bike'))) { %> style="cursor: not-allowed" <% } %>>
+          <button type="submit" class="login-btn <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Edit bike'))) { %> disabled-button <% } %>"
             id="save-button">
             <i class="bi bi-save"></i> Save
           </button>
@@ -951,8 +894,8 @@
   </div>
 
   <div id="listHelmetsModal" class="modal">
-    <div class="modal-content mt-5">
-      <span class="close">&times;</span>
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
 
       <h2 class="mb-0 text-start">List of Helmets
         <div class="btn-container">
@@ -1005,7 +948,7 @@
   <!-- The Modal for Add Soldier -->
   <div id="addHelmetModal" class="modal">
     <form class="modal-content" action="/bicycles/addHelmet" method="POST" id="form6">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
 
       <h2>Add Helmet</h2>
 
@@ -1026,15 +969,22 @@
       </div>
 
       <!-- Buttons for confirming the selection -->
-      <div class="button-container" <% if(username=='NSPA' ) { %> style="cursor: not-allowed" <% } %>>
-          <button type="submit" id="confirmAddHelmetBtn"
-            class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
-            <i class="bi bi-plus-circle"></i> Add helmet
-          </button>
+      <div class="button-container w-100 w-md-auto">
+
+        <span class="w-100 w-md-auto" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add helmet'))) { %> style="cursor: not-allowed" <% } %>>
+            <button type="submit" id="confirmAddHelmetBtn"
+              class="login-btn w-100 w-md-auto <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add helmet'))) { %> disabled-button <% } %>">
+              <i class="bi bi-plus-circle"></i> Add helmet
+            </button>
+        </span>
+        
+        <span class="w-100 w-md-auto" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add helmet'))) { %> style="cursor: not-allowed" <% } %>>
           <button type="button" id="confirmAddMultiHelmetBtn"
-            class="login-btn <% if(username == 'NSPA') { %> disabled-button <% } %>">
+            class="login-btn w-100 w-md-auto <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add helmet'))) { %> disabled-button <% } %>">
             <i class="bi bi-plus-circle"></i> Add multiple helmets
           </button>
+        </span>
+
       </div>
 
     </form>
@@ -1042,7 +992,7 @@
 
   <div id="addMultiHelmetModal" class="modal">
     <div class="modal-content">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
 
       <h2>Add multiple helmets <a href="/bicycles/multiHelmet/download"><i class="bi bi-download"></i></a></h2>
 
@@ -1063,58 +1013,25 @@
     </div>
   </div>
 
-  <div id="myMessageReport" class="modal">
+  <div id="myMessage" class="modal">
     <div class="modal-content-mess">
-      <span class="close">&times;</span>
+      <span class="close-btn">&times;</span>
 
       <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-icon-rep">
       <p id="mess-text-rep">Are you sure you want to proceed?</p>
-      <div class="button-container-mess">
-        <button id="btnMess" class="login-btn-mess confirm-btn">Ok</button>
-      </div>
     </div>
   </div>
 
-  <% if(username !='NSPA' ) { %>
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
-        aria-live="assertive" aria-atomic="true">
-        <div class="d-flex align-items-center">
-          <!-- Info Icon -->
-          <i class="bi bi-info-circle-fill toast-icon"></i>
-
-          <!-- Toast Message -->
-          <div class="toast-body flex-grow-1" id="toast-message">
-            <!-- Message will be inserted here -->
-          </div>
-
-          <!-- Close Button -->
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
-            aria-label="Close"></button>
-        </div>
-      </div>
-    </div>
-
-    <div id="toastMessage" class="modal">
-      <div class="modal-content-mess">
-        <span class="close-btn">&times;</span>
-
-        <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-toast-icon">
-        <p id="mess-toast-text"></p>
-      </div>
-    </div>
-    <% } %>
+  <%- include('partials/toastGlobalMessage') %>
 
 </body>
 
-<script src="/java/autoSearch.js"></script>
-<script src="/java/pageNumber.js"></script>
 <script src="/java/downloald-app.js"></script>
 <script src="/java/modal_wind.js"></script>
 <script src="/java/calendar.js" defer></script>
 <script src="/java/phoneMenu.js"></script>
 
-<% if(username !='NSPA' ) { %>
+<% if(permissions && !(permissions.some(p => p.permission_name === 'Guest'))) { %>
   <script src="/java/showPinMessage.js"></script>
   <% } %>
 

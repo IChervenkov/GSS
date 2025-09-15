@@ -9,9 +9,8 @@
     </title>
     <link rel="stylesheet" href="/style/stylesLaundry.css" />
     <link rel="icon" href="/icon/logoPage.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
 
 </head>
@@ -89,7 +88,7 @@
                         </div>
                     </div>
                 </div>
-                <p class="avg-in" <% if(username=='NSPA' ) { %> style="display:none" <% } %>>Average Time IN: <span
+                <p class="avg-in" <% if(permissions && permissions.some(p => p.permission_name === 'Guest')) { %> style="display:none" <% } %>>Average Time IN: <span
                             id="avg-in-drop-off">
                             <%= avgTimeData['drop off'] || '0 mins' %>
                         </span></p>
@@ -113,7 +112,7 @@
                 <div class="progress-box">
                     <div class="btn-container">
                         <button id="transportation-to-laundry-facility" class="main-btn">
-                            <i class="bi bi-truck"></i> Transportation to Laundry Facility
+                            <i class="bi bi-truck"></i> Transportation to laundry facility
                         </button>
                         <div class="tooltip-custom">
                             <i class="bi bi-question-circle"></i>
@@ -121,7 +120,7 @@
                         </div>
                     </div>
                 </div>
-                <p class="avg-in" <% if(username=='NSPA' ) { %> style="display:none" <% } %>>Average Time IN: <span
+                <p class="avg-in" <% if(permissions && permissions.some(p => p.permission_name === 'Guest')) { %> style="display:none" <% } %>>Average Time IN: <span
                             id="avg-in-transportation-to-laundry-facility">
                             <%= avgTimeData['transportation to laundry facility'] || '0 mins' %>
                         </span> </p>
@@ -153,7 +152,7 @@
                         </div>
                     </div>
                 </div>
-                <p class="avg-in" <% if(username=='NSPA' ) { %> style="display:none" <% } %>>Average Time IN: <span
+                <p class="avg-in" <% if(permissions && permissions.some(p => p.permission_name === 'Guest')) { %> style="display:none" <% } %>>Average Time IN: <span
                             id="avg-in-laundry-facility">
                             <%= avgTimeData['laundry facility'] || '0 mins' %>
                         </span></p>
@@ -161,11 +160,11 @@
 
             <div class="status-box">
                 <h3>Bags: <span id="bags-transportation-to-drop-off">
-                        <%= totalCounts['transportation to drop off'] || 0 %>
+                        <%= totalCounts['transportation to pick up'] || 0 %>
                     </span></h3>
                 <div id="all-type-transportation-to-drop-off">
-                    <% if (bagData['transportation to drop off']) { %>
-                        <% bagData['transportation to drop off'].forEach(item=> { %>
+                    <% if (bagData['transportation to pick up']) { %>
+                        <% bagData['transportation to pick up'].forEach(item=> { %>
                             <p>
                                 <%= item.type %>: <%= item.count %>
                             </p>
@@ -177,7 +176,7 @@
                 <div class="progress-box">
                     <div class="btn-container">
                         <button id="transportation-to-drop-off" class="main-btn">
-                            <i class="bi bi-truck"></i> Transportation to drop off
+                            <i class="bi bi-truck"></i> Transportation to pick up
                         </button>
                         <div class="tooltip-custom">
                             <i class="bi bi-question-circle"></i>
@@ -186,9 +185,9 @@
                         </div>
                     </div>
                 </div>
-                <p class="avg-in" <% if(username=='NSPA' ) { %> style="display:none" <% } %>>Average Time IN: <span
+                <p class="avg-in" <% if(permissions && permissions.some(p => p.permission_name === 'Guest')) { %> style="display:none" <% } %>>Average Time IN: <span
                             id="avg-in-transportation-to-drop-off">
-                            <%= avgTimeData['transportation to drop off'] || '0 mins' %>
+                            <%= avgTimeData['transportation to pick up'] || '0 mins' %>
                         </span></p>
             </div>
 
@@ -219,7 +218,7 @@
                     </div>
                 </div>
 
-                <p class="avg-in" <% if(username=='NSPA' ) { %> style="display:none" <% } %>>Average Time IN: <span
+                <p class="avg-in" <% if(permissions && permissions.some(p => p.permission_name === 'Guest')) { %> style="display:none" <% } %>>Average Time IN: <span
                             id="avg-in-ready-to-pick-up">
                             <%= avgTimeData['ready to pick up'] || '0 mins' %>
                         </span></p>
@@ -228,7 +227,7 @@
 
         <!-- Summary and Report Button Row -->
         <div class="summary-row d-flex justify-content-between align-items-center w-100">
-            <div class="summary" <% if(username=='NSPA' ) { %> style="display:none" <% } %>>
+            <div class="summary" <% if(permissions && permissions.some(p => p.permission_name === 'Guest')) { %> style="display:none" <% } %>>
                     <p>Total Bags For Last Month: <span>
                             <%= overallTotalMountFormatted %>
                         </span></p>
@@ -247,16 +246,16 @@
                         <span class="tooltiptext">Generate report</span>
                     </div>
                 </div>
-                <div class="button-container-report" <% if(username=='NSPA' ) { %> style="cursor: not-allowed;" <% } %>>
-                    <button type="button" class="download-btn <% if(username=='NSPA' ) { %> disabled-button <% } %>" id="downloadRFIDAppBtn">
+                <div class="button-container-report" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Download laundry app'))) { %> style="cursor: not-allowed;" <% } %>>
+                    <button type="button" class="download-btn <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Download laundry app'))) { %> disabled-button <% } %>" id="downloadRFIDAppBtn">
                         <i class="bi bi-download"></i> Download App
                     </button>
                 </div>
-                <div class="w-100" <% if(username!='admin' && username!='helpDeskNikolay' && username != 'helpDeskAngel' ) { %> style="cursor:
+                <div class="w-100" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of bags'))) { %> style="cursor:
                     not-allowed" <% } %>>
                         <div class="btn-container w-100 w-md-auto">
                             <button id="listOfBagsButton"
-                                class="report-button <% if(username!='admin' && username != 'helpDeskNikolay' && username != 'helpDeskAngel') { %> disabled-button <% } %> w-100 w-md-auto">
+                                class="report-button <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of bags'))) { %> disabled-button <% } %> w-100 w-md-auto">
                                 <i class="bi bi-list-ul"></i> List of bags
                             </button>
                             <div class="tooltip-custom">
@@ -275,39 +274,18 @@
         destination: 'Transportation to laundry facility' , previewDestination: 'Drop off' }) %>
 
         <%- include('partials/modal_laundry', { id: 'transportationToLaundryFacility' ,
-            title: 'Transportation to laundry Facility' , headerTable, destination: 'Laundry facility' ,
+            title: 'Transportation to laundry facility' , headerTable, destination: 'Laundry facility' ,
             previewDestination: 'Transportation to laundry facility' }) %>
 
             <%- include('partials/modal_laundry', { id: 'laundryFacility' , title: 'Laundry facility' , headerTable,
-                destination: 'Transportation to drop off' , previewDestination: 'Laundry facility' }) %>
+                destination: 'Transportation to pick up' , previewDestination: 'Laundry facility' }) %>
 
                 <%- include('partials/modal_laundry', { id: 'transportationToDropOff' ,
-                    title: 'Transportation to drop off' , headerTable, destination: 'Ready to pick up' ,
-                    previewDestination: 'Transportation to drop off' }) %>
+                    title: 'Transportation to pick up' , headerTable, destination: 'Ready to pick up' ,
+                    previewDestination: 'Transportation to pick up' }) %>
 
                     <%- include('partials/modal_laundry', { id: 'readyToPickUp' , title: 'Ready to pick up' ,
                         headerTable, destination: 'None' , previewDestination: 'Ready to pick up' }) %>
-
-                        <% if(username !='NSPA' ) { %>
-                        <div class="toast-container position-fixed bottom-0 end-0 p-3">
-                            <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast"
-                                role="alert" aria-live="assertive" aria-atomic="true">
-                                <div class="d-flex align-items-center">
-                                    <!-- Info Icon -->
-                                    <i class="bi bi-info-circle-fill toast-icon"></i>
-
-                                    <!-- Toast Message -->
-                                    <div class="toast-body flex-grow-1" id="toast-message">
-                                        <!-- Message will be inserted here -->
-                                    </div>
-
-                                    <!-- Close Button -->
-                                    <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
-                                        aria-label="Close"></button>
-                                </div>
-                            </div>
-                        </div>
-                        <% } %>
 
                         <div id="reportViewModal" class="modal">
                             <form class="modal-content-report" action="/laundry/report" method="POST" id="form1">
@@ -666,26 +644,16 @@
                                             </div>
                                         </div>
 
-                                        <% if(username !='NSPA' ) { %>
-                                        <div id="toastMessage" class="modal">
-                                            <div class="modal-content-mess">
-                                                <span class="close-btn">&times;</span>
-                                    
-                                                <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-toast-icon">
-                                                <p id="mess-toast-text"></p>
-                                            </div>
-                                        </div>
-                                        <% } %>
+                                        <%- include('partials/toastGlobalMessage') %>
 
 </body>
 
-<script src="/java/autoSearch.js"></script>
 <script src="/java/laundryBag.js"></script>
 <script src="/java/calendar.js"></script>
 <script src="/java/phoneMenu.js"></script>
 <script src="/java/downloald-app.js"></script>
 
-<% if(username !='NSPA' ) { %>
+<% if(permissions && !(permissions.some(p => p.permission_name === 'Guest'))) { %>
     <script src="/java/showPinMessage.js"></script>
 <% } %>
 

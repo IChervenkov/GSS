@@ -68,7 +68,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const soldierInput = document.getElementById('soldierSearch');
 
-    const saveButton = document.getElementById('save-button');
     const moveButton = document.getElementById('move-button');
     const additionalItemButtoon = document.getElementById('addtional-item-button');
     const additionalItemEditSoldierButtoon = document.getElementById('addtional-item-edit-soldier-button');
@@ -166,6 +165,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const csrfToken = document.getElementsByName('_csrf')[0].value;
 
+    const mainRowsPerPage = 50;
+    let mainCurrentPage = 1;
+    let selectedBuilding = "";
+    let mainSortedPar;
+    let mainTotalRows = parseInt(document.getElementById("totalCount").value);
+    const mainHeader = document.querySelector(".visualization-header h3");
+    let filters = [];
+
+    // Track sort order and priority for each column
+    let sortOrder = {
+        nameroom: true,
+        room_status: true,
+        countFreeBeds: true
+    };
+
+    const tableBody = document.getElementById("tableBody");
+    const pagination = document.getElementById("pagination");
+    const isFirstTime = document.getElementsByName("isFirstTime")[0];
+    const headerCells = document.querySelectorAll(`#data-table thead th`);
+
+    const mainHeaderMap = {
+        'Room Number': 'nameroom',
+        'Room Status': 'room_status',
+        'Count Free Beds': 'countFreeBeds'
+    };
+
     let soldiers = [];
     let rooms = [];
     let bags = [];
@@ -176,7 +201,17 @@ document.addEventListener('DOMContentLoaded', function () {
     let allBuilds = [];
     let allCheckedRow = [];
     let moveList = [];
-    let allAdditionalItems = [];
+
+    let currentPage = 1;
+    let secondCurrentPage = 1;
+    let globalUpcomingActionSearchFilters = [];
+
+    let globalSelectDate1 = "";
+    let globalSelectDate2 = "";
+    let globalSearchFilters = [];
+    let globalSearchFiltersDate = [];
+    let globalAction = '';
+    let globalCleanedRoomNumber = '';
 
     var isWarning = false;
 
@@ -185,25 +220,44 @@ document.addEventListener('DOMContentLoaded', function () {
         input.classList.toggle('is-invalid', !isValid);
     };
 
+    const checkForGlobalError = (response, responseBody) => {
+        if (response.headers.get('X-Global-Error') === 'true')
+            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+    };
+
+    const formatDate = (date) => {
+        const accommodationDate = new Date(date);
+        const year = accommodationDate.getFullYear();
+        const month = String(accommodationDate.getMonth() + 1).padStart(2, "0");
+        const day = String(accommodationDate.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
     // Function to fetch soldier from the server
     async function fetchSpecialRoom(numBuild) {
 
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBike = await fetch(`/specialRooms?numBuild=${numBuild}`, {
-                method: 'GET'
+            const response = await fetch(`/specialRooms?numBuild=${numBuild}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
-            if (!responseBike.ok) {
-                throw new Error('Network response was not ok');
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showGlobalMess('Error', error.message);
+                return;
             }
 
-            specialRooms = await responseBike.json(); // Store fetched bikes in the global variable
+            specialRooms = await response.json(); // Store fetched bikes in the global variable
 
         } catch (error) {
-            console.log(error);
-            showGlobalMess('Error', 'There was a problem with the fetch operation:');
+            showGlobalMess('Error', 'There was a problem with the fetch operation');
+
         } finally {
             loadingIndicator.style.display = 'none';
         }
@@ -260,18 +314,23 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBike = await fetch(`/specialKeys?numRoom=${numRoom}`, {
-                method: 'GET'
+            const response = await fetch(`/specialKeys?numRoom=${numRoom}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
-            if (!responseBike.ok) {
-                throw new Error('Network response was not ok');
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showGlobalMess('Error', error.message);
+                return;
             }
 
-            specialKeys = await responseBike.json(); // Store fetched bikes in the global variable
+            specialKeys = await response.json(); // Store fetched bikes in the global variable
 
         } catch (error) {
-            console.log(error);
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
@@ -330,18 +389,23 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBike = await fetch(`/keys`, {
-                method: 'GET'
+            const response = await fetch(`/keys`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
-            if (!responseBike.ok) {
-                throw new Error('Network response was not ok');
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showGlobalMess('Error', error.message);
+                return;
             }
 
-            allKeys = await responseBike.json(); // Store fetched bikes in the global variable
+            allKeys = await response.json(); // Store fetched bikes in the global variable
 
         } catch (error) {
-            console.log(error);
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
@@ -393,7 +457,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const selectedAllKey = event.target;
 
-
         if (selectedAllKey && selectedAllKey.dataset.id) {
 
             const keycode = selectedAllKey.getAttribute('data-id');
@@ -406,14 +469,30 @@ document.addEventListener('DOMContentLoaded', function () {
             loadingIndicator.style.display = 'flex';
 
             const response = await fetch(`/getKeyBuildigType?keyId=${keycode}`, {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             })
+                .then(async response => {
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        checkForGlobalError(response, errorData);
+                        throw new Error(errorData.message || 'Unknown error');
+                    }
+                    return response.json();
+                })
+                .catch(error => {
+                    showGlobalMess('Error', error.message);
+                })
                 .finally(() => {
                     loadingIndicator.style.display = 'none';
                 });
 
-            const result = await response.json();
-            typeBuild.value = result.type;
+            typeBuild.value = response.type;
+
+            globalCleanedRoomNumber = keynum.substring(0, keynum.lastIndexOf('/'));
 
             // Open the modal with the soldier's cleaned data
             openModal(keynum, soldierName, country, keycode, maleCard, laundryBag);
@@ -429,35 +508,23 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBike = await fetch(`/clients`);
-            if (!responseBike.ok) {
-                throw new Error('Network response was not ok');
+            const response = await fetch(`/clients`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showGlobalMess('Error', error.message);
+                return;
             }
-            soldiers = await responseBike.json(); // Store fetched bikes in the global variable
+            soldiers = await response.json(); // Store fetched bikes in the global variable
 
         } catch (error) {
-            console.error('There was a problem with the fetch operation:', error);
-
-        } finally {
-            loadingIndicator.style.display = 'none';
-        }
-    }
-
-    // Function to fetch soldier from the server
-    async function fetchAllAdditionalItem() {
-
-        loadingIndicator.style.display = 'flex';
-
-        try {
-            const responseBike = await fetch(`/accommodation/getAllAdditionalItem`);
-            if (!responseBike.ok) {
-                throw new Error('Network response was not ok');
-            }
-
-            allAdditionalItems = await responseBike.json();
-
-        } catch (error) {
-            console.error('There was a problem with the fetch operation:', error);
+            showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -467,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Show filtered soldiers in the dropdown
     function filterAdditionalItemSoldiers(query) {
         additionalItemSoldierSearchDropdown.innerHTML = '';
-        const filteredSoldier = soldiers.filter(soldier => (soldier.date_accommodation !== '' && soldier.date_free === '') && soldier.name.toLowerCase().includes(query.toLowerCase()));
+        const filteredSoldier = soldiers.filter(soldier => (soldier.date_accommodation === '' || (soldier.date_accommodation !== '' && soldier.date_free === '')) && soldier.name.toLowerCase().includes(query.toLowerCase()));
         const uniqueSoldiers = Array.from(
             new Map(filteredSoldier.map(s => [s.name.toLowerCase(), s])).values()
         );
@@ -508,21 +575,18 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Show filtered soldiers in the dropdown
-    function filterSoldiers(query) {
+    function filterSoldiers(query, keynum) {
         soldierSearchDropdown.innerHTML = '';
 
         let filteredSoldier;
 
-        switch (typeBuild.value) {
-            case "Accommodation":
-            case "":
-                filteredSoldier = soldiers.filter(soldier => ((soldier.date_accommodation === '' && soldier.date_free === '') || (soldier.date_accommodation !== '' && soldier.date_free !== '')) && soldier.name.toLowerCase().includes(query.toLowerCase()));
-                break;
+        const isSpecialKey = /^(\d+\/\d+\/E\/\d+|\d+\/D\d*\/\d+)$/.test(keynum);
 
-            default:
-                filteredSoldier = soldiers.filter(soldier => (soldier.name.toLowerCase().includes(query.toLowerCase())));
-                break;
-        }
+        if (!isSpecialKey && (typeBuild.value === 'Accommodation' || typeBuild.value === ''))
+            filteredSoldier = soldiers.filter(soldier => ((soldier.date_accommodation === '' && soldier.date_free === '') || (soldier.date_accommodation !== '' && soldier.date_free !== '')) && soldier.name.toLowerCase().includes(query.toLowerCase()));
+        else
+            filteredSoldier = soldiers.filter(soldier => (soldier.name.toLowerCase().includes(query.toLowerCase())));
+
 
         const uniqueSoldiers = Array.from(
             new Map(filteredSoldier.map(s => [s.name.toLowerCase(), s])).values()
@@ -544,33 +608,6 @@ document.addEventListener('DOMContentLoaded', function () {
             soldierSearchDropdown.style.display = 'none';
         }
     }
-
-    // Handle input change
-    soldierSearchInput.addEventListener('input', function () {
-        const query = soldierSearchInput.value;
-        if (query.length > 0) {
-            filterSoldiers(query);
-        } else {
-            soldierSearchDropdown.style.display = 'none';
-            selectedSoldierId.value = '';
-            document.getElementById('modal-country').textContent = "Nationality: Undefined";
-        }
-    });
-
-    // Handle bike selection
-    soldierSearchDropdown.addEventListener('click', function (event) {
-        const selectedSoldier = event.target;
-        if (selectedSoldier && selectedSoldier.dataset.id) {
-            soldierSearchInput.value = selectedSoldier.textContent;
-            selectedSoldierId.value = selectedSoldier.getAttribute('data-id');
-            document.getElementById('modal-country').textContent = "Nationality: " + selectedSoldier.getAttribute('data-country');
-            document.getElementById('country-value').value = selectedSoldier.getAttribute('data-country');
-            bagSearchInput.value = selectedSoldier.getAttribute('data-code');
-            selectedBagId.value = selectedSoldier.getAttribute('data-etc');
-            mealCard.value = selectedSoldier.getAttribute('data-meal-card');
-            soldierSearchDropdown.style.display = 'none';
-        }
-    });
 
     function filterUpcomingKey(query, dropDown) {
         dropDown.innerHTML = '';
@@ -643,16 +680,25 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBag = await fetch(`/freeBags`);
+            const responseBag = await fetch(`/freeBags`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
             if (!responseBag.ok) {
-                throw new Error('Network response was not ok');
+                const error = await responseBag.json();
+                checkForGlobalError(responseBag, error);
+                showGlobalMess('Error', error.message);
+                return;
             }
 
             const data = await responseBag.json(); // Store the parsed JSON response once
             bags = data.bags; // Access Bags from the parsed data
 
         } catch (error) {
-            console.error('There was a problem with the fetch operation:', error);
+            showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -666,18 +712,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const responseBag = await fetch(`/bags`, {
-                method: "GET"
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
             if (!responseBag.ok) {
-                throw new Error('Network response was not ok');
+                const error = await responseBag.json();
+                checkForGlobalError(responseBag, error);
+                showGlobalMess('Error', error.message);
+                return;
             }
 
             const data = await responseBag.json(); // Store the parsed JSON response once
             allBags = data.allBags; // Access allBags from the parsed data
 
         } catch (error) {
-            console.error('There was a problem with the fetch operation:', error);
+            showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -818,15 +870,25 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBuild = await fetch(`/builds`);
+            const responseBuild = await fetch(`/builds`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
             if (!responseBuild.ok) {
-                throw new Error('Network response was not ok');
+                const error = await responseBuild.json();
+                checkForGlobalError(responseBuild, error);
+                showGlobalMess('Error', error.message);
+                return;
             }
 
             allBuilds = await responseBuild.json(); // Store the parsed JSON response once
 
         } catch (error) {
-            console.error('There was a problem with the fetch operation:', error);
+            showGlobalMess('Error', 'There was a problem with the fetch operation');
+
         } finally {
             loadingIndicator.style.display = 'none';
         }
@@ -880,11 +942,20 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBike = await fetch(`/rooms`);
-            if (!responseBike.ok) {
-                throw new Error('Network response was not ok');
+            const response = await fetch(`/rooms`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showGlobalMess('Error', error.message);
+                return;
             }
-            rooms = await responseBike.json(); // Store fetched bikes in the global variable
+            rooms = await response.json(); // Store fetched bikes in the global variable
 
             // Find the room where rooms.id === the last item.keyMoveId in moveList
             const lastMoveItem = moveList[moveList.length - 1];
@@ -897,7 +968,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
         } catch (error) {
-            console.error('There was a problem with the fetch operation:', error);
+            showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -947,14 +1018,20 @@ document.addEventListener('DOMContentLoaded', function () {
             soldierSearchMoveDropdown.style.display = 'none';
 
             const responseSoldier = await fetch(`/move/getSoldier?keyId=${selectedSoldierMoveId.value}`, {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             })
                 .finally(() => {
                     loadingIndicator.style.display = 'none';
                 });
 
             if (!responseSoldier.ok) {
-                throw new Error('Network response was not ok');
+                const error = await responseSoldier.json();
+                checkForGlobalError(responseSoldier, error);
+                showGlobalMess('Error', error.message);
+                return;
             }
 
             const result = await responseSoldier.json();
@@ -990,8 +1067,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     fetchBuilding();
 
-    fetchAllAdditionalItem();
-
     function openModal(keynum, soldierName, country, keycode, maleCard, laundryBag) {
 
         // Clean the data by removing unwanted prefixes or suffixes
@@ -1015,27 +1090,51 @@ document.addEventListener('DOMContentLoaded', function () {
         soldierInput.value = soldierName === "Free" ? '' : soldierName;
         selectedSoldierId.value = soldierName === "Free" ? '' : soldiers.find(soldier => soldier.name === soldierInput.value).id;
 
-        switch (typeBuild.value) {
-            case "Accommodation":
-            case "":
-                handleSoldierInputs(soldierName);
+        const isSpecialKey = /^(\d+\/\d+\/E\/\d+|\d+\/D\d*\/\d+)$/.test(keynum);
 
-                document.getElementById('search-laundry-bag-container').style.display = 'block';
-                document.getElementById('input-meal-card').style.display = 'block';
+        // Handle input change
+        soldierSearchInput.addEventListener('input', function () {
+            const query = soldierSearchInput.value;
+            if (query.length > 0) {
+                filterSoldiers(query, keynum);
+            } else {
+                soldierSearchDropdown.style.display = 'none';
+                selectedSoldierId.value = '';
+                document.getElementById('modal-country').textContent = "Nationality: Undefined";
+            }
+        });
 
-                bagSearchInput.value = laundryBag === "Undefined" ? '' : laundryBag;
-                selectedBagId.value = laundryBag === "Undefined" ? '' : allBags.find(bag => bag.name === bagSearchInput.value).id;
+        // Handle bike selection
+        soldierSearchDropdown.addEventListener('click', function (event) {
+            const selectedSoldier = event.target;
+            if (selectedSoldier && selectedSoldier.dataset.id) {
+                soldierSearchInput.value = selectedSoldier.textContent;
+                selectedSoldierId.value = selectedSoldier.getAttribute('data-id');
+                document.getElementById('modal-country').textContent = "Nationality: " + selectedSoldier.getAttribute('data-country');
+                document.getElementById('country-value').value = selectedSoldier.getAttribute('data-country');
+                bagSearchInput.value = selectedSoldier.getAttribute('data-code');
+                selectedBagId.value = selectedSoldier.getAttribute('data-etc');
+                mealCard.value = selectedSoldier.getAttribute('data-meal-card');
+                soldierSearchDropdown.style.display = 'none';
+            }
+        });
 
-                mealCard.value = maleCard === "Undefined" ? '' : maleCard;
-                break;
+        if (!isSpecialKey && (typeBuild.value === 'Accommodation' || typeBuild.value === '')) {
+            handleSoldierInputs(soldierName);
 
-            default:
-                handleOtherInputs();
+            document.getElementById('search-laundry-bag-container').style.display = 'block';
+            document.getElementById('input-meal-card').style.display = 'block';
 
-                document.getElementById('search-laundry-bag-container').style.display = 'none';
-                document.getElementById('input-meal-card').style.display = 'none';
+            bagSearchInput.value = laundryBag === "Undefined" ? '' : laundryBag;
+            selectedBagId.value = laundryBag === "Undefined" ? '' : allBags.find(bag => bag.name === bagSearchInput.value).id;
 
-                break;
+            mealCard.value = maleCard === "Undefined" ? '' : maleCard;
+
+        } else {
+            handleOtherInputs();
+
+            document.getElementById('search-laundry-bag-container').style.display = 'none';
+            document.getElementById('input-meal-card').style.display = 'none';
         }
 
         typeBuild.value = document.getElementById('previewTypeBuild').value;
@@ -1073,9 +1172,205 @@ document.addEventListener('DOMContentLoaded', function () {
         modalContent.classList.remove('slide-out');
     }
 
+    async function fetchListKeys(cleanedRoomNumber, page = 1, limit = 10, searchFilters = []) {
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+
+            const searchParams = new URLSearchParams({
+                roomNumber: cleanedRoomNumber,
+                page,
+                limit
+            });
+
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            const response = await fetch(`/getRoomKeys?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showGlobalMess('Error', error.message);
+                return;
+            }
+
+            const { keyListData, totalKeyListData } = await response.json();
+
+            const tableBody = document.querySelector("#keyModal .modal-content tbody");
+            const header_tr = document.querySelector("#keyModal .modal-content thead tr");
+            const headerCells = Array.from(header_tr.children);
+            const lastTwoCells = headerCells.slice(-2);
+            const isSpecialKey = /^(\d+\/\d+\/E|\d+\/D\d*)$/.test(cleanedRoomNumber);
+            const isAccommodation = typeBuild.value === 'Accommodation' || typeBuild.value === '';
+
+            tableBody.innerHTML = "";
+
+            if (isAccommodation && !isSpecialKey)
+                lastTwoCells.forEach(cell => { cell.style.display === 'none' ? cell.style.display = 'table-cell' : '' });
+            else
+                lastTwoCells.forEach(cell => { cell.style.display = 'none' });
+
+            const headerCheckbox = document.createElement('input');
+            headerCheckbox.type = 'checkbox';
+            headerCheckbox.className = 'form-check-input header-checkbox';
+            headerCheckbox.style.border = '1px solid black';
+            headerCheckbox.style.backgroundColor = '';
+
+            headerCheckbox.addEventListener('change', (event) => {
+                headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+                const isChecked = event.target.checked;
+
+                // Get all visible rows
+                const visibleRows = Array.from(tableBody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+
+                visibleRows.forEach(row => {
+                    const checkbox = row.querySelector('.form-check-input');
+                    if (checkbox) {
+                        checkbox.checked = isChecked;
+                        checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                        const keyId = checkbox.getAttribute('data-id');
+                        if (isChecked) {
+                            allCheckedRow.push({ code: keyId });
+                        } else {
+                            allCheckedRow = allCheckedRow.filter(item => item.code !== keyId);
+                        }
+                    }
+                });
+
+                // Ensure no duplicates in allCheckedRow
+                if (isChecked) {
+                    allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
+                        .map(code => ({ code }));
+                }
+            });
+
+            // Append the header checkbox to the table header
+            const thead = tableBody.parentElement.querySelector('thead');
+            const headerRow = thead.querySelector('tr');
+
+            headerRow.querySelectorAll('th').forEach(th => {
+                if (!th.textContent.trim()) {
+                    th.remove();
+                }
+            });
+
+            const headerCell = document.createElement('th');
+            headerCell.appendChild(headerCheckbox);
+            headerRow.insertBefore(headerCell, headerRow.firstChild);
+
+            keyListData.forEach(item => {
+                const row = document.createElement("tr");
+                row.classList.add("data-room-key");
+
+                // Handle Accommodation logic
+                const isDisabled = isAccommodation && !isSpecialKey && item.location_key === null;
+
+                if (isAccommodation && !isSpecialKey) {
+                    if (isDisabled) {
+                        row.classList.add("disabled-row");
+                        row.setAttribute("aria-disabled", "true");
+
+                        row.addEventListener("click", function (event) {
+                            event.stopPropagation();
+                            event.preventDefault();
+                        });
+                    } else {
+                        row.addEventListener("click", function (event) {
+                            if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0)
+                                openModal(
+                                    item.namekey,
+                                    item.namesoldier || "Free",
+                                    item.country || "Undefined",
+                                    item.code,
+                                    item.mealcard || "Undefined",
+                                    item.lbcode || "Undefined"
+                                );
+                        });
+                    }
+
+                    row.innerHTML = `
+                        <td></td> <!-- Placeholder for checkbox -->
+                        <td>${item.namekey}</td>
+                        <td>${item.code}</td>
+                        <td class="${!item.namesoldier ? "undefined-data" : ""}">${item.namesoldier || "Free"}</td>
+                        <td class="${!item.country ? "undefined-data" : ""}">${item.country || "Undefined"}</td>
+                        <td class="mealcard-column ${!item.mealcard ? "undefined-data" : ""}">${item.mealcard || "Undefined"}</td>
+                        <td class="lbcode-column ${!item.lbcode ? "undefined-data" : ""}">${item.lbcode || "Undefined"}</td>`;
+                } else {
+                    row.innerHTML = `
+                        <td></td> <!-- Placeholder for checkbox -->
+                        <td>${item.namekey}</td>
+                        <td>${item.code}</td>
+                        <td class="${!item.namesoldier ? "undefined-data" : ""}">${item.namesoldier || "Free"}</td>
+                        <td class="${!item.country ? "undefined-data" : ""}">${item.country || "Undefined"}</td>`;
+
+                    row.addEventListener('click', function () {
+                        openModal(
+                            item.namekey,
+                            item.namesoldier || "Free",
+                            item.country || "Undefined",
+                            item.code
+                        );
+                    });
+                }
+
+                // Now insert the checkbox into the first cell
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-check-input';
+                checkbox.dataset.id = item.code;
+                checkbox.style.border = '1px solid black';
+
+                if (allCheckedRow.some(i => i.code === item.code)) {
+                    checkbox.style.backgroundColor = 'green';
+                    checkbox.checked = true;
+                }
+
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        checkbox.style.backgroundColor = 'green';
+                        allCheckedRow.push({ code: item.code });
+                    } else {
+                        checkbox.style.backgroundColor = '';
+                        allCheckedRow = allCheckedRow.filter(row => row.code !== item.code);
+                    }
+                });
+
+                // Insert checkbox into the first <td>
+                const firstCell = row.querySelector('td');
+                if (firstCell) firstCell.appendChild(checkbox);
+
+                tableBody.appendChild(row);
+            });
+
+            const rowsTable = tableBody.getElementsByTagName("tr");
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumberFifth');
+
+            setupTableNavigation("keyListTable", "prevBtnFifth", "nextBtnFifth", "pageNumberFifth", limit, totalKeyListData, currentPage, searchFilters, [], cleanedRoomNumber);
+
+        } catch (error) {
+            showGlobalMess('Error', 'An error occurred while fetching keys items. Please try again later.');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
+        };
+
+    }
+
     function openModalKey(roomNumber) {
         // Remove all slashes from roomNumber
         const cleanedRoomNumber = roomNumber.trim();
+        globalCleanedRoomNumber = cleanedRoomNumber;
+        selectedRoomForKey.value = cleanedRoomNumber;
 
         // Fetch the keys when the script loads
         fetchSpecialKey(cleanedRoomNumber);
@@ -1088,130 +1383,241 @@ document.addEventListener('DOMContentLoaded', function () {
         // Ensure that any 'slide-out' class is removed if it was previously added
         modalKeyContent.classList.remove('slide-out');
 
-        selectedRoomForKey.value = cleanedRoomNumber;
+        currentPage = 1;
 
-        loadingIndicator.style.display = 'flex';
+        const headerDate = {
+            'Number Key': 'namekey',
+            'Key code': 'k.id',
+            'Soldier': 'namesoldier',
+            'Nationality': 'country',
+            'Meal card': 'meal_card',
+            'Laundry bag': 'lb.code'
+        };
 
-        // Fetch and display keys only for the specific room using POST request with body
-        fetch(`/getRoomKeys?roomNumber=${cleanedRoomNumber}`, {
-            method: 'GET'
-        })
-            .then(response => response.json())
-            .then(data => {
-                // Populate modal with room-specific keys data
-                populateModalWithKeys(data);
-            })
-            .catch(error => console.error("Error fetching keys:", error))
-            .finally(() => {
-                loadingIndicator.style.display = 'none';
-            });
+        rewriteTableSearch('.search-input-key-list', 'keyListTable', headerDate, "", "", cleanedRoomNumber);
+
+        fetchListKeys(cleanedRoomNumber);
     }
 
-    function populateModalWithKeys(data) {
-        const tableBody = document.querySelector("#keyModal .modal-content tbody");
-        tableBody.innerHTML = "";
+    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId, rowsPerPage = 10, totalPages, page, searchFilters = [], searchFiltersMove = [], cleanedRoomNumber = "", selectDate1 = "", selectDate2 = "") {
 
-        data.forEach(item => {
-            const row = document.createElement("tr");
-            row.classList.add("data-room-key");
+        document.getElementById(`${pageNumberId}`).textContent = `${page}/${totalPages}`;
 
-            switch (typeBuild.value) {
-                case 'Accommodation':
-                case '':
-
-                    if (item.location_key === null) {
-                        row.classList.add("disabled-row");
-                        row.setAttribute("aria-disabled", "true");
-
-                        row.addEventListener("click", function (event) {
-                            event.stopPropagation();
-                            event.preventDefault();
-                        });
-                    } else {
-                        row.addEventListener("click", function () {
-                            openModal(
-                                item.namekey,
-                                item.namesoldier || "Free",
-                                item.country || "Undefined",
-                                item.code,
-                                item.mealcard || "Undefined",
-                                item.lbcode || "Undefined"
-                            );
-                        });
+        switch (tableId) {
+            case 'additonalItemTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchAdditionalItem(currentPage, rowsPerPage, searchFilters);
                     }
+                }
 
-                    row.innerHTML = `
-                        <td>${item.namekey}</td>
-                        <td>${item.code}</td>
-                        <td class="${!item.namesoldier ? "undefined-data" : ""}">${item.namesoldier || "Free"}</td>
-                        <td class="${!item.country ? "undefined-data" : ""}">${item.country || "Undefined"}</td>
-                        <td class="${!item.mealcard ? "undefined-data" : ""}">${item.mealcard || "Undefined"}</td>
-                        <td class="${!item.lbcode ? "undefined-data" : ""}">${item.lbcode || "Undefined"}</td>`;
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchAdditionalItem(currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
 
-                    break;
+            case 'upcomingActionTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchUpcomingAction(currentPage, rowsPerPage, searchFilters);
+                    }
+                }
 
-                default:
-                    row.innerHTML = `
-                        <td>${item.namekey}</td>
-                        <td>${item.code}</td>
-                        <td class="${!item.namesoldier ? "undefined-data" : ""}">${item.namesoldier || "Free"}</td>
-                        <td class="${!item.country ? "undefined-data" : ""}">${item.country || "Undefined"}</td>`;
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchUpcomingAction(currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
 
-                    // Attach click event for each row
-                    row.addEventListener('click', function () {
-                        openModal(
-                            item.namekey,
-                            item.namesoldier || "Free",
-                            item.country || "Undefined",
-                            item.code
-                        );
-                    });
-                    break;
-            }
+            case 'soldierTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchSoldierList(currentPage, rowsPerPage, searchFilters);
+                    }
+                }
 
-            tableBody.appendChild(row);
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchSoldierList(currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
+
+            case 'keyListTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchListKeys(cleanedRoomNumber, currentPage, rowsPerPage, searchFilters);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchListKeys(cleanedRoomNumber, currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
+
+            case 'soldierUsageTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersMove);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersMove);
+                    }
+                };
+                break;
+
+            case 'soldierMoveTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (secondCurrentPage > 1) {
+                        secondCurrentPage--;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersMove);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (secondCurrentPage < totalPages) {
+                        secondCurrentPage++;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersMove);
+                    }
+                };
+                break;
+        };
+    }
+
+    function rewriteTableSearch(className, tableName, headerMap, selectDate1 = "", selectDate2 = "", cleanedRoomNumber = "") {
+
+        document.querySelectorAll(`${className}`).forEach((input) => {
+            const newInput = input.cloneNode(true);
+            input.parentNode.replaceChild(newInput, input);
+        });
+
+        document.querySelectorAll(`${className}`).forEach((input) => {
+
+            input.addEventListener('input', () => {
+
+                const filters = document.querySelectorAll(`${className}`);
+                const headerCells = document.querySelectorAll(`#${tableName} thead th`);
+
+                const searchFilters = [];
+
+                switch (tableName) {
+
+                    case 'additonalItemTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchAdditionalItem(currentPage, 10, searchFilters);
+                        break;
+
+                    case 'upcomingActionTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        globalUpcomingActionSearchFilters = searchFilters;
+                        fetchUpcomingAction(currentPage, 10, searchFilters);
+                        break;
+
+                    case 'soldierTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex + 1]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchSoldierList(currentPage, 10, searchFilters);
+                        break;
+
+                    case 'keyListTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchListKeys(cleanedRoomNumber, currentPage, 10, searchFilters);
+                        break;
+
+                    case 'soldierUsageTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        globalSearchFilters = searchFilters;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, 10, searchFilters, globalSearchFiltersDate);
+                        break;
+
+                    case 'soldierMoveTable':
+                        secondCurrentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        globalSearchFiltersDate = searchFilters;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, 10, globalSearchFilters, searchFilters);
+                        break;
+                }
+            });
         });
     }
 
-    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId) {
-        const table = document.getElementById(tableId).getElementsByTagName("tbody")[0];
-        const rows = table.getElementsByTagName("tr");
-        const rowsPerPage = 10; // Number of rows visible at a time
-        let currentIndex = 0;
-        let totalPages = Math.ceil(rows.length / rowsPerPage);
-        const pageNumberDisplay = document.getElementById(pageNumberId);
-
-        function updateTable() {
-            for (let i = 0; i < rows.length; i++) {
-                rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
-            }
-
-            totalPages = Math.ceil(rows.length / rowsPerPage) || 1; // Recalculate total pages (avoid division by zero)
-            let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
-            pageNumberDisplay.textContent = `${currentPage}/${totalPages}`;
-        }
-
-        document.getElementById(prevBtnId).onclick = function () {
-            if (currentIndex > 0) {
-                currentIndex -= rowsPerPage;
-                updateTable();
-            }
-        };
-
-        document.getElementById(nextBtnId).onclick = function () {
-            if (currentIndex + rowsPerPage < rows.length) {
-                currentIndex += rowsPerPage;
-                updateTable();
-            }
-        };
-
-        updateTable(); // Initialize table view
-    }
-
-    function openAdditionalItemModal() {
-        additionalItemModal.classList.add('show');
-        additionalItemModalContent.classList.add('show');
-        additionalItemModalContent.classList.add('slide-in');
+    async function fetchAdditionalItem(page = 1, limit = 10, searchFilters = []) {
 
         const soldierId = additionalItemButtoon.getAttribute('soldier-id') || additionalItemEditSoldierButtoon.getAttribute('soldier-id');
         additionalItemSoldierSearchInput.value = soldierId ? soldiers.filter(soldier => soldier.id === soldierId)[0].name : '';
@@ -1220,144 +1626,211 @@ document.addEventListener('DOMContentLoaded', function () {
         const tableBody = document.getElementById("additionalItemTableBody");
         tableBody.innerHTML = "";
 
-        allAdditionalItems.forEach(item => {
-            const row = document.createElement("tr");
+        loadingIndicator.style.display = 'flex';
 
-            const soldierCell = document.createElement("td");
-            soldierCell.textContent = item.soldierName;
-            row.appendChild(soldierCell);
+        try {
 
-            const descriptionCell = document.createElement("td");
-            descriptionCell.textContent = item.description;
-            row.appendChild(descriptionCell);
-
-            const codeCell = document.createElement("td");
-            codeCell.textContent = item.code || "N/A";
-            row.appendChild(codeCell);
-
-            const quantityCell = document.createElement("td");
-            quantityCell.textContent = item.quantity;
-            row.appendChild(quantityCell);
-
-            row.addEventListener('click', function () {
-                const submitButton = document.createElement('button');
-                var isSubmit = false;
-                let hasError = false;
-                var responseData = {};
-
-                submitButton.textContent = 'Yes';
-                submitButton.classList.add('btn', 'btn-success');
-
-                const quantityInput = document.createElement('input');
-                quantityInput.type = 'number';
-                quantityInput.classList.add('form-control');
-                quantityInput.value = item.quantity;
-                quantityInput.min = 1;
-                quantityInput.max = item.quantity;
-                quantityInput.style.marginBottom = '10px';
-
-                quantityInput.addEventListener('input', function () {
-                    const isValid = quantityInput.value > 0 && quantityInput.value <= item.quantity;
-                    toggleInputValidity(quantityInput, isValid);
-                });
-
-                submitButton.addEventListener('click', async () => {
-
-                    if (!quantityInput.value) {
-                        return;
-                    }
-
-                    hasError = false;
-                    isSubmit = true;
-
-                    loadingIndicator.style.display = 'flex';
-
-                    try {
-                        const data = {
-                            id: item.id,
-                            quantity: quantityInput.value
-                        };
-
-                        const response = await fetch('/accommodation/returnAddtionalItem', {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'CSRF-Token': csrfToken
-                            },
-                            body: JSON.stringify(data)
-                        });
-
-                        if (!response.ok) {
-                            hasError = true;
-                        }
-
-                        responseData = await response.json();
-
-                        closeGlobalMessModal();
-
-                    } catch (error) {
-                        hasError = true;
-                    } finally {
-                        loadingIndicator.style.display = 'none';
-                    }
-                });
-
-                modalGlobalMessContent.appendChild(quantityInput);
-                modalGlobalMessContent.appendChild(submitButton);
-
-                // Wait for the modal to close, then check if the submit button was clicked
-                const observer = new MutationObserver(() => {
-                    if (!modalGlobalMess.classList.contains('show') && isSubmit) {
-                        observer.disconnect();
-
-                        if (modalGlobalMessContent.contains(submitButton)) {
-                            // Check if the button is still a child before removing
-                            modalGlobalMessContent.removeChild(submitButton);
-                        }
-
-                        if (modalGlobalMessContent.contains(quantityInput)) {
-                            // Check if the input is still a child before removing
-                            modalGlobalMessContent.removeChild(quantityInput);
-                        }
-                    }
-                });
-
-                observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
-
-                // Close the warning modal and show appropriate messages based on the result
-                const closeWarningObserver = new MutationObserver(() => {
-                    if (!modalGlobalMess.classList.contains('show')) {
-                        closeWarningObserver.disconnect();
-
-                        if (isSubmit && !hasError) {
-                            closeAdditionalItemModal();
-                            showGlobalMess('Info', 'The item has been returned or reduced successfully');
-                        } else if (isSubmit) {
-                            showGlobalMess('Error', responseData.message || 'An error occurred while restoring or reducing the item');
-                        }
-
-                        if (modalGlobalMessContent.contains(quantityInput)) {
-                            // Check if the input is still a child before removing
-                            modalGlobalMessContent.removeChild(quantityInput);
-                        }
-                    }
-                });
-
-                closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
-
-                // Show the warning modal
-                showGlobalMess('Warning', 'Are you sure you want to return this additional item?\nPlease enter the quantity of items who you want to return.');
+            const searchParams = new URLSearchParams({
+                page,
+                limit
             });
 
-            tableBody.appendChild(row);
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
 
-        });
+            const response = await fetch(`/accommodation/getAllAdditionalItem?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
 
-        const rowsTable = tableBody.getElementsByTagName("tr");
-        firstUpdateTable(rowsTable, 0, 10, 'pageNumberTherd');
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showGlobalMess('Error', error.message);
+                return;
+            }
 
-        setupTableNavigation("additonalItemTable", "prevBtnTherd", "nextBtnTherd", "pageNumberTherd");
+            const { allAdditionalItems, totalAdditionalItems } = await response.json();
+
+            allAdditionalItems.forEach(item => {
+                const row = document.createElement("tr");
+
+                const soldierCell = document.createElement("td");
+                soldierCell.textContent = item.soldierName;
+                soldierCell.classList.add("text-wrap");
+                soldierCell.style = "max-width: 200px;";
+                row.appendChild(soldierCell);
+
+                const descriptionCell = document.createElement("td");
+                descriptionCell.textContent = item.description;
+                descriptionCell.classList.add("text-wrap");
+                descriptionCell.style = "max-width: 200px;";
+                row.appendChild(descriptionCell);
+
+                const codeCell = document.createElement("td");
+                codeCell.textContent = item.code || "N/A";
+                codeCell.classList.add("text-wrap");
+                codeCell.style = "max-width: 200px;";
+                row.appendChild(codeCell);
+
+                const quantityCell = document.createElement("td");
+                quantityCell.textContent = item.quantity;
+                quantityCell.classList.add("text-wrap");
+                quantityCell.style = "max-width: 200px;";
+                row.appendChild(quantityCell);
+
+                row.addEventListener('click', function () {
+                    const submitButton = document.createElement('button');
+                    var isSubmit = false;
+                    let hasError = false;
+                    var responseData = {};
+
+                    submitButton.textContent = 'Yes';
+                    submitButton.classList.add('btn', 'btn-success');
+
+                    const quantityInput = document.createElement('input');
+                    quantityInput.type = 'number';
+                    quantityInput.classList.add('form-control');
+                    quantityInput.value = item.quantity;
+                    quantityInput.min = 1;
+                    quantityInput.max = item.quantity;
+                    quantityInput.style.marginBottom = '10px';
+
+                    quantityInput.addEventListener('input', function () {
+                        const isValid = quantityInput.value > 0 && quantityInput.value <= item.quantity;
+                        toggleInputValidity(quantityInput, isValid);
+                    });
+
+                    submitButton.addEventListener('click', async () => {
+
+                        if (!quantityInput.value) {
+                            return;
+                        }
+
+                        hasError = false;
+                        isSubmit = true;
+
+                        loadingIndicator.style.display = 'flex';
+
+                        try {
+                            const data = {
+                                id: item.id,
+                                quantity: quantityInput.value
+                            };
+
+                            const response = await fetch('/accommodation/returnAddtionalItem', {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'CSRF-Token': csrfToken
+                                },
+                                body: JSON.stringify(data)
+                            });
+
+                            responseData = await response.json();
+
+                            if (!response.ok) {
+                                checkForGlobalError(response, responseData);
+                                hasError = true;
+                            }
+
+                            closeGlobalMessModal();
+
+                        } catch (error) {
+                            hasError = true;
+                        } finally {
+                            loadingIndicator.style.display = 'none';
+                        }
+                    });
+
+                    modalGlobalMessContent.appendChild(quantityInput);
+                    modalGlobalMessContent.appendChild(submitButton);
+
+                    // Wait for the modal to close, then check if the submit button was clicked
+                    const observer = new MutationObserver(() => {
+                        if (!modalGlobalMess.classList.contains('show') && isSubmit) {
+                            observer.disconnect();
+
+                            if (modalGlobalMessContent.contains(submitButton)) {
+                                // Check if the button is still a child before removing
+                                modalGlobalMessContent.removeChild(submitButton);
+                            }
+
+                            if (modalGlobalMessContent.contains(quantityInput)) {
+                                // Check if the input is still a child before removing
+                                modalGlobalMessContent.removeChild(quantityInput);
+                            }
+                        }
+                    });
+
+                    observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+                    // Close the warning modal and show appropriate messages based on the result
+                    const closeWarningObserver = new MutationObserver(() => {
+                        if (!modalGlobalMess.classList.contains('show')) {
+                            closeWarningObserver.disconnect();
+
+                            if (isSubmit && !hasError) {
+                                globalAction = 'returnAddtionalItem';
+                                showGlobalMess('Info', 'The item has been returned or reduced successfully');
+                            } else if (isSubmit) {
+                                showGlobalMess('Error', responseData.message || 'An error occurred while restoring or reducing the item');
+                            }
+
+                            if (modalGlobalMessContent.contains(quantityInput)) {
+                                // Check if the input is still a child before removing
+                                modalGlobalMessContent.removeChild(quantityInput);
+                            }
+                        }
+                    });
+
+                    closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+                    // Show the warning modal
+                    showGlobalMess('Warning', 'Are you sure you want to return this additional item?\nPlease enter the quantity of items who you want to return.');
+                });
+
+                tableBody.appendChild(row);
+
+            });
+
+            const rowsTable = tableBody.getElementsByTagName("tr");
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumberTherd');
+
+            setupTableNavigation("additonalItemTable", "prevBtnTherd", "nextBtnTherd", "pageNumberTherd", limit, totalAdditionalItems, currentPage, searchFilters);
+
+        } catch (error) {
+            showGlobalMess('Error', 'An error occurred while fetching additional items. Please try again later.');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
+        };
+
+    }
+
+    function openAdditionalItemModal() {
+
+        currentPage = 1;
+
+        const headerDate = {
+            'Soldier name': 's.namesoldier',
+            'Description': 'ai.description',
+            'Bag code': 'lb.code',
+            'Item quantity': 'ai.quantity'
+        };
+
+        rewriteTableSearch('.additional-item-search-input', 'additonalItemTable', headerDate);
+
+        fetchAdditionalItem();
+
+        additionalItemModal.classList.add('show');
+        additionalItemModalContent.classList.add('show');
+        additionalItemModalContent.classList.add('slide-in');
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         additionalItemModalContent.classList.remove('slide-out');
@@ -1506,6 +1979,206 @@ document.addEventListener('DOMContentLoaded', function () {
 
     }
 
+    async function fetchSoldierList(page = 1, limit = 10, searchFilters = []) {
+
+        const tbody = document.getElementById('tableBodyModal');
+        const assetTableBody = document.getElementById('soldierTable').getElementsByTagName('tbody')[0];
+        tbody.innerHTML = '';
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+
+            const searchParams = new URLSearchParams({
+                page,
+                limit
+            });
+
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            const response = await fetch(`/clients?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showGlobalMess('Error', error.message);
+                return;
+            }
+
+            let { soldierListData, totalSoldierListData } = await response.json();
+
+            soldierListData = Array.from(
+                new Map(soldierListData.map(s => [s.name.toLowerCase(), s])).values()
+            );
+
+            const headerCheckbox = document.createElement('input');
+            headerCheckbox.type = 'checkbox';
+            headerCheckbox.className = 'form-check-input header-checkbox';
+            headerCheckbox.style.border = '1px solid black';
+            headerCheckbox.style.backgroundColor = '';
+
+            headerCheckbox.addEventListener('change', (event) => {
+                headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+                const isChecked = event.target.checked;
+
+                // Get all visible rows
+                const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+
+                visibleRows.forEach(row => {
+                    const checkbox = row.querySelector('.form-check-input');
+                    if (checkbox) {
+                        checkbox.checked = isChecked;
+                        checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                        if (isChecked) {
+                            allCheckedRow.push({ code: checkbox.dataset.id });
+                        } else {
+                            allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
+                        }
+                    }
+                });
+
+                // Ensure no duplicates in allCheckedRow
+                if (isChecked) {
+                    allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
+                        .map(code => ({ code }));
+                }
+            });
+
+            // Append the header checkbox to the table header
+            const thead = tbody.parentElement.querySelector('thead');
+            const headerRow = thead.querySelector('tr');
+
+            headerRow.querySelectorAll('th').forEach(th => {
+                if (!th.textContent.trim()) {
+                    th.remove();
+                }
+            });
+
+            const headerCell = document.createElement('th');
+            headerCell.appendChild(headerCheckbox);
+            headerRow.insertBefore(headerCell, headerRow.firstChild);
+
+            soldierListData.forEach(item => {
+                const row = document.createElement("tr");
+                row.classList.add('data-soldier');
+
+                // Add the checkbox cell
+                const checkboxCell = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-check-input';
+                checkbox.dataset.id = item.id;
+                checkbox.style.border = '1px solid black'; // Make the border more bold
+
+                if (allCheckedRow.some(i => i.code === item.code)) {
+                    checkbox.style.backgroundColor = 'green';
+                    checkbox.checked = true;
+                }
+
+                // Add change event to the checkbox
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        checkbox.style.backgroundColor = 'green';
+                        allCheckedRow.push({ code: item.id });
+                    } else {
+                        checkbox.style.backgroundColor = '';
+                        allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
+                    }
+                });
+
+                checkboxCell.appendChild(checkbox);
+                row.appendChild(checkboxCell);
+
+                // Room number cell
+                const codeCell = document.createElement("td");
+                codeCell.textContent = item.id;
+                codeCell.classList.add("text-wrap");
+                codeCell.style = "max-width: 200px;";
+                row.appendChild(codeCell);
+
+                // Room status cell
+                const nameCell = document.createElement("td");
+                nameCell.textContent = item.name;
+                nameCell.classList.add("text-wrap");
+                nameCell.style = "max-width: 200px;";
+                row.appendChild(nameCell);
+
+                // Room status cell
+                const countryCell = document.createElement("td");
+                countryCell.textContent = item.country;
+                countryCell.classList.add("text-wrap");
+                countryCell.style = "max-width: 200px;";
+                row.appendChild(countryCell);
+
+                const upcomingKeyCell = document.createElement("td");
+                upcomingKeyCell.textContent = item.upcoming_key || "N/A";
+                upcomingKeyCell.classList.add("text-wrap");
+                upcomingKeyCell.style = "max-width: 200px;";
+                row.appendChild(upcomingKeyCell);
+
+                const bagCodeCell = document.createElement("td");
+                bagCodeCell.textContent = item.code || "N/A";
+                bagCodeCell.classList.add("text-wrap");
+                bagCodeCell.style = "max-width: 200px;";
+                row.appendChild(bagCodeCell);
+
+                const mealCardCell = document.createElement("td");
+                mealCardCell.textContent = item.meal_card || "N/A";
+                mealCardCell.classList.add("text-wrap");
+                mealCardCell.style = "max-width: 200px;";
+                row.appendChild(mealCardCell);
+
+                const upcoming_accommodation = document.createElement("td");
+                const accommodationDate = new Date(item.upcoming_accommodation);
+                upcoming_accommodation.textContent = item.upcoming_accommodation
+                    ? formatDate(accommodationDate)
+                    : 'N/A';
+                upcoming_accommodation.classList.add("text-wrap");
+                upcoming_accommodation.style = "max-width: 200px;";
+                row.appendChild(upcoming_accommodation);
+
+                const upcoming_release = document.createElement("td");
+                const releaseDate = new Date(item.upcoming_release);
+                upcoming_release.textContent = item.upcoming_release
+                    ? formatDate(releaseDate)
+                    : 'N/A';
+                upcoming_release.classList.add("text-wrap");
+                upcoming_release.style = "max-width: 200px;";
+                row.appendChild(upcoming_release);
+
+                // Attach click event for each row
+                row.addEventListener('click', (event) => {
+                    // Check if the clicked element is not the first td in the row
+                    if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
+                        openEditSoldierModal(item.id, item.name, item.country, item.upcoming_key, item.code, item.etc, item.meal_card, item.upcoming_accommodation, item.upcoming_release);
+                    }
+                });
+
+                // Append row to the table body
+                tbody.appendChild(row);
+            });
+
+            const rowsTable = assetTableBody.getElementsByTagName("tr");
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
+
+            setupTableNavigation("soldierTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalSoldierListData, currentPage, searchFilters);
+
+        } catch (error) {
+            showGlobalMess('Error', 'An error occurred while fetching upcoming data. Please try again later.');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
+        };
+    }
+
     function openSoldierListModal() {
 
         // Add the slide-in effect by adding the necessary classes
@@ -1513,163 +2186,23 @@ document.addEventListener('DOMContentLoaded', function () {
         modalListSoldierContent.classList.add('show');
         modalListSoldierContent.classList.add('slide-in');
 
-        loadingIndicator.style.display = 'flex';
+        currentPage = 1;
 
-        fetch(`/clients`, {
-            method: 'GET'
-        })
-            .then(response => response.json())
-            .then(data => {
-                // Parse the JSON string into an array of objects
-                var soldierListData = data.filter(item => item.id !== '4');
-                soldierListData = Array.from(
-                    new Map(soldierListData.map(s => [s.name.toLowerCase(), s])).values()
-                );
+        const headerDate = {
+            'Soldier number': 's.id',
+            'Soldier name': 'namesoldier',
+            'Soldier country': 'country',
+            'Upcoming key': 'upcoming_key',
+            'Bag code': 'code',
+            'Meal card': 'meal_card',
+            'Upcoming accommodation date': 'upcoming_accommodation',
+            'Upcoming release date': 'upcoming_release'
+        };
 
-                const tbody = document.getElementById('tableBodyModal');
-                const assetTableBody = document.getElementById('soldierTable').getElementsByTagName('tbody')[0];
-                tbody.innerHTML = '';
+        rewriteTableSearch('.search-input-soldier', 'soldierTable', headerDate);
 
-                allCheckedRow = []; // Reset the global array
+        fetchSoldierList();
 
-                // Dynamically create the header checkbox
-                const headerCheckbox = document.createElement('input');
-                headerCheckbox.type = 'checkbox';
-                headerCheckbox.className = 'form-check-input header-checkbox';
-                headerCheckbox.style.border = '1px solid black'; // Make the border more bold
-                headerCheckbox.style.backgroundColor = ''; // Clear any previous color
-
-                headerCheckbox.addEventListener('change', (event) => {
-                    headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
-                    const isChecked = event.target.checked;
-
-                    // Get all visible rows
-                    const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
-
-                    visibleRows.forEach(row => {
-                        const checkbox = row.querySelector('.form-check-input');
-                        if (checkbox) {
-                            checkbox.checked = isChecked;
-                            checkbox.style.backgroundColor = isChecked ? 'green' : '';
-                            if (isChecked) {
-                                allCheckedRow.push({ code: checkbox.dataset.id });
-                            } else {
-                                allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
-                            }
-                        }
-                    });
-
-                    // Ensure no duplicates in allCheckedRow
-                    if (isChecked) {
-                        allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
-                            .map(code => ({ code }));
-                    }
-                });
-
-                // Append the header checkbox to the table header
-                const thead = tbody.parentElement.querySelector('thead');
-                const headerRow = thead.querySelector('tr');
-
-                headerRow.querySelectorAll('th').forEach(th => {
-                    if (!th.textContent.trim()) {
-                        th.remove();
-                    }
-                });
-
-                const headerCell = document.createElement('th');
-                headerCell.appendChild(headerCheckbox);
-                headerRow.insertBefore(headerCell, headerRow.firstChild);
-
-                soldierListData.forEach(item => {
-                    const row = document.createElement("tr");
-                    row.classList.add('data-soldier');
-
-                    // Add the checkbox cell
-                    const checkboxCell = document.createElement('td');
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'form-check-input';
-                    checkbox.dataset.id = item.id;
-                    checkbox.style.border = '1px solid black'; // Make the border more bold
-
-                    // Add change event to the checkbox
-                    checkbox.addEventListener('change', () => {
-                        if (checkbox.checked) {
-                            checkbox.style.backgroundColor = 'green';
-                            allCheckedRow.push({ code: item.id });
-                        } else {
-                            checkbox.style.backgroundColor = '';
-                            allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
-                        }
-                    });
-
-                    checkboxCell.appendChild(checkbox);
-                    row.appendChild(checkboxCell);
-
-                    // Room number cell
-                    const codeCell = document.createElement("td");
-                    codeCell.textContent = item.id;
-                    row.appendChild(codeCell);
-
-                    // Room status cell
-                    const nameCell = document.createElement("td");
-                    nameCell.textContent = item.name;
-                    row.appendChild(nameCell);
-
-                    // Room status cell
-                    const countryCell = document.createElement("td");
-                    countryCell.textContent = item.country;
-                    row.appendChild(countryCell);
-
-                    const upcomingKeyCell = document.createElement("td");
-                    upcomingKeyCell.textContent = item.upcoming_key || "N/A";
-                    row.appendChild(upcomingKeyCell);
-
-                    const bagCodeCell = document.createElement("td");
-                    bagCodeCell.textContent = item.code || "N/A";
-                    row.appendChild(bagCodeCell);
-
-                    const mealCardCell = document.createElement("td");
-                    mealCardCell.textContent = item.meal_card || "N/A";
-                    row.appendChild(mealCardCell);
-
-                    const upcoming_accommodation = document.createElement("td");
-                    const accommodationDate = new Date(item.upcoming_accommodation);
-                    upcoming_accommodation.textContent = item.upcoming_accommodation
-                        ? accommodationDate.toLocaleDateString()
-                        : 'N/A';
-                    row.appendChild(upcoming_accommodation);
-
-                    const upcoming_release = document.createElement("td");
-                    const releaseDate = new Date(item.upcoming_release);
-                    upcoming_release.textContent = item.upcoming_release
-                        ? releaseDate.toLocaleDateString()
-                        : 'N/A';
-                    row.appendChild(upcoming_release);
-
-                    // Attach click event for each row
-                    row.addEventListener('click', (event) => {
-                        // Check if the clicked element is not the first td in the row
-                        if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
-                            openEditSoldierModal(item.id, item.name, item.country, item.upcoming_key, item.code, item.etc, item.meal_card, item.upcoming_accommodation, item.upcoming_release);
-                        }
-                    });
-
-                    // Append row to the table body
-                    tbody.appendChild(row);
-                });
-
-                const rowsTable = assetTableBody.getElementsByTagName("tr");
-                firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
-
-                setupTableNavigation("soldierTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
-            })
-            .catch(error => console.error("Error fetching keys:", error))
-            .finally(() => {
-                loadingIndicator.style.display = 'none';
-            })
-
-        // Ensure that any 'slide-out' class is removed if it was previously added
         modalListSoldierContent.classList.remove('slide-out');
     }
 
@@ -1685,6 +2218,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.checked = false;
                 input.style.backgroundColor = '';
             });
+
+            allCheckedRow = [];
 
             document.querySelectorAll('.search-input-soldier').forEach((input) => {
                 input.value = '';
@@ -1768,86 +2303,129 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    async function fetchUpcomingAction(page = 1, limit = 10, searchFilters = []) {
+
+        const tbody = document.getElementById('upcomingActionTableBodyModal');
+        const upcomingActionTableBody = document.getElementById('upcomingActionTable').getElementsByTagName('tbody')[0];
+        tbody.innerHTML = '';
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+
+            const searchParams = new URLSearchParams({
+                page,
+                limit
+            });
+
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            const response = await fetch(`/getUpcomingAction?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showGlobalMess('Error', error.message);
+                return;
+            }
+
+            const { upcomingActionData, totalUpcomingAction } = await response.json();
+
+            upcomingActionData.forEach(item => {
+                const row = document.createElement("tr");
+                row.classList.add('data-upcoming-action');
+
+                // Room status cell
+                const nameCell = document.createElement("td");
+                nameCell.textContent = item.name;
+                nameCell.classList.add("text-wrap");
+                nameCell.style = "max-width: 200px;";
+                row.appendChild(nameCell);
+
+                const bagCell = document.createElement("td");
+                bagCell.textContent = item.code || 'N/A';
+                bagCell.classList.add("text-wrap");
+                bagCell.style = "max-width: 200px;";
+                row.appendChild(bagCell);
+
+                const mealCardCell = document.createElement("td");
+                mealCardCell.textContent = item.meal_card || 'N/A';
+                mealCardCell.classList.add("text-wrap");
+                mealCardCell.style = "max-width: 200px;";
+                row.appendChild(mealCardCell);
+
+                const upcoming_key = document.createElement("td");
+                upcoming_key.textContent = allKeys.find(key => key.id === item.upcoming_accommodation_key)
+                    ? allKeys.find(key => key.id === item.upcoming_accommodation_key).name
+                    : 'N/A';
+                upcoming_key.classList.add("text-wrap");
+                upcoming_key.style = "max-width: 200px;";
+                row.appendChild(upcoming_key);
+
+                const upcoming_accommodation = document.createElement("td");
+                const accommodationDate = formatDate(item.upcoming_accommodation);
+                upcoming_accommodation.textContent = item.upcoming_accommodation
+                    ? accommodationDate
+                    : 'N/A';
+                upcoming_accommodation.classList.add("text-wrap");
+                upcoming_accommodation.style = "max-width: 200px;";
+                row.appendChild(upcoming_accommodation);
+
+                const upcoming_release = document.createElement("td");
+                const releaseDate = formatDate(item.upcoming_release);
+                upcoming_release.textContent = item.upcoming_release
+                    ? releaseDate
+                    : 'N/A';
+                upcoming_release.classList.add("text-wrap");
+                upcoming_release.style = "max-width: 200px;";
+                row.appendChild(upcoming_release);
+
+                // Append row to the table body
+                tbody.appendChild(row);
+            });
+
+            const rowsTable = upcomingActionTableBody.getElementsByTagName("tr");
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumberFourth');
+
+            setupTableNavigation("upcomingActionTable", "prevBtnFourth", "nextBtnFourth", "pageNumberFourth", limit, totalUpcomingAction, currentPage, searchFilters);
+
+        } catch (error) {
+            showGlobalMess('Error', 'An error occurred while fetching upcoming data. Please try again later.');
+
+        } finally {
+            loadingIndicator.style.display = 'none';
+        };
+    }
+
     function openUpcomingActionSoldierListModal() {
 
-        const formatDate = (date) => {
-            const accommodationDate = new Date(date);
-            const year = accommodationDate.getFullYear();
-            const month = String(accommodationDate.getMonth() + 1).padStart(2, "0");
-            const day = String(accommodationDate.getDate()).padStart(2, "0");
-            return `${year}-${month}-${day}`;
-        }
+        currentPage = 1;
+
+        const headerDate = {
+            'Soldier name': 's.namesoldier',
+            'Bag code': 'l.code',
+            'Meal card': 's.meal_card',
+            'Upcoming key': 'k.namekey',
+            'Upcoming accommodation date': 's.upcoming_accommodation',
+            'Upcoming release date': 's.upcoming_release'
+        };
+
+        rewriteTableSearch('.search-input-upcoming-action', 'upcomingActionTable', headerDate);
+
+        fetchUpcomingAction();
 
         // Add the slide-in effect by adding the necessary classes
         modalUpcomingActionSoldierList.classList.add('show');
         modalUpcomingActionSoldierListContent.classList.add('show');
         modalUpcomingActionSoldierListContent.classList.add('slide-in');
-
-        loadingIndicator.style.display = 'flex';
-
-        fetch(`/getUpcomingAction`, {
-            method: 'GET'
-        })
-            .then(response => response.json())
-            .then(data => {
-
-                const upcomingActionData = data;
-
-                const tbody = document.getElementById('upcomingActionTableBodyModal');
-                const upcomingActionTableBody = document.getElementById('upcomingActionTable').getElementsByTagName('tbody')[0];
-                tbody.innerHTML = '';
-
-                upcomingActionData.forEach(item => {
-                    const row = document.createElement("tr");
-                    row.classList.add('data-upcoming-action');
-
-                    // Room status cell
-                    const nameCell = document.createElement("td");
-                    nameCell.textContent = item.name;
-                    row.appendChild(nameCell);
-
-                    const bagCell = document.createElement("td");
-                    bagCell.textContent = item.code || 'N/A';
-                    row.appendChild(bagCell);
-
-                    const mealCardCell = document.createElement("td");
-                    mealCardCell.textContent = item.meal_card || 'N/A';
-                    row.appendChild(mealCardCell);
-
-                    const upcoming_key = document.createElement("td");
-                    upcoming_key.textContent = allKeys.find(key => key.id === item.upcoming_accommodation_key)
-                        ? allKeys.find(key => key.id === item.upcoming_accommodation_key).name
-                        : 'N/A';
-                    row.appendChild(upcoming_key);
-
-                    const upcoming_accommodation = document.createElement("td");
-                    const accommodationDate = formatDate(item.upcoming_accommodation);
-                    upcoming_accommodation.textContent = item.upcoming_accommodation
-                        ? accommodationDate
-                        : 'N/A';
-                    row.appendChild(upcoming_accommodation);
-
-                    const upcoming_release = document.createElement("td");
-                    const releaseDate = formatDate(item.upcoming_release);
-                    upcoming_release.textContent = item.upcoming_release
-                        ? releaseDate
-                        : 'N/A';
-                    row.appendChild(upcoming_release);
-
-                    // Append row to the table body
-                    tbody.appendChild(row);
-                });
-
-                const rowsTable = upcomingActionTableBody.getElementsByTagName("tr");
-                firstUpdateTable(rowsTable, 0, 10, 'pageNumberFourth');
-
-                setupTableNavigation("upcomingActionTable", "prevBtnFourth", "nextBtnFourth", "pageNumberFourth");
-
-            })
-            .catch(error => console.error("Error fetching keys:", error))
-            .finally(() => {
-                loadingIndicator.style.display = 'none';
-            });
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         modalUpcomingActionSoldierListContent.classList.remove('slide-out');
@@ -2263,6 +2841,12 @@ document.addEventListener('DOMContentLoaded', function () {
         modalKeyContent.classList.add('slide-out');
         modalKeyContent.classList.remove('slide-in');
 
+        document.querySelectorAll('.search-input-key-list').forEach((input) => {
+            input.value = '';
+        });
+
+        allCheckedRow = [];
+
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
             modalKey.classList.remove('show');
@@ -2286,7 +2870,128 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    function closeGlobalMessModal() {
+    function closeGlobalMessModal(action = '') {
+
+        function clearInput(clearModalInput) {
+            const inputs = clearModalInput.querySelectorAll('input, textarea, select');
+            inputs.forEach(el => {
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    el.checked = false;
+                } else {
+                    el.value = '';
+                }
+                el.classList.remove('is-valid');
+                el.classList.remove('is-invalid');
+            });
+        }
+
+        function clearMultiInput(progressBar, fileIput) {
+            document.getElementById(`${progressBar}`).style.width = 0 + "%";
+            document.getElementById(`${fileIput}`).value = '';
+        }
+
+        async function updateLeftNavigation() {
+            try {
+                const res = await fetch(`/accommodation?isFirstTime=${isFirstTime.value}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Is-Fetch': 'true'
+                    }
+                });
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    checkForGlobalError(res, error);
+                    throw new Error(error.message);
+                }
+                const { navBuild, permissions } = await res.json();
+
+                const leftNav = document.querySelector('.left-nav');
+                leftNav.innerHTML = '';
+
+                // Add title container
+                const titleContainer = document.createElement('div');
+                titleContainer.className = 'title-container mb-2 sticky-top w-100 bg-light';
+                if (permissions && !(permissions.some(p => p.permission_name === 'Full permission' || p.permission_name === 'Add destination'))) {
+                    titleContainer.style.cursor = 'not-allowed';
+                }
+
+                titleContainer.innerHTML = `
+                    <div class="btn-container" style="width: 100%;">
+                        <button type="button" id="btnAddDestination"
+                            class="btn-add-destination w-100 ${permissions && !(permissions.some(p => p.permission_name === 'Full permission' || p.permission_name === 'Add destination')) ? 'disabled-button' : ''}">
+                            <i class="bi bi-plus-circle"></i> Add Destination
+                        </button>
+                        <div class="tooltip-custom">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="tooltiptext">Add building to the list of destinations</span>
+                        </div>
+                    </div>
+                `;
+
+                // Add event listener for Add Destination button
+                titleContainer.querySelector('#btnAddDestination')?.addEventListener('click', function () {
+                    openModalDest();
+                });
+
+                leftNav.appendChild(titleContainer);
+
+                // Create the list
+                const ul = document.createElement('ul');
+
+                navBuild.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+                    const button = document.createElement('button');
+                    button.className = 'flex-grow-1 text-decoration-none full-back main-button';
+                    button.id = item.id;
+                    button.innerHTML = `${item.name}`;
+                    if (item.nameAdd) {
+                        button.innerHTML += `<span class="name-add d-block">(${item.nameAdd} free beds)</span>`;
+                    }
+
+                    const match = button.textContent.trim().match(/^(.+?)\s*\((\d+)\s*free beds\)$/);
+                    const nameOnly = mainHeader.textContent.split('(')[0].trim();
+
+                    if (item.name === nameOnly && match)
+                        mainHeader.innerHTML = `${match[1]} <div class="name-add">(${match[2]} free beds)</div>`;
+
+                    const buttonGroup = document.createElement('div');
+                    buttonGroup.classList.add("button-group");
+                    if (permissions && !(permissions.some(p => p.permission_name === 'Full permission' || p.permission_name === 'Add room' || p.permission_name === 'Remove room' || p.permission_name === 'Remove destination')))
+                        buttonGroup.style.cursor = 'not-allowed';
+
+                    buttonGroup.innerHTML = `
+                        <button type="button"
+                            class="btn btn-success btn-sm btn-add ${permissions && !(permissions.some(p => p.permission_name === 'Full permission' || p.permission_name === 'Add room')) ? 'disabled-button' : ''}"
+                            numberBuild="${item.nameBuilding}" name="${item.id}">
+                            <i class="bi bi-plus"></i>
+                        </button>
+                        <button type="button"
+                            class="btn btn-danger btn-sm btn-remove ${permissions && !(permissions.some(p => p.permission_name === 'Full permission' || p.permission_name === 'Remove room')) ? 'disabled-button' : ''}"
+                            name="${item.id}">
+                            <i class="bi bi-dash"></i>
+                        </button>
+                        <button type="button"
+                            class="btn btn-outline-secondary btn-sm ${permissions && !(permissions.some(p => p.permission_name === 'Full permission' || p.permission_name === 'Remove destination')) ? 'disabled-button' : ''}"
+                            name="${item.id}" data-name-room="${item.name}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    `;
+
+                    li.appendChild(button);
+                    li.appendChild(buttonGroup);
+                    ul.appendChild(li);
+                });
+
+                leftNav.appendChild(ul);
+
+            } catch (error) {
+                showGlobalMess('Error', error.message);
+            }
+        }
+
         // Add the slide-out effect
         modalGlobalMessContent.classList.add('slide-out');
         modalGlobalMessContent.classList.remove('slide-in');
@@ -2308,9 +3013,160 @@ document.addEventListener('DOMContentLoaded', function () {
                 deleteBtn.remove();
             }
 
+            const fullContent = document.getElementsByClassName('content')[0];
+
             if (!isWarning) {
-                // Refresh the page after the modal is closed
-                window.location.reload();
+                switch (action) {
+
+                    case 'addAdditionalItems':
+                    case 'returnAddtionalItem':
+                        clearInput(additionalItemModalContent);
+                        fetchAdditionalItem();
+                        break;
+
+                    case 'removeSoldier':
+                        allCheckedRow = [];
+                        clearInput(modalListSoldierContent);
+                        fetchSoldierList();
+                        break;
+
+                    case 'addSoldier':
+                        clearInput(modalAddSoldierContent);
+                        clearInput(modalListSoldierContent);
+                        fetchSoldierList();
+                        break;
+
+                    case 'releaseAllSoldier':
+                        closeDeleteModal();
+                        clearInput(fullContent);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'saveKey':
+                        closeModal();
+                        clearInput(modalKeyContent);
+                        clearInput(fullContent);
+                        fetchListKeys(globalCleanedRoomNumber);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'addDestination':
+                        clearInput(modalAddDestContent);
+                        clearInput(fullContent);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'addRoomToDestination':
+                        clearInput(modalRoomAddModalContent);
+                        clearInput(fullContent);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'removeRoomToDestination':
+                        clearInput(modalRoomRemoveModalContent);
+                        clearInput(fullContent);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'addKeyToRoom':
+                        clearInput(modalKeyContent);
+                        clearInput(fullContent);
+                        clearInput(modalKeyAddModalContent);
+                        fetchListKeys(globalCleanedRoomNumber);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'replaceKeyToRoom':
+                        allCheckedRow = [];
+                        clearInput(modalKeyContent);
+                        clearInput(fullContent);
+                        clearInput(modalKeyRemoveModalContent);
+                        fetchListKeys(globalCleanedRoomNumber);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'editSoldier':
+                        allCheckedRow = [];
+                        closeEditSoldierModal();
+                        clearInput(modalListSoldierContent);
+                        fetchSoldierList();
+                        break;
+
+                    case 'moveSoldier':
+                        closeMoveModal();
+                        clearInput(modalKeyContent);
+                        clearInput(fullContent);
+                        fetchListKeys(globalCleanedRoomNumber);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'removeDestination':
+                        clearInput(fullContent);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'uploadSoldier':
+                        clearMultiInput('progress', 'fileInput');
+                        clearInput(modalListSoldierContent);
+                        fetchSoldierList();
+                        break;
+
+                    case 'uploadRooms':
+                        clearMultiInput('progress-multi-room', 'fileInputRoom');
+                        clearInput(fullContent);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'uploadKeys':
+                        clearInput(modalKeyContent);
+                        clearInput(fullContent);
+                        clearMultiInput('progress-multi-key', 'fileInputKey');
+                        fetchListKeys(globalCleanedRoomNumber);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'uploadReleaseRooms':
+                        clearInput(modalKeyContent);
+                        clearInput(fullContent);
+                        clearMultiInput('progress-multi-release-rooms', 'fileInputReleaseRooms');
+                        fetchListKeys(globalCleanedRoomNumber);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'uploadMultiSoldier':
+                        clearInput(fullContent);
+                        clearMultiInput('progress-multi-soldier', 'fileInputSoldier');
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+                        break;
+
+                    case 'deleteKey':
+                        allCheckedRow = [];
+                        clearInput(modalKeyContent);
+                        clearInput(fullContent);
+                        fetchListKeys(globalCleanedRoomNumber);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        updateLeftNavigation();
+
+                }
+
+                fetchItem();
+                fetchBag();
+                fetchFreeBag();
+                fetchAllKey();
+                fetchBuilding();
             }
 
         }, 400); // Match the duration of the animation (0.4s)
@@ -2337,7 +3193,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[18].onclick = closeModalRemoveKey;
     document.getElementsByClassName('close-btn')[19].onclick = closeAdditionalItemModal;
     document.getElementsByClassName('close-btn')[20].onclick = closeReleaseRoomsModal;
-    document.getElementsByClassName('close-btn')[21].onclick = closeGlobalMessModal;
+    document.getElementsByClassName('close-btn')[21].onclick = function () {
+        closeGlobalMessModal(globalAction);
+    };
 
     // Hide dropdown if clicked outside
     window.addEventListener('click', function (event) {
@@ -2408,77 +3266,25 @@ document.addEventListener('DOMContentLoaded', function () {
         if (button && button.classList.contains('main-button')) {
             const id = button.id;
 
-            document.getElementById('room-number-header').classList.remove('ascending', 'descending');
-            document.getElementById('room-status-header').classList.remove('ascending', 'descending');
-            document.getElementById('count-free-beds-header').classList.remove('ascending', 'descending');
+            const headers = {
+                nameroom: document.getElementById('room-number-header'),
+                room_status: document.getElementById('room-status-header'),
+                countFreeBeds: document.getElementById('count-free-beds-header')
+            };
 
-            loadingIndicator.style.display = 'flex';
+            // Reset all headers by removing sort classes
+            Object.keys(headers).forEach(column => {
+                headers[column].classList.remove('ascending', 'descending');
+            });
 
-            fetch(`/accommodation?isFirstTime=true&numBuild=${id}`, {
-                method: 'GET'
-            })
-                .then(response => response.json())
-                .then(data => {
-                    nameroomSetCount = data.nameroomSetCount;
-                    document.getElementById('previewTypeBuild').value = data.type;
-                    document.getElementById('typeBuild').value = data.type;
+            const match = button.textContent.trim().match(/^(.+?)\s*\((\d+)\s*free beds\)$/);
+            if (match)
+                mainHeader.innerHTML = `${match[1]} <div class="name-add">(${match[2]} free beds)</div>`;
+            else
+                mainHeader.textContent = button.textContent;
 
-                    const headerTable = data.headerTable;
-                    const tableHeader = document.querySelector('#keyModal .modal-content .table-container table thead tr');
-                    tableHeader.innerHTML = '';
-
-                    headerTable.forEach(function (item) {
-                        const th = document.createElement('th');
-                        th.textContent = item.name;
-                        tableHeader.appendChild(th);
-                    });
-
-                    const titlePage = data.titlePage;
-                    const countBeds = data.countFreeBeds;
-
-                    document.querySelector('.col-md-auto h3 div').textContent = titlePage;
-                    if (countBeds) {
-                        document.querySelector('.col-md-auto h3 .name-add').textContent = `(${countBeds} free beds)`;
-                    } else {
-                        document.querySelector('.col-md-auto h3 .name-add').textContent = '';
-                    }
-
-                    const tbody = document.getElementById('tableBody');
-                    tbody.innerHTML = '';
-
-                    nameroomSetCount.forEach(item => {
-                        const row = document.createElement("tr");
-                        row.classList.add('data-room');
-
-                        const nameroomCell = document.createElement("td");
-                        nameroomCell.textContent = item.nameroom;
-                        row.appendChild(nameroomCell);
-
-                        const statusCell = document.createElement("td");
-                        if (item.countAllBeds == item.countFreeBeds || item.countFreeBeds != 0) {
-                            statusCell.classList.add('undefined-data');
-                        }
-                        statusCell.textContent = item.countAllBeds == item.countFreeBeds ? 'Completely free' : item.countFreeBeds != 0 ? 'Free' : 'Occupied';
-                        row.appendChild(statusCell);
-
-                        const quantityCell = document.createElement("td");
-                        quantityCell.textContent = item.countFreeBeds;
-                        row.appendChild(quantityCell);
-
-                        row.addEventListener('click', function (event) {
-                            const roomnumber = event.currentTarget.querySelector('td:nth-child(1)').textContent;
-                            document.getElementById('numBuild').value = id;
-
-                            openModalKey(roomnumber);
-                        });
-
-                        tbody.appendChild(row);
-                    });
-                })
-                .catch(error => console.error("Error fetching keys:", error))
-                .finally(() => {
-                    loadingIndicator.style.display = 'none';
-                });
+            selectedBuilding = id;
+            fetchTableData(1, mainSortedPar, selectedBuilding);
         }
     });
 
@@ -2523,7 +3329,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Close the modal if the user clicks outside of it
-    window.onclick = function (event) {
+    window.addEventListener("click", function (event) {
 
         switch (event.target) {
             case modal:
@@ -2563,7 +3369,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
 
             case modalGlobalMess:
-                closeGlobalMessModal();
+                closeGlobalMessModal(globalAction);
                 break;
 
             case modalUploadMultiSoldier:
@@ -2613,7 +3419,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeAdditionalItemModal();
                 break;
         }
-    };
+    });
 
     function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
         for (let i = 0; i < rows.length; i++) {
@@ -2625,44 +3431,84 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById(pageNumberId).textContent = `${currentPage}/${totalPages}`;
     }
 
-    async function fetchReport(selectDate1, selectDate2) {
+    async function fetchReport(selectDate1, selectDate2, page = 1, pageDate = 1, limit = 10, searchFilters = [], searchFiltersMove = []) {
 
         loadingIndicator.style.display = 'flex';
 
         try {
 
-            const response = await fetch(`/accommodation/viewReport?selectedDate1=${selectDate1}&selectedDate2=${selectDate2}`, {
-                method: 'GET'
+            const searchParams = new URLSearchParams({
+                selectedDate1: selectDate1,
+                selectedDate2: selectDate2,
+                page,
+                pageDate,
+                limit
+            });
+
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            searchFiltersMove.forEach(filter => {
+                searchParams.append('searchColumnDate', filter.column);
+                searchParams.append('searchValueDate', filter.value);
+            });
+
+            const response = await fetch(`/accommodation/viewReport?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
             if (!response.ok) {
                 const error = await response.json();
-                console.error('Error fetching the report:', error.details || 'Network response was not ok');
+                checkForGlobalError(response, error);
+                showGlobalMess('Error', error.message);
+                return;
             }
 
-            const { data, data_move } = await response.json();
+            const { data, data_move, totalPages, totalPagesMove } = await response.json();
 
             // Clear existing rows from bike usage details table
             const soldierUsageTableBody = document.getElementById('soldierUsageTable').getElementsByTagName('tbody')[0];
             const soldierMoveTableBody = document.getElementById('soldierMoveTable').getElementsByTagName('tbody')[0];
 
+            soldierUsageTableBody.innerHTML = '';
+            soldierMoveTableBody.innerHTML = '';
+
             data.forEach(row => {
                 const newRow = soldierUsageTableBody.insertRow();
-                newRow.insertCell().textContent = row.namekey ? row.namekey : 'No key assigned';
-                newRow.insertCell().textContent = row.namesoldier;
-                newRow.insertCell().textContent = row.country;
-                newRow.insertCell().textContent = row.date_accommodation ? row.date_accommodation : 'Not accommodated';
-                newRow.insertCell().textContent = row.date_free ? row.date_free : 'No departure date';
-                newRow.insertCell().textContent = row.meal_card ? row.meal_card : 'No meal card set';
-                newRow.insertCell().textContent = row.code ? row.code : 'No bag set';
+                [
+                    row.namekey ? row.namekey : 'No key assigned',
+                    row.namesoldier,
+                    row.country,
+                    row.date_accommodation ? row.date_accommodation : 'Not accommodated',
+                    row.date_free ? row.date_free : 'No departure date',
+                    row.meal_card ? row.meal_card : 'No meal card set',
+                    row.code ? row.code : 'No bag set'
+                ].forEach(cellValue => {
+                    const cell = newRow.insertCell();
+                    cell.textContent = cellValue;
+                    cell.style = "max-width: 200px;";
+                    cell.classList.add('text-wrap');
+                });
             });
 
             data_move.forEach(row => {
                 const newRow = soldierMoveTableBody.insertRow();
-                newRow.insertCell().textContent = row.previous_room;
-                newRow.insertCell().textContent = row.current_room;
-                newRow.insertCell().textContent = row.name_soldier;
-                newRow.insertCell().textContent = row.datemove;
+                [
+                    row.previous_room,
+                    row.current_room,
+                    row.name_soldier,
+                    row.datemove
+                ].forEach(cellValue => {
+                    const cell = newRow.insertCell();
+                    cell.textContent = cellValue;
+                    cell.style = "max-width: 200px;";
+                    cell.classList.add('text-wrap');
+                });
             });
 
             const rowsTable = soldierUsageTableBody.getElementsByTagName("tr");
@@ -2671,11 +3517,12 @@ document.addEventListener('DOMContentLoaded', function () {
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
             firstUpdateTable(rowsTableMove, 0, 10, 'pageNumberDate');
 
-            setupTableNavigation("soldierUsageTable", "prevBtn", "nextBtn", "pageNumber");
-            setupTableNavigation("soldierMoveTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+            setupTableNavigation("soldierUsageTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, currentPage, searchFilters, searchFiltersMove, "", selectDate1, selectDate2);
+            setupTableNavigation("soldierMoveTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesMove, secondCurrentPage, searchFilters, searchFiltersMove, "", selectDate1, selectDate2);
 
         } catch (error) {
-            console.error('Error fetching the report:', error);
+            showGlobalMess('Error', 'Cannot fetch report data');
+
         } finally {
             loadingIndicator.style.display = 'none';
         }
@@ -2795,7 +3642,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const selectDate1 = document.getElementById('selectedDate1').value;
         const selectDate2 = document.getElementById('selectedDate2').value;
-        const today = new Date().toISOString().split('T')[0];
 
         if (!selectDate1 || !selectDate2) {
             showGlobalMess('Error', 'Both dates must be selected!');
@@ -2808,6 +3654,32 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         closeViewReportModal();
+
+        currentPage = 1;
+        secondCurrentPage = 1;
+
+        const headerMap = {
+            'Room Number': 'k.namekey',
+            'Soldier Name': 'namesoldier',
+            'Country': 'country',
+            'Accommodation Date': 'date_accommodation',
+            'Release Date': 'date_free',
+            'Meal card': 'meal_card',
+            'Laundry bag': 'code'
+        };
+
+        const headerDateMap = {
+            'Previous Key': 'k_previous.namekey',
+            'New Key': 'k_current.namekey',
+            'Soldier': 'soldier_name.namesoldier',
+            'Date Relocation': 'ms.datemove'
+        };
+
+        rewriteTableSearch('.search-input-view', 'soldierUsageTable', headerMap, selectDate1, selectDate2);
+        rewriteTableSearch('.search-input-view-second', 'soldierMoveTable', headerDateMap, selectDate1, selectDate2);
+
+        globalSelectDate1 = selectDate1;
+        globalSelectDate2 = selectDate2;
 
         fetchReport(selectDate1, selectDate2);
         openViewModal();
@@ -2846,11 +3718,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                result = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, result);
                     isError = true;
                 }
-
-                result = await response.json();
             }
 
             loadingIndicator.style.display = 'none';
@@ -2862,7 +3735,12 @@ document.addEventListener('DOMContentLoaded', function () {
         // Wait for the modal to close, then check if the submit button was clicked
         const observer = new MutationObserver(() => {
             if (!modalGlobalMess.classList.contains('show') && isRemove) {
-                modalGlobalMessContent.removeChild(submitButton);
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
             }
         });
 
@@ -2873,6 +3751,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!modalGlobalMess.classList.contains('show') && isRemove) {
                 closeWarningObserver.disconnect();
                 if (isRemove && !isError) {
+                    globalAction = 'removeSoldier';
                     showGlobalMess('Info', 'Soldiers removed successfully');
                 } else if (isError) {
                     showGlobalMess('Error', result.message);
@@ -2906,48 +3785,6 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const table1 = document.getElementById("soldierUsageTable");
-            const rows1 = Array.from(table1.querySelectorAll("tbody tr"));
-
-            const table2 = document.getElementById("soldierMoveTable");
-            const rows2 = Array.from(table2.querySelectorAll("tbody tr"));
-
-            const data = rows1
-                .map((row) => {
-                    const cells = row.querySelectorAll("td");
-                    return {
-                        roomNumber: cells[0]?.innerText.trim(),
-                        soldierName: cells[1]?.innerText.trim(),
-                        country: cells[2]?.innerText.trim(),
-                        dateIn: cells[3]?.innerText.trim(),
-                        dateOut: cells[4]?.innerText.trim(),
-                        mealCard: cells[5]?.innerText.trim(),
-                        laundryBag: cells[6]?.innerText.trim(),
-                    };
-                }).filter(row => row.soldierName); // Exclude empty rows
-
-            const data_1 = rows2
-                .map((row) => {
-                    const cells = row.querySelectorAll("td");
-                    return {
-                        oldRoom: cells[0]?.innerText.trim(),
-                        newRoom: cells[1]?.innerText.trim(),
-                        soldierName: cells[2]?.innerText.trim(),
-                        dateRelock: cells[3]?.innerText.trim(),
-                    };
-                }).filter(row => row.oldRoom); // Exclude empty rows
-
-            // Collect filter values if the search inputs are visible
-            const filtersSoldier = {};
-            document.querySelectorAll('.search-input-view').forEach(input => {
-                filtersSoldier[input.name || input.id] = input.value.trim();
-            });
-
-            // Collect filter values if the search inputs are visible
-            const filtersSoldierMove = {};
-            document.querySelectorAll('.search-input-view-second').forEach(input => {
-                filtersSoldierMove[input.name || input.id] = input.value.trim();
-            });
 
             const response = await fetch(document.getElementById('form2').action, {
                 method: 'POST',
@@ -2956,10 +3793,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Content-Type': 'application/json',
                     'CSRF-Token': csrfToken
                 },
-                body: JSON.stringify({ result: data, result_nationality: data_1, filtersSoldier: filtersSoldier, filtersSoldierMove: filtersSoldierMove })
+                body: JSON.stringify({
+                    selectedDate1: globalSelectDate1,
+                    selectedDate2: globalSelectDate2,
+                    filtersAccommodation: globalSearchFilters,
+                    filtersAccommodationDate: globalSearchFiltersDate
+                })
             });
 
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                throw new Error(error.message);
+            }
 
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
@@ -2970,9 +3816,9 @@ document.addEventListener('DOMContentLoaded', function () {
             a.click();
             a.remove();
             window.URL.revokeObjectURL(downloadUrl);
+
         } catch (error) {
-            console.error('Error:', error);
-            alert(error.message || 'Failed to download the report.');
+            showGlobalMess('Error', error.message || 'Failed to download the report.');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -3047,7 +3893,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    closeAddMultiSoldierModal();
+                    globalAction = 'uploadSoldier';
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
@@ -3056,24 +3902,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.errors) {
                     data.errors.forEach(error => {
                         if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'InvalidDate' || error.type === 'CheckBag' || error.type === 'CheckKey') {
-                            closeAddMultiSoldierModal();
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {
-                            closeAddMultiSoldierModal();
                             showGlobalMess("Error", `Invalid data in row with Id: ${error.row.soldierId}. Check the syntax of data in this rows.`);
                         }
                     });
                 } else {
-                    closeAddMultiSoldierModal();
                     showGlobalMess("Error", data.error || "File upload failed.");
                 }
             }
         };
 
         xhr.onerror = function () {
-            console.error('Error:', xhr.statusText);
             loadingIndicator.style.display = 'none';
-            closeAddMultiSoldierModal();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -3121,7 +3962,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    closeModalAddMultiRoom();
+                    globalAction = 'uploadRooms';
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
@@ -3130,24 +3971,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.errors) {
                     data.errors.forEach(error => {
                         if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'InvalidDate' || error.type === 'CheckBag' || error.type === 'CheckKey') {
-                            closeModalAddMultiRoom();
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {
-                            closeModalAddMultiRoom();
                             showGlobalMess("Error", `Invalid data in row with Id: ${error.row.roomId}. Check the syntax of data in this rows.`);
                         }
                     });
                 } else {
-                    closeModalAddMultiRoom();
                     showGlobalMess("Error", data.error || "File upload failed.");
                 }
             }
         };
 
         xhr.onerror = function () {
-            console.error('Error:', xhr.statusText);
             loadingIndicator.style.display = 'none';
-            closeModalAddMultiRoom();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -3195,7 +4031,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    closeModalAddMultiKey();
+                    globalAction = 'uploadKeys';
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
@@ -3204,24 +4040,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.errors) {
                     data.errors.forEach(error => {
                         if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'InvalidDate' || error.type === 'CheckBag' || error.type === 'CheckKey') {
-                            closeModalAddMultiKey();
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {
-                            closeModalAddMultiKey();
                             showGlobalMess("Error", `Invalid data in row with Id: ${error.row.keyId}. Check the syntax of data in this rows.`);
                         }
                     });
                 } else {
-                    closeModalAddMultiKey();
                     showGlobalMess("Error", data.error || "File upload failed.");
                 }
             }
         };
 
         xhr.onerror = function () {
-            console.error('Error:', xhr.statusText);
             loadingIndicator.style.display = 'none';
-            closeModalAddMultiKey();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -3269,7 +4100,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    closeReleaseRoomsModal();
+                    globalAction = 'uploadReleaseRooms';
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
@@ -3278,24 +4109,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.errors) {
                     data.errors.forEach(error => {
                         if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat' || error.type === 'CheckBike' || error.type === 'CheckBag' || error.type === 'CheckAI') {
-                            closeReleaseRoomsModal();
                             showGlobalMess("Error", error.message);
                         } else if (error.type === 'Validation') {
-                            closeReleaseRoomsModal();
                             showGlobalMess("Error", `Invalid data in row with key name: ${error.row.keyName}. Check the syntax of data in this rows.`);
                         }
                     });
                 } else {
-                    closeReleaseRoomsModal();
                     showGlobalMess("Error", data.error || "File upload failed.");
                 }
             }
         };
 
         xhr.onerror = function () {
-            console.error('Error:', xhr.statusText);
             loadingIndicator.style.display = 'none';
-            closeReleaseRoomsModal();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -3343,7 +4169,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    closeUploadMultiSoldierModal();
+                    globalAction = 'uploadMultiSoldier';
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
@@ -3371,14 +4197,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     showGlobalMess("Error", data.error || "File upload failed.");
                 }
 
-                closeUploadMultiSoldierModal();
             }
         };
 
         xhr.onerror = function () {
-            console.error('Error:', xhr.statusText);
             loadingIndicator.style.display = 'none';
-            closeUploadMultiSoldierModal();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -3455,6 +4278,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseData = await response.json();
 
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
@@ -3489,6 +4313,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
+                    globalAction = 'addSoldier'
                     showGlobalMess('Info', 'Soldier successfully added');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while adding the soldier');
@@ -3606,6 +4431,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseData = await response.json();
 
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
@@ -3640,7 +4466,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeDeleteModal();
+                    globalAction = 'releaseAllSoldier'
                     showGlobalMess('Info', 'All rooms in the building have been released');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while releasing the rooms');
@@ -3665,6 +4491,14 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('form1').onsubmit = async function (event) {
 
         event.preventDefault(); // Prevent default form submission
+
+        const soldierId = document.getElementById('selectedSoldierId').value;
+        const bagId = document.getElementById('selectedBagId').value;
+
+        if (soldierId && bagId && !bags.find(bag => bag.id === bagId)) {
+            showGlobalMess('Error', 'This bag was given to another soldier');
+            return;
+        }
 
         const data = {
             keyCodeId: document.getElementById('key-code-value').value,
@@ -3703,6 +4537,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseData = await response.json();
 
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
@@ -3737,6 +4572,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
+                    globalAction = 'saveKey';
                     showGlobalMess('Info', 'Soldier accommodation successfully');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while accommodation the soldier');
@@ -3822,6 +4658,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseData = await response.json();
 
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
@@ -3857,7 +4694,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeModalDest();
+                    globalAction = 'addDestination';
                     showGlobalMess('Info', 'Building successfully added');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while adding the building');
@@ -3949,6 +4786,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseData = await response.json();
 
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
@@ -3984,7 +4822,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeModalAddRoom();
+                    globalAction = 'addRoomToDestination';
                     showGlobalMess('Info', 'Room successfully added');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while adding the room');
@@ -4041,6 +4879,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseData = await response.json();
 
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
@@ -4076,7 +4915,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeModalRemoveRoom();
+                    globalAction = 'removeRoomToDestination';
                     showGlobalMess('Info', 'Room successfully removed');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while removing the room');
@@ -4157,6 +4996,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseData = await response.json();
 
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
@@ -4192,7 +5032,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeModalAddKey();
+                    globalAction = 'addKeyToRoom';
                     showGlobalMess('Info', 'Key successfully added');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while adding the key');
@@ -4264,6 +5104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseData = await response.json();
 
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
@@ -4299,7 +5140,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeModalRemoveKey();
+                    globalAction = 'replaceKeyToRoom';
                     showGlobalMess('Info', 'Key successfully renamed');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while renaming the key');
@@ -4384,6 +5225,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseData = await response.json();
 
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
@@ -4419,7 +5261,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeEditSoldierModal();
+                    globalAction = 'editSoldier';
                     showGlobalMess('Info', 'Soldier successfully edited');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while editing the soldier');
@@ -4494,6 +5336,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseData = await response.json();
 
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
@@ -4529,7 +5372,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeAdditionalItemModal();
+                    globalAction = 'addAdditionalItems';
                     showGlobalMess('Info', 'Additional item successfully added');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while adding the additional item');
@@ -4592,7 +5435,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     setTimeout(async () => {
                         moveList.push({ keyId, soldId, keyMoveId, soldMoveId });
                         if (moveList.length > 0) {
-                            await fetch('/accommodation/moveSoldier', {
+                            const respons = await fetch('/accommodation/moveSoldier', {
                                 method: 'POST',
                                 credentials: 'include',
                                 headers: {
@@ -4601,8 +5444,17 @@ document.addEventListener('DOMContentLoaded', function () {
                                 },
                                 body: JSON.stringify({ moves: moveList })
                             });
+
+                            if (!respons.ok) {
+                                const error = await respons.json();
+                                checkForGlobalError(respons, error);
+                                throw new Error(error.message || 'Unknown error');
+                            }
+
+                            globalAction = 'moveSoldier';
                             showGlobalMess('Info', 'Soldier(s) moved successfully!');
                         } else {
+                            globalAction = '';
                             showGlobalMess('Info', 'No data to move.');
                         }
                     }, 500); // Adjust timeout if needed
@@ -4616,7 +5468,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     setTimeout(async () => {
                         moveList.push({ keyId, soldId, keyMoveId, soldMoveId: '' });
                         if (moveList.length > 0) {
-                            await fetch('/accommodation/moveSoldier', {
+                            const respons = await fetch('/accommodation/moveSoldier', {
                                 method: 'POST',
                                 credentials: 'include',
                                 headers: {
@@ -4625,6 +5477,14 @@ document.addEventListener('DOMContentLoaded', function () {
                                 },
                                 body: JSON.stringify({ moves: moveList })
                             });
+
+                            if (!respons.ok) {
+                                const error = await respons.json();
+                                checkForGlobalError(respons, error);
+                                throw new Error(error.message || 'Unknown error');
+                            }
+
+                            globalAction = 'moveSoldier';
                             showGlobalMess('Info', 'Soldier(s) moved successfully!');
                         }
                     }, 500); // Adjust timeout if needed
@@ -4635,7 +5495,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         } catch (error) {
-            console.error('Error handling soldier relocation:', error);
+            showGlobalMess('Error', error.message);
+
         } finally {
             loadingIndicator.style.display = 'none';
         }
@@ -4653,122 +5514,189 @@ document.addEventListener('DOMContentLoaded', function () {
         handleSoldierRelocation();
     };
 
-    // Track sort order and priority for each column
-    let sortOrder = {
-        nameroom: true, // true means ascending, false means descending
-        status: true,
-        countFreeBeds: true
-    };
+    function buildQueryParams(page, mainSortedPar, numBuild) {
+        const offset = (page - 1) * mainRowsPerPage;
+        const params = new URLSearchParams({
+            numBuild: numBuild,
+            isFirstTime: isFirstTime.value,
+            limit: mainRowsPerPage,
+            offset: offset
+        });
 
-    // Maintain the sort priority sequence
-    let sortPriority = [];
-    var nameroomSetCount;
-    var numBuild;
+        if (Object.keys(mainSortedPar).length > 0) {
+            params.append('sortedColumn', mainSortedPar.column);
+            params.append('sortedDirection', mainSortedPar.direction);
+        }
 
-    switch (typeBuild.value) {
-        case 'Entrance':
-            numBuild = 'E';
-            break;
+        filters.forEach(filter => {
+            params.append('searchColumn', filter.column);
+            params.append('searchValue', filter.value);
+        });
 
-        case 'Dryer':
-            numBuild = 'D';
-            break;
-
-        default:
-            numBuild = document.getElementById('numBuild').value;
-            break;
+        return params.toString();
     }
 
-    loadingIndicator.style.display = 'flex';
+    async function fetchTableData(page, mainSortedPar = {}, numBuild = "") {
+        const query = buildQueryParams(page, mainSortedPar, numBuild);
+        try {
+            const res = await fetch(`/accommodation?${query}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
 
-    fetch(`/accommodation?isFirstTime=true&numBuild=${numBuild}`, {
-        method: 'GET'
-    })
-        .then(response => response.json())
-        .then(data => {
-            // Parse the JSON string into an array of objects
-            nameroomSetCount = data.nameroomSetCount;
-        })
-        .catch(error => console.error("Error fetching keys:", error))
-        .finally(() => {
-            loadingIndicator.style.display = 'none';
+            if (!res.ok) {
+                const error = await res.json();
+                checkForGlobalError(res, error);
+                throw new Error(error.message);
+            }
+            const { nameroomSetCount, totalCount, totalFreeBeds, totalOccupiedBeds, buildType } = await res.json();
+
+            mainTotalRows = parseInt(totalCount);
+            mainCurrentPage = page;
+            document.getElementById('freeBed').value = totalFreeBeds;
+            document.getElementById('totalOccupiedBeds').value = totalOccupiedBeds;
+
+            typeBuild.value = buildType;
+            document.getElementById('previewTypeBuild').value = buildType;
+
+            renderTable(nameroomSetCount);
+            renderPagination();
+        } catch (error) {
+            showGlobalMess('Error', error.message);
+        }
+    }
+
+    function renderTable(data) {
+        const rows = data.map(item => {
+            const isCompletelyFree = item.countAllBeds == item.countFreeBeds;
+            const isPartiallyFree = item.countFreeBeds != 0;
+            const statusClass = (isCompletelyFree || isPartiallyFree) ? 'undefined-data' : '';
+
+            return `
+            <tr class="data-room" data-room="${item.nameroom}">
+                <td class="text-wrap" style="max-width: 200px;">${item.nameroom}</td>
+                <td class="text-wrap ${statusClass}" style="max-width: 200px;">${item.roomStatus}</td>
+                <td>${item.countFreeBeds}</td>
+            </tr>`;
+        }).join("");
+
+        tableBody.innerHTML = rows;
+
+        // Use event delegation instead of per-row listeners
+        tableBody.onclick = (e) => {
+            const row = e.target.closest('.data-room');
+            if (row) openModalKey(row.dataset.room);
+        };
+    }
+
+    function renderPagination() {
+        const pageCount = Math.ceil(mainTotalRows / mainRowsPerPage) || 1;
+        const fragment = document.createDocumentFragment();
+
+        function createPageItem(page, isActive = false) {
+            const li = document.createElement("li");
+            li.className = "page-item" + (isActive ? " active" : "");
+            li.innerHTML = `<a class="page-link" href="#">${page}</a>`;
+            li.querySelector("a").onclick = (e) => {
+                e.preventDefault();
+                fetchTableData(page, mainSortedPar, selectedBuilding);
+            };
+            return li;
+        }
+
+        // prev
+        const prevBtn = document.createElement("li");
+        prevBtn.className = "page-item";
+        prevBtn.innerHTML = `<a class="page-link">&laquo;</a>`;
+        prevBtn.onclick = (e) => {
+            e.preventDefault();
+            if (mainCurrentPage > 1) fetchTableData(mainCurrentPage - 1, mainSortedPar, selectedBuilding);
+        };
+        fragment.appendChild(prevBtn);
+
+        const maxVisiblePages = 5;
+        const halfVisible = Math.floor(maxVisiblePages / 2);
+        let startPage = Math.max(1, mainCurrentPage - halfVisible);
+        let endPage = Math.min(pageCount, mainCurrentPage + halfVisible);
+
+        if (mainCurrentPage <= halfVisible) {
+            endPage = Math.min(pageCount, maxVisiblePages);
+        } else if (mainCurrentPage > pageCount - halfVisible) {
+            startPage = Math.max(1, pageCount - maxVisiblePages + 1);
+        }
+
+        if (startPage > 1) {
+            fragment.appendChild(createPageItem(1));
+            if (startPage > 2) {
+                const ellipsis = document.createElement("li");
+                ellipsis.className = "page-item disabled";
+                ellipsis.innerHTML = `<span class="page-link">...</span>`;
+                fragment.appendChild(ellipsis);
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            fragment.appendChild(createPageItem(i, i === mainCurrentPage));
+        }
+
+        if (endPage < pageCount) {
+            if (endPage < pageCount - 1) {
+                const ellipsis = document.createElement("li");
+                ellipsis.className = "page-item disabled";
+                ellipsis.innerHTML = `<span class="page-link">...</span>`;
+                fragment.appendChild(ellipsis);
+            }
+            fragment.appendChild(createPageItem(pageCount));
+        }
+
+        // next
+        const nextBtn = document.createElement("li");
+        nextBtn.className = "page-item";
+        nextBtn.innerHTML = `<a class="page-link">&raquo;</a>`;
+        nextBtn.onclick = (e) => {
+            e.preventDefault();
+            if (mainCurrentPage < pageCount) fetchTableData(mainCurrentPage + 1, mainSortedPar, selectedBuilding);
+        };
+        fragment.appendChild(nextBtn);
+
+        pagination.innerHTML = "";
+        pagination.appendChild(fragment);
+    }
+
+    renderPagination();
+
+    // Attach filter input events
+    document.querySelectorAll('.search-input').forEach((input, index) => {
+        const headerLabel = headerCells[index]?.innerText.trim();
+        const columnName = mainHeaderMap[headerLabel];
+
+        input.addEventListener('input', () => {
+            const searchTerm = input.value.trim().toLowerCase();
+
+            filters = filters.filter(f => f.column !== columnName);
+
+            if (columnName && searchTerm) {
+                filters.push({ column: columnName, value: searchTerm });
+            }
+
+            fetchTableData(1, mainSortedPar, selectedBuilding);
         });
+    });
 
     // Function to sort data and update the table
     function sortTableData(column) {
 
-        // Toggle sort order for the clicked column
         sortOrder[column] = !sortOrder[column];
+        const direction = sortOrder[column] ? 'asc' : 'desc';
 
-        // Update sort priority for multi-sort
-        const index = sortPriority.indexOf(column);
-        if (index > -1) {
-            sortPriority.splice(index, 1);
-        }
-        sortPriority.unshift(column);
-
-        // Sort nameroomSetCount array using multiple columns based on sortPriority
-        nameroomSetCount.sort((a, b) => {
-            for (let i = 0; i < sortPriority.length; i++) {
-                const col = sortPriority[i];
-                let valA, valB;
-
-                if (col === 'nameroom') {
-                    valA = a.nameroom.toLowerCase();
-                    valB = b.nameroom.toLowerCase();
-                } else if (col === 'status') {
-                    valA = a.countAllBeds == a.countFreeBeds ? 'Completely free' : a.countFreeBeds != 0 ? "Free" : "Occupied";
-                    valB = b.countAllBeds == b.countFreeBeds ? 'Completely free' : b.countFreeBeds != 0 ? "Free" : "Occupied";
-                } else if (col === 'countFreeBeds') {
-                    valA = a.countFreeBeds;
-                    valB = b.countFreeBeds;
-                }
-
-                // Compare values for the current column
-                if (valA < valB) return sortOrder[col] ? -1 : 1;
-                if (valA > valB) return sortOrder[col] ? 1 : -1;
-            }
-            return 0;
-        });
-
-        // Clear existing rows in the table
-        const tbody = document.getElementById("tableBody");
-        tbody.innerHTML = "";
-
-        // Populate table with sorted data
-        nameroomSetCount.forEach(item => {
-            const row = document.createElement("tr");
-            row.classList.add("data-room");
-
-            // Room number cell
-            const nameroomCell = document.createElement("td");
-            nameroomCell.textContent = item.nameroom;
-            row.appendChild(nameroomCell);
-
-            // Room status cell
-            const statusCell = document.createElement("td");
-            if (item.countAllBeds == item.countFreeBeds || item.countFreeBeds != 0) {
-                statusCell.classList.add('undefined-data');
-            }
-            statusCell.textContent = item.countAllBeds == item.countFreeBeds ? 'Completely free' : item.countFreeBeds != 0 ? 'Free' : 'Occupied';
-            row.appendChild(statusCell);
-
-            // Count free beds cell
-            const countFreeBedsCell = document.createElement("td");
-            countFreeBedsCell.textContent = item.countFreeBeds;
-            row.appendChild(countFreeBedsCell);
-
-            // Attach click event for each row
-            row.addEventListener('click', function () {
-                openModalKey(item.nameroom);
-            });
-
-            // Append row to the table body
-            tbody.appendChild(row);
-        });
+        mainSortedPar = { column, direction };
 
         // Update column headers with sort indicators
         updateSortIndicators(column);
+
+        fetchTableData(1, mainSortedPar, selectedBuilding);
     }
 
     // Function to update sort indicators on column headers
@@ -4776,7 +5704,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Get header elements
         const headers = {
             nameroom: document.getElementById('room-number-header'),
-            status: document.getElementById('room-status-header'),
+            room_status: document.getElementById('room-status-header'),
             countFreeBeds: document.getElementById('count-free-beds-header')
         };
 
@@ -4799,7 +5727,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('room-status-header').addEventListener('click', function () {
-        sortTableData('status');
+        sortTableData('room_status');
     });
 
     document.getElementById('count-free-beds-header').addEventListener('click', function () {
@@ -4846,12 +5774,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
 
                         if (response.ok) {
-                            // Show a success message and refresh the page
-                            showGlobalMess("Success", `${nameBuild} has been deleted.`);
+                            globalAction = 'removeDestination';
+                            showGlobalMess('Info', `${nameBuild} has been deleted.`);
                             deleteBtn.remove();
                         } else {
                             // Handle the error response
                             const errorData = await response.json();
+                            checkForGlobalError(response, errorData);
                             showGlobalMess("Error", errorData.message || "Failed to delete the building.");
                             deleteBtn.remove();
 
@@ -4861,7 +5790,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         deleteBtn.remove();
                     }
                 } catch (error) {
-                    console.error("Error:", error);
                     showGlobalMess("Error", "An unexpected error occurred.");
                     deleteBtn.remove();
 
@@ -4905,6 +5833,83 @@ document.addEventListener('DOMContentLoaded', function () {
         openModalRemoveKey();
     });
 
+    document.getElementById('deleteKey').addEventListener('click', async () => {
+        const submitButton = document.createElement('button');
+        var isRemove = false;
+        var isError = false;
+        var result = {};
+
+        if (allCheckedRow.length === 0) {
+            showGlobalMess('Error', 'You have not selected any keys to remove');
+            return;
+        }
+
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
+        submitButton.addEventListener('click', async () => {
+
+            loadingIndicator.style.display = 'flex';
+
+            for (const data of allCheckedRow) {
+
+                isRemove = true;
+
+                const response = await fetch('/accommodation/deleteKeys', {
+                    method: 'DELETE',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                result = await response.json();
+
+                if (!response.ok) {
+                    checkForGlobalError(response, result);
+                    isError = true;
+                }
+            }
+
+            loadingIndicator.style.display = 'none';
+            closeGlobalMessModal();
+        });
+
+        modalGlobalMessContent.appendChild(submitButton);
+
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isRemove) {
+                observer.disconnect();
+
+                if (modalGlobalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalGlobalMessContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show the info modal
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalGlobalMess.classList.contains('show') && isRemove) {
+                closeWarningObserver.disconnect();
+                if (isRemove && !isError) {
+                    globalAction = 'deleteKey';
+                    showGlobalMess('Info', 'Keys removed successfully');
+                } else if (isError) {
+                    showGlobalMess('Error', result.message);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalGlobalMess, { attributes: true, attributeFilter: ['class'] });
+
+        showGlobalMess('Warning', 'Are you sure you want to remove the selected keys, this action will remove all data for the selected keys?');
+    });
+
     document.getElementById('newKeyName').addEventListener('input', function () {
         if (newKeyName.value === "") {
             toggleInputValidity(newKeyName, false);
@@ -4943,27 +5948,6 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const table = document.getElementById("upcomingActionTable");
-            const rows = Array.from(table.querySelectorAll("tbody tr"));
-
-            const data = rows
-                .map((row) => {
-                    const cells = row.querySelectorAll("td");
-                    return {
-                        soldierName: cells[0]?.innerText.trim(),
-                        bagCode: cells[1]?.innerText.trim(),
-                        mealCard: cells[2]?.innerText.trim(),
-                        upcomingKey: cells[3]?.innerText.trim(),
-                        upcomingAccommodationDate: cells[4]?.innerText.trim(),
-                        upcomingReleaseDate: cells[5]?.innerText.trim()
-                    };
-                }).filter(row => row.soldierName); // Exclude empty rows
-
-            // Collect filter values if the search inputs are visible
-            const filtersSoldier = {};
-            document.querySelectorAll('.search-input-upcoming-action').forEach(input => {
-                filtersSoldier[input.name || input.id] = input.value.trim();
-            });
 
             const response = await fetch('/accommodation/downloadUpcomingSoldier', {
                 method: 'POST',
@@ -4972,10 +5956,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Content-Type': 'application/json',
                     'CSRF-Token': csrfToken
                 },
-                body: JSON.stringify({ result: data, filtersSoldier: filtersSoldier })
+                body: JSON.stringify({ filtersSoldier: globalUpcomingActionSearchFilters })
             });
 
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                throw new Error(error.message);
+            }
 
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
@@ -4986,9 +5974,9 @@ document.addEventListener('DOMContentLoaded', function () {
             a.click();
             a.remove();
             window.URL.revokeObjectURL(downloadUrl);
+
         } catch (error) {
-            console.error('Error:', error);
-            alert(error.message || 'Failed to download the file.');
+            showGlobalMess('Error', error.message || 'Failed to download the file.');
 
         } finally {
             loadingIndicator.style.display = 'none';

@@ -34,7 +34,8 @@ body {
     padding-top: 0px;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
     height: calc(100vh - 50px);
 }
@@ -125,6 +126,22 @@ table {
     width: 100%;
     border-collapse: collapse;
     font-size: 1.1em;
+    min-width: 100%;
+    width: max-content;
+    table-layout: auto;
+}
+
+thead th:not(:has(input[type="checkbox"])) {
+    max-width: 300px;
+    width: 300px;
+}
+
+thead th:has(input[type="checkbox"]) {
+    width: 0;
+}
+
+input[type="checkbox"] {
+    cursor: pointer;
 }
 
 th,
@@ -132,11 +149,6 @@ td {
     border: 1px solid #ddd;
     padding: 12px;
     text-align: center;
-}
-
-#data-table th,
-#data-table td {
-    text-align: left;
 }
 
 /* Table Header Styling */
@@ -157,12 +169,6 @@ thead th {
     cursor: pointer;
 }
 
-#soldierListModal .modal-content,
-#upcomingActionSoldierListModal .modal-content {
-    height: 80vh;
-    margin-top: 0;
-}
-
 tbody tr:nth-child(even) {
     background-color: #f9f9f9;
     /* Alternating row color */
@@ -170,7 +176,7 @@ tbody tr:nth-child(even) {
 
 /* Input Field Styling Above Headers */
 thead th input {
-    width: 90%;
+    width: 100%;
     padding: 8px;
     margin-bottom: 8px;
     font-size: 1em;
@@ -225,26 +231,34 @@ thead th input:focus {
 
 /* Custom Scrollbar */
 .table-container {
+    text-align: center;
     height: 78vh;
     /* Set height relative to viewport */
     max-height: 78vh;
     overflow-y: auto;
     overflow-x: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
 }
 
-.table-container::-webkit-scrollbar {
+.table-container::-webkit-scrollbar,
+.table-container-second::-webkit-scrollbar,
+.table-section::-webkit-scrollbar {
     /* display: none; */
     width: 10px;
 }
 
-.table-container::-webkit-scrollbar-thumb {
+.table-container::-webkit-scrollbar-thumb,
+.table-container-second::-webkit-scrollbar-thumb,
+.table-section::-webkit-scrollbar-thumb {
     background-color: #28a745;
     border-radius: 4px;
 }
 
-.table-container::-webkit-scrollbar-thumb:hover {
+.table-container::-webkit-scrollbar-thumb:hover,
+.table-container-second::-webkit-scrollbar-thumb:hover,
+.table-section::-webkit-scrollbar-thumb:hover {
     background-color: #28a745;
 }
 
@@ -262,25 +276,20 @@ thead th input:focus {
 .modal {
     display: none;
     position: fixed;
-    z-index: 1;
-    padding-top: 100px;
+    z-index: 1000;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.4);
-    transition: opacity 0.3s ease;
+    justify-content: center;
+    align-items: center;
 }
 
 .modal.show {
-    display: block;
-    opacity: 1;
-    /* Ensure it's visible when showing */
-}
-
-#reportViewModal.modal {
-    padding-top: 25px;
+    display: flex;
+    animation: fadeIn 0.3s ease-out;
 }
 
 .modal-content.slide-in,
@@ -299,53 +308,42 @@ thead th input:focus {
     /* Slide out animation */
 }
 
-#form3 {
-    margin-left: 36%;
-    max-width: 400px;
+.modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 83%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
-.modal-content {
-    margin-top: 2%;
-    margin-left: 27%;
-    background-color: #fefefe;
-    padding: 20px;
-    border: 1px solid #888;
-    max-width: 45%;
-    border-radius: 10px;
-    text-align: left;
-    position: relative;
-    transform: translateY(-200px);
-    /* Initial position for sliding */
-    opacity: 0;
-    /* Hidden initially */
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    /* Slide and fade effect */
+#keyAddModal .modal-content,
+#uploadKeyModal .modal-content,
+#keyRemoveModal .modal-content,
+#releaseRoomsModal .modal-content,
+#uploadModal .modal-content,
+#accommodattionModal .modal-content,
+#deleteModal .modal-content,
+#destinationModal .modal-content,
+#roomAddModal .modal-content,
+#uploadRoomModal .modal-content,
+#roomRemoveModal .modal-content,
+#moveModal .modal-content,
+#roomModal .modal-content {
+    max-width: 60%;
+}
+
+#deleteModal .modal-content {
+    text-align: center;
 }
 
 .modal-content-multi-calendar {
-    margin-top: 5%;
-    margin-left: 25%;
-    background-color: #fefefe;
+    background-color: #fff;
     padding: 20px;
-    border: 1px solid #888;
-    max-width: 50%;
-    /* Ensure it doesn't overflow on small screens */
     border-radius: 10px;
-    text-align: center;
-    position: relative;
-    /* Positioning context for the close button */
-    transform: translateY(-200px);
-    /* Initial position for sliding */
-    opacity: 0;
-    /* Hidden initially */
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    /* Slide and fade effect */
-}
-
-.modal-content-multi-calendar.show {
-    transform: translateY(0);
-    /* Slide into view */
-    opacity: 1;
+    width: 90%;
+    max-width: 50%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 /* Flexbox for side-by-side calendars */
@@ -403,7 +401,9 @@ thead th input:focus {
 #prevBtnTherd,
 #nextBtnTherd,
 #prevBtnFourth,
-#nextBtnFourth {
+#nextBtnFourth,
+#prevBtnFifth,
+#nextBtnFifth {
     width: 20px;
     height: 20px;
     position: relative;
@@ -423,8 +423,9 @@ thead th input:focus {
 #prevBtnTherd::before,
 #nextBtnTherd::before,
 #prevBtnFourth::before,
-#nextBtnFourth::before
- {
+#nextBtnFourth::before,
+#prevBtnFifth::before,
+#nextBtnFifth::before {
     content: "";
     width: 50%;
     height: 50%;
@@ -441,7 +442,8 @@ thead th input:focus {
 #nextBtnDate::before,
 #nextBtnSecond::before,
 #nextBtnTherd::before,
-#nextBtnFourth::before {
+#nextBtnFourth::before,
+#nextBtnFifth::before {
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
@@ -450,7 +452,8 @@ thead th input:focus {
 #prevBtnDate::before,
 #prevBtnSecond::before,
 #prevBtnTherd::before,
-#prevBtnFourth::before {
+#prevBtnFourth::before,
+#prevBtnFifth::before  {
     transform: translate(-50%, -50%) rotate(-135deg);
 }
 
@@ -465,7 +468,9 @@ thead th input:focus {
 #prevBtnTherd:hover::before,
 #nextBtnTherd:hover::before,
 #prevBtnFourth:hover::before,
-#nextBtnFourth:hover::before {
+#nextBtnFourth:hover::before,
+#prevBtnFifth:hover::before,
+#nextBtnFifth:hover::before {
     border-color: #000;
 }
 
@@ -540,14 +545,15 @@ thead th input:focus {
 
 .table-section {
     flex: 3;
-    overflow-x: auto;
     text-align: center;
-}
-
-#additionalItemModal .modal-content {
-    margin-top: 0;
-    margin-left: 20%;
-    max-width: 60%;
+    height: 78vh;
+    /* Set height relative to viewport */
+    max-height: 78vh;
+    overflow-y: auto;
+    overflow-x: auto;
+    scrollbar-width: auto;
+    /* Firefox */
+    scrollbar-color: #28a745 transparent;
 }
 
 #additionalItemModal table tbody tr:hover {
@@ -572,16 +578,6 @@ thead th input:focus {
 
 #additionalItemDescription::-webkit-scrollbar-thumb:hover {
     background-color: #218838;
-}
-
-#form3.modal-content {
-    margin-top: 5%;
-}
-
-.modal-content.show {
-    transform: translateY(0);
-    /* Slide into view */
-    opacity: 1;
 }
 
 /* Keyframes for sliding in and out */
@@ -747,7 +743,8 @@ thead th input:focus {
     border: 1px solid #ddd;
     max-height: 200px;
     overflow-y: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
     display: none;
     position: absolute;
@@ -871,28 +868,12 @@ thead th input:focus {
 }
 
 .modal-content-view {
-    margin-left: 7%;
-    background-color: #fefefe;
+    background-color: #fff;
     padding: 20px;
-    border: 1px solid #888;
-    max-width: 1500px;
-    /* Ensure it doesn't overflow on small screens */
     border-radius: 10px;
-    text-align: center;
-    position: relative;
-    /* Positioning context for the close button */
-    transform: translateY(-200px);
-    /* Initial position for sliding */
-    opacity: 0;
-    /* Hidden initially */
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    /* Slide and fade effect */
-}
-
-.modal-content-view.show {
-    transform: translateY(0);
-    /* Slide into view */
-    opacity: 1;
+    width: 90%;
+    max-width: 100%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .modal-content-view .table-container {
@@ -900,27 +881,13 @@ thead th input:focus {
 }
 
 .modal-content-mess {
-    margin-top: 10%;
-    margin-left: 35%;
-    background-color: #fefefe;
-    padding: 20px;
-    border: 1px solid #888;
-    max-width: 30%;
-    border-radius: 10px;
     text-align: center;
-    position: relative;
-    transform: translateY(-200px);
-    /* Initial position for sliding */
-    opacity: 0;
-    /* Hidden initially */
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    /* Slide and fade effect */
-}
-
-.modal-content-mess.show {
-    transform: translateY(0);
-    /* Slide into view */
-    opacity: 1;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 30%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .button-container {
@@ -1058,10 +1025,6 @@ thead th input:focus {
     background-color: #b30000;
 }
 
-#deleteModal .modal-content {
-    text-align: center;
-}
-
 .pagination .active .page-link {
     background-color: #4CAF50;
     color: white;
@@ -1088,21 +1051,12 @@ thead th input:focus {
 
 @media (min-width: 1750px) {
 
-    .modal-content-view {
-        margin-left: 10%;
-    }
-
     .table-container {
         height: 85vh;
     }
 
     .modal-content-view .table-container {
         max-height: 300px;
-    }
-
-    #form3 {
-        margin-left: 40%;
-        max-width: 400px;
     }
 }
 
@@ -1257,12 +1211,6 @@ thead th input:focus {
         height: 100%;
     }
 
-    #moveModal .modal-content {
-        width: 100%;
-        max-width: 350px;
-        margin-left: 30px;
-    }
-
     .download-btn {
         display: block;
         /* Show on mobile */
@@ -1278,22 +1226,6 @@ thead th input:focus {
         width: 100%;
         text-align: center;
         margin-top: 10px;
-    }
-
-    .modal-content-mess {
-        max-width: 100%;
-        margin-left: 50px;
-        margin-right: 50px;
-    }
-
-    .modal-content {
-        width: 100%;
-        max-width: 350px;
-        margin-left: 5%;
-    }
-
-    #roomModal .modal-content {
-        margin-top: 10%;
     }
 
     .button-container-report {
@@ -1326,12 +1258,6 @@ thead th input:focus {
         margin-bottom: 20px;
     }
 
-    .modal-content-view {
-        width: 350px;
-        max-width: 350px;
-        margin-left: 30px;
-    }
-
     /* Adjust header and labels */
     .visualization-header {
         flex-direction: column;
@@ -1361,14 +1287,6 @@ thead th input:focus {
     .btn-add-soldier.disabled-button {
         background-color: #ddd;
         cursor: not-allowed;
-    }
-
-    .modal-content-total-info {
-        max-width: 400px;
-        margin-top: 100px;
-        margin-left: 10px;
-        margin-right: 10px;
-        padding: 30px;
     }
 
     .horizontal-nav ul {
@@ -1457,15 +1375,6 @@ thead th input:focus {
         padding-bottom: 16px;
     }
 
-    #additionalItemModal .modal-content {
-        width: 100%;
-        max-width: 350px;
-        margin: 10px auto;
-        padding: 15px;
-        display: flex;
-        flex-direction: column;
-    }
-
     #additionalItemModal h2 {
         font-size: 20px;
         text-align: center;
@@ -1547,10 +1456,26 @@ thead th input:focus {
         padding: 10px;
     }
 
+    #keyAddModal .modal-content,
+    #uploadKeyModal .modal-content,
+    #keyRemoveModal .modal-content,
+    #releaseRoomsModal .modal-content,
+    #uploadModal .modal-content,
+    #accommodattionModal .modal-content,
+    #deleteModal .modal-content,
+    #destinationModal .modal-content,
+    #roomAddModal .modal-content,
+    #uploadRoomModal .modal-content,
+    #roomRemoveModal .modal-content,
+    #roomModal .modal-content,
+    #moveModal .modal-content,
+    .modal-content-mess {
+        max-width: 95%;
+    }
+
     .modal-content-multi-calendar {
         max-width: 95%;
-        padding: 15px;
-        margin-left: 10px;
+        margin-top: 50%;
     }
 
     .calendar-container {
@@ -1624,10 +1549,6 @@ thead th input:focus {
     cursor: pointer;
 }
 
-#addSoldierModal .modal-content {
-    margin-top: 0px;
-}
-
 @media screen and (max-width: 1440px) and (min-width: 768px) {
 
     .left-nav {
@@ -1653,22 +1574,10 @@ thead th input:focus {
         padding: 6px 10px;
     }
 
-    .modal-content {
-        max-width: 50%;
-        /* Adjust modal width */
-        margin-left: 25%;
-    }
-
-    #soldierListModal .modal-content,
-    #upcomingActionSoldierListModal .modal-content {
-        max-width: 90%;
-        /* Adjust modal width */
-        margin-left: 5%;
-    }
-
     .virtual-warehouse-labels {
         display: grid;
-        grid-template-columns: repeat(5, auto); /* Three main columns */
+        grid-template-columns: repeat(5, auto);
+        /* Three main columns */
         gap: 10px;
         align-items: center;
         justify-content: center;
@@ -1678,26 +1587,7 @@ thead th input:focus {
         display: none;
     }
 
-    .modal-content-view {
-        margin-left: 20px;
-        margin-right: 20px;
-    }
-
     .modal-content-view .table-container {
         max-height: 250px;
-    }
-
-    #roomModal,
-    #addSoldierModal,
-    #editSoldierModal {
-        padding-top: 45px;
-    }
-
-    #additionalItemModal {
-        padding-top: 20px;
-    }
-
-    #keyModal .modal-content {
-        height: 70%;
     }
 }

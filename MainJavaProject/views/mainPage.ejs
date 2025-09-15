@@ -9,9 +9,8 @@
     </title>
     <link rel="icon" href="/icon/logoPage.png">
     <link rel="stylesheet" href="/style/stylesMain.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
 
 </head>
@@ -56,6 +55,7 @@
     </div>
 
     <input type="hidden" id="isFirstLogin" value="<%= firstLogin %>">
+    <input type="hidden" id="campId" value="<%= campId %>">
 
     <!-- Main Content Area -->
     <div class="main-content">
@@ -67,11 +67,14 @@
         <% if(navItems) { %>
             <div class="left-nav">
 
-                <div class="title-container mb-2 sticky-top w-100 bg-light" <% if(username !='helpDeskNikolay' &&
-                    username !='helpDeskAngel' && username !='admin' ) { %> style="cursor: not-allowed" <% } %>>
+                <div class="title-container mb-2 sticky-top w-100 bg-light" <% if (permissions && !(permissions.some(p=>
+                    p.permission_name === 'Full permission' || p.permission_name === 'Add camp'))) { %>
+                    style="cursor: not-allowed"
+                    <% } %>>
                         <div class="btn-container" style="width: 100%;">
                             <button id="addCampButton"
-                                class="sticky-button <% if(username != 'helpDeskNikolay' && username != 'helpDeskAngel' && username != 'admin') { %> disabled-button <% } %>"
+                                class="sticky-button <% if (permissions && !(permissions.some(p=>
+                                    p.permission_name === 'Full permission' || p.permission_name === 'Add camp'))) { %> disabled-button <% } %>"
                                 aria-label="Perform Action">
                                 <i class="bi bi-plus-circle"></i> Add camp
                             </button>
@@ -99,10 +102,21 @@
                 <div class="content">
 
                     <!-- Data Visualization Table -->
-                    <div class="visualization mb-5 mt-3">
-                        <h3>
+                    <div class="visualization mb-4 mt-4 d-flex align-items-center">
+                        <h3 class="mb-0">
                             <%= startMessage %>
                         </h3>
+
+                        <div class="btn-container position-relative d-inline-block ms-auto">
+                            <button id="setPermissionButton" <% if (!permissions || !permissions.some(p=>
+                                p.permission_name === 'Add system permission')) { %>
+                                style="display: none;"
+                                <% } %>
+                                    class="btn btn-outline-success btn-lg custom-icon-btn"
+                                    aria-label="Set Permissions">
+                                    <i class="bi bi-person-gear"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Guide Navigation -->
@@ -1009,6 +1023,153 @@
         </form>
     </div>
 
+    <div id="setPermissionModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2 class="mb-4">Set permission
+
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-circle fw-bold" id="userList"><i
+                            class="bi bi-people"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Show list of all users</span>
+                    </div>
+                </div>
+            </h2>
+
+            <div class="d-flex justify-content-end">
+                <button type="button" id="prevBtn"></button>
+                <span id="pageNumber"></span>
+                <button type="button" id="nextBtn"></button>
+            </div>
+
+            <div class="modal-body">
+                <form id="form2" method="POST" action="/permissions/save">
+                    <div class="table-container">
+                        <table id="permissionsTable" class="table table-bordered text-center align-middle">
+                            <thead class="table-dark"></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer pb-0">
+                <button type="submit" form="form2" class="sticky-button">Save Permissions</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="listUsersModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+
+            <h2 class="mb-4">List of users
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-success btn-sm rounded-circle fw-bold"
+                        id="addUserButton"><i class="bi bi-plus"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Add a new user to the list.</span>
+                    </div>
+                </div>
+
+                <div class="btn-container">
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle fw-bold"
+                        id="deleteUser"><i class="bi bi-dash"></i></button>
+                    <div class="tooltip-custom">
+                        <i class="bi bi-question-circle"></i>
+                        <span class="tooltiptext">Remove users from the list.</span>
+                    </div>
+                </div>
+            </h2>
+
+            <div class="d-flex justify-content-end">
+                <button type="button" id="prevBtnSecond"></button>
+                <span id="pageNumberSecond"></span>
+                <button type="button" id="nextBtnSecond"></button>
+            </div>
+
+            <div class="table-container">
+                <table id="usersTable">
+                    <thead class="table-dark">
+                        <th>
+                            <input type="text" class="search-input-user" placeholder="Search...">
+                            <label id="username-header">Username</label>
+                        </th>
+                        <th>
+                            <label id="username-header">Password change confirmed</label>
+                        </th>
+                    </thead>
+                    <tbody id="tableUserBody"></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="addUserModal" class="modal">
+
+        <form class="modal-content" method="POST" , action="/addUser" id="form3">
+            <span class="close-btn">&times;</span>
+
+            <h2 class="mb-4">Add user</h2>
+
+            <div class="mb-3">
+                <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                <input type="text" id="username" class="form-control" placeholder="Username">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+
+            <button type="submit" class="modal-button" id="add-user-button">
+                <i class="bi bi-plus-circle"></i> Add user
+            </button>
+
+        </form>
+    </div>
+
+    <div id="editUserModal" class="modal">
+
+        <form class="modal-content" method="POST" , action="/editUser" id="form4">
+            <span class="close-btn">&times;</span>
+
+            <h2 class="mb-4">Edit user</h2>
+
+            <input type="hidden" id="userId">
+
+            <div class="mb-3">
+                <label for="editUsername" class="form-label">Username <span class="text-danger">*</span></label>
+                <input type="text" id="editUsername" class="form-control" placeholder="Username">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+
+            <div class="mb-3">
+                <label for="editPassword" class="form-label">New Password <span class="text-danger">*</span></label>
+                <input type="password" id="editPassword" class="form-control" placeholder="New Password">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+
+            <div class="mb-3">
+                <label for="editConfirmPassword" class="form-label">Confirm New Password <span
+                        class="text-danger">*</span></label>
+                <input type="password" id="editConfirmPassword" class="form-control" placeholder="Confirm New Password">
+                <div class="invalid-feedback"></div>
+                <div class="valid-feedback"></div>
+            </div>
+
+            <button type="submit" class="modal-button" id="edit-user-button">
+                <i class="bi bi-pencil-square"></i> Edit user
+            </button>
+
+        </form>
+    </div>
+
     <!-- The Modal Message -->
     <div id="myMessage" class="modal">
         <div class="modal-content-mess">
@@ -1019,41 +1180,14 @@
         </div>
     </div>
 
-    <!-- Toast Container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="liveToast" class="toast align-items-center text-white border-0 custom-toast" role="alert"
-            aria-live="assertive" aria-atomic="true">
-            <div class="d-flex align-items-center">
-                <!-- Info Icon -->
-                <i class="bi bi-info-circle-fill toast-icon"></i>
-
-                <!-- Toast Message -->
-                <div class="toast-body flex-grow-1" id="toast-message">
-                    <!-- Message will be inserted here -->
-                </div>
-
-                <!-- Close Button -->
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" id="close-toast"
-                    aria-label="Close"></button>
-            </div>
-        </div>
-    </div>
-
-    <div id="toastMessage" class="modal">
-        <div class="modal-content-mess">
-            <span class="close-btn">&times;</span>
-
-            <img src="/icon/information.png" alt="Confirmation Image" class="modal-image" id="mess-toast-icon">
-            <p id="mess-toast-text"></p>
-        </div>
-    </div>
+    <%- include('partials/toastGlobalMessage') %>
 
 </body>
 
 <script src="/java/guideNavBar.js"></script>
 <script src="/java/mainAction.js"></script>
 <script src="/java/phoneMenu.js"></script>
-<% if(username !='NSPA' ) { %>
+<% if(permissions && !(permissions.some(p=> p.permission_name === 'Guest'))) { %>
     <script src="/java/showPinMessage.js"></script>
     <% } %>
 

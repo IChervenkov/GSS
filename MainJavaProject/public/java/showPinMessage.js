@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const notificationSound = new Audio('/audio/notification.wav'); // Path to your .wav file
     const toastElement = document.getElementById('liveToast');
     const toastMessage = document.getElementById('toast-message');
     const closeToastButton = document.getElementById('close-toast');
@@ -7,34 +6,50 @@ document.addEventListener('DOMContentLoaded', () => {
     let toastQueue = [];
     let isToastVisible = false;
 
-    const myToastMessage = document.getElementById("toastMessage");
-    const myToastMessageContent = myToastMessage.querySelector('.modal-content-mess');
+    const toastModal = document.getElementById("toastModal");
+    const toastModalContent = toastModal.querySelector('.modal-content');
 
     let currentToastType = null;
     let currentToastNames = [];
 
-    function showToastMess(message) {
+    const checkForGlobalError = (response, responseBody) => {
+        if (response.headers.get('X-Global-Error') === 'true')
+            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+    };
 
-        document.getElementById('mess-toast-text').textContent = message;
+    function showToastModal(title, soldierList) {
 
         // Add the slide-in effect by adding the necessary classes
-        myToastMessage.classList.add('show');
-        myToastMessageContent.classList.add('show');
-        myToastMessageContent.classList.add('slide-in');
+        toastModal.classList.add('show');
+        toastModalContent.classList.add('show');
+        toastModalContent.classList.add('slide-in');
+
+        toastModalContent.getElementsByTagName('h2')[0].textContent = title;
+
+        const tableBody = document.getElementById('toastUpcommingTableBody');
+        tableBody.innerHTML = ''; // Clear previous rows
+
+        soldierList.forEach(soldier => {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.textContent = soldier;
+            row.appendChild(cell);
+            tableBody.appendChild(row);
+        });
 
         // Ensure that any 'slide-out' class is removed if it was previously added
-        myToastMessageContent.classList.remove('slide-out');
+        toastModalContent.classList.remove('slide-out');
     }
 
     function closeToastMessModal() {
         // Add the slide-out effect
-        myToastMessageContent.classList.add('slide-out');
-        myToastMessageContent.classList.remove('slide-in');
+        toastModalContent.classList.add('slide-out');
+        toastModalContent.classList.remove('slide-in');
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
-            myToastMessage.classList.remove('show');
-            myToastMessageContent.classList.remove('show');
+            toastModal.classList.remove('show');
+            toastModalContent.classList.remove('show');
 
         }, 400); // Match the duration of the animation (0.4s)
     }
@@ -65,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             setTimeout(() => toastElement.classList.add('show'), 10);
-            notificationSound.play().catch(error => console.error('Error playing sound:', error));
 
             setTimeout(() => hideToast(), 6000);
         }
@@ -94,31 +108,57 @@ document.addEventListener('DOMContentLoaded', () => {
         hideToast();
     });
 
-    toastElement.addEventListener('click', () => {
-        if (currentToastType === 'accommodation' && currentToastNames.length > 0) {
-            showToastMess("Soldiers with upcoming accommodation or release:\n" + currentToastNames.join(", "));
-        } else if (currentToastType === 'release' && currentToastNames.length > 0) {
-            showToastMess("Soldiers with upcoming release:\n" + currentToastNames.join(", "));
+    window.addEventListener("click", function (event) {
+
+        switch (event.target) {
+            case toastModal:
+                closeToastMessModal();
+                break;
         }
     });
 
-    // Example: Fetch late bags data after 2 seconds
+    toastElement.addEventListener('click', () => {
+        if (currentToastType === 'accommodation' && currentToastNames.length > 0) {
+            hideToast();
+            showToastModal("Soldiers with upcoming accommodation or release", currentToastNames);
+        } else if (currentToastType === 'release' && currentToastNames.length > 0) {
+            hideToast();
+            showToastModal("Soldiers with upcoming release", currentToastNames);
+        }
+    });
+
     setTimeout(async () => {
         try {
-            const response = await fetch('/checkLateBags', { method: 'GET' });
+            const response = await fetch('/checkLateBags', {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
             if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
                 showToast('Bags that have passed the collection time have been detected.');
             }
         } catch (error) {
-            console.error('Error fetching late bags:', error);
+            showToast('Error fetching late bags');
         }
     }, 1000);
 
-    // Example: Add another message
     setTimeout(async () => {
         try {
-            const response = await fetch('/checkUpcomingDate', { method: 'GET' });
+            const response = await fetch('/checkUpcomingDate', {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
             const data = await response.json();
+
+            if (!response.ok)
+                checkForGlobalError(response, data);
 
             if (data.isAccommodation && data.isRelease) {
                 showToast("Accommodation and release dates are coming up soon.", 'accommodation', data.accommodationList);
@@ -129,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast("Release date is coming up soon.", 'release', data.releaseList);
             }
         } catch (error) {
-            console.error('Error fetching date:', error);
+            showToast('Error check upcoming date');
         }
     }, 3000);
 });

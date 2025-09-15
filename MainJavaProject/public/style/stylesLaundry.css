@@ -225,50 +225,47 @@ body {
 /* Modal styles */
 .modal {
     display: none;
+    /* Hidden by default */
     position: fixed;
-    z-index: 1;
-    padding-top: 100px;
+    z-index: 1000;
+    /* Higher than tooltips etc. */
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.4);
-    transition: opacity 0.3s ease;
+    /* Overlay effect */
+    justify-content: center;
+    align-items: center;
 }
 
 .modal-content-report {
-    margin-left: 17%;
-    background-color: #fefefe;
+    background-color: #fff;
     padding: 20px;
-    border: 1px solid #888;
-    max-width: 65%;
     border-radius: 10px;
-    text-align: left;
-    position: relative;
-    transform: translateY(-200px);
-    /* Initial position for sliding */
-    opacity: 0;
-    /* Hidden initially */
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    /* Slide and fade effect */
+    width: 90%;
+    max-width: 90%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 /* Custom Scrollbar */
-.modal-content-report .table-container {
+.modal-content-report .table-container,
+.modal-content-report .table-container-second {
+    width: 100%;
     height: 30vh;
     /* Set height relative to viewport */
     max-height: 30vh;
     overflow-y: auto;
     overflow-x: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
 }
 
 .modal.show {
-    display: block;
-    opacity: 1;
-    /* Ensure it's visible when showing */
+    display: flex;
+    animation: fadeIn 0.3s ease-out;
 }
 
 .modal-content.slide-in,
@@ -344,7 +341,17 @@ body {
 #prevBtnDate,
 #nextBtnDate,
 #prevBtnSecond,
-#nextBtnSecond {
+#nextBtnSecond,
+#prevBtndropOff,
+#prevBtntransportationToLaundryFacility,
+#prevBtnlaundryFacility,
+#prevBtntransportationToDropOff,
+#prevBtnreadyToPickUp,
+#nextBtndropOff,
+#nextBtntransportationToLaundryFacility,
+#nextBtnlaundryFacility,
+#nextBtntransportationToDropOff,
+#nextBtnreadyToPickUp {
     width: 20px;
     height: 20px;
     position: relative;
@@ -360,7 +367,17 @@ body {
 #prevBtnDate::before,
 #nextBtnDate::before,
 #prevBtnSecond::before,
-#nextBtnSecond::before {
+#nextBtnSecond::before,
+#prevBtndropOff::before,
+#prevBtntransportationToLaundryFacility::before,
+#prevBtnlaundryFacility::before,
+#prevBtntransportationToDropOff::before,
+#prevBtnreadyToPickUp::before,
+#nextBtndropOff::before,
+#nextBtntransportationToLaundryFacility::before,
+#nextBtnlaundryFacility::before,
+#nextBtntransportationToDropOff::before,
+#nextBtnreadyToPickUp::before {
     content: "";
     width: 50%;
     height: 50%;
@@ -375,14 +392,24 @@ body {
 #next::before,
 #nextBtn::before,
 #nextBtnDate::before,
-#nextBtnSecond::before {
+#nextBtnSecond::before,
+#nextBtndropOff::before,
+#nextBtntransportationToLaundryFacility::before,
+#nextBtnlaundryFacility::before,
+#nextBtntransportationToDropOff::before,
+#nextBtnreadyToPickUp::before {
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
 #prev::before,
 #prevBtn::before,
 #prevBtnDate::before,
-#prevBtnSecond::before {
+#prevBtnSecond::before,
+#prevBtndropOff::before,
+#prevBtntransportationToLaundryFacility::before,
+#prevBtnlaundryFacility::before,
+#prevBtntransportationToDropOff::before,
+#prevBtnreadyToPickUp::before {
     transform: translate(-50%, -50%) rotate(-135deg);
 }
 
@@ -393,7 +420,17 @@ body {
 #prevBtnDate:hover::before,
 #nextBtnDate:hover::before,
 #prevBtnSecond:hover::before,
-#nextBtnSecond:hover::before {
+#nextBtnSecond:hover::before,
+#prevBtndropOff:hover::before,
+#prevBtntransportationToLaundryFacility:hover::before,
+#prevBtnlaundryFacility:hover::before,
+#prevBtntransportationToDropOff:hover::before,
+#prevBtnreadyToPickUp:hover::before,
+#nextBtndropOff:hover::before,
+#nextBtntransportationToLaundryFacility:hover::before,
+#nextBtnlaundryFacility:hover::before,
+#nextBtntransportationToDropOff:hover::before,
+#nextBtnreadyToPickUp:hover::before {
     border-color: #000;
 }
 
@@ -433,79 +470,36 @@ body {
 }
 
 .modal-content-multi-calendar {
-    margin-top: 5%;
-    margin-left: 25%;
-    background-color: #fefefe;
+    background-color: #fff;
     padding: 20px;
-    border: 1px solid #888;
-    max-width: 50%;
-    /* Ensure it doesn't overflow on small screens */
     border-radius: 10px;
-    text-align: center;
-    position: relative;
-    /* Positioning context for the close button */
-    transform: translateY(-200px);
-    /* Initial position for sliding */
-    opacity: 0;
-    /* Hidden initially */
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    /* Slide and fade effect */
-}
-
-.modal-content-multi-calendar.show {
-    transform: translateY(0);
-    /* Slide into view */
-    opacity: 1;
+    width: 90%;
+    max-width: 50%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .modal-content-mess {
-    margin-top: 10%;
-    margin-left: 35%;
-    background-color: #fefefe;
-    padding: 20px;
-    border: 1px solid #888;
-    max-width: 30%;
-    border-radius: 10px;
     text-align: center;
-    position: relative;
-    transform: translateY(-200px);
-    /* Initial position for sliding */
-    opacity: 0;
-    /* Hidden initially */
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    /* Slide and fade effect */
-}
-
-.modal-content-mess.show {
-    transform: translateY(0);
-    /* Slide into view */
-    opacity: 1;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 30%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .modal-content {
-    /* margin-top: 2%; */
-    margin-left: 27%;
-    background-color: #fefefe;
+    background-color: #fff;
     padding: 20px;
-    border: 1px solid #888;
-    max-width: 45%;
-    max-height: 90%;
     border-radius: 10px;
-    text-align: left;
-    position: relative;
-    transform: translateY(-200px);
-    /* Initial position for sliding */
-    opacity: 0;
-    /* Hidden initially */
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    /* Slide and fade effect */
+    width: 90%;
+    max-width: 60%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
-#form2,
-#form3,
-#form4,
-#form5 {
-    margin-top: 5%;
+#linenExchangeBagModal .modal-content,
+#addBagModal .modal-content {
+    max-width: 45%;
 }
 
 .modal-image {
@@ -566,27 +560,32 @@ body {
 }
 
 /* Custom Scrollbar */
-.table-container {
+.table-container,
+.table-container-second {
     height: 78vh;
     /* Set height relative to viewport */
     max-height: 78vh;
     overflow-y: auto;
     overflow-x: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
 }
 
-.table-container::-webkit-scrollbar {
+.table-container::-webkit-scrollbar,
+.table-container-second::-webkit-scrollbar {
     /* display: none; */
     width: 10px;
 }
 
-.table-container::-webkit-scrollbar-thumb {
+.table-container::-webkit-scrollbar-thumb,
+.table-container-second::-webkit-scrollbar-thumb {
     background-color: #28a745;
     border-radius: 4px;
 }
 
-.table-container::-webkit-scrollbar-thumb:hover {
+.table-container::-webkit-scrollbar-thumb:hover,
+.table-container-second::-webkit-scrollbar-thumb:hover {
     background-color: #28a745;
 }
 
@@ -595,6 +594,9 @@ table {
     width: 100%;
     border-collapse: collapse;
     font-size: 1.1em;
+    min-width: 100%;
+    width: max-content;
+    table-layout: auto;
 }
 
 th,
@@ -613,6 +615,15 @@ thead th {
     border-bottom: 2px solid #ddd;
     z-index: 1;
     text-align: center;
+}
+
+thead th:not(:has(input[type="checkbox"])) {
+    max-width: 300px;
+    width: 300px;
+}
+
+thead th:has(input[type="checkbox"]) {
+    width: 0;
 }
 
 tbody tr:nth-child(even) {
@@ -658,7 +669,7 @@ tbody tr:nth-child(even) {
 
 /* Input Field Styling Above Headers */
 thead th input {
-    width: 90%;
+    width: 100%;
     padding: 8px;
     margin-bottom: 8px;
     font-size: 1em;
@@ -677,7 +688,7 @@ thead th input:focus {
     margin-left: 15px;
     display: flex;
     gap: 5px;
-    /* Optional, adjusts spacing between buttons */
+    flex-wrap: nowrap;
 }
 
 .modal-content h2 {
@@ -703,7 +714,8 @@ thead th input:focus {
     border: 1px solid #ddd;
     max-height: 200px;
     overflow-y: auto;
-    scrollbar-width: auto; /* Firefox */
+    scrollbar-width: auto;
+    /* Firefox */
     scrollbar-color: #28a745 transparent;
     display: none;
     position: absolute;
@@ -889,23 +901,7 @@ input[type="checkbox"] {
     .main-btn {
         width: 100%;
     }
-
-    /* Table Scroll Adjustments */
-    .table-container {
-        height: auto;
-        max-height: 50vh;
-    }
-
-    /* Modal Adjustments */
-    .modal-content,
-    .modal-content-report,
-    .modal-content-multi-calendar,
-    .modal-content-mess {
-        margin: 5% auto;
-        width: 90%;
-        max-width: none;
-    }
-
+    
     /* Dropdown Adjustments */
     #deleteBagDropdown,
     #editBagDropdown,
@@ -964,9 +960,8 @@ input[type="checkbox"] {
 
 @media screen and (max-width: 768px) {
 
-    #addBikeModal .modal-content,
-    #removeBikeModal .modal-content {
-        margin-right: 20px;
+    .group-button {
+        flex-wrap: wrap;
     }
 
     .download-btn {
@@ -988,11 +983,6 @@ input[type="checkbox"] {
 
     .login-btn-mess {
         width: 100%;
-    }
-
-    .modal-content {
-        width: 100%;
-        max-width: 350px;
     }
 
     .button-container-report {
@@ -1023,12 +1013,6 @@ input[type="checkbox"] {
         /* Center the grid container */
     }
 
-    .modal-content-report {
-        width: 350px;
-        max-width: 350px;
-        margin-left: 30px;
-    }
-
     .visualization-header {
         flex-direction: column;
         align-items: flex-start;
@@ -1038,14 +1022,6 @@ input[type="checkbox"] {
         width: 100%;
         text-align: center;
         margin-top: 10px;
-    }
-
-    .modal-content-total-info {
-        max-width: 400px;
-        margin-top: 100px;
-        margin-left: 10px;
-        margin-right: 10px;
-        padding: 30px;
     }
 
     .horizontal-nav ul {
@@ -1125,14 +1101,20 @@ input[type="checkbox"] {
     }
 
     .table-container {
-        max-height: 600px;
-        height: 600px;
+        max-height: 400px;
+        height: 400px;
+    }
+
+    #linenExchangeBagModal .modal-content,
+    #addBagModal .modal-content,
+    .modal-content,
+    .modal-content-mess {
+        max-width: 95%;
     }
 
     .modal-content-multi-calendar {
         max-width: 95%;
-        padding: 15px;
-        margin-left: 10px;
+        margin-top: 50%;
     }
 
     .calendar-container {
@@ -1230,9 +1212,5 @@ input[type="checkbox"] {
     #scrollableDiv {
         height: calc(100vh - 230px);
         /* Adjust height */
-    }
-
-    #reportViewModal {
-        padding-top: 40px;
     }
 }

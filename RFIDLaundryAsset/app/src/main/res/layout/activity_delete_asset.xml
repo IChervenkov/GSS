@@ -8,22 +8,23 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <TextView
-            android:id="@+id/epcTextView"
-            android:layout_width="wrap_content"
+        <AutoCompleteTextView
+            android:id="@+id/assetTextList"
+            android:layout_width="250dp"
             android:layout_height="wrap_content"
-            android:text="Asset code: None"
-            android:textSize="24sp"
-            android:layout_marginTop="150dp"
             android:layout_centerHorizontal="true"
+            android:layout_marginTop="150dp"
             android:gravity="center"
+            android:hint="Asset code"
+            android:minHeight="48dp"
+            android:textColorHint="#546E7A"
             tools:ignore="HardcodedText" />
 
         <Button
             android:id="@+id/deleteButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/epcTextView"
+            android:layout_below="@id/assetTextList"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="20dp"
             android:backgroundTint="@android:color/holo_green_dark"

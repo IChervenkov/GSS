@@ -158,6 +158,53 @@ document.addEventListener('DOMContentLoaded', function () {
     const dropdownButton = document.getElementById('typeDropdownMenuButton');
     const dropdownMenu = document.querySelector('.dropdown-menu');
 
+    const mainRowsPerPage = 50;
+    let mainCurrentPage = 1;
+    let mainTotalRows = parseInt(document.getElementById("totalCount").value);
+    let filters = [];
+
+    const tableBody = document.getElementById("tableBody");
+    const pagination = document.getElementById("pagination");
+    const isFirstTime = document.getElementsByName("isFirstTime")[0];
+    const headerCells = document.querySelectorAll(`#data-table thead th`);
+
+    const mainHeaderMap = {
+        'Room Number': 'nameroom',
+        'Number of assets': 'count_assets'
+    };
+
+    const formateDate = isoString => {
+        const date = new Date(isoString);
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        let hours = date.getHours();
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        const hourStr = String(hours).padStart(2, '0');
+
+        return `${year}-${month}-${day} ${hourStr}:${minutes}:${seconds} ${ampm}`;
+    }
+
+    let currentPage = 1;
+    let secondCurrentPage = 1;
+    let globalSearchFilters = [];
+    let globalSearchFiltersDate = [];
+    let globalSearchLargeFilters = [];
+    let globalSearchSmallFilters = [];
+    let globalSelectDate1;
+    let globalSelectDate2;
+
+    let globalRowId;
+    let sortedPar;
+    let mainSortedPar;
+    let selectedBuilding = "";
+    let globalAction = '';
+
     // Track sort order and priority for each column
     let sortOrder = {
         nameroom: true, // true means ascending, false means descending
@@ -167,17 +214,15 @@ document.addEventListener('DOMContentLoaded', function () {
     // Track sort order and priority for each column
     let sortOrderAsset = {
         code: true, // true means ascending, false means descending
-        name: true,
-        type: true,
-        location: true
+        name_assets: true,
+        type_name: true,
+        nameroom: true,
+        description: true
     };
 
     // Maintain the sort priority sequence
-    let sortPriority = [];
-    let sortPriorityAsset = [];
     let allAsset = [];
 
-    var nameroomSetCount = [];
     var nameAssetSetCount = [];
     var assetType = [];
     var assetLocation = [];
@@ -186,8 +231,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var lostAssetsCode = [];
     var cleanItems = [];
     var isTotalAmound;
-    var lostAssetsLocation = [];
-    var allLostItems = [];
     var oldEditAssetId = "";
 
     var allCheckedRow = [];
@@ -201,71 +244,88 @@ document.addEventListener('DOMContentLoaded', function () {
         input.classList.toggle('is-invalid', !isValid);
     };
 
+    const checkForGlobalError = (response, responseBody) => {
+        if (response.headers.get('X-Global-Error') === 'true')
+            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+    };
+
     const csrfToken = document.getElementsByName('_csrf')[0].value;
 
     // Show loading indicator
     const loadingIndicator = document.getElementById('loadingIndicator');
 
+    function fetchTypeData() {
+        loadingIndicator.style.display = 'flex';
+
+        fetch(`/assets/getAllType`, {
+            method: 'GET',
+            headers: {
+                'X-Is-Fetch': 'true'
+            }
+        })
+            .then(async response => {
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    checkForGlobalError(response, errorData);
+                    throw new Error(errorData.message || 'Unknown error');
+                }
+                return response.json();
+            })
+            .then(data => {
+                assetType = data;
+            })
+            .catch(error => {
+                showMess('Error', error.message);
+            })
+            .finally(() => {
+                loadingIndicator.style.display = 'none';
+            });
+    }
+
+    fetchTypeData();
+
     loadingIndicator.style.display = 'flex';
 
-    fetch(`/assets/getSortedRoom`, {
-        method: 'GET'
-    })
-        .then(response => response.json())
-        .then(data => {
-            // Parse the JSON string into an array of objects
-            nameroomSetCount = data;
-        })
-        .catch(error => console.error("Error fetching room:", error));
-
-    fetch(`/assets/getAllType`, {
-        method: 'GET'
-    })
-        .then(response => response.json())
-        .then(data => {
-            // Parse the JSON string into an array of objects
-            assetType = data;
-        })
-        .catch(error => console.error("Error fetching keys:", error));
-
-    fetch(`/allAssets`, {
-        method: 'GET'
-    })
-        .then(response => response.json())
-        .then(data => {
-            // Parse the JSON string into an array of objects
-            lostAssetsCode = data.assets;
-            lostAssetsLocation = data.locations;
-            allLostItems = data.allLostItem;
-        })
-        .catch(error => console.error("Error fetching keys:", error));
-
-    fetch(`/cleanItem`, {
-        method: 'GET'
-    })
-        .then(response => response.json())
-        .then(data => {
-            // Parse the JSON string into an array of objects
-            cleanItems = data;
-        })
-        .catch(error => console.error("Error fetching clean item:", error));
-
     fetch(`/allKeys`, {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+            'X-Is-Fetch': 'true'
+        }
     })
-        .then(response => response.json())
+        .then(async response => {
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                checkForGlobalError(response, errorData);
+                throw new Error(errorData.message || 'Unknown error');
+            }
+            return response.json();
+        })
         .then(data => {
-            // Parse the JSON string into an array of objects
             assetSubLocation = data;
         })
-        .catch(error => console.error("Error fetching keys:", error));
+        .catch(error => {
+            showMess('Error', error.message);
+        });
 
     fetch(`/asset/keys`, {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+            'X-Is-Fetch': 'true'
+        }
     })
-        .then(response => response.json())
+        .then(async response => {
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                checkForGlobalError(response, errorData);
+                throw new Error(errorData.message || 'Unknown error');
+            }
+            return response.json();
+        })
         .then(data => {
-            // Parse the JSON string into an array of objects
+
             assetLocation = data;
             uniqueRooms = Array.from(
                 new Map(
@@ -275,78 +335,193 @@ document.addEventListener('DOMContentLoaded', function () {
                 ).values()
             );
         })
-        .catch(error => console.error("Error fetching keys:", error))
+        .catch(error => {
+            showMess('Error', error.message);
+        })
         .finally(() => {
-            // Hide loading indicator
             loadingIndicator.style.display = 'none';
         });
+
+    function buildQueryParams(page, mainSortedPar, numBuild) {
+        const offset = (page - 1) * mainRowsPerPage;
+        const params = new URLSearchParams({
+            numBuild: numBuild,
+            isFirstTime: isFirstTime.value,
+            limit: mainRowsPerPage,
+            offset: offset
+        });
+
+        if (Object.keys(mainSortedPar).length > 0) {
+            params.append('sortedColumn', mainSortedPar.column);
+            params.append('sortedDirection', mainSortedPar.direction);
+        }
+
+        filters.forEach(filter => {
+            params.append('searchColumn', filter.column);
+            params.append('searchValue', filter.value);
+        });
+
+        return params.toString();
+    }
+
+    async function fetchTableData(page, mainSortedPar = {}, numBuild = "") {
+        const query = buildQueryParams(page, mainSortedPar, numBuild);
+        try {
+            const res = await fetch(`/assets?${query}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+            if (!res.ok) {
+                const error = await res.json();
+                checkForGlobalError(res, error);
+                showMess('Error', error.message);
+                return;
+            }
+
+            const { inventory, totalCount } = await res.json();
+
+            mainTotalRows = parseInt(totalCount);
+            mainCurrentPage = page;
+
+            renderTable(inventory);
+            renderPagination();
+        } catch (error) {
+            showMess('Error fetching table data');
+        }
+    }
+
+    function renderTable(data) {
+        tableBody.innerHTML = '';
+        data.forEach(item => {
+            const row = document.createElement("tr");
+            row.className = "data-room";
+            row.id = item.id;
+
+            row.innerHTML = `
+                <td class="text-wrap" style="max-width: 200px;">${item.name}</td>
+                <td class="text-wrap" style="max-width: 200px;">${item.quantity}</td>
+            `;
+
+            row.addEventListener('click', () => {
+                openAssetsModal(item.id);
+            });
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    function renderPagination() {
+        const pageCount = Math.ceil(mainTotalRows / mainRowsPerPage) || 1;
+        pagination.innerHTML = "";
+
+        function createPageItem(page, isActive = false) {
+            const pageItem = document.createElement("li");
+            pageItem.classList.add("page-item");
+            if (isActive) pageItem.classList.add("active");
+
+            const pageLink = document.createElement("a");
+            pageLink.classList.add("page-link");
+            pageLink.href = "#";
+            pageLink.innerText = page;
+            pageLink.addEventListener("click", function (e) {
+                e.preventDefault();
+                fetchTableData(page, mainSortedPar, selectedBuilding);
+            });
+
+            pageItem.appendChild(pageLink);
+            return pageItem;
+        }
+
+        const maxVisiblePages = 5;
+        const halfVisible = Math.floor(maxVisiblePages / 2);
+        let startPage = Math.max(1, mainCurrentPage - halfVisible);
+        let endPage = Math.min(pageCount, mainCurrentPage + halfVisible);
+
+        if (mainCurrentPage <= halfVisible) {
+            endPage = Math.min(pageCount, maxVisiblePages);
+        } else if (mainCurrentPage > pageCount - halfVisible) {
+            startPage = Math.max(1, pageCount - maxVisiblePages + 1);
+        }
+
+        const prevBtn = document.createElement("li");
+        prevBtn.classList.add("page-item");
+        prevBtn.innerHTML = `<a class="page-link" href="#" aria-label="Previous">&laquo;</a>`;
+        prevBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            if (mainCurrentPage > 1) fetchTableData(mainCurrentPage - 1, mainSortedPar, selectedBuilding);
+        });
+        pagination.appendChild(prevBtn);
+
+        if (startPage > 1) {
+            pagination.appendChild(createPageItem(1));
+            if (startPage > 2) {
+                pagination.appendChild(createEllipsis());
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            pagination.appendChild(createPageItem(i, i === mainCurrentPage));
+        }
+
+        if (endPage < pageCount) {
+            if (endPage < pageCount - 1) {
+                pagination.appendChild(createEllipsis());
+            }
+            pagination.appendChild(createPageItem(pageCount));
+        }
+
+        const nextBtn = document.createElement("li");
+        nextBtn.classList.add("page-item");
+        nextBtn.innerHTML = `<a class="page-link" href="#" aria-label="Next">&raquo;</a>`;
+        nextBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            if (mainCurrentPage < pageCount) fetchTableData(mainCurrentPage + 1, mainSortedPar, selectedBuilding);
+        });
+        pagination.appendChild(nextBtn);
+    }
+
+    function createEllipsis() {
+        const ellipsis = document.createElement("li");
+        ellipsis.classList.add("page-item", "disabled");
+        ellipsis.innerHTML = `<span class="page-link">...</span>`;
+        return ellipsis;
+    }
+
+    renderPagination();
+
+    // Attach filter input events
+    document.querySelectorAll('.search-input').forEach((input, index) => {
+        const headerLabel = headerCells[index]?.innerText.trim();
+        const columnName = mainHeaderMap[headerLabel];
+
+        input.addEventListener('input', () => {
+            const searchTerm = input.value.trim().toLowerCase();
+
+            filters = filters.filter(f => f.column !== columnName);
+
+            if (columnName && searchTerm) {
+                filters.push({ column: columnName, value: searchTerm });
+            }
+
+            fetchTableData(1, mainSortedPar, selectedBuilding);
+        });
+    });
 
     // Function to sort data and update the table
     function sortTableData(column) {
 
         // Toggle sort order for the clicked column
         sortOrder[column] = !sortOrder[column];
+        const direction = sortOrder[column] ? 'asc' : 'desc';
 
-        // Update sort priority for multi-sort
-        const index = sortPriority.indexOf(column);
-        if (index > -1) {
-            sortPriority.splice(index, 1);
-        }
-        sortPriority.unshift(column);
-
-        // Sort nameroomSetCount array using multiple columns based on sortPriority
-        nameroomSetCount.sort((a, b) => {
-            for (let i = 0; i < sortPriority.length; i++) {
-                const col = sortPriority[i];
-                let valA, valB;
-
-                if (col === 'nameroom') {
-                    valA = a.nameroom.toLowerCase();
-                    valB = b.nameroom.toLowerCase();
-                } else if (col === 'count_assets') {
-                    valA = parseInt(a.count_assets, 10);
-                    valB = parseInt(b.count_assets, 10);
-                }
-
-                // Compare values for the current column
-                if (valA < valB) return sortOrder[col] ? -1 : 1;
-                if (valA > valB) return sortOrder[col] ? 1 : -1;
-            }
-            return 0;
-        });
-
-        // Clear existing rows in the table
-        const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = "";
-
-        // Populate table with sorted data
-        nameroomSetCount.forEach(item => {
-            const row = document.createElement("tr");
-            row.classList.add('data-room');
-            row.setAttribute("id", item.id);
-
-            // Room number cell
-            const nameroomCell = document.createElement("td");
-            nameroomCell.textContent = item.nameroom;
-            row.appendChild(nameroomCell);
-
-            // Room status cell
-            const quantityCell = document.createElement("td");
-            quantityCell.textContent = item.count_assets;
-            row.appendChild(quantityCell);
-
-            // Attach click event for each row
-            row.addEventListener('click', function (event) {
-                const rowId = event.currentTarget.id;
-                openAssetsModal(rowId);
-            });
-
-            // Append row to the table body
-            tbody.appendChild(row);
-        });
+        mainSortedPar = { column, direction };
 
         // Update column headers with sort indicators
         updateSortIndicators(column);
+
+        fetchTableData(1, mainSortedPar, selectedBuilding);
     }
 
     // Function to sort data and update the table
@@ -354,176 +529,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Toggle sort order for the clicked column
         sortOrderAsset[column] = !sortOrderAsset[column];
+        const direction = sortOrderAsset[column] ? 'asc' : 'desc';
 
-        // Update sort priority for multi-sort
-        const index = sortPriorityAsset.indexOf(column);
-        if (index > -1) {
-            sortPriorityAsset.splice(index, 1);
-        }
-        sortPriorityAsset.unshift(column);
-
-        // Sort nameAssetSetCount array using multiple columns based on sortPriority
-        nameAssetSetCount.sort((a, b) => {
-            for (let i = 0; i < sortPriorityAsset.length; i++) {
-                const col = sortPriorityAsset[i];
-                let valA, valB;
-
-                if (col === 'code') {
-                    valA = a.code.toLowerCase();
-                    valB = b.code.toLowerCase();
-                } else if (col === 'name') {
-                    valA = a.name.toLowerCase();
-                    valB = b.name.toLowerCase();
-                } else if (col === 'type') {
-                    valA = a.type.toLowerCase();
-                    valB = b.type.toLowerCase();
-                } else if (col === 'location') {
-                    valA = a.location.toLowerCase();
-                    valB = b.location.toLowerCase();
-                } else if (col === 'description') {
-                    valA = a.description ? a.description.toLowerCase() : 'No description';
-                    valB = a.description ? b.description.toLowerCase() : 'No description';
-                }
-
-                // Compare values for the current column
-                if (valA < valB) return sortOrderAsset[col] ? -1 : 1;
-                if (valA > valB) return sortOrderAsset[col] ? 1 : -1;
-            }
-            return 0;
-        });
-
-        // Clear existing rows in the table
-        const tbody = document.getElementById('tableBodyModal');
-        tbody.innerHTML = "";
-
-        allCheckedRow = []; // Reset the global array
-
-        // Dynamically create the header checkbox
-        const headerCheckbox = document.createElement('input');
-        headerCheckbox.type = 'checkbox';
-        headerCheckbox.className = 'form-check-input header-checkbox';
-        headerCheckbox.style.border = '1px solid black'; // Make the border more bold
-        headerCheckbox.style.backgroundColor = ''; // Clear any previous color
-
-        headerCheckbox.addEventListener('change', (event) => {
-            const isChecked = event.target.checked;
-            headerCheckbox.style.backgroundColor = isChecked ? 'green' : '';
-
-            // Get all visible rows
-            const visibleRows = Array.from(document.querySelectorAll('.data-asset')).filter(row => row.style.display !== 'none');
-
-            visibleRows.forEach(row => {
-                const checkbox = row.querySelector('.form-check-input:not(.header-checkbox)');
-                if (checkbox) {
-                    checkbox.checked = isChecked;
-                    checkbox.style.backgroundColor = isChecked ? 'green' : '';
-                    if (isChecked) {
-                        allCheckedRow.push({ code: checkbox.dataset.id });
-                    } else {
-                        allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
-                    }
-                }
-            });
-
-            // Ensure no duplicates in allCheckedRow
-            if (isChecked) {
-                allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
-                    .map(code => ({ code }));
-            }
-        });
-
-        // Append the header checkbox to the table header
-        const thead = tbody.parentElement.querySelector('thead');
-        const headerRow = thead.querySelector('tr');
-
-        headerRow.querySelectorAll('th').forEach(th => {
-            if (!th.textContent.trim()) {
-                th.remove();
-            }
-        });
-
-        const headerCell = document.createElement('th');
-        const assetTableBody = document.getElementById('assetTable').getElementsByTagName('tbody')[0];
-        headerCell.appendChild(headerCheckbox);
-        headerRow.insertBefore(headerCell, headerRow.firstChild);
-
-        // Populate table with sorted data
-        nameAssetSetCount.forEach(item => {
-            const row = document.createElement("tr");
-            row.classList.add('data-asset');
-
-            // Add the checkbox cell
-            const checkboxCell = document.createElement('td');
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = 'form-check-input';
-            checkbox.dataset.id = item.id;
-            checkbox.style.border = '1px solid black'; // Make the border more bold
-
-            // Add change event to the checkbox
-            checkbox.addEventListener('change', () => {
-                if (checkbox.checked) {
-                    checkbox.style.backgroundColor = 'green';
-                    allCheckedRow.push({ code: item.id });
-                } else {
-                    checkbox.style.backgroundColor = '';
-                    allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
-                }
-            });
-
-            checkboxCell.appendChild(checkbox);
-            row.appendChild(checkboxCell);
-
-            // Room number cell
-            const codeCell = document.createElement("td");
-            codeCell.textContent = item.code;
-            row.appendChild(codeCell);
-
-            // Room status cell
-            const nameCell = document.createElement("td");
-            nameCell.textContent = item.name;
-            row.appendChild(nameCell);
-
-            // Room status cell
-            const typeCell = document.createElement("td");
-            typeCell.textContent = item.type;
-            row.appendChild(typeCell);
-
-            // Room status cell
-            const locationCell = document.createElement("td");
-            locationCell.textContent = item.location;
-            row.appendChild(locationCell);
-
-            const descriptionCell = document.createElement("td");
-            descriptionCell.textContent = item.description ? item.description : 'No description';
-            row.appendChild(descriptionCell);
-
-            // Attach click event for each row
-            row.addEventListener('click', (event) => {
-                // Check if the clicked element is not the first td in the row
-                if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
-                    openEditAssetsModal(
-                        item.code, item.name, item.type, item.location,
-                        item.namekey, item.categorie, item.quantity, item.mrah,
-                        item.owner, item.status, item.expandable, item.description,
-                        item.service, item.m2_inside, item.is_fixed, item.date_purchase,
-                        item.date_written_off, item.purchase_price, item.comments, item.replaced_off,
-                        item.year_of_life_cycle, item.rest_of_life_cycle, item.replaced_by, item.rest_value
-                    );
-                }
-            });
-
-            // Append row to the table body
-            tbody.appendChild(row);
-        });
+        sortedPar = { column, direction };
 
         // Update column headers with sort indicators
         updateSortIndicatorsAssets(column);
 
-        const rowsTable = assetTableBody.getElementsByTagName("tr");
-        firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
-
-        setupTableNavigation("assetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
+        currentPage = 1;
+        fetchSortedAsset(globalRowId, 1, 10, [], sortedPar);
     }
 
     // Function to update sort indicators on column headers
@@ -552,9 +566,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Get header elements
         const headers = {
             code: document.getElementById('asset-code-header'),
-            name: document.getElementById('asset-name-header'),
-            type: document.getElementById('asset-type-header'),
-            location: document.getElementById('asset-location-header'),
+            name_assets: document.getElementById('asset-name-header'),
+            type_name: document.getElementById('asset-type-header'),
+            nameroom: document.getElementById('asset-location-header'),
             description: document.getElementById('asset-description-header')
         };
 
@@ -606,16 +620,26 @@ document.addEventListener('DOMContentLoaded', function () {
     assetSearchDropdown.addEventListener('click', function (event) {
         const selectedAsset = event.target;
         if (selectedAsset && selectedAsset.dataset.id) {
+
+            const formatDate = (date) => {
+                const dateObj = new Date(date);
+                const year = dateObj.getFullYear();
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+                const day = String(dateObj.getDate()).padStart(2, '0');
+
+                return `${year}-${month}-${day}`;
+            }
+
             assetSearchInput.value = selectedAsset.textContent;
             selectedAssetId.value = selectedAsset.getAttribute('data-id');
             assetSearchDropdown.style.display = 'none';
 
-            assetName.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).name;
+            assetName.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).name_assets;
 
-            typeSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).type;
+            typeSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).type_name;
             selectedTypeId.value = assetType.find(type => type.name === typeSearchInput.value).id;
 
-            locationSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).location;
+            locationSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).nameroom;
             selectedLocationId.value = assetLocation.find(item => item.nameroom === locationSearchInput.value) ? assetLocation.find(item => item.nameroom === locationSearchInput.value).roomid : '';
 
             subLocationSearchInput.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).namekey !== 'There is no associated key' ? nameAssetSetCount.find(item => item.id === selectedAssetId.value).namekey : '';
@@ -633,8 +657,10 @@ document.addEventListener('DOMContentLoaded', function () {
             assetYearOfLifeCycle.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).year_of_life_cycle;
             assetRestOfLifeCycle.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).rest_of_life_cycle;
             assetPurchasePrice.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).purchase_price;
-            assetDatePurchase.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).date_purchase;
-            assetDateWrittenOff.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).date_written_off;
+            assetDatePurchase.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).date_purchase ?
+                formatDate(nameAssetSetCount.find(item => item.id === selectedAssetId.value).date_purchase) : '';
+            assetDateWrittenOff.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).date_written_off ?
+                formatDate(nameAssetSetCount.find(item => item.id === selectedAssetId.value).date_written_off) : '';
             assetIsFixed.checked = !!nameAssetSetCount.find(item => item.id === selectedAssetId.value).is_fixed;
             assetService.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).service;
             assetEditStatus.value = nameAssetSetCount.find(item => item.id === selectedAssetId.value).status;
@@ -745,19 +771,24 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const responseBike = await fetch(`/getAllAssets`, {
-                method: 'GET'
+            const responseAsset = await fetch(`/getAllAssets`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
-            if (!responseBike.ok) {
-                throw new Error('Network response was not ok');
+            if (!responseAsset.ok) {
+                const error = await responseAsset.json();
+                checkForGlobalError(responseAsset, error);
+                showMess('Error', error.message);
+                return;
             }
 
-            allAsset = await responseBike.json(); // Store fetched bikes in the global variable
+            allAsset = await responseAsset.json();
 
         } catch (error) {
-            console.error(error);
-            showGlobalMess('Error', 'There was a problem with the fetch operation');
+            showMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -819,7 +850,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Handle bike selection
-    selectAllAssetDropdown.addEventListener('click', async function (event) {
+    selectAllAssetDropdown.addEventListener('click', function (event) {
 
         const selectedAllAsset = event.target;
 
@@ -853,11 +884,22 @@ document.addEventListener('DOMContentLoaded', function () {
             loadingIndicator.style.display = 'flex';
 
             fetch(`/assets/getSortedAssets`, {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             })
-                .then(response => response.json())
+                .then(async response => {
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        checkForGlobalError(response, errorData);
+                        throw new Error(errorData.message || 'Unknown error');
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    // Parse the JSON string into an array of objects
+
                     nameAssetSetCount = data;
 
                     openEditAssetsModal(
@@ -869,7 +911,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         year_of_life_cycle, rest_of_life_cycle, replaced_by, rest_value
                     );
                 })
-                .catch(error => console.error("Error fetching keys:", error))
+                .catch(error => showMess('Error', error.message))
                 .finally(() => {
                     loadingIndicator.style.display = 'none';
                 });
@@ -1498,7 +1540,26 @@ document.addEventListener('DOMContentLoaded', function () {
         modalMessContent.classList.remove('slide-out');
     }
 
-    function closeMessModal() {
+    function closeMessModal(action = '') {
+
+        function clearInput(clearModalInput) {
+            const inputs = clearModalInput.querySelectorAll('input, textarea, select');
+            inputs.forEach(el => {
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    el.checked = false;
+                } else {
+                    el.value = '';
+                }
+                el.classList.remove('is-valid');
+                el.classList.remove('is-invalid');
+            });
+        }
+
+        function clearMultiInput(progressBar, fileIput) {
+            document.getElementById(`${progressBar}`).style.width = 0 + "%";
+            document.getElementById(`${fileIput}`).value = '';
+        }
+
         // Add the slide-out effect
         modalMessContent.classList.add('slide-out');
         modalMessContent.classList.remove('slide-in');
@@ -1512,8 +1573,110 @@ document.addEventListener('DOMContentLoaded', function () {
             if (button.length > 0)
                 modalMessContent.removeChild(button[0]);
 
-            if (isInfo)
-                window.location.reload();
+            if (isInfo) {
+
+                const fullContent = document.getElementsByClassName('content')[0];
+
+                switch (action) {
+
+                    case 'addAssetType':
+                        clearInput(addAssetsTypeModalContent);
+                        break;
+
+                    case 'removeAssetType':
+                        clearInput(removeAssetsTypeModalContent);
+                        break;
+
+                    case 'addLostItem':
+                    case 'restoreLostAsset':
+                        clearInput(lostAssetsModalContent);
+                        fetchLostAssets();
+                        break;
+
+                    case 'changeAmountLargeToSmall':
+                    case 'changeAmountSmallToLarge':
+                        allCheckedLargeRow = [];
+                        allCheckedSmallRow = [];
+                        clearInput(cleanItemModalContent);
+                        fetchCleanItems();
+                        break;
+
+                    case 'removeCleanItem':
+                        allCheckedLargeRow = [];
+                        allCheckedSmallRow = [];
+                        clearInput(removeCleanItemModalContent);
+                        clearInput(cleanItemModalContent);
+                        fetchCleanItems();
+                        break;
+
+                    case 'addCleanItem':
+                        clearInput(addCleanItemModalContent);
+                        clearInput(cleanItemModalContent);
+                        fetchCleanItems();
+                        break;
+
+                    case 'editCleanItem':
+                        allCheckedLargeRow = [];
+                        allCheckedSmallRow = [];
+                        clearInput(editCleanItemModalContent);
+                        clearInput(cleanItemModalContent);
+                        fetchCleanItems();
+                        break;
+
+                    case 'addMultiCleanItem':
+                        clearMultiInput('progress', 'fileInput');
+                        clearInput(cleanItemModalContent);
+                        fetchCleanItems();
+                        break;
+
+                    case 'restorInventory':
+                        fetchInventory();
+                        break;
+
+                    case 'deleteAsset':
+                        allCheckedRow = [];
+                        clearInput(fullContent);
+                        clearInput(assetsModalContent);
+                        fetchSortedAsset(globalRowId);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        break;
+
+                    case 'editAsset':
+                        clearInput(fullContent);
+                        clearInput(assetsModalContent);
+                        clearInput(assetsEditModalContent);
+                        fetchSortedAsset(globalRowId);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        break;
+
+                    case 'editMultiAssets':
+                        clearInput(fullContent);
+                        clearInput(assetsModalContent);
+                        clearMultiInput('editMultiAssetsProgress', 'fileEditMultiAssetsInput');
+                        fetchSortedAsset(globalRowId);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        break;
+
+                    case 'addAsset':
+                        clearInput(fullContent);
+                        clearInput(assetsModalContent);
+                        clearInput(assetsAddModalContent);
+                        fetchSortedAsset(globalRowId);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        break;
+
+                    case 'addMultiAssets':
+                        clearInput(fullContent);
+                        clearInput(assetsModalContent);
+                        clearMultiInput('addMultiAssetsProgress', 'fileAddMultiAssetsInput');
+                        fetchSortedAsset(globalRowId);
+                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        break;
+                }
+
+                fetchTypeData();
+                fetchAllAsset();
+            }
 
         }, 400); // Match the duration of the animation (0.4s)
     }
@@ -1620,144 +1783,204 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    function openLostAssetsModal() {
+    async function fetchLostAssets(page = 1, limit = 10, searchFilters = []) {
 
         const lostItemsTable = document.getElementById('lostItemsTableBody');
         lostItemsTable.innerHTML = '';
 
-        allLostItems.forEach(item => {
-            const row = document.createElement('tr');
+        loadingIndicator.style.display = 'flex';
 
-            const nameCell = document.createElement('td');
-            nameCell.textContent = item.nameItem;
-            row.appendChild(nameCell);
+        try {
 
-            const descriptionCell = document.createElement('td');
-            descriptionCell.textContent = item.description ? item.description : 'No description';
-            row.appendChild(descriptionCell);
-
-            const lostQuantityCell = document.createElement('td');
-            lostQuantityCell.textContent = item.lostQuantity;
-            row.appendChild(lostQuantityCell);
-
-            row.addEventListener('click', function () {
-                const submitButton = document.createElement('button');
-                var isSubmit = false;
-                let hasError = false;
-                var responseData = {};
-
-                submitButton.textContent = 'Yes';
-                submitButton.classList.add('btn', 'btn-success');
-
-                const quantityInput = document.createElement('input');
-                quantityInput.type = 'number';
-                quantityInput.classList.add('form-control');
-                quantityInput.value = item.lostQuantity;
-                quantityInput.min = 1;
-                quantityInput.max = item.lostQuantity;
-                quantityInput.style.marginBottom = '10px';
-
-                quantityInput.addEventListener('input', function () {
-                    const isValid = quantityInput.value > 0 && quantityInput.value <= item.lostQuantity;
-                    toggleInputValidity(quantityInput, isValid);
-                });
-
-                submitButton.addEventListener('click', async () => {
-
-                    if (!quantityInput.value) {
-                        return;
-                    }
-
-                    hasError = false;
-                    isSubmit = true;
-
-                    loadingIndicator.style.display = 'flex';
-
-                    try {
-                        const data = {
-                            code: item.nameItem,
-                            lost_quantity: quantityInput.value
-                        };
-
-                        const response = await fetch('/assets/restorLostAsset', {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'CSRF-Token': csrfToken
-                            },
-                            body: JSON.stringify(data)
-                        });
-
-                        if (!response.ok) {
-                            hasError = true;
-                        }
-
-                        responseData = await response.json();
-
-                        closeMessModal();
-
-                    } catch (error) {
-                        hasError = true;
-                    } finally {
-                        loadingIndicator.style.display = 'none';
-                    }
-                });
-
-                modalMessContent.appendChild(quantityInput);
-                modalMessContent.appendChild(submitButton);
-
-                // Wait for the modal to close, then check if the submit button was clicked
-                const observer = new MutationObserver(() => {
-                    if (!modalMess.classList.contains('show') && isSubmit) {
-                        observer.disconnect();
-
-                        if (modalMessContent.contains(submitButton)) {
-                            // Check if the button is still a child before removing
-                            modalMessContent.removeChild(submitButton);
-                        }
-
-                        if (modalMessContent.contains(quantityInput)) {
-                            // Check if the input is still a child before removing
-                            modalMessContent.removeChild(quantityInput);
-                        }
-                    }
-                });
-
-                observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
-
-                // Close the warning modal and show appropriate messages based on the result
-                const closeWarningObserver = new MutationObserver(() => {
-                    if (!modalMess.classList.contains('show')) {
-                        closeWarningObserver.disconnect();
-
-                        if (isSubmit && !hasError) {
-                            closeLostAssetsModal();
-                            showMess('Info', 'The asset has been restored');
-                        } else if (isSubmit) {
-                            showMess('Error', responseData.message || 'An error occurred while restoring the asset');
-                        }
-
-                        if (modalMessContent.contains(quantityInput)) {
-                            // Check if the input is still a child before removing
-                            modalMessContent.removeChild(quantityInput);
-                        }
-                    }
-                });
-
-                closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
-
-                // Show the warning modal
-                showMess('Warnning', 'Are you sure you want to restore this lost item?\nPlease enter the quantity of assets you want to restore.');
+            const searchParams = new URLSearchParams({
+                page,
+                limit
             });
 
-            lostItemsTable.appendChild(row);
-        });
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
 
-        const rowsTable = lostItemsTable.getElementsByTagName("tr");
-        firstUpdateTable(rowsTable, 0, 10, 'pageNumberTherd');
+            const response = await fetch(`/allAssets?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
 
-        setupTableNavigation("lostItemsTable", "prevBtnTherd", "nextBtnTherd", "pageNumberTherd");
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showMess('Error', error.message);
+                return;
+            }
+
+            const { assets, allLostItems, totalLostItems } = await response.json();
+
+            lostAssetsCode = assets;
+
+            allLostItems.forEach(item => {
+                const row = document.createElement('tr');
+
+                const nameCell = document.createElement('td');
+                nameCell.textContent = item.nameItem;
+                nameCell.classList.add("text-wrap");
+                nameCell.style = "max-width: 200px;";
+                row.appendChild(nameCell);
+
+                const descriptionCell = document.createElement('td');
+                descriptionCell.textContent = item.description ? item.description : 'No description';
+                descriptionCell.classList.add("text-wrap");
+                descriptionCell.style = "max-width: 200px;";
+                row.appendChild(descriptionCell);
+
+                const lostQuantityCell = document.createElement('td');
+                lostQuantityCell.textContent = item.lostQuantity;
+                lostQuantityCell.classList.add("text-wrap");
+                lostQuantityCell.style = "max-width: 200px;";
+                row.appendChild(lostQuantityCell);
+
+                row.addEventListener('click', function () {
+                    const submitButton = document.createElement('button');
+                    var isSubmit = false;
+                    let hasError = false;
+                    var responseData = {};
+
+                    submitButton.textContent = 'Yes';
+                    submitButton.classList.add('btn', 'btn-success');
+
+                    const quantityInput = document.createElement('input');
+                    quantityInput.type = 'number';
+                    quantityInput.classList.add('form-control');
+                    quantityInput.value = item.lostQuantity;
+                    quantityInput.min = 1;
+                    quantityInput.max = item.lostQuantity;
+                    quantityInput.style.marginBottom = '10px';
+
+                    quantityInput.addEventListener('input', function () {
+                        const isValid = quantityInput.value > 0 && quantityInput.value <= item.lostQuantity;
+                        toggleInputValidity(quantityInput, isValid);
+                    });
+
+                    submitButton.addEventListener('click', async () => {
+
+                        if (!quantityInput.value) {
+                            return;
+                        }
+
+                        hasError = false;
+                        isSubmit = true;
+
+                        loadingIndicator.style.display = 'flex';
+
+                        try {
+                            const data = {
+                                code: item.nameItem,
+                                lost_quantity: quantityInput.value
+                            };
+
+                            const response = await fetch('/assets/restorLostAsset', {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'CSRF-Token': csrfToken
+                                },
+                                body: JSON.stringify(data)
+                            });
+
+                            responseData = await response.json();
+
+                            if (!response.ok) {
+                                checkForGlobalError(response, responseData);
+                                hasError = true;
+                            }
+
+                            closeMessModal();
+
+                        } catch (error) {
+                            hasError = true;
+                        } finally {
+                            loadingIndicator.style.display = 'none';
+                        }
+                    });
+
+                    modalMessContent.appendChild(quantityInput);
+                    modalMessContent.appendChild(submitButton);
+
+                    // Wait for the modal to close, then check if the submit button was clicked
+                    const observer = new MutationObserver(() => {
+                        if (!modalMess.classList.contains('show') && isSubmit) {
+                            observer.disconnect();
+
+                            if (modalMessContent.contains(submitButton)) {
+                                // Check if the button is still a child before removing
+                                modalMessContent.removeChild(submitButton);
+                            }
+
+                            if (modalMessContent.contains(quantityInput)) {
+                                // Check if the input is still a child before removing
+                                modalMessContent.removeChild(quantityInput);
+                            }
+                        }
+                    });
+
+                    observer.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+                    // Close the warning modal and show appropriate messages based on the result
+                    const closeWarningObserver = new MutationObserver(() => {
+                        if (!modalMess.classList.contains('show')) {
+                            closeWarningObserver.disconnect();
+
+                            if (isSubmit && !hasError) {
+                                globalAction = 'restoreLostAsset';
+                                showMess('Info', 'The asset has been restored');
+                            } else if (isSubmit) {
+                                showMess('Error', responseData.message || 'An error occurred while restoring the asset');
+                            }
+
+                            if (modalMessContent.contains(quantityInput)) {
+                                // Check if the input is still a child before removing
+                                modalMessContent.removeChild(quantityInput);
+                            }
+                        }
+                    });
+
+                    closeWarningObserver.observe(modalMess, { attributes: true, attributeFilter: ['class'] });
+
+                    // Show the warning modal
+                    showMess('Warnning', 'Are you sure you want to restore this lost item?\nPlease enter the quantity of assets you want to restore.');
+                });
+
+                lostItemsTable.appendChild(row);
+            });
+
+            const rowsTable = lostItemsTable.getElementsByTagName("tr");
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumberTherd');
+
+            setupTableNavigation("lostItemsTable", "prevBtnTherd", "nextBtnTherd", "pageNumberTherd", limit, totalLostItems, currentPage, "", "", searchFilters);
+
+        } catch (error) {
+            showMess('Error', 'An error occurred while fetching lost items. Please try again later.');
+        } finally {
+            loadingIndicator.style.display = 'none';
+        };
+    }
+
+    function openLostAssetsModal() {
+
+        currentPage = 1;
+
+        const headerDate = {
+            'Item Name': 'nameitem',
+            'Description': 'description',
+            'Lost Quantity': 'lost_quantity'
+        };
+
+        rewriteTableSearch('.lost-item-search-input', 'lostItemsTable', headerDate);
+
+        fetchLostAssets();
 
         lostAssetsModal.classList.add('show');
         lostAssetsModalContent.classList.add('show');
@@ -1820,38 +2043,287 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId, rowsPerPage = 10) {
-        const table = document.getElementById(tableId).getElementsByTagName("tbody")[0];
-        const rows = table.getElementsByTagName("tr");
-        let currentIndex = 0;
-        let totalPages = Math.ceil(rows.length / rowsPerPage);
-        const pageNumberDisplay = document.getElementById(pageNumberId);
+    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId, rowsPerPage = 10, totalPages, page, selectDate1, selectDate2, searchFilters = [], searchFiltersDate = [], numRoom = "") {
 
-        function updateTable() {
-            for (let i = 0; i < rows.length; i++) {
-                rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
-            }
+        document.getElementById(`${pageNumberId}`).textContent = `${page}/${totalPages}`;
 
-            totalPages = Math.ceil(rows.length / rowsPerPage) || 1; // Recalculate total pages (avoid division by zero)
-            let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
-            pageNumberDisplay.textContent = `${currentPage}/${totalPages}`;
-        }
+        switch (tableId) {
+            case 'largeWorkhouse':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchCleanItems(currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                }
 
-        document.getElementById(prevBtnId).onclick = function () {
-            if (currentIndex > 0) {
-                currentIndex -= rowsPerPage;
-                updateTable();
-            }
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchCleanItems(currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                };
+                break;
+            case 'smallWorkhouse':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (secondCurrentPage > 1) {
+                        secondCurrentPage--;
+                        fetchCleanItems(currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (secondCurrentPage < totalPages) {
+                        secondCurrentPage++;
+                        fetchCleanItems(currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                };
+                break;
+            case 'assetsTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                };
+                break;
+            case 'assetDateTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (secondCurrentPage > 1) {
+                        secondCurrentPage--;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (secondCurrentPage < totalPages) {
+                        secondCurrentPage++;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                };
+                break;
+
+            case 'lostItemsTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchLostAssets(currentPage, rowsPerPage, searchFilters);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchLostAssets(currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
+
+            case 'itemTraceabilityTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchTracabilityItemData(currentPage, rowsPerPage, searchFilters);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchTracabilityItemData(currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
+
+            case 'assetTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchSortedAsset(numRoom, currentPage, rowsPerPage, searchFilters, sortedPar);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchSortedAsset(numRoom, currentPage, rowsPerPage, searchFilters, sortedPar);
+                    }
+                };
+                break;
+
+            case 'mainAccordion':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchInventory(currentPage, rowsPerPage);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchInventory(currentPage, rowsPerPage);
+                    }
+                };
+                break;
         };
 
-        document.getElementById(nextBtnId).onclick = function () {
-            if (currentIndex + rowsPerPage < rows.length) {
-                currentIndex += rowsPerPage;
-                updateTable();
-            }
-        };
+    }
 
-        updateTable(); // Initialize table view
+    function rewriteTableSearch(className, tableName, headerMap, selectDate1 = "", selectDate2 = "", numRoom = "") {
+
+        document.querySelectorAll(`${className}`).forEach((input) => {
+            const newInput = input.cloneNode(true);
+            input.parentNode.replaceChild(newInput, input);
+        });
+
+        document.querySelectorAll(`${className}`).forEach((input) => {
+
+            input.addEventListener('input', () => {
+
+                const filters = document.querySelectorAll(`${className}`);
+                const headerCells = document.querySelectorAll(`#${tableName} thead th`);
+
+                const searchFilters = [];
+
+                switch (tableName) {
+                    case 'assetsTable':
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            currentPage = 1;
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            if (headerLabel === 'Fixed' || headerLabel === 'Mobile') {
+                                let boolValue;
+                                if (searchTerm === 'yes') boolValue = true;
+                                else if (searchTerm === 'no') boolValue = false;
+                                else return;
+
+                                if (headerLabel === 'Mobile') {
+                                    boolValue = !boolValue;
+                                }
+
+                                searchFilters.push({ column: 'is_fixed', value: boolValue });
+                            } else if (columnName) {
+                                searchFilters.push({ column: columnName, value: searchTerm });
+                            }
+                        });
+
+                        globalSearchFilters = searchFilters;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, 10, searchFilters, globalSearchFiltersDate);
+                        break;
+
+                    case 'assetDateTable':
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            secondCurrentPage = 1;
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        globalSearchFiltersDate = searchFilters;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, 10, globalSearchFilters, searchFilters);
+                        break;
+
+                    case 'lostItemsTable':
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            currentPage = 1;
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchLostAssets(currentPage, 10, searchFilters);
+                        break;
+
+                    case 'largeWorkhouse':
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex + 1]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            currentPage = 1;
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        globalSearchLargeFilters = searchFilters;
+                        fetchCleanItems(currentPage, secondCurrentPage, 7, searchFilters, globalSearchSmallFilters);
+                        break;
+
+                    case 'smallWorkhouse':
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex + 1]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            secondCurrentPage = 1;
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        globalSearchSmallFilters = searchFilters;
+                        fetchCleanItems(currentPage, secondCurrentPage, 7, globalSearchLargeFilters, searchFilters);
+                        break;
+
+                    case 'itemTraceabilityTable':
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            currentPage = 1;
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchTracabilityItemData(currentPage, 10, searchFilters);
+                        break;
+
+                    case 'assetTable':
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex + 1]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            currentPage = 1;
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchSortedAsset(numRoom, currentPage, 10, searchFilters, sortedPar);
+                        break;
+                }
+            });
+        });
     }
 
     function openReportModal() {
@@ -1892,24 +2364,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
 
-            // Clear existing rows from bike usage details table
-            const assetTableBody = document.getElementById('assetsTable').getElementsByTagName('tbody')[0];
-            const assetDateTableBody = document.getElementById('assetDateTable').getElementsByTagName('tbody')[0];
-
-            assetTableBody.innerHTML = '';
-            assetDateTableBody.innerHTML = '';
-
             assetReportModal.classList.remove('show');
             assetReportModalContent.classList.remove('show');
         }, 500); // Match the duration of the animation (0.4s)
     }
 
-    function openCleanItemListModal() {
-
-        // Add the slide-in effect by adding the necessary classes
-        cleanItemModal.classList.add('show');
-        cleanItemModalContent.classList.add('show');
-        cleanItemModalContent.classList.add('slide-in');
+    async function fetchCleanItems(pageLarge = 1, pageSmall = 1, limit = 7, searchFiltersLarge = [], searchFiltersSmall = []) {
 
         const largeTbody = document.getElementById('largeWorkhouseBody');
         const smallTbody = document.getElementById('smallWorkhouseBody');
@@ -1920,204 +2380,297 @@ document.addEventListener('DOMContentLoaded', function () {
         const smallTableBody = document.getElementById('smallWorkhouse').getElementsByTagName('tbody')[0];
         smallTableBody.innerHTML = '';
 
-        allCheckedLargeRow = []; // Reset the global array
-        allCheckedSmallRow = []; // Reset the global array
+        loadingIndicator.style.display = 'flex';
 
-        // Dynamically create the header checkbox
-        const largeHeaderCheckbox = document.createElement('input');
-        largeHeaderCheckbox.type = 'checkbox';
-        largeHeaderCheckbox.className = 'form-check-input header-checkbox';
-        largeHeaderCheckbox.style.border = '1px solid black'; // Make the border more bold
-        largeHeaderCheckbox.style.backgroundColor = ''; // Clear any previous color
+        try {
 
-        largeHeaderCheckbox.addEventListener('change', (event) => {
-            largeHeaderCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
-            const isChecked = event.target.checked;
+            // Dynamically create the header checkbox
+            const largeHeaderCheckbox = document.createElement('input');
+            largeHeaderCheckbox.type = 'checkbox';
+            largeHeaderCheckbox.className = 'form-check-input header-checkbox';
+            largeHeaderCheckbox.style.border = '1px solid black'; // Make the border more bold
+            largeHeaderCheckbox.style.backgroundColor = ''; // Clear any previous color
 
-            // Get all visible rows
-            const visibleRows = Array.from(largeTbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+            largeHeaderCheckbox.addEventListener('change', (event) => {
+                largeHeaderCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+                const isChecked = event.target.checked;
 
-            visibleRows.forEach(row => {
-                const checkbox = row.querySelector('.form-check-input');
-                if (checkbox) {
-                    checkbox.checked = isChecked;
-                    checkbox.style.backgroundColor = isChecked ? 'green' : '';
-                    if (isChecked) {
-                        const amount = row.getElementsByTagName('td')[2].textContent;
-                        allCheckedLargeRow.push({ code: checkbox.dataset.id, amount: amount });
-                    } else {
-                        allCheckedLargeRow = allCheckedLargeRow.filter(item => item.code !== checkbox.dataset.id);
+                // Get all visible rows
+                const visibleRows = Array.from(largeTbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+
+                visibleRows.forEach(row => {
+                    const checkbox = row.querySelector('.form-check-input');
+                    if (checkbox) {
+                        checkbox.checked = isChecked;
+                        checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                        if (isChecked) {
+                            const amount = row.getElementsByTagName('td')[2].textContent;
+                            allCheckedLargeRow.push({ code: checkbox.dataset.id, amount: amount });
+                        } else {
+                            allCheckedLargeRow = allCheckedLargeRow.filter(item => item.code !== checkbox.dataset.id);
+                        }
                     }
+                });
+
+                // Ensure no duplicates in allCheckedLargeRow
+                if (isChecked) {
+                    allCheckedLargeRow = Array.from(new Set(allCheckedLargeRow.map(item => `${item.code}-${item.amount}`)))
+                        .map(key => {
+                            const [code, amount] = key.split('-');
+                            return { code, amount };
+                        });
                 }
             });
 
-            // Ensure no duplicates in allCheckedRow
-            if (isChecked) {
-                allCheckedLargeRow = Array.from(new Set(allCheckedLargeRow.map(item => `${item.code}-${item.amount}`)))
-                    .map(key => {
-                        const [code, amount] = key.split('-');
-                        return { code, amount };
-                    });
-            }
-        });
+            // Append the header checkbox to the table header
+            const largeThead = largeTbody.parentElement.querySelector('thead');
+            const largeHeaderRow = largeThead.querySelector('tr');
 
-        // Append the header checkbox to the table header
-        const largeThead = largeTbody.parentElement.querySelector('thead');
-        const largeHeaderRow = largeThead.querySelector('tr');
-
-        largeHeaderRow.querySelectorAll('th').forEach(th => {
-            if (!th.textContent.trim()) {
-                th.remove();
-            }
-        });
-
-        const largeHeaderCell = document.createElement('th');
-        largeHeaderCell.appendChild(largeHeaderCheckbox);
-        largeHeaderRow.insertBefore(largeHeaderCell, largeHeaderRow.firstChild);
-
-        // Dynamically create the header checkbox
-        const smallHeaderCheckbox = document.createElement('input');
-        smallHeaderCheckbox.type = 'checkbox';
-        smallHeaderCheckbox.className = 'form-check-input header-checkbox';
-        smallHeaderCheckbox.style.border = '1px solid black'; // Make the border more bold
-        smallHeaderCheckbox.style.backgroundColor = ''; // Clear any previous color
-
-        smallHeaderCheckbox.addEventListener('change', (event) => {
-            smallHeaderCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
-            const isChecked = event.target.checked;
-
-            // Get all visible rows
-            const visibleRows = Array.from(smallTbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
-
-            visibleRows.forEach(row => {
-                const checkbox = row.querySelector('.form-check-input');
-                if (checkbox) {
-                    checkbox.checked = isChecked;
-                    checkbox.style.backgroundColor = isChecked ? 'green' : '';
-                    if (isChecked) {
-                        const amount = row.getElementsByTagName('td')[2].textContent;
-                        allCheckedSmallRow.push({ code: checkbox.dataset.id, amount: amount });
-                    } else {
-                        allCheckedSmallRow = allCheckedSmallRow.filter(item => item.code !== checkbox.dataset.id);
-                    }
+            largeHeaderRow.querySelectorAll('th').forEach(th => {
+                if (!th.textContent.trim()) {
+                    th.remove();
                 }
             });
 
-            // Ensure no duplicates in allCheckedRow
-            if (isChecked) {
-                allCheckedSmallRow = Array.from(new Set(allCheckedSmallRow.map(item => `${item.code}-${item.amount}`)))
-                    .map(key => {
-                        const [code, amount] = key.split('-');
-                        return { code, amount };
-                    });
+            const largeHeaderCell = document.createElement('th');
+            largeHeaderCell.appendChild(largeHeaderCheckbox);
+            largeHeaderRow.insertBefore(largeHeaderCell, largeHeaderRow.firstChild);
+
+            // Dynamically create the header checkbox
+            const smallHeaderCheckbox = document.createElement('input');
+            smallHeaderCheckbox.type = 'checkbox';
+            smallHeaderCheckbox.className = 'form-check-input header-checkbox';
+            smallHeaderCheckbox.style.border = '1px solid black'; // Make the border more bold
+            smallHeaderCheckbox.style.backgroundColor = ''; // Clear any previous color
+
+            smallHeaderCheckbox.addEventListener('change', (event) => {
+                smallHeaderCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+                const isChecked = event.target.checked;
+
+                // Get all visible rows
+                const visibleRows = Array.from(smallTbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+
+                visibleRows.forEach(row => {
+                    const checkbox = row.querySelector('.form-check-input');
+                    if (checkbox) {
+                        checkbox.checked = isChecked;
+                        checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                        if (isChecked) {
+                            const amount = row.getElementsByTagName('td')[2].textContent;
+                            allCheckedSmallRow.push({ code: checkbox.dataset.id, amount: amount });
+                        } else {
+                            allCheckedSmallRow = allCheckedSmallRow.filter(item => item.code !== checkbox.dataset.id);
+                        }
+                    }
+                });
+
+                // Ensure no duplicates in allCheckedSmallRow
+                if (isChecked) {
+                    allCheckedSmallRow = Array.from(new Set(allCheckedSmallRow.map(item => `${item.code}-${item.amount}`)))
+                        .map(key => {
+                            const [code, amount] = key.split('-');
+                            return { code, amount };
+                        });
+                }
+            });
+
+            // Append the header checkbox to the table header
+            const smallThead = smallTbody.parentElement.querySelector('thead');
+            const smallHeaderRow = smallThead.querySelector('tr');
+
+            smallHeaderRow.querySelectorAll('th').forEach(th => {
+                if (!th.textContent.trim()) {
+                    th.remove();
+                }
+            });
+
+            const smallHeaderCell = document.createElement('th');
+            smallHeaderCell.appendChild(smallHeaderCheckbox);
+            smallHeaderRow.insertBefore(smallHeaderCell, smallHeaderRow.firstChild);
+
+            const searchParams = new URLSearchParams({
+                pageLarge,
+                pageSmall,
+                limit
+            });
+
+            searchFiltersLarge.forEach(filter => {
+                searchParams.append('searchColumnLarge', filter.column);
+                searchParams.append('searchValueLarge', filter.value);
+            });
+
+            searchFiltersSmall.forEach(filter => {
+                searchParams.append('searchColumnSmall', filter.column);
+                searchParams.append('searchValueSmall', filter.value);
+            });
+
+            const response = await fetch(`/cleanItem?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showMess('Error', error.message);
+                return;
             }
-        });
 
-        // Append the header checkbox to the table header
-        const smallThead = smallTbody.parentElement.querySelector('thead');
-        const smallHeaderRow = smallThead.querySelector('tr');
+            const { data, filterDataLarge, filterDataSmall, totalPagesLarge, totalPagesSmall } = await response.json();
 
-        smallHeaderRow.querySelectorAll('th').forEach(th => {
-            if (!th.textContent.trim()) {
-                th.remove();
-            }
-        });
+            cleanItems = data;
 
-        const smallHeaderCell = document.createElement('th');
-        smallHeaderCell.appendChild(smallHeaderCheckbox);
-        smallHeaderRow.insertBefore(smallHeaderCell, smallHeaderRow.firstChild);
+            filterDataLarge.forEach(item => {
+                const largeRow = document.createElement("tr");
 
-        cleanItems.forEach(item => {
-            const largeRow = document.createElement("tr");
-            const smallRow = document.createElement("tr");
+                // Add the checkbox cell
+                const largeCheckboxCell = document.createElement('td');
+                const largeCheckbox = document.createElement('input');
+                largeCheckbox.type = 'checkbox';
+                largeCheckbox.className = 'form-check-input';
+                largeCheckbox.dataset.id = item.id;
+                largeCheckbox.style.border = '1px solid black'; // Make the border more bold
 
-            // Add the checkbox cell
-            const largeCheckboxCell = document.createElement('td');
-            const largeCheckbox = document.createElement('input');
-            largeCheckbox.type = 'checkbox';
-            largeCheckbox.className = 'form-check-input';
-            largeCheckbox.dataset.id = item.id;
-            largeCheckbox.style.border = '1px solid black'; // Make the border more bold
-
-            // Add change event to the checkbox
-            largeCheckbox.addEventListener('change', () => {
-                if (largeCheckbox.checked) {
+                if (allCheckedLargeRow.some(i => i.code === item.id)) {
                     largeCheckbox.style.backgroundColor = 'green';
-                    allCheckedLargeRow.push({ code: item.id, amount: item.total_amount });
-                } else {
-                    largeCheckbox.style.backgroundColor = '';
-                    allCheckedLargeRow = allCheckedLargeRow.filter(row => row.code !== item.id);
+                    largeCheckbox.checked = true;
                 }
+
+                // Add change event to the checkbox
+                largeCheckbox.addEventListener('change', () => {
+                    if (largeCheckbox.checked) {
+                        largeCheckbox.style.backgroundColor = 'green';
+                        allCheckedLargeRow.push({ code: item.id, amount: item.total_amount });
+                    } else {
+                        largeCheckbox.style.backgroundColor = '';
+                        allCheckedLargeRow = allCheckedLargeRow.filter(row => row.code !== item.id);
+                    }
+                });
+
+                largeCheckboxCell.appendChild(largeCheckbox);
+                largeRow.appendChild(largeCheckboxCell);
+
+                const nameCell1 = document.createElement("td");
+                nameCell1.textContent = item.name;
+                nameCell1.classList.add("text-wrap");
+                nameCell1.style = "max-width: 200px;";
+                largeRow.appendChild(nameCell1);
+
+                const totalAmountLargeCell = document.createElement("td");
+                totalAmountLargeCell.textContent = item.total_amount;
+                totalAmountLargeCell.classList.add("text-wrap");
+                totalAmountLargeCell.style = "max-width: 200px;";
+                largeRow.appendChild(totalAmountLargeCell);
+
+                // Attach click event for each row
+                largeRow.addEventListener('click', (event) => {
+                    // Check if the clicked element is not the first td in the row
+                    if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0 && item.total_amount > 0) {
+                        openEditCleanItemModal(item.id, item.name, item.total_amount);
+                    }
+                });
+
+                // Append row to the table body
+                largeTbody.appendChild(largeRow);
             });
 
-            largeCheckboxCell.appendChild(largeCheckbox);
-            largeRow.appendChild(largeCheckboxCell);
+            filterDataSmall.forEach(item => {
 
-            // Add the checkbox cell
-            const smallCheckboxCell = document.createElement('td');
-            const smallCheckbox = document.createElement('input');
-            smallCheckbox.type = 'checkbox';
-            smallCheckbox.className = 'form-check-input';
-            smallCheckbox.dataset.id = item.id;
-            smallCheckbox.style.border = '1px solid black'; // Make the border more bold
+                const smallRow = document.createElement("tr");
 
-            // Add change event to the checkbox
-            smallCheckbox.addEventListener('change', () => {
-                if (smallCheckbox.checked) {
+                // Add the checkbox cell
+                const smallCheckboxCell = document.createElement('td');
+                const smallCheckbox = document.createElement('input');
+                smallCheckbox.type = 'checkbox';
+                smallCheckbox.className = 'form-check-input';
+                smallCheckbox.dataset.id = item.id;
+                smallCheckbox.style.border = '1px solid black'; // Make the border more bold
+
+                if (allCheckedSmallRow.some(i => i.code === item.id)) {
                     smallCheckbox.style.backgroundColor = 'green';
-                    allCheckedSmallRow.push({ code: item.id, amount: item.count_get_item });
-                } else {
-                    smallCheckbox.style.backgroundColor = '';
-                    allCheckedSmallRow = allCheckedSmallRow.filter(row => row.code !== item.id);
+                    smallCheckbox.checked = true;
                 }
+
+                // Add change event to the checkbox
+                smallCheckbox.addEventListener('change', () => {
+                    if (smallCheckbox.checked) {
+                        smallCheckbox.style.backgroundColor = 'green';
+                        allCheckedSmallRow.push({ code: item.id, amount: item.count_get_item });
+                    } else {
+                        smallCheckbox.style.backgroundColor = '';
+                        allCheckedSmallRow = allCheckedSmallRow.filter(row => row.code !== item.id);
+                    }
+                });
+
+                smallCheckboxCell.appendChild(smallCheckbox);
+                smallRow.appendChild(smallCheckboxCell);
+
+                const nameCell2 = document.createElement("td");
+                nameCell2.textContent = item.name;
+                nameCell2.classList.add("text-wrap");
+                nameCell2.style = "max-width: 200px;";
+                smallRow.appendChild(nameCell2);
+
+                const totalAmountSmallCell = document.createElement("td");
+                totalAmountSmallCell.textContent = item.count_get_item;
+                totalAmountSmallCell.classList.add("text-wrap");
+                totalAmountSmallCell.style = "max-width: 200px;";
+                smallRow.appendChild(totalAmountSmallCell);
+
+                smallRow.addEventListener('click', (event) => {
+                    // Check if the clicked element is not the first td in the row and count_get_item is not 0
+                    if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0 && item.count_get_item > 0) {
+                        openEditCleanItemModal(item.id, item.name, null, item.count_get_item);
+                    }
+                });
+
+                // Append row to the table body
+                smallTbody.appendChild(smallRow);
             });
 
-            smallCheckboxCell.appendChild(smallCheckbox);
-            smallRow.appendChild(smallCheckboxCell);
+            const rowsLargeTable = largeTableBody.getElementsByTagName("tr");
+            firstUpdateTable(rowsLargeTable, 0, 7, 'pageNumberFourth');
 
-            const nameCell1 = document.createElement("td");
-            const nameCell2 = document.createElement("td");
-            nameCell1.textContent = item.name;
-            nameCell2.textContent = item.name;
-            largeRow.appendChild(nameCell1);
-            smallRow.appendChild(nameCell2);
+            const rowsSmallTable = smallTableBody.getElementsByTagName("tr");
+            firstUpdateTable(rowsSmallTable, 0, 7, 'pageNumberFifth');
 
-            const totalAmountLargeCell = document.createElement("td");
-            totalAmountLargeCell.textContent = item.total_amount;
-            largeRow.appendChild(totalAmountLargeCell);
+            setupTableNavigation("largeWorkhouse", "prevBtnFourth", "nextBtnFourth", "pageNumberFourth", limit, totalPagesLarge, currentPage, "", "", searchFiltersLarge, searchFiltersSmall);
+            setupTableNavigation("smallWorkhouse", "prevBtnFifth", "nextBtnFifth", "pageNumberFifth", limit, totalPagesSmall, secondCurrentPage, "", "", searchFiltersLarge, searchFiltersSmall);
 
-            const totalAmountSmallCell = document.createElement("td");
-            totalAmountSmallCell.textContent = item.count_get_item;
-            smallRow.appendChild(totalAmountSmallCell);
+        } catch (error) {
+            console.error(error);
+            showMess('Error', 'Cannot fetch clean item data');
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    }
 
-            // Attach click event for each row
-            largeRow.addEventListener('click', (event) => {
-                // Check if the clicked element is not the first td in the row
-                if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0 && item.total_amount > 0) {
-                    openEditCleanItemModal(item.id, item.name, item.total_amount);
-                }
-            });
+    function openCleanItemListModal() {
 
-            smallRow.addEventListener('click', (event) => {
-                // Check if the clicked element is not the first td in the row and count_get_item is not 0
-                if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0 && item.count_get_item > 0) {
-                    openEditCleanItemModal(item.id, item.name, null, item.count_get_item);
-                }
-            });
+        currentPage = 1;
+        secondCurrentPage = 1;
 
-            // Append row to the table body
-            largeTbody.appendChild(largeRow);
-            smallTbody.appendChild(smallRow);
-        });
+        const headerLargeMap = {
+            'Item name': 'itemname',
+            'Count': 'total_amount'
+        };
 
-        const rowsLargeTable = largeTableBody.getElementsByTagName("tr");
-        firstUpdateTable(rowsLargeTable, 0, 7, 'pageNumberFourth');
+        const headerSmallMap = {
+            'Item name': 'itemname',
+            'Count': 'count_get_item'
+        };
 
-        const rowsSmallTable = smallTableBody.getElementsByTagName("tr");
-        firstUpdateTable(rowsSmallTable, 0, 7, 'pageNumberFifth');
+        rewriteTableSearch('.search-input-clean-item', 'largeWorkhouse', headerLargeMap);
+        rewriteTableSearch('.second-search-input-clean-item', 'smallWorkhouse', headerSmallMap);
 
-        setupTableNavigation("largeWorkhouse", "prevBtnFourth", "nextBtnFourth", "pageNumberFourth", 7);
-        setupTableNavigation("smallWorkhouse", "prevBtnFifth", "nextBtnFifth", "pageNumberFifth", 7);
+        fetchCleanItems();
+
+        // Add the slide-in effect by adding the necessary classes
+        cleanItemModal.classList.add('show');
+        cleanItemModalContent.classList.add('show');
+        cleanItemModalContent.classList.add('slide-in');
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         cleanItemModalContent.classList.remove('slide-out');
@@ -2135,6 +2688,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.checked = false;
                 input.style.backgroundColor = '';
             });
+
+            allCheckedLargeRow = []; // Reset the global array
+            allCheckedSmallRow = []; // Reset the global array
 
             document.querySelectorAll('.search-input-clean-item, .second-search-input-clean-item').forEach((input) => {
                 input.value = '';
@@ -2293,6 +2849,89 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    async function fetchTracabilityItemData(page = 1, limit = 10, searchFilters = []) {
+
+        const tbody = document.getElementById('tableBodyItemTraceabilityModal');
+        tbody.innerHTML = '';
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+
+            const searchParams = new URLSearchParams({
+                page,
+                limit
+            });
+
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            const response = await fetch(`/getItemTraceability?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showMess('Error', error.message);
+                return;
+            }
+
+            const { data, totalPages } = await response.json();
+
+            data.forEach(item => {
+                const row = document.createElement("tr");
+
+                // Room status cell
+                const nameCell = document.createElement("td");
+                nameCell.textContent = item.item_name;
+                nameCell.classList.add("text-wrap");
+                nameCell.style = "max-width: 200px;";
+                row.appendChild(nameCell);
+
+                // Room status cell
+                const amountCell = document.createElement("td");
+                amountCell.textContent = item.amount;
+                amountCell.classList.add("text-wrap");
+                amountCell.style = "max-width: 200px;";
+                row.appendChild(amountCell);
+
+                // Room status cell
+                const dateChangeCell = document.createElement("td");
+                dateChangeCell.textContent = formateDate(item.date_change);
+                dateChangeCell.classList.add("text-wrap");
+                dateChangeCell.style = "max-width: 200px;";
+                row.appendChild(dateChangeCell);
+
+                // Room status cell
+                const descriptionCell = document.createElement("td");
+                descriptionCell.textContent = item.description;
+                descriptionCell.classList.add("text-wrap");
+                descriptionCell.style = "max-width: 200px;";
+                row.appendChild(descriptionCell);
+
+                // Append row to the table body
+                tbody.appendChild(row);
+            });
+
+            const itemTraceabilityTableBody = document.getElementById('itemTraceabilityTable').getElementsByTagName('tbody')[0];
+            const rowsTable = itemTraceabilityTableBody.getElementsByTagName("tr");
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumberSixth');
+
+            setupTableNavigation("itemTraceabilityTable", "prevBtnSixth", "nextBtnSixth", "pageNumberSixth", limit, totalPages, currentPage, "", "", searchFilters);
+
+        } catch (error) {
+            showMess('Error', 'An error occurred while fetching item tracability. Please try again later.');
+        } finally {
+            loadingIndicator.style.display = 'none';
+        };
+    }
+
     function openItemTraceabilityModal() {
 
         // Add the slide-in effect by adding the necessary classes
@@ -2300,64 +2939,18 @@ document.addEventListener('DOMContentLoaded', function () {
         itemTraceabilityModalContent.classList.add('show');
         itemTraceabilityModalContent.classList.add('slide-in');
 
-        loadingIndicator.style.display = 'flex';
-        const itemTraceabilityTableBody = document.getElementById('itemTraceabilityTable').getElementsByTagName('tbody')[0];
+        currentPage = 1;
 
-        fetch(`/getItemTraceability`, {
-            method: 'GET'
-        })
-            .then(response => response.json())
-            .then(data => {
+        const headerDate = {
+            'Item name': 'item_name',
+            'Item amount': 'amount',
+            'Date change': 'date_change',
+            'Description': 'description'
+        };
 
-                const tbody = document.getElementById('tableBodyItemTraceabilityModal');
-                tbody.innerHTML = '';
+        rewriteTableSearch('.search-input-traceability', 'itemTraceabilityTable', headerDate);
 
-                data.forEach(item => {
-                    const row = document.createElement("tr");
-
-                    // Room status cell
-                    const nameCell = document.createElement("td");
-                    nameCell.textContent = item.item_name;
-                    row.appendChild(nameCell);
-
-                    // Room status cell
-                    const amountCell = document.createElement("td");
-                    amountCell.textContent = item.amount;
-                    row.appendChild(amountCell);
-
-                    // Room status cell
-                    const dateChangeCell = document.createElement("td");
-                    const date = new Date(item.date_change);
-                    const formattedDate = date.toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                    });
-                    dateChangeCell.textContent = formattedDate;
-                    row.appendChild(dateChangeCell);
-
-                    // Room status cell
-                    const descriptionCell = document.createElement("td");
-                    descriptionCell.textContent = item.description;
-                    row.appendChild(descriptionCell);
-
-                    // Append row to the table body
-                    tbody.appendChild(row);
-                });
-
-                const rowsTable = itemTraceabilityTableBody.getElementsByTagName("tr");
-                firstUpdateTable(rowsTable, 0, 10, 'pageNumberSixth');
-
-                setupTableNavigation("itemTraceabilityTable", "prevBtnSixth", "nextBtnSixth", "pageNumberSixth");
-            })
-            .catch(error => console.error("Error fetching data:", error))
-            .finally(() => {
-                // Hide loading indicator
-                loadingIndicator.style.display = 'none';
-            });
+        fetchTracabilityItemData();
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         itemTraceabilityModalContent.classList.remove('slide-out');
@@ -2380,6 +2973,114 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
+    async function fetchInventory(page = 1, limit = 7) {
+
+        const mainAccordion = document.getElementById('mainAccordion');
+        mainAccordion.innerHTML = '';
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+
+            const param = new URLSearchParams({
+                page,
+                limit
+            });
+
+            const response = await fetch(`/getInventoryData?${param.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showMess('Error', error.message);
+                return;
+            }
+
+            const { allBuilding, allRooms, allAssets, totalPages } = await response.json();
+
+            const roomMap = new Map();
+            allRooms.forEach(room => {
+                if (!roomMap.has(room.buildid)) roomMap.set(room.buildid, []);
+                roomMap.get(room.buildid).push(room);
+            });
+
+            const assetMap = new Map();
+            allAssets.forEach(asset => {
+                if (!assetMap.has(asset.location_room)) assetMap.set(asset.location_room, []);
+                assetMap.get(asset.location_room).push(asset);
+            });
+
+            allBuilding.forEach(build => {
+                const accordionItem = document.createElement('div');
+                accordionItem.className = 'accordion-item accordion-main-item';
+
+                const statusIcon = build.inventory_status === 'unfinished' ? '❌' :
+                    build.inventory_status === 'actions' ? '⏳' : '✅';
+
+                accordionItem.innerHTML = `
+                    <button class="accordion-header">
+                        <span>${statusIcon} ${build.namebuilding}</span>
+                        <span class="arrow">&#9656;</span>
+                    </button>
+                    <div class="accordion-body"></div>
+                `;
+
+                const accordionBody = accordionItem.querySelector('.accordion-body');
+
+                (roomMap.get(build.id) || []).forEach(room => {
+                    const roomStatus = room.inventory_status === 'unfinished' ? '❌' :
+                        room.inventory_status === 'actions' ? '⏳' : '✅';
+
+                    const subAccordion = document.createElement('div');
+                    subAccordion.className = 'accordion sub-accordion';
+                    subAccordion.innerHTML = `
+                        <div class="accordion-item">
+                            <button class="sub-accordion-header">
+                                <span>${roomStatus} ${room.nameroom}</span>
+                                <span class="arrow">&#9656;</span>
+                            </button>
+                            <div class="accordion-body">
+                                <ul class="list-group"></ul>
+                            </div>
+                        </div>
+                    `;
+
+                    const assetList = subAccordion.querySelector('.list-group');
+
+                    (assetMap.get(room.id) || []).forEach(asset => {
+                        const icon = asset.inventory_status === 'undiscovered' ? '❌' :
+                            asset.inventory_status === 'edited' ? '✏️' : '✅';
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item';
+                        li.textContent = `${icon} ${asset.code} (${asset.name_assets})`;
+                        assetList.appendChild(li);
+                    });
+
+                    accordionBody.appendChild(subAccordion);
+                });
+
+                mainAccordion.appendChild(accordionItem);
+            });
+
+            setupAccordion(mainAccordion);
+
+            const accordeonRows = mainAccordion.querySelectorAll(".accordion-main-item");
+            firstUpdateTable(accordeonRows, 0, limit, 'pageNumberSeventh');
+
+            setupTableNavigation("mainAccordion", "prevBtnSeventh", "nextBtnSeventh", "pageNumberSeventh", limit, totalPages, currentPage);
+
+        } catch (error) {
+            showMess('Error', 'An error occurred while fetching inventory. Please try again later.');
+        } finally {
+            loadingIndicator.style.display = 'none';
+        };
+    }
+
     function openInventoryModal() {
 
         // Add the slide-in effect by adding the necessary classes
@@ -2387,91 +3088,9 @@ document.addEventListener('DOMContentLoaded', function () {
         inventoryModalContent.classList.add('show');
         inventoryModalContent.classList.add('slide-in');
 
-        loadingIndicator.style.display = 'flex';
+        currentPage = 1;
 
-        fetch(`/getInventoryData`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                'CSRF-Token': csrfToken
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-
-                const allBuilding = data.allBuilding;
-                const allRooms = data.allRooms;
-                const allAssets = data.allAssets;
-
-                const mainAccordion = document.getElementById('mainAccordion');
-                mainAccordion.innerHTML = '';
-
-                allBuilding.forEach(build => {
-                    const accordionItem = document.createElement('div');
-                    accordionItem.className = 'accordion-item';
-
-                    const accordionHeader = document.createElement('button');
-                    accordionHeader.className = 'accordion-header';
-                    accordionHeader.innerHTML = `
-                        <span>${build.inventory_status === 'unfinished' ? '❌' :
-                            build.inventory_status === 'actions' ? '⏳' : '✅'} ${build.namebuilding}</span>
-                        <span class="arrow">&#9656;</span>`;
-
-                    const accordionBody = document.createElement('div');
-                    accordionBody.className = 'accordion-body';
-
-                    allRooms.forEach(room => {
-                        if (room.buildid === build.id) {
-                            const subAccordion = document.createElement('div');
-                            subAccordion.className = 'accordion sub-accordion';
-
-                            const subAccordionItem = document.createElement('div');
-                            subAccordionItem.className = 'accordion-item';
-
-                            const subAccordionHeader = document.createElement('button');
-                            subAccordionHeader.className = 'sub-accordion-header';
-                            subAccordionHeader.innerHTML = `
-                                <span>${room.inventory_status === 'unfinished' ? '❌' :
-                                    room.inventory_status === 'actions' ? '⏳' : '✅'} ${room.nameroom}</span>
-                                <span class="arrow">&#9656;</span>`;
-
-                            const subAccordionBody = document.createElement('div');
-                            subAccordionBody.className = 'accordion-body';
-
-                            const subAccordionList = document.createElement('ul');
-                            subAccordionList.className = 'list-group';
-
-                            allAssets.forEach(asset => {
-                                if (asset.location_room === room.id) {
-                                    const subAccordionListItem = document.createElement('li');
-                                    subAccordionListItem.className = 'list-group-item';
-                                    subAccordionListItem.textContent = `${asset.inventory_status === 'undiscovered' ? '❌' :
-                                        asset.inventory_status === 'edited' ? '✏️' : '✅'} ${asset.code} (${asset.name_assets})`;
-                                    subAccordionList.appendChild(subAccordionListItem);
-                                }
-                            });
-
-                            subAccordionBody.appendChild(subAccordionList);
-                            subAccordionItem.appendChild(subAccordionHeader);
-                            subAccordionItem.appendChild(subAccordionBody);
-                            subAccordion.appendChild(subAccordionItem);
-                            accordionBody.appendChild(subAccordion);
-                        }
-                    });
-
-                    accordionItem.appendChild(accordionHeader);
-                    accordionItem.appendChild(accordionBody);
-                    mainAccordion.appendChild(accordionItem);
-                });
-
-                setupAccordion(mainAccordion);
-            })
-            .catch(error => console.error("Error fetching data:", error))
-            .finally(() => {
-                // Hide loading indicator
-                loadingIndicator.style.display = 'none';
-            });
+        fetchInventory();
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         inventoryModalContent.classList.remove('slide-out');
@@ -2499,16 +3118,15 @@ document.addEventListener('DOMContentLoaded', function () {
             header.classList.remove('active');
         });
 
+        const bodies = inventoryModal.querySelectorAll('.accordion-body');
+        bodies.forEach(body => {
+            body.style.maxHeight = null;
+        });
+
         // Hide modal after animation ends
         setTimeout(() => {
             inventoryModal.classList.remove('show');
             inventoryModalContent.classList.remove('show', 'slide-out');
-
-            // Optional: Reset all accordion-body styles if needed
-            const bodies = inventoryModal.querySelectorAll('.accordion-body');
-            bodies.forEach(body => {
-                body.style.maxHeight = null;
-            });
 
         }, 500); // Wait for accordion and slide-out transitions to finish
     }
@@ -2722,6 +3340,194 @@ document.addEventListener('DOMContentLoaded', function () {
 
     }
 
+    async function fetchSortedAsset(numRoom = "", page = 1, limit = 10, searchFilters = [], sortedPar = {}) {
+
+        const assetTableBody = document.getElementById('assetTable').getElementsByTagName('tbody')[0];
+        const tbody = document.getElementById('tableBodyModal');
+        tbody.innerHTML = '';
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+
+            const searchParams = new URLSearchParams({
+                numRoom,
+                page,
+                limit
+            });
+
+            if (Object.keys(sortedPar).length > 0) {
+                searchParams.append('sortedColumn', sortedPar.column);
+                searchParams.append('sortedDirection', sortedPar.direction);
+            }
+
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            const response = await fetch(`/assets/getSortedAssets?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showMess('Error', error.message);
+                return;
+            }
+
+            const { data, filterData, totalPages } = await response.json();
+
+            nameAssetSetCount = data;
+
+            const headerCheckbox = document.createElement('input');
+            headerCheckbox.type = 'checkbox';
+            headerCheckbox.className = 'form-check-input header-checkbox';
+            headerCheckbox.style.border = '1px solid black'; // Make the border more bold
+            headerCheckbox.style.backgroundColor = ''; // Clear any previous color
+
+            headerCheckbox.addEventListener('change', (event) => {
+                const isChecked = event.target.checked;
+                headerCheckbox.style.backgroundColor = isChecked ? 'green' : '';
+
+                // Get all visible rows
+                const visibleRows = Array.from(document.querySelectorAll('.data-asset')).filter(row => row.style.display !== 'none');
+
+                visibleRows.forEach(row => {
+                    const checkbox = row.querySelector('.form-check-input:not(.header-checkbox)');
+                    if (checkbox) {
+                        checkbox.checked = isChecked;
+                        checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                        if (isChecked) {
+                            allCheckedRow.push({ code: checkbox.dataset.id });
+                        } else {
+                            allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
+                        }
+                    }
+                });
+
+                // Remove duplicates from allCheckedRow if needed
+                if (isChecked) {
+                    allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
+                        .map(code => ({ code }));
+                }
+            });
+
+            // Append the header checkbox to the table header
+            const thead = tbody.parentElement.querySelector('thead');
+            const headerRow = thead.querySelector('tr');
+
+            headerRow.querySelectorAll('th').forEach(th => {
+                if (!th.textContent.trim()) {
+                    th.remove();
+                }
+            });
+
+            const headerCell = document.createElement('th');
+            headerCell.appendChild(headerCheckbox);
+            headerRow.insertBefore(headerCell, headerRow.firstChild);
+
+            filterData.forEach(item => {
+                const row = document.createElement("tr");
+                row.classList.add('data-asset');
+
+                // Add the checkbox cell
+                const checkboxCell = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-check-input';
+                checkbox.dataset.id = item.id;
+                checkbox.style.border = '1px solid black'; // Make the border more bold
+
+                if (allCheckedRow.some(i => i.code === item.id)) {
+                    checkbox.style.backgroundColor = 'green';
+                    checkbox.checked = true;
+                }
+
+                // Add change event to the checkbox
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        checkbox.style.backgroundColor = 'green';
+                        allCheckedRow.push({ code: item.id });
+                    } else {
+                        checkbox.style.backgroundColor = '';
+                        allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
+                    }
+                });
+
+                checkboxCell.appendChild(checkbox);
+                row.appendChild(checkboxCell);
+
+                // Room number cell
+                const codeCell = document.createElement("td");
+                codeCell.textContent = item.code;
+                codeCell.classList.add("text-wrap");
+                codeCell.style = "max-width: 200px;";
+                row.appendChild(codeCell);
+
+                // Room status cell
+                const nameCell = document.createElement("td");
+                nameCell.textContent = item.name;
+                nameCell.classList.add("text-wrap");
+                nameCell.style = "max-width: 200px;";
+                row.appendChild(nameCell);
+
+                // Room status cell
+                const typeCell = document.createElement("td");
+                typeCell.textContent = item.type;
+                typeCell.classList.add("text-wrap");
+                typeCell.style = "max-width: 200px;";
+                row.appendChild(typeCell);
+
+                // Room status cell
+                const locationCell = document.createElement("td");
+                locationCell.textContent = item.location;
+                locationCell.classList.add("text-wrap");
+                locationCell.style = "max-width: 200px;";
+                row.appendChild(locationCell);
+
+                // Room status cell
+                const descriptionCell = document.createElement("td");
+                descriptionCell.textContent = item.description ? item.description : 'No description';
+                descriptionCell.classList.add("text-wrap");
+                descriptionCell.style = "max-width: 200px;";
+                row.appendChild(descriptionCell);
+
+                // Attach click event for each row
+                row.addEventListener('click', (event) => {
+                    // Check if the clicked element is not the first td in the row
+                    if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
+                        openEditAssetsModal(
+                            item.code, item.name, item.type, item.location,
+                            item.namekey, item.categorie, item.quantity, item.mrah,
+                            item.owner, item.status, item.expandable, item.description,
+                            item.service, item.m2_inside, item.is_fixed, item.date_purchase,
+                            item.date_written_off, item.purchase_price, item.comments, item.replaced_off,
+                            item.year_of_life_cycle, item.rest_of_life_cycle, item.replaced_by, item.rest_value
+                        );
+                    }
+                });
+
+                // Append row to the table body
+                tbody.appendChild(row);
+            });
+
+            const rowsTable = assetTableBody.getElementsByTagName("tr");
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
+
+            setupTableNavigation("assetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalPages, page, "", "", searchFilters, [], numRoom);
+
+        } catch (error) {
+            showMess('Error', 'An error occurred while fetching sort asset. Please try again later.');
+        } finally {
+            loadingIndicator.style.display = 'none';
+        };
+    }
+
     function openAssetsModal(rowId) {
 
         // Add the slide-in effect by adding the necessary classes
@@ -2729,150 +3535,20 @@ document.addEventListener('DOMContentLoaded', function () {
         assetsModalContent.classList.add('show');
         assetsModalContent.classList.add('slide-in');
 
-        loadingIndicator.style.display = 'flex';
-        const assetTableBody = document.getElementById('assetTable').getElementsByTagName('tbody')[0];
+        currentPage = 1;
+        globalRowId = rowId;
 
-        fetch(`/assets/getSortedAssets?numRoom=${rowId}`, {
-            method: 'GET'
-        })
-            .then(response => response.json())
-            .then(data => {
-                // Parse the JSON string into an array of objects
-                nameAssetSetCount = data;
+        const headerDate = {
+            'Asset code': 'code',
+            'Asset name': 'name_assets',
+            'Asset type': 'type_name',
+            'Asset location': 'nameroom',
+            'Description': 'description'
+        };
 
-                const tbody = document.getElementById('tableBodyModal');
-                tbody.innerHTML = '';
+        rewriteTableSearch('.asset-search-input', 'assetTable', headerDate, "", "", rowId);
 
-                allCheckedRow = []; // Reset the global array
-
-                // Dynamically create the header checkbox
-                const headerCheckbox = document.createElement('input');
-                headerCheckbox.type = 'checkbox';
-                headerCheckbox.className = 'form-check-input header-checkbox';
-                headerCheckbox.style.border = '1px solid black'; // Make the border more bold
-                headerCheckbox.style.backgroundColor = ''; // Clear any previous color
-
-                headerCheckbox.addEventListener('change', (event) => {
-                    const isChecked = event.target.checked;
-                    headerCheckbox.style.backgroundColor = isChecked ? 'green' : '';
-
-                    // Get all visible rows
-                    const visibleRows = Array.from(document.querySelectorAll('.data-asset')).filter(row => row.style.display !== 'none');
-
-                    visibleRows.forEach(row => {
-                        const checkbox = row.querySelector('.form-check-input:not(.header-checkbox)');
-                        if (checkbox) {
-                            checkbox.checked = isChecked;
-                            checkbox.style.backgroundColor = isChecked ? 'green' : '';
-                            if (isChecked) {
-                                allCheckedRow.push({ code: checkbox.dataset.id });
-                            } else {
-                                allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
-                            }
-                        }
-                    });
-
-                    // Remove duplicates from allCheckedRow if needed
-                    if (isChecked) {
-                        allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
-                            .map(code => ({ code }));
-                    }
-                });
-
-                // Append the header checkbox to the table header
-                const thead = tbody.parentElement.querySelector('thead');
-                const headerRow = thead.querySelector('tr');
-
-                headerRow.querySelectorAll('th').forEach(th => {
-                    if (!th.textContent.trim()) {
-                        th.remove();
-                    }
-                });
-
-                const headerCell = document.createElement('th');
-                headerCell.appendChild(headerCheckbox);
-                headerRow.insertBefore(headerCell, headerRow.firstChild);
-
-                nameAssetSetCount.forEach(item => {
-                    const row = document.createElement("tr");
-                    row.classList.add('data-asset');
-
-                    // Add the checkbox cell
-                    const checkboxCell = document.createElement('td');
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'form-check-input';
-                    checkbox.dataset.id = item.id;
-                    checkbox.style.border = '1px solid black'; // Make the border more bold
-
-                    // Add change event to the checkbox
-                    checkbox.addEventListener('change', () => {
-                        if (checkbox.checked) {
-                            checkbox.style.backgroundColor = 'green';
-                            allCheckedRow.push({ code: item.id });
-                        } else {
-                            checkbox.style.backgroundColor = '';
-                            allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
-                        }
-                    });
-
-                    checkboxCell.appendChild(checkbox);
-                    row.appendChild(checkboxCell);
-
-                    // Room number cell
-                    const codeCell = document.createElement("td");
-                    codeCell.textContent = item.code;
-                    row.appendChild(codeCell);
-
-                    // Room status cell
-                    const nameCell = document.createElement("td");
-                    nameCell.textContent = item.name;
-                    row.appendChild(nameCell);
-
-                    // Room status cell
-                    const typeCell = document.createElement("td");
-                    typeCell.textContent = item.type;
-                    row.appendChild(typeCell);
-
-                    // Room status cell
-                    const locationCell = document.createElement("td");
-                    locationCell.textContent = item.location;
-                    row.appendChild(locationCell);
-
-                    // Room status cell
-                    const descriptionCell = document.createElement("td");
-                    descriptionCell.textContent = item.description ? item.description : 'No description';
-                    row.appendChild(descriptionCell);
-
-                    // Attach click event for each row
-                    row.addEventListener('click', (event) => {
-                        // Check if the clicked element is not the first td in the row
-                        if (event.target.closest('td') && event.target.closest('td').cellIndex !== 0) {
-                            openEditAssetsModal(
-                                item.code, item.name, item.type, item.location,
-                                item.namekey, item.categorie, item.quantity, item.mrah,
-                                item.owner, item.status, item.expandable, item.description,
-                                item.service, item.m2_inside, item.is_fixed, item.date_purchase,
-                                item.date_written_off, item.purchase_price, item.comments, item.replaced_off,
-                                item.year_of_life_cycle, item.rest_of_life_cycle, item.replaced_by, item.rest_value
-                            );
-                        }
-                    });
-
-                    // Append row to the table body
-                    tbody.appendChild(row);
-                });
-
-                const rowsTable = assetTableBody.getElementsByTagName("tr");
-                firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
-
-                setupTableNavigation("assetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
-            })
-            .catch(error => console.error("Error fetching keys:", error))
-            .finally(() => {
-                // Hide loading indicator
-                loadingIndicator.style.display = 'none';
-            });
+        fetchSortedAsset(rowId);
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         assetsModalContent.classList.remove('slide-out');
@@ -2889,6 +3565,8 @@ document.addEventListener('DOMContentLoaded', function () {
             Array.from(document.getElementsByClassName('asset-search-input')).forEach(item => {
                 item.value = '';
             });
+
+            allCheckedRow = []; // Reset the global array
 
             // Get header elements
             const headers = {
@@ -2926,10 +3604,12 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementsByClassName('close-btn')[14].onclick = closeInventoryModal;
     document.getElementsByClassName('close-btn')[15].onclick = closeEditMultiAssetsModal;
     document.getElementsByClassName('close-btn')[16].onclick = closeAddMultiAssetsModal;
-    document.getElementsByClassName('close-btn')[17].onclick = closeMessModal;
+    document.getElementsByClassName('close-btn')[17].onclick = function () {
+        closeMessModal(globalAction);
+    };
 
     // Close the modal if the user clicks outside of it
-    window.onclick = function (event) {
+    window.addEventListener("click", function (event) {
 
         switch (event.target) {
             case assetsModal:
@@ -2937,7 +3617,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
 
             case modalMess:
-                closeMessModal();
+                closeMessModal(globalAction);
                 break;
 
             case cleanItemModal:
@@ -3004,7 +3684,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeReportModal();
                 break;
         }
-    };
+    });
 
     // Hide dropdown if clicked outside
     window.addEventListener('click', function (event) {
@@ -3071,15 +3751,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('asset-name-header').addEventListener('click', function () {
-        sortTableAssetsData('name');
+        sortTableAssetsData('name_assets');
     });
 
     document.getElementById('asset-type-header').addEventListener('click', function () {
-        sortTableAssetsData('type');
+        sortTableAssetsData('type_name');
     });
 
     document.getElementById('asset-location-header').addEventListener('click', function () {
-        sortTableAssetsData('location');
+        sortTableAssetsData('nameroom');
     });
 
     document.getElementById('asset-description-header').addEventListener('click', function () {
@@ -3170,7 +3850,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    closeAddMultiCleanItemModal();
+                    globalAction = 'addMultiCleanItem';
                     showMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
@@ -3179,24 +3859,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.errors) {
                     data.errors.forEach(error => {
                         if (error.type === 'DuplicateInFile' || error.type === 'DuplicateInDB' || error.type === 'InvalidFormat') {
-                            closeAddMultiCleanItemModal();
                             showMess("Error", error.message);
                         } else if (error.type === 'Validation') {
-                            closeAddMultiCleanItemModal();
                             showMess("Error", `Invalid data in row with item name: ${error.row.itemName}. Check the syntax of name, and amount.`);
                         }
                     });
                 } else {
-                    closeAddMultiCleanItemModal();
                     showMess("Error", data.error || "File upload failed.");
                 }
             }
         };
 
         xhr.onerror = function () {
-            console.error('Error:', xhr.statusText);
             loadingIndicator.style.display = 'none';
-            closeAddMultiCleanItemModal();
             showMess("Error", "An unexpected error occurred.");
         };
 
@@ -3244,7 +3919,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    closeEditMultiAssetsModal();
+                    globalAction = 'editMultiAssets';
                     showMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
@@ -3253,24 +3928,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.errors) {
                     data.errors.forEach(error => {
                         if (error.type === 'DuplicateInFile' || error.type === 'NotFound') {
-                            closeEditMultiAssetsModal();
                             showMess("Error", error.message);
                         } else if (error.type === 'Validation') {
-                            closeEditMultiAssetsModal();
                             showMess("Error", `Invalid data in row with item name: ${error.row.code}. Check the syntax of columns in this row.`);
                         }
                     });
                 } else {
-                    closeEditMultiAssetsModal();
                     showMess("Error", data.error || "File upload failed.");
                 }
             }
         };
 
         xhr.onerror = function () {
-            console.error('Error:', xhr.statusText);
             loadingIndicator.style.display = 'none';
-            closeEditMultiAssetsModal();
             showMess("Error", "An unexpected error occurred.");
         };
 
@@ -3318,7 +3988,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    closeAddMultiAssetsModal();
+                    globalAction = 'addMultiAssets';
                     showMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
@@ -3327,24 +3997,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.errors) {
                     data.errors.forEach(error => {
                         if (error.type === 'DuplicateInFile' || error.type === 'IsExistAsset' || error.type === 'NotFound') {
-                            closeAddMultiAssetsModal();
                             showMess("Error", error.message);
                         } else if (error.type === 'Validation') {
-                            closeAddMultiAssetsModal();
                             showMess("Error", `Invalid data in row with item code: ${error.row.assetCode}. Check the syntax of all columns in this row.`);
                         }
                     });
                 } else {
-                    closeAddMultiAssetsModal();
                     showMess("Error", data.error || "File upload failed.");
                 }
             }
         };
 
         xhr.onerror = function () {
-            console.error('Error:', xhr.statusText);
             loadingIndicator.style.display = 'none';
-            closeAddMultiAssetsModal();
             showMess("Error", "An unexpected error occurred.");
         };
 
@@ -3407,11 +4072,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -3450,6 +4116,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
+                    globalAction = 'changeAmountLargeToSmall';
                     showMess('Info', 'The items has been move from small to large workhouse succesful');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while move items');
@@ -3524,11 +4191,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -3567,6 +4235,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
+                    globalAction = 'changeAmountSmallToLarge';
                     showMess('Info', 'The items has been move from small to large workhouse succesful');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while move items');
@@ -3613,11 +4282,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -3650,6 +4320,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
+                    globalAction = 'restorInventory';
                     showMess('Info', 'The inventory is restor succesful');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while restor inventory');
@@ -3672,7 +4343,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
         for (let i = 0; i < rows.length; i++) {
-            rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
+            rows[i].style.display =
+                pageNumberId !== "pageNumberSeventh" && i >= currentIndex && i < currentIndex + rowsPerPage ?
+                    "table-row" : i >= currentIndex && i < currentIndex + rowsPerPage ? "block" : "none";
         }
 
         let totalPages = Math.ceil(rows.length / rowsPerPage) || 1; // Recalculate total pages (avoid division by zero)
@@ -3680,44 +4353,51 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById(pageNumberId).textContent = `${currentPage}/${totalPages}`;
     }
 
-    async function fetchReport(selectDate1, selectDate2) {
-
-        const formateDate = isoString => {
-            const date = new Date(isoString);
-
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            let hours = date.getHours();
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            const seconds = String(date.getSeconds()).padStart(2, '0');
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12;
-            hours = hours ? hours : 12; // the hour '0' should be '12'
-            const hourStr = String(hours).padStart(2, '0');
-
-            return `${year}-${month}-${day} ${hourStr}:${minutes}:${seconds} ${ampm}`;
-        }
+    async function fetchReport(selectDate1, selectDate2, page = 1, pageDate = 1, limit = 10, searchFilters = [], searchFiltersDate = []) {
 
         loadingIndicator.style.display = 'flex';
 
         try {
 
-            const response = await fetch(`/assets/viewReport?selectedDate1=${selectDate1}&selectedDate2=${selectDate2}`, {
-                method: 'GET'
+            const searchParams = new URLSearchParams({
+                selectedDate1: selectDate1,
+                selectedDate2: selectDate2,
+                page,
+                pageDate,
+                limit
+            });
+
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            searchFiltersDate.forEach(filter => {
+                searchParams.append('searchColumnDate', filter.column);
+                searchParams.append('searchValueDate', filter.value);
+            });
+
+            const response = await fetch(`/assets/viewReport?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
             if (!response.ok) {
                 const error = await response.json();
-                console.error('Error fetching the report:', error.details || 'Network response was not ok');
+                checkForGlobalError(response, error);
                 showMess('Error', error.message);
                 return;
             }
 
-            const { data, data_asset_count } = await response.json();
+            const { data, data_asset_count, totalPages, totalPagesDate } = await response.json();
 
             const assetTableBody = document.getElementById('assetsTable').getElementsByTagName('tbody')[0];
             const assetDateTableBody = document.getElementById('assetDateTable').getElementsByTagName('tbody')[0];
+
+            assetTableBody.innerHTML = '';
+            assetDateTableBody.innerHTML = '';
 
             const dateFormat = (date) => {
                 const dateObj = new Date(date);
@@ -3734,125 +4414,210 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-rfid-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.id;
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-code-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.code;
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-name-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.name_assets;
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-type-header');
+
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.type;
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-building-header');
+
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.location_building;
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-room-header');
+
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.location_room;
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-category-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.categorie ? row.categorie : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-quantity-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.quantity ? row.quantity : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-mrah-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.mrah ? row.mrah : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-owner-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.asset_owner ? row.asset_owner : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-status-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.status ? row.status : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-expandable-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.expandable ? row.expandable : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-description-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.description ? row.description : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-create-date-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.create_date ? formateDate(row.create_date) : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-last-inventory-date-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.last_inventory_date ? formateDate(row.last_inventory_date) : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-service-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.service ? row.service : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-m2-inside-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.m2_inside ? row.m2_inside : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-fixed-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = !!row.is_fixed ? 'Yes' : 'No';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-mobile-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = !!row.is_fixed ? 'No' : 'Yes';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-date-purchase-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.date_purchase ? dateFormat(row.date_purchase) : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-date-written-off-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.date_written_off ? dateFormat(row.date_written_off) : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-purchase-price-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.purchase_price ? row.purchase_price : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-comments-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.comments ? row.comments : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-replaced-off-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.replaced_off ? row.replaced_off : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-year-of-life-cycle-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.year_of_life_cycle ? row.year_of_life_cycle : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-rest-of-life-cycle-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.rest_of_life_cycle ? row.rest_of_life_cycle : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-replaced-by-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.replaced_by ? row.replaced_by : 'N/A';
 
                 cell = newRow.insertCell();
                 cell.classList.add('asset-rest-value-header');
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
                 cell.textContent = row.rest_value ? row.rest_value : 'N/A';
             });
 
             data_asset_count.forEach(row => {
                 const newRow = assetDateTableBody.insertRow();
-                newRow.insertCell().textContent = row.event_date;
-                newRow.insertCell().textContent = row.total_assets;
-                newRow.insertCell().textContent = row.total_new_assets;
-                newRow.insertCell().textContent = row.total_updated_assets;
-                newRow.insertCell().textContent = row.total_removed_assets;
-                newRow.insertCell().textContent = row.total_missing_assets;
+                let cell;
+
+                cell = newRow.insertCell();
+                cell.textContent = row.event_date;
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
+
+                cell = newRow.insertCell();
+                cell.textContent = row.total_assets;
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
+
+                cell = newRow.insertCell();
+                cell.textContent = row.total_new_assets;
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
+
+                cell = newRow.insertCell();
+                cell.textContent = row.total_updated_assets;
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
+
+                cell = newRow.insertCell();
+                cell.textContent = row.total_removed_assets;
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
+
+                cell = newRow.insertCell();
+                cell.textContent = row.total_missing_assets;
+                cell.classList.add("text-wrap");
+                cell.style = "max-width: 200px;";
+
             });
 
             const rowsTable = assetTableBody.getElementsByTagName("tr");
@@ -3861,11 +4626,22 @@ document.addEventListener('DOMContentLoaded', function () {
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
             firstUpdateTable(rowsTableDate, 0, 10, 'pageNumberDate');
 
-            setupTableNavigation("assetsTable", "prevBtn", "nextBtn", "pageNumber");
-            setupTableNavigation("assetDateTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+            document.querySelectorAll('.column-toggle').forEach(function (checkbox) {
+                const isChecked = checkbox.checked;
+                var columnClass = checkbox.getAttribute('data-column');
+                document.querySelectorAll(`#assetsTable th.${columnClass}`).forEach(header => {
+                    header.style.display = isChecked ? '' : 'none';
+                });
+                document.querySelectorAll(`#assetsTable td.${columnClass}`).forEach(td => {
+                    td.style.display = isChecked ? '' : 'none';
+                });
+            });
+
+            setupTableNavigation("assetsTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, currentPage, selectDate1, selectDate2, searchFilters, searchFiltersDate);
+            setupTableNavigation("assetDateTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesDate, secondCurrentPage, selectDate1, selectDate2, searchFilters, searchFiltersDate);
 
         } catch (error) {
-            console.error('Error fetching the report:', error);
+            showMess('Error', 'Cannot fetch report data');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -3876,7 +4652,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const selectDate1 = document.getElementById('selectedDate1').value;
         const selectDate2 = document.getElementById('selectedDate2').value;
-        const today = new Date().toISOString().split('T')[0];
 
         if (!selectDate1 || !selectDate2) {
             showMess('Error', 'Both dates must be selected!');
@@ -3888,12 +4663,56 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // if (new Date(selectDate1) > new Date(today) || new Date(selectDate2) > new Date(today)) {
-        //     showMess('Error', 'Dates must be less than or equal to today!');
-        //     return;
-        // }
-
         closeAssetArchiveModal();
+
+        currentPage = 1;
+        secondCurrentPage = 1;
+
+        const headerMap = {
+            'RFID': 'a.id',
+            'Asset code': 'code',
+            'Asset Name': 'name_assets',
+            'Asset type': 'type_name',
+            'Building': 'namebuilding',
+            'Room': 'nameroom',
+            'Asset category': 'categorie',
+            'Asset quantity': 'quantity',
+            'MRAH': 'mrah',
+            'Asset owner': 'asset_owner',
+            'Asset status': 'status',
+            'Asset expandable': 'expandable',
+            'Asset description': 'description',
+            'Asset create date': 'create_date',
+            'Asset last inventory date': 'last_inventory_date',
+            'Service': 'service',
+            'M2 Inside': 'm2_inside',
+            'Fixed': 'is_fixed',
+            'Mobile': 'is_mobile',
+            'Date Purchase': 'date_purchase',
+            'Date Written Off': 'date_written_off',
+            'Purchase Price': 'purchase_price',
+            'Comments': 'comments',
+            'Replaced Off': 'replaced_off',
+            'Year of Life Cycle': 'year_of_life_cycle',
+            'Rest of Life Cycle': 'rest_of_life_cycle',
+            'Replaced by': 'replaced_by',
+            'Rest Value': 'rest_value'
+        };
+
+        const headerDateMap = {
+            'Date': 'event_date',
+            'Total Assets': 'total_assets',
+            'Total New Assets': 'total_new_assets',
+            'Total Update Assets': 'total_updated_assets',
+            'Total Remove Assets': 'total_removed_assets',
+            'Total Missing Assets': 'total_missing_assets'
+        };
+
+        rewriteTableSearch('.search-input-view-assets', 'assetsTable', headerMap, selectDate1, selectDate2);
+        rewriteTableSearch('.search-input-view-assets-second', 'assetDateTable', headerDateMap, selectDate1, selectDate2);
+
+        globalSelectDate1 = selectDate1;
+        globalSelectDate2 = selectDate2;
 
         fetchReport(selectDate1, selectDate2);
         openReportModal();
@@ -3902,7 +4721,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelector('.left-nav').addEventListener('click', function (event) {
         if (event.target.tagName === 'BUTTON') {
             const id = event.target.id;
-            var updateData = [];
 
             document.querySelectorAll('.left-nav ul li button').forEach(btn => {
                 btn.classList.remove('focus-persistent');
@@ -3911,51 +4729,20 @@ document.addEventListener('DOMContentLoaded', function () {
             // Add focus class to the clicked button
             event.target.classList.add('focus-persistent');
 
-            loadingIndicator.style.display = 'flex';
+            const headers = {
+                nameroom: document.getElementById('room-number-header'),
+                count_assets: document.getElementById('room-number-assets'),
+            };
 
-            fetch(`/assets/getSortedRoom?numBuild=${id}`, {
-                method: 'GET'
-            })
-                .then(response => response.json())
-                .then(data => {
-                    // Parse the JSON string into an array of objects
-                    nameroomSetCount = data;
-                    updateData = data;
+            // Reset all headers by removing sort classes
+            Object.keys(headers).forEach(column => {
+                headers[column].classList.remove('ascending', 'descending');
+            });
 
-                    // Update the table with the fetched data
-                    const tbody = document.getElementById('tableBody');
-                    tbody.innerHTML = '';
+            document.getElementById('numBuild').value = id;
+            selectedBuilding = id;
+            fetchTableData(1, {}, id);
 
-                    updateData.forEach(item => {
-                        const row = document.createElement("tr");
-                        row.classList.add('data-room');
-                        row.setAttribute("id", item.id);
-
-                        // Room number cell
-                        const nameroomCell = document.createElement("td");
-                        nameroomCell.textContent = item.nameroom;
-                        row.appendChild(nameroomCell);
-
-                        // Room status cell
-                        const quantityCell = document.createElement("td");
-                        quantityCell.textContent = item.count_assets;
-                        row.appendChild(quantityCell);
-
-                        // Attach click event for each row
-                        row.addEventListener('click', function (event) {
-                            const rowId = event.currentTarget.id;
-                            openAssetsModal(rowId);
-                        });
-
-                        // Append row to the table body
-                        tbody.appendChild(row);
-                    });
-                })
-                .catch(error => console.error("Error fetching room:", error))
-                .finally(() => {
-                    // Hide loading indicator
-                    loadingIndicator.style.display = 'none';
-                });
         }
     });
 
@@ -4002,6 +4789,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!checkResponse.ok) {
                         hasError = true;
                         result = await checkResponse.json();
+                        checkForGlobalError(checkResponse, result);
                         break;
                     }
                 }
@@ -4021,6 +4809,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (!deleteResponse.ok) {
                             hasError = true;
                             result = await deleteResponse.json();
+                            checkForGlobalError(deleteResponse, result);
                             break;
                         }
                     }
@@ -4040,7 +4829,12 @@ document.addEventListener('DOMContentLoaded', function () {
         // Wait for the modal to close, then check if the submit button was clicked
         const observer = new MutationObserver(() => {
             if (!modalMess.classList.contains('show') && isRemove) {
-                modalMessContent.removeChild(submitButton);
+                observer.disconnect();
+
+                if (modalMessContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessContent.removeChild(submitButton);
+                }
             }
         });
 
@@ -4051,6 +4845,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!modalMess.classList.contains('show') && isRemove) {
                 closeWarningObserver.disconnect();
                 if (isRemove && !hasError) {
+                    globalAction = 'deleteAsset';
                     showMess('Info', 'The selected assets have been removed');
                 } else if (hasError) {
                     showMess('Error', result.message);
@@ -4227,11 +5022,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -4264,7 +5060,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeEditAssetsModal();
+                    globalAction = 'editAsset';
                     showMess('Info', 'The asset has been updated');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while updating the asset');
@@ -4377,11 +5173,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -4414,7 +5211,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeAddAssetsModal();
+                    globalAction = 'addAsset';
                     showMess('Info', 'The asset has been added');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while adding the asset');
@@ -4481,11 +5278,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -4518,7 +5316,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeAddAssetsTypeModal();
+                    globalAction = 'addAssetType';
                     showMess('Info', 'The asset type has been added');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while adding the asset type');
@@ -4585,11 +5383,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -4622,7 +5421,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeRemoveAssetsTypeModal();
+                    globalAction = 'removeAssetType';
                     showMess('Info', 'The asset type has been removed');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while removing the asset type');
@@ -4693,11 +5492,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -4730,7 +5530,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeLostAssetsModal();
+                    globalAction = 'addLostItem';
                     showMess('Info', 'The lost asset has been reported');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while reporting the lost asset');
@@ -4751,54 +5551,10 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.display = 'flex';
 
         try {
-            const table1 = document.getElementById("assetsTable");
-            const rows1 = Array.from(table1.querySelectorAll("tbody tr"));
-
-            const table2 = document.getElementById("assetDateTable");
-            const rows2 = Array.from(table2.querySelectorAll("tbody tr"));
 
             const headers = Array.from(document.querySelectorAll("#assetsTable th"))
                 .filter(th => th.style.display !== 'none')
                 .map(th => th.querySelector('input').name);
-
-            const data = rows1.map(row => {
-                const cells = Array.from(row.querySelectorAll("td")).filter(cell => cell.style.display !== 'none');
-
-                return headers.reduce((obj, key, index) => {
-                    obj[key] = cells[index]?.innerText.trim() || "";
-                    return obj;
-                }, {});
-            });
-
-            const data_1 = rows2
-                // .filter(row => row.style.display !== 'none')
-                .map((row) => {
-                    const cells = Array.from(row.querySelectorAll("td")).filter(cell => cell.style.display !== 'none');
-                    return {
-                        date: cells[0]?.innerText.trim(),
-                        totalAsset: cells[1]?.innerText.trim(),
-                        totalNewAsset: cells[2]?.innerText.trim(),
-                        totalUpdateAsset: cells[3]?.innerText.trim(),
-                        totalRemoveAsset: cells[4]?.innerText.trim(),
-                        totalMissingAsset: cells[5]?.innerText.trim()
-                    };
-                });
-
-            // Collect filter values if the search inputs are visible
-            const filtersAssets = {};
-            document.querySelectorAll('.search-input-view-assets').forEach(input => {
-                if (input.style.display !== 'none') {
-                    filtersAssets[input.name || input.id] = input.value.trim();
-                }
-            });
-
-            // Collect filter values if the search inputs are visible
-            const filtersAssetsData = {};
-            document.querySelectorAll('.search-input-view-assets-second').forEach(input => {
-                if (input.style.display !== 'none') {
-                    filtersAssetsData[input.name || input.id] = input.value.trim();
-                }
-            });
 
             const response = await fetch(document.getElementById('form6').action, {
                 method: 'POST',
@@ -4808,14 +5564,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     'CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({
-                    result: data,
-                    result_nationality: data_1,
-                    filtersAssets: filtersAssets,
-                    filtersAssetsData: filtersAssetsData,
+                    selectedDate1: globalSelectDate1,
+                    selectedDate2: globalSelectDate2,
+                    headers: headers,
+                    filtersAssets: globalSearchFilters,
+                    filtersAssetsData: globalSearchFiltersDate
                 })
             });
 
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                throw new Error(error.message);
+            }
 
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
@@ -4828,8 +5589,7 @@ document.addEventListener('DOMContentLoaded', function () {
             window.URL.revokeObjectURL(downloadUrl);
 
         } catch (error) {
-            console.error('Error:', error);
-            alert(error.message || 'Failed to download the report.');
+            showMess('Error', error.message || 'Failed to download the report.');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -4891,11 +5651,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -4928,7 +5689,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeAddCleanItemModal();
+                    globalAction = 'addCleanItem';
                     showMess('Info', 'The clean item is added successfully');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while add the clean item');
@@ -4995,11 +5756,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -5032,7 +5794,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeRemoveCleanItemModal();
+                    globalAction = 'removeCleanItem';
                     showMess('Info', 'The clean item is removed successfully');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while remove the clean item');
@@ -5105,11 +5867,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data)
                 });
 
+                responseData = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
-
-                responseData = await response.json();
 
                 closeMessModal();
 
@@ -5142,7 +5905,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeWarningObserver.disconnect();
 
                 if (isSubmit && !hasError) {
-                    closeRemoveCleanItemModal();
+                    globalAction = 'editCleanItem';
                     showMess('Info', 'The clean item is change successfully');
                 } else if (isSubmit) {
                     showMess('Error', responseData.message || 'An error occurred while change the clean item');

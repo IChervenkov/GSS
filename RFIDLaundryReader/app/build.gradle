@@ -4,14 +4,14 @@ plugins {
 
 android {
     namespace = 'com.example.rfidlaundryreader'
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId "com.example.rfidlaundryreader"
         minSdk = 30
-        targetSdk = 34
-        versionCode 4
-        versionName "1.3"
+        targetSdk = 36
+        versionCode 5
+        versionName "1.4"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -62,8 +62,8 @@ dependencies {
     implementation libs.converter.gson
     implementation(libs.preference.ktx)
 
-    implementation "androidx.security:security-crypto:1.1.0-alpha06"
-    implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.12.0'
+    implementation libs.security.crypto //secure android pack
+    implementation libs.okhttp.urlconnection //okhttp3 android pack
 
     //noinspection GradlePath
     implementation files("C:/Users/ivajl/Desktop/GSS/API_Ver20231208/DeviceAPI_20231208/DeviceAPI_ver20231208_release.aar")

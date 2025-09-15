@@ -1,4 +1,4 @@
-package com.example.nfcreader;
+package com.example.rfidlaundryasset;
 
 import android.content.Context;
 import android.security.keystore.KeyGenParameterSpec;

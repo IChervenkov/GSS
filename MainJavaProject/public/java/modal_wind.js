@@ -44,10 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var modal = document.getElementById("myModal");
     var modalContent = modal.querySelector('.modal-content');
 
-    var modalMess = document.getElementById("myMessage");
-    var modalMessContent = modalMess.querySelector('.modal-content-mess');
-
-    var modalMessRep = document.getElementById("myMessageReport");
+    var modalMessRep = document.getElementById("myMessage");
     var modalMessRepContent = modalMessRep.querySelector('.modal-content-mess');
 
     var modalRep = document.getElementById("reportModal");
@@ -62,11 +59,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var modalTotalAvailableBike = document.getElementById("totalAvailableBikeModal");
     var modalTotalAvailableBikeContent = modalTotalAvailableBike.querySelector(".modal-content-total-info");
 
-    var modalTotalrepireBike = document.getElementById("totalRepireBikeModal");
-    var modalTotalrepireBikeContent = modalTotalrepireBike.querySelector(".modal-content-total-info");
+    var modalTotalRepireBike = document.getElementById("totalRepireBikeModal");
+    var modalTotalRepireBikeContent = modalTotalRepireBike.querySelector(".modal-content-total-info");
 
-    var modalTotallateBike = document.getElementById("totalLateBikeModal");
-    var modalTotallateBikeContent = modalTotallateBike.querySelector(".modal-content-total-info");
+    var modalTotalLateBike = document.getElementById("totalLateBikeModal");
+    var modalTotalLateBikeContent = modalTotalLateBike.querySelector(".modal-content-total-info");
 
     var modalTotalLongTermBike = document.getElementById("totalLongTermBikeModal");
     var modalTotalLongTermBikeContent = modalTotalLongTermBike.querySelector(".modal-content-total-info");
@@ -86,29 +83,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Get the buttons that open the modal
     var rentBtn = document.getElementById("rentBtn");
     var returnBtn = document.getElementById("returnBtn");
-    var saveButton = document.getElementById("checkBtn");
-
-    // Get the <span> element that closes the modal
-    var span = document.getElementsByClassName("close")[0];
-    var spanMess = document.getElementsByClassName("close")[1];
-    var spanRep = document.getElementsByClassName("close")[2];
-    var spanViewRep = document.getElementsByClassName("close")[3];
-    var spanTotalBike = document.getElementsByClassName("close")[4];
-    var spanTotalAvailBike = document.getElementsByClassName("close")[5];
-    var spanTotalRepireBike = document.getElementsByClassName("close")[6];
-    var spanTotalLateBike = document.getElementsByClassName("close")[7];
-    var spanTotalLongTermBike = document.getElementsByClassName("close")[8];
-    var spanSearchBike = document.getElementsByClassName("close")[9];
-    var spanSearchClient = document.getElementsByClassName("close")[10];
-    var spanSearchHelmet = document.getElementsByClassName("close")[11];
-    var spanAddBike = document.getElementsByClassName("close")[12];
-    var spanRemoveBike = document.getElementsByClassName("close")[13];
-    var spanAddMultiBike = document.getElementsByClassName("close")[14];
-    document.getElementsByClassName("close")[15].onclick = closeEditModal;
-    document.getElementsByClassName("close")[16].onclick = closeListHelmetsModal;
-    var spanAddHelmet = document.getElementsByClassName("close")[17];
-    var spanAddMultiHelmet = document.getElementsByClassName("close")[18];
-    var spanMessRep = document.getElementsByClassName("close")[19];
 
     const bikeSearchInput = document.getElementById('bikeSearch');
     const bikeSearchDropdown = document.getElementById('bikeDropdown');
@@ -130,6 +104,15 @@ document.addEventListener('DOMContentLoaded', function () {
     let helmets = [];
     let allCheckedRow = [];
 
+    let currentPage = 1;
+    let secondCurrentPage = 1;
+    let globalSearchFilters = [];
+    let globalSearchFiltersDate = [];
+    let globalSelectDate1;
+    let globalSelectDate2;
+    let globalAction = '';
+    let isInfo = true;
+
     const clientSearchInput = document.getElementById('clientSearch');
     const clientSearchDropdown = document.getElementById('clientDropdown');
     const selectedClientId = document.getElementById('selectedClientId');
@@ -140,13 +123,676 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const loadingIndicator = document.getElementById('loadingIndicator');
 
+    const mainRowsPerPage = 50;
+    let mainCurrentPage = 1;
+    let mainTotalRows = parseInt(document.getElementById("totalCount").value);
+    let filters = [];
+
+    const tableBody = document.getElementById("tableBody");
+    const pagination = document.getElementById("pagination");
+    const isFirstTime = document.getElementsByName("isFirstTime")[0];
+    const headerCells = document.querySelectorAll(`#mainTable thead th`);
+
+    const mainHeaderMap = {
+        'Bike Name': 'namebike',
+        'Status': 'b.status',
+        'Hired by': 'namesoldier',
+        'Helmet': 'h.code',
+        'Date From': 'formatted_date'
+    };
+
     let clients = [];
+
+    const formateDate = isoString => {
+        const date = new Date(isoString);
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        let hours = date.getHours();
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        const hourStr = String(hours).padStart(2, '0');
+
+        return `${year}-${month}-${day} ${hourStr}:${minutes} ${ampm}`;
+    }
 
     // Helper function to toggle input validity
     const toggleInputValidity = (input, isValid) => {
         input.classList.toggle('is-valid', isValid);
         input.classList.toggle('is-invalid', !isValid);
     };
+
+    const checkForGlobalError = (response, responseBody) => {
+        if (response.headers.get('X-Global-Error') === 'true')
+            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+    };
+
+    function buildQueryParams(page) {
+        const offset = (page - 1) * mainRowsPerPage;
+        const params = new URLSearchParams({
+            isFirstTime: isFirstTime.value,
+            limit: mainRowsPerPage,
+            offset: offset
+        });
+
+        filters.forEach(filter => {
+            params.append('searchColumn', filter.column);
+            params.append('searchValue', filter.value);
+        });
+
+        return params.toString();
+    }
+
+    async function fetchTableData(page) {
+        const query = buildQueryParams(page);
+        try {
+            const res = await fetch(`/bicycles?${query}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                checkForGlobalError(res, error);
+                throw new Error('Failed to fetch data');
+            }
+            const { data, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike, totalCount } = await res.json();
+
+            document.getElementById("totalBike").textContent = `Total Bike: ${totalBike}`;
+            document.getElementById("rentedBike").textContent = `Rented: ${rentedBike}`;
+            document.getElementById("availableBike").textContent = `Available: ${availableBike}`;
+            document.getElementById("repairBike").textContent = `Repair: ${repairBike}`;
+            document.getElementById("lateBike").textContent = `Late: ${lateBike}`;
+            document.getElementById("longTermBike").textContent = `Long Term: ${longTermBike}`;
+
+            mainTotalRows = parseInt(totalCount);
+            mainCurrentPage = page;
+
+            renderTable(data);
+            renderPagination();
+
+        } catch (error) {
+            showMess('Error', error.message);
+        }
+    }
+
+    function renderTable(data) {
+        tableBody.innerHTML = '';
+        data.forEach(item => {
+            const row = document.createElement("tr");
+            row.className = "data-bike";
+            row.id = item.id;
+
+            const bikeName = item.name;
+            const status = item.status;
+            const hiredBy = item.hiredby;
+            const helmet = item.helmet;
+            const dateFrom = item.datefrom;
+
+            let image;
+
+            switch (status) {
+                case 'Available':
+                    image = '/icon/available.png';
+                    break;
+
+                case 'Rented':
+                    image = '/icon/unavailable.png';
+                    break;
+
+                case 'Repair':
+                    image = '/icon/repire.png';
+                    break;
+
+                case 'Late':
+                    image = '/icon/timeout.png';
+                    break;
+
+                default:
+                    image = '/icon/long-term.png';
+                    break;
+            }
+
+            row.innerHTML = `
+                <td class="text-wrap" style="max-width: 200px;">${bikeName}</td>
+                <td class="text-wrap" style="max-width: 200px; data-status="${status}"><img src=${image} alt=${status} class="table-icon"></td>
+                <td class="text-wrap" style="max-width: 200px;">${hiredBy}</td>
+                <td class="text-wrap" style="max-width: 200px;">${helmet}</td>
+                <td class="text-wrap" style="max-width: 200px;">${dateFrom}</td>
+            `;
+
+            row.addEventListener('click', function () {
+
+                if (status === 'Available') {
+                    showMess('Error', 'Data can only be edited for bike that are not available');
+                } else {
+                    // Call the modal opening function with extracted data
+                    openEditModal(bikeName, status, hiredBy, dateFrom, helmet);
+                }
+            });
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    function renderPagination() {
+        const pageCount = Math.ceil(mainTotalRows / mainRowsPerPage) || 1;
+        pagination.innerHTML = "";
+
+        function createPageItem(page, isActive = false) {
+            const pageItem = document.createElement("li");
+            pageItem.classList.add("page-item");
+            if (isActive) pageItem.classList.add("active");
+
+            const pageLink = document.createElement("a");
+            pageLink.classList.add("page-link");
+            pageLink.href = "#";
+            pageLink.innerText = page;
+            pageLink.addEventListener("click", function (e) {
+                e.preventDefault();
+                fetchTableData(page);
+            });
+
+            pageItem.appendChild(pageLink);
+            return pageItem;
+        }
+
+        const maxVisiblePages = 5;
+        const halfVisible = Math.floor(maxVisiblePages / 2);
+        let startPage = Math.max(1, mainCurrentPage - halfVisible);
+        let endPage = Math.min(pageCount, mainCurrentPage + halfVisible);
+
+        if (mainCurrentPage <= halfVisible) {
+            endPage = Math.min(pageCount, maxVisiblePages);
+        } else if (mainCurrentPage > pageCount - halfVisible) {
+            startPage = Math.max(1, pageCount - maxVisiblePages + 1);
+        }
+
+        const prevBtn = document.createElement("li");
+        prevBtn.classList.add("page-item");
+        prevBtn.innerHTML = `<a class="page-link" href="#" aria-label="Previous">&laquo;</a>`;
+        prevBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            if (mainCurrentPage > 1) fetchTableData(mainCurrentPage - 1);
+        });
+        pagination.appendChild(prevBtn);
+
+        if (startPage > 1) {
+            pagination.appendChild(createPageItem(1));
+            if (startPage > 2) {
+                pagination.appendChild(createEllipsis());
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            pagination.appendChild(createPageItem(i, i === mainCurrentPage));
+        }
+
+        if (endPage < pageCount) {
+            if (endPage < pageCount - 1) {
+                pagination.appendChild(createEllipsis());
+            }
+            pagination.appendChild(createPageItem(pageCount));
+        }
+
+        const nextBtn = document.createElement("li");
+        nextBtn.classList.add("page-item");
+        nextBtn.innerHTML = `<a class="page-link" href="#" aria-label="Next">&raquo;</a>`;
+        nextBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            if (mainCurrentPage < pageCount) fetchTableData(mainCurrentPage + 1);
+        });
+        pagination.appendChild(nextBtn);
+    }
+
+    function createEllipsis() {
+        const ellipsis = document.createElement("li");
+        ellipsis.classList.add("page-item", "disabled");
+        ellipsis.innerHTML = `<span class="page-link">...</span>`;
+        return ellipsis;
+    }
+
+    renderPagination();
+
+    function rewriteTableSearch(className, tableName, headerMap, selectedDate1 = "", selectedDate2 = "") {
+
+        document.querySelectorAll(`${className}`).forEach((input) => {
+            const newInput = input.cloneNode(true);
+            input.parentNode.replaceChild(newInput, input);
+        });
+
+        document.querySelectorAll(`${className}`).forEach((input) => {
+
+            input.addEventListener('input', () => {
+
+                const filters = document.querySelectorAll(`${className}`);
+                const headerCells = document.querySelectorAll(`#${tableName} thead th`);
+
+                const searchFilters = [];
+
+                switch (tableName) {
+
+                    case 'allRentedBikeTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchStatusBike('Rented', currentPage, 10, searchFilters);
+                        break;
+
+                    case 'allAvailableBikeTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchStatusBike('Available', currentPage, 10, searchFilters);
+                        break;
+
+                    case 'allRepireBikeTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchStatusBike('Repair', currentPage, 10, searchFilters);
+                        break;
+
+                    case 'allLateBikeTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchStatusBike('Late', currentPage, 10, searchFilters);
+                        break;
+
+                    case 'allLongTermBikeTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchStatusBike('Long term', currentPage, 10, searchFilters);
+                        break;
+
+                    case 'bikeUsageTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        globalSearchFilters = searchFilters;
+                        fetchReport(selectedDate1, selectedDate2, currentPage, secondCurrentPage, 10, searchFilters, globalSearchFiltersDate);
+                        break;
+
+                    case 'bikeTotalsTable':
+                        secondCurrentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        globalSearchFiltersDate = searchFilters;
+                        fetchReport(selectedDate1, selectedDate2, currentPage, secondCurrentPage, 10, globalSearchFilters, searchFilters);
+                        break;
+
+                    case 'helmetTable':
+                        currentPage = 1;
+                        filters.forEach((input, columnIndex) => {
+                            const searchTerm = input.value.trim().toLowerCase();
+                            const headerLabel = headerCells[columnIndex + 1]?.innerText.trim();
+                            const columnName = headerMap[headerLabel];
+
+                            if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
+
+                            searchFilters.push({ column: columnName, value: searchTerm });
+                        });
+
+                        fetchHelmet(currentPage, 10, searchFilters);
+                        break;
+                }
+            });
+        });
+    }
+
+    async function fetchStatusBike(status, page = 1, limit = 10, searchFilters = []) {
+
+        let statusTableId = '';
+        let statusTableBodyId = '';
+        let pageNumber;
+        let prevBtn;
+        let nextBtn;
+
+        switch (status) {
+            case 'Rented':
+                statusTableId = 'allRentedBikeTable';
+                statusTableBodyId = 'allRentedBikeTableBody';
+                pageNumber = 'pageNumberTherd';
+                prevBtn = 'prevBtnTherd';
+                nextBtn = 'nextBtnTherd';
+                break;
+
+            case 'Available':
+                statusTableId = 'allAvailableBikeTable';
+                statusTableBodyId = 'allAvailableBikeTableBody';
+                pageNumber = 'pageNumberFourth';
+                prevBtn = 'prevBtnFourth';
+                nextBtn = 'nextBtnFourth';
+                break;
+
+            case 'Repair':
+                statusTableId = 'allRepireBikeTable';
+                statusTableBodyId = 'allRepireBikeTableBody';
+                pageNumber = 'pageNumberFifth';
+                prevBtn = 'prevBtnFifth';
+                nextBtn = 'nextBtnFifth';
+                break;
+
+            case 'Late':
+                statusTableId = 'allLateBikeTable';
+                statusTableBodyId = 'allLateBikeTableBody';
+                pageNumber = 'pageNumberSixth';
+                prevBtn = 'prevBtnSixth';
+                nextBtn = 'nextBtnSixth';
+                break;
+
+            case 'Long term':
+                statusTableId = 'allLongTermBikeTable';
+                statusTableBodyId = 'allLongTermBikeTableBody';
+                pageNumber = 'pageNumberSeventh';
+                prevBtn = 'prevBtnSeventh';
+                nextBtn = 'nextBtnSeventh';
+                break;
+        }
+
+        const statusTableBody = document.getElementById(`${statusTableId}`).getElementsByTagName('tbody')[0];
+        const tbody = document.getElementById(`${statusTableBodyId}`);
+        tbody.innerHTML = '';
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+
+            const searchParams = new URLSearchParams({
+                status,
+                page,
+                limit
+            });
+
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            const response = await fetch(`/bicycles/getStatusData?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showMess('Error', error.message);
+                return;
+            }
+
+            const { data, totalPages } = await response.json();
+
+            data.forEach(item => {
+                const row = document.createElement("tr");
+
+                // Room status cell
+                const nameCell = document.createElement("td");
+                nameCell.textContent = item.namebike
+                nameCell.classList.add("text-wrap");
+                nameCell.style = "max-width: 200px;";
+                row.appendChild(nameCell);
+
+                // Room status cell
+                const hireByCell = document.createElement("td");
+                hireByCell.textContent = item?.namesoldier || 'None';
+                hireByCell.classList.add("text-wrap");
+                hireByCell.style = "max-width: 200px;";
+                row.appendChild(hireByCell);
+
+                // Room status cell
+                const rentedDateCell = document.createElement("td");
+                rentedDateCell.textContent = item.formatted_date ? formateDate(item.formatted_date) : 'None';
+                rentedDateCell.classList.add("text-wrap");
+                rentedDateCell.style = "max-width: 200px;";
+                row.appendChild(rentedDateCell);
+
+                // Append row to the table body
+                tbody.appendChild(row);
+            });
+
+            const rowsTable = statusTableBody.getElementsByTagName("tr");
+            firstUpdateTable(rowsTable, 0, 10, pageNumber);
+
+            setupTableNavigation(statusTableId, prevBtn, nextBtn, pageNumber, limit, totalPages, page, searchFilters);
+
+        } catch (error) {
+            showMess('Error', 'An error occurred while fetching status bike. Please try again later.')
+
+        } finally {
+            loadingIndicator.style.display = 'none';
+        };
+    }
+
+    async function fetchHelmet(page = 1, limit = 10, searchFilters = []) {
+
+        const tbody = document.getElementById('tableBodyModal');
+        const helmetTableBody = document.getElementById('helmetTable').getElementsByTagName('tbody')[0];
+        tbody.innerHTML = '';
+
+        loadingIndicator.style.display = 'flex';
+
+        try {
+
+            const searchParams = new URLSearchParams({
+                page,
+                limit
+            });
+
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            const response = await fetch(`/helmets?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showMess('Error', error.message);
+                return;
+            }
+
+            const { helmetListData, totalPages } = await response.json();
+
+            // Dynamically create the header checkbox
+            const headerCheckbox = document.createElement('input');
+            headerCheckbox.type = 'checkbox';
+            headerCheckbox.className = 'form-check-input header-checkbox';
+            headerCheckbox.style.border = '1px solid black'; // Make the border more bold
+            headerCheckbox.style.cursor = 'pointer';
+            headerCheckbox.style.backgroundColor = ''; // Clear any previous color
+
+            headerCheckbox.addEventListener('change', (event) => {
+                headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
+                const isChecked = event.target.checked;
+
+                // Get all visible rows
+                const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+
+                visibleRows.forEach(row => {
+                    const checkbox = row.querySelector('.form-check-input');
+                    if (checkbox) {
+                        checkbox.checked = isChecked;
+                        checkbox.style.backgroundColor = isChecked ? 'green' : '';
+                        if (isChecked) {
+                            allCheckedRow.push({ code: checkbox.dataset.id });
+                        } else {
+                            allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
+                        }
+                    }
+                });
+
+                // Ensure no duplicates in allCheckedRow
+                if (isChecked) {
+                    allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
+                        .map(code => ({ code }));
+                }
+            });
+
+            // Append the header checkbox to the table header
+            const thead = tbody.parentElement.querySelector('thead');
+            const headerRow = thead.querySelector('tr');
+
+            headerRow.querySelectorAll('th').forEach(th => {
+                if (!th.textContent.trim()) {
+                    th.remove();
+                }
+            });
+
+            const headerCell = document.createElement('th');
+            headerCell.appendChild(headerCheckbox);
+            headerRow.insertBefore(headerCell, headerRow.firstChild);
+
+            helmetListData.forEach(item => {
+                const row = document.createElement("tr");
+                row.classList.add('data-helmet');
+
+                // Add the checkbox cell
+                const checkboxCell = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-check-input';
+                checkbox.dataset.id = item.id;
+                checkbox.style.cursor = 'pointer';
+                checkbox.style.border = '1px solid black'; // Make the border more bold
+
+                if (allCheckedRow.some(i => i.code === item.id)) {
+                    checkbox.style.backgroundColor = 'green';
+                    checkbox.checked = true;
+                }
+
+                // Add change event to the checkbox
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        checkbox.style.backgroundColor = 'green';
+                        allCheckedRow.push({ code: item.id });
+                    } else {
+                        checkbox.style.backgroundColor = '';
+                        allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
+                    }
+                });
+
+                checkboxCell.appendChild(checkbox);
+                row.appendChild(checkboxCell);
+
+                // Room number cell
+                const codeCell = document.createElement("td");
+                codeCell.textContent = item.id;
+                codeCell.classList.add("text-wrap");
+                codeCell.style = "max-width: 200px;";
+                row.appendChild(codeCell);
+
+                // Room status cell
+                const nameCell = document.createElement("td");
+                nameCell.textContent = item.name;
+                nameCell.classList.add("text-wrap");
+                nameCell.style = "max-width: 200px;";
+                row.appendChild(nameCell);
+
+                // Append row to the table body
+                tbody.appendChild(row);
+            });
+
+            const rowsTable = helmetTableBody.getElementsByTagName("tr");
+            firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
+
+            setupTableNavigation("helmetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalPages, currentPage, searchFilters);
+
+        } catch (error) {
+            showMess('Error', 'An error occurred while fetching helmet data. Please try again later.')
+        } finally {
+            loadingIndicator.style.display = 'none';
+        };
+    }
+
+    // Attach filter input events
+    document.querySelectorAll('.search-input').forEach((input, index) => {
+        const headerLabel = headerCells[index]?.innerText.trim();
+        const columnName = mainHeaderMap[headerLabel];
+
+        input.addEventListener('input', () => {
+            const searchTerm = input.value.trim().toLowerCase();
+
+            filters = filters.filter(f => f.column !== columnName);
+
+            if (columnName && searchTerm) {
+                filters.push({ column: columnName, value: searchTerm });
+            }
+
+            fetchTableData(1);
+        });
+    });
 
     document.getElementById('form1').addEventListener('keypress', function (event) {
         if (event.key === 'Enter') {
@@ -193,16 +839,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const dateFrom = this.querySelector('td:nth-child(5)').textContent.trim();
 
             if (status === 'Available') {
-                const icon = document.getElementById("mess-icon-rep");
-                const message = document.getElementById("mess-text-rep");
-                const btnYes = document.getElementById("btnMess");
-
-                icon.src = "/icon/error.png";
-                message.textContent = 'Data can only be edited for bike that are not available';
-                btnYes.style.display = "none";
-                openModal(modalMessRep, modalMessRepContent);
+                showMess('Error', 'Data can only be edited for bike that are not available')
             } else {
-                // Call the modal opening function with extracted data
                 openEditModal(bikeName, status, hiredBy, dateFrom, helmet);
             }
         });
@@ -210,67 +848,563 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('confirmReportBtn').onclick = function () {
 
-        const date1 = new Date(document.getElementById("selectedDate1").value);
-        const date2 = new Date(document.getElementById("selectedDate2").value);
+        const selectDate1 = document.getElementById('selectedDate1').value;
+        const selectDate2 = document.getElementById('selectedDate2').value;
 
-        const icon = document.getElementById("mess-icon-rep");
-        const message = document.getElementById("mess-text-rep");
-        const btnYes = document.getElementById("btnMess");
+        if (selectDate1 === 'None' || selectDate2 === 'None') {
+            showMess('Error', 'Both dates must be selected!');
+            return;
+        }
 
-        if (date1 <= date2) {
-            openModal(modalViewRep, modalViewRepContent);
-            fetchReport();
-            closeModal(modalRep, modalRepContent);
+        if (new Date(selectDate1) > new Date(selectDate2)) {
+            showMess('Error', 'Invalid time period');
+            return;
+        }
 
-        } else {
+        closeReportModal();
 
-            icon.src = "/icon/error.png";
-            message.textContent = "Invalid time period";
-            btnYes.style.display = "none";
+        currentPage = 1;
+        secondCurrentPage = 1;
 
-            openModal(modalMessRep, modalMessRepContent);
-            closeModal(modalRep, modalRepContent);
+        const headerMap = {
+            'Bike Name': 'namebike',
+            'Soldier Name': 'namesoldier',
+            'Country': 'country',
+            'Helmet Code': 'helmet_code',
+            'Date From': 'date_from',
+            'Date To': 'date_to',
+            'Duration': 'duration'
+        };
+
+        const headerDateMap = {
+            'Date': 'date',
+            'Total Bikes Used': 'total_bikes'
+        };
+
+        rewriteTableSearch('.search-input-view-bike', 'bikeUsageTable', headerMap, selectDate1, selectDate2);
+        rewriteTableSearch('.search-input-view-total-bike', 'bikeTotalsTable', headerDateMap, selectDate1, selectDate2);
+
+        globalSelectDate1 = selectDate1;
+        globalSelectDate2 = selectDate2;
+
+        fetchReport(selectDate1, selectDate2);
+
+        openViewReportModal();
+    }
+
+    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId, rowsPerPage = 10, totalPages, page, searchFilters = [], searchFiltersDate = [], selectDate1, selectDate2) {
+
+        document.getElementById(`${pageNumberId}`).textContent = `${page}/${totalPages}`;
+
+        switch (tableId) {
+            case 'allRentedBikeTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchStatusBike('Rented', currentPage, rowsPerPage, searchFilters);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchStatusBike('Rented', currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
+
+            case 'allAvailableBikeTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchStatusBike('Available', currentPage, rowsPerPage, searchFilters);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchStatusBike('Available', currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
+
+            case 'allRepireBikeTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchStatusBike('Repair', currentPage, rowsPerPage, searchFilters);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchStatusBike('Repair', currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
+
+            case 'allLateBikeTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchStatusBike('Late', currentPage, rowsPerPage, searchFilters);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchStatusBike('Late', currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
+
+            case 'allLongTermBikeTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchStatusBike('Long term', currentPage, rowsPerPage, searchFilters);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchStatusBike('Long term', currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
+
+            case 'bikeUsageTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                };
+                break;
+
+            case 'bikeTotalsTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (secondCurrentPage > 1) {
+                        secondCurrentPage--;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (secondCurrentPage < totalPages) {
+                        secondCurrentPage++;
+                        fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, rowsPerPage, searchFilters, searchFiltersDate);
+                    }
+                };
+                break;
+
+            case 'helmetTable':
+                document.getElementById(`${prevBtnId}`).onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        fetchHelmet(currentPage, rowsPerPage, searchFilters);
+                    }
+                }
+
+                document.getElementById(`${nextBtnId}`).onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        fetchHelmet(currentPage, rowsPerPage, searchFilters);
+                    }
+                };
+                break;
         }
     }
 
-    function setupTableNavigation(tableId, prevBtnId, nextBtnId, pageNumberId) {
-        const table = document.getElementById(tableId).getElementsByTagName("tbody")[0];
-        const rows = table.getElementsByTagName("tr");
-        const rowsPerPage = 10; // Number of rows visible at a time
-        let currentIndex = 0;
-        let totalPages = Math.ceil(rows.length / rowsPerPage);
-        const pageNumberDisplay = document.getElementById(pageNumberId);
+    function openViewReportModal() {
+        modalViewRep.classList.add('show');
+        modalViewRepContent.classList.add('show');
+        modalViewRepContent.classList.add('slide-in');
 
-        function updateTable() {
-            for (let i = 0; i < rows.length; i++) {
-                rows[i].style.display = i >= currentIndex && i < currentIndex + rowsPerPage ? "table-row" : "none";
-            }
-
-            totalPages = Math.ceil(rows.length / rowsPerPage) || 1; // Recalculate total pages (avoid division by zero)
-            let currentPage = Math.floor(currentIndex / rowsPerPage) + 1;
-            pageNumberDisplay.textContent = `${currentPage}/${totalPages}`;
-        }
-
-        document.getElementById(prevBtnId).onclick = function () {
-            if (currentIndex > 0) {
-                currentIndex -= rowsPerPage;
-                updateTable();
-            }
-        };
-
-        document.getElementById(nextBtnId).onclick = function () {
-            if (currentIndex + rowsPerPage < rows.length) {
-                currentIndex += rowsPerPage;
-                updateTable();
-            }
-        };
-
-        updateTable(); // Initialize table view
+        modalViewRepContent.classList.remove('slide-out');
     }
 
-    function openModal(modal, modalContent) {
+    function closeViewReportModal() {
+        // Add the slide-out effect
+        modalViewRepContent.classList.add('slide-out');
+        modalViewRepContent.classList.remove('slide-in');
 
-        // Add the slide-in effect by adding the necessary classes
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            document.querySelectorAll('.search-input-view-bike, .search-input-view-total-bike').forEach((input) => {
+                input.value = '';
+            });
+
+            document.getElementById('selectedDate1').value = 'None';
+            document.getElementById('selectedDate2').value = 'None';
+
+            modalViewRep.classList.remove('show');
+            modalViewRepContent.classList.remove('show');
+
+        }, 500); // Match the duration of the animation (0.4s)
+    }
+
+    function openReportModal() {
+        modalRep.classList.add('show');
+        modalRepContent.classList.add('show');
+        modalRepContent.classList.add('slide-in');
+
+        modalRepContent.classList.remove('slide-out');
+    }
+
+    function closeReportModal() {
+        // Add the slide-out effect
+        modalRepContent.classList.add('slide-out');
+        modalRepContent.classList.remove('slide-in');
+
+        // Delay hiding the modal to allow the animation to finish
+        setTimeout(function () {
+
+            const listItems = document.querySelectorAll('.dates li');
+            listItems.forEach(li => li.classList.remove('selected'));
+
+            modalRep.classList.remove('show');
+            modalRepContent.classList.remove('show');
+
+        }, 500); // Match the duration of the animation (0.4s)
+    }
+
+    function openTotalBikeModal() {
+        modalTotalBike.classList.add('show');
+        modalTotalBikeContent.classList.add('show');
+        modalTotalBikeContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalTotalBikeContent.classList.remove('slide-out');
+    }
+
+    function closeTotalBikeModal() {
+        modalTotalBikeContent.classList.add('slide-out');
+        modalTotalBikeContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            document.querySelectorAll('.all-rented-bike-search-input').forEach((input) => {
+                input.value = '';
+            });
+
+            modalTotalBike.classList.remove('show');
+            modalTotalBikeContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openTotalAvailableBikeModal() {
+        modalTotalAvailableBike.classList.add('show');
+        modalTotalAvailableBikeContent.classList.add('show');
+        modalTotalAvailableBikeContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalTotalAvailableBikeContent.classList.remove('slide-out');
+    }
+
+    function closeTotalAvailableBikeModal() {
+        modalTotalAvailableBikeContent.classList.add('slide-out');
+        modalTotalAvailableBikeContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            document.querySelectorAll('.all-available-bike-search-input').forEach((input) => {
+                input.value = '';
+            });
+
+            modalTotalAvailableBike.classList.remove('show');
+            modalTotalAvailableBikeContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openTotalRepireBikeModal() {
+        modalTotalRepireBike.classList.add('show');
+        modalTotalRepireBikeContent.classList.add('show');
+        modalTotalRepireBikeContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalTotalRepireBikeContent.classList.remove('slide-out');
+    }
+
+    function closeTotalRepireBikeModal() {
+        modalTotalRepireBikeContent.classList.add('slide-out');
+        modalTotalRepireBikeContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            document.querySelectorAll('.all-repire-bike-search-input').forEach((input) => {
+                input.value = '';
+            });
+
+            modalTotalRepireBike.classList.remove('show');
+            modalTotalRepireBikeContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openTotalLateBikeModal() {
+        modalTotalLateBike.classList.add('show');
+        modalTotalLateBikeContent.classList.add('show');
+        modalTotalLateBikeContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalTotalLateBikeContent.classList.remove('slide-out');
+    }
+
+    function closeTotalLateBikeModal() {
+        modalTotalLateBikeContent.classList.add('slide-out');
+        modalTotalLateBikeContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            document.querySelectorAll('.all-late-bike-search-input').forEach((input) => {
+                input.value = '';
+            });
+
+            modalTotalLateBike.classList.remove('show');
+            modalTotalLateBikeContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openTotalLongTermBikeModal() {
+        modalTotalLongTermBike.classList.add('show');
+        modalTotalLongTermBikeContent.classList.add('show');
+        modalTotalLongTermBikeContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalTotalLongTermBikeContent.classList.remove('slide-out');
+    }
+
+    function closeTotalLongTermBikeModal() {
+        modalTotalLongTermBikeContent.classList.add('slide-out');
+        modalTotalLongTermBikeContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            document.querySelectorAll('.all-long-term-bike-search-input').forEach((input) => {
+                input.value = '';
+            });
+
+            modalTotalLongTermBike.classList.remove('show');
+            modalTotalLongTermBikeContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openAddBikeModal() {
+        modalAddBike.classList.add('show');
+        modalAddBikeContent.classList.add('show');
+        modalAddBikeContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalAddBikeContent.classList.remove('slide-out');
+    }
+
+    function closeAddBikeModal() {
+        modalAddBikeContent.classList.add('slide-out');
+        modalAddBikeContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            document.querySelectorAll('#bike-number, #bike-name').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+            });
+
+            modalAddBike.classList.remove('show');
+            modalAddBikeContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openAddHelmetModal() {
+        modalAddHelmet.classList.add('show');
+        modalAddHelmetContent.classList.add('show');
+        modalAddHelmetContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalAddHelmetContent.classList.remove('slide-out');
+    }
+
+    function closeAddHelmetModal() {
+        modalAddHelmetContent.classList.add('slide-out');
+        modalAddHelmetContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            document.querySelectorAll('#helmet-number, #helmet-name').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+            });
+
+            modalAddHelmet.classList.remove('show');
+            modalAddHelmetContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openRemoveBikeModal() {
+        modalRemoveBike.classList.add('show');
+        modalRemoveBikeContent.classList.add('show');
+        modalRemoveBikeContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalRemoveBikeContent.classList.remove('slide-out');
+    }
+
+    function closeRemoveBikeModal() {
+        modalRemoveBikeContent.classList.add('slide-out');
+        modalRemoveBikeContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            document.querySelectorAll('#removeBikeSearch, #selectedRemoveBikeId').forEach((input) => {
+
+                input.classList.remove('is-valid');
+                input.classList.remove('is-invalid');
+
+                input.value = '';
+            });
+
+            modalRemoveBike.classList.remove('show');
+            modalRemoveBikeContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openAddMultiBikeModal() {
+        modalAddMultiBike.classList.add('show');
+        modalAddMultiBikeContent.classList.add('show');
+        modalAddMultiBikeContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalAddMultiBikeContent.classList.remove('slide-out');
+    }
+
+    function closeAddMultiBikeModal() {
+        modalAddMultiBikeContent.classList.add('slide-out');
+        modalAddMultiBikeContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            document.getElementById("progress-multi-bike").style.width = 0 + "%";
+            document.getElementById('fileInputBike').value = '';
+
+            modalAddMultiBike.classList.remove('show');
+            modalAddMultiBikeContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openAddMultiHelmetModal() {
+        modalAddMultiHelmet.classList.add('show');
+        modalAddMultiHelmetContent.classList.add('show');
+        modalAddMultiHelmetContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalAddMultiHelmetContent.classList.remove('slide-out');
+    }
+
+    function closeAddMultiHelmetModal() {
+        modalAddMultiHelmetContent.classList.add('slide-out');
+        modalAddMultiHelmetContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            document.getElementById("progress-multi-helmet").style.width = 0 + "%";
+            document.getElementById('fileInputHelmet').value = '';
+
+            modalAddMultiHelmet.classList.remove('show');
+            modalAddMultiHelmetContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openSearchBikeModal() {
+        modalSearchBike.classList.add('show');
+        modalSearchBikeContent.classList.add('show');
+        modalSearchBikeContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalSearchBikeContent.classList.remove('slide-out');
+    }
+
+    function closeSearchBikeModal() {
+        modalSearchBikeContent.classList.add('slide-out');
+        modalSearchBikeContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            modalSearchBike.classList.remove('show');
+            modalSearchBikeContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openSearchClientModal() {
+        modalSearchClient.classList.add('show');
+        modalSearchClientContent.classList.add('show');
+        modalSearchClientContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalSearchClientContent.classList.remove('slide-out');
+    }
+
+    function closeSearchClientModal() {
+        modalSearchClientContent.classList.add('slide-out');
+        modalSearchClientContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            modalSearchClient.classList.remove('show');
+            modalSearchClientContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openSearchHelmetModal() {
+        modalSearchHelmet.classList.add('show');
+        modalSearchHelmetContent.classList.add('show');
+        modalSearchHelmetContent.classList.add('slide-in');
+
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalSearchHelmetContent.classList.remove('slide-out');
+    }
+
+    function closeSearchHelmetModal() {
+        modalSearchHelmetContent.classList.add('slide-out');
+        modalSearchHelmetContent.classList.remove('slide-in');
+
+        setTimeout(function () {
+
+            modalSearchHelmet.classList.remove('show');
+            modalSearchHelmetContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function openModal() {
         modal.classList.add('show');
         modalContent.classList.add('show');
         modalContent.classList.add('slide-in');
@@ -279,34 +1413,146 @@ document.addEventListener('DOMContentLoaded', function () {
         modalContent.classList.remove('slide-out');
     }
 
-    function closeModal(modal, modalContent) {
-        // Add the slide-out effect
+    function closeModal() {
         modalContent.classList.add('slide-out');
         modalContent.classList.remove('slide-in');
 
-        if (modal === modalRep) {
-            const listItems = document.querySelectorAll('.dates li');
-            listItems.forEach(li => li.classList.remove('selected'));
+        setTimeout(function () {
+
+            modalCheckBox.checked = false;
+
+            modal.classList.remove('show');
+            modalContent.classList.remove('show');
+
+        }, 400);
+    }
+
+    function showMess(type, message) {
+
+        const icon = document.getElementById("mess-icon-rep");
+
+        switch (type) {
+            case 'Error':
+                icon.src = "/icon/error.png";
+                document.getElementById("mess-text-rep").textContent = message;
+                isInfo = false;
+                break;
+
+            case 'Warnning':
+                icon.src = "/icon/timeout.png";
+                document.getElementById("mess-text-rep").textContent = message;
+                isInfo = false;
+                break;
+
+            default:
+                icon.src = "/icon/information.png";
+                document.getElementById("mess-text-rep").textContent = message;
+                isInfo = true;
+                break;
         }
 
-        if (modal === modalViewRep) {
+        // Add the slide-in effect by adding the necessary classes
+        modalMessRep.classList.add('show');
+        modalMessRepContent.classList.add('show');
+        modalMessRepContent.classList.add('slide-in');
 
-            document.querySelectorAll('.search-input-view-bike, .search-input-view-total-bike').forEach((input) => {
-                input.value = '';
+        // Ensure that any 'slide-out' class is removed if it was previously added
+        modalMessRepContent.classList.remove('slide-out');
+    }
+
+    function closeMessModal(action = '') {
+        // Add the slide-out effect
+        modalMessRepContent.classList.add('slide-out');
+        modalMessRepContent.classList.remove('slide-in');
+
+        function clearInput(clearModalInput) {
+
+            const listItems = clearModalInput.querySelectorAll('.dates li');
+            listItems.forEach(li => li.classList.remove('selected'));
+
+            const inputs = clearModalInput.querySelectorAll('input, textarea, select');
+            inputs.forEach(el => {
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    el.checked = false;
+                } else {
+                    el.value = '';
+                }
+                el.classList.remove('is-valid');
+                el.classList.remove('is-invalid');
             });
+        }
+
+        function clearMultiInput(progressBar, fileIput) {
+            document.getElementById(`${progressBar}`).style.width = 0 + "%";
+            document.getElementById(`${fileIput}`).value = '';
         }
 
         // Delay hiding the modal to allow the animation to finish
         setTimeout(function () {
-            modal.classList.remove('show');
-            modalContent.classList.remove('show');
+            modalMessRep.classList.remove('show');
+            modalMessRepContent.classList.remove('show');
 
-            const icon = document.getElementById("mess-icon-rep");
+            if (isInfo) {
 
-            if ((modal === modalMessRep && icon.src.includes('information'))) {
-                // Refresh the page after the modal is closed
-                window.location.reload();
+                const fullContent = document.getElementsByClassName('content')[0];
+                const leftNav = document.getElementsByClassName('left-nav')[0];
+
+                switch (action) {
+
+                    case 'bikeAction':
+                        closeModal();
+                        clearInput(fullContent);
+                        clearInput(leftNav);
+                        fetchTableData(1);
+                        break;
+
+                    case 'removeHelmet':
+                        allCheckedRow = [];
+                        clearInput(modalListHelmetsContent);
+                        fetchHelmet();
+                        break;
+
+                    case 'addBike':
+                        clearInput(modalAddBikeContent);
+                        clearInput(fullContent);
+                        fetchTableData(1);
+                        break;
+
+                    case 'editBike':
+                        closeEditModal();
+                        clearInput(fullContent);
+                        fetchTableData(1);
+                        break;
+
+                    case 'addHelmet':
+                        clearInput(modalAddHelmetContent);
+                        clearInput(modalListHelmetsContent);
+                        fetchHelmet();
+                        break;
+
+                    case 'removeBike':
+                        clearInput(modalRemoveBikeContent);
+                        clearInput(fullContent);
+                        fetchTableData(1);
+                        break;
+
+                    case 'uploadMultiBike':
+                        clearMultiInput('progress-multi-bike', 'fileInputBike');
+                        clearInput(fullContent);
+                        fetchTableData(1);
+                        break;
+
+                    case 'uploadMultiHelmet':
+                        clearMultiInput('progress-multi-helmet', 'fileInputHelmet');
+                        clearInput(modalListHelmetsContent);
+                        fetchHelmet();
+                        break;
+
+                }
+
+                fetchItem();
             }
+
         }, 400); // Match the duration of the animation (0.4s)
     }
 
@@ -379,119 +1625,16 @@ document.addEventListener('DOMContentLoaded', function () {
         modalListHelmetsContent.classList.add('show');
         modalListHelmetsContent.classList.add('slide-in');
 
-        loadingIndicator.style.display = 'flex';
+        currentPage = 1;
 
-        fetch(`/helmets`, {
-            method: 'GET'
-        })
-            .then(response => response.json())
-            .then(data => {
-                // Parse the JSON string into an array of objects
-                var helmetListData = data;
+        const headerDate = {
+            'Helmet code': 'h.id',
+            'Helmet name': 'h.code'
+        };
 
-                const tbody = document.getElementById('tableBodyModal');
-                const helmetTableBody = document.getElementById('helmetTable').getElementsByTagName('tbody')[0];
-                tbody.innerHTML = '';
+        rewriteTableSearch('.search-input-helmet', 'helmetTable', headerDate);
 
-                allCheckedRow = []; // Reset the global array
-
-                // Dynamically create the header checkbox
-                const headerCheckbox = document.createElement('input');
-                headerCheckbox.type = 'checkbox';
-                headerCheckbox.className = 'form-check-input header-checkbox';
-                headerCheckbox.style.border = '1px solid black'; // Make the border more bold
-                headerCheckbox.style.backgroundColor = ''; // Clear any previous color
-
-                headerCheckbox.addEventListener('change', (event) => {
-                    headerCheckbox.style.backgroundColor = event.target.checked ? 'green' : '';
-                    const isChecked = event.target.checked;
-
-                    // Get all visible rows
-                    const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
-
-                    visibleRows.forEach(row => {
-                        const checkbox = row.querySelector('.form-check-input');
-                        if (checkbox) {
-                            checkbox.checked = isChecked;
-                            checkbox.style.backgroundColor = isChecked ? 'green' : '';
-                            if (isChecked) {
-                                allCheckedRow.push({ code: checkbox.dataset.id });
-                            } else {
-                                allCheckedRow = allCheckedRow.filter(item => item.code !== checkbox.dataset.id);
-                            }
-                        }
-                    });
-
-                    // Ensure no duplicates in allCheckedRow
-                    if (isChecked) {
-                        allCheckedRow = Array.from(new Set(allCheckedRow.map(item => item.code)))
-                            .map(code => ({ code }));
-                    }
-                });
-
-                // Append the header checkbox to the table header
-                const thead = tbody.parentElement.querySelector('thead');
-                const headerRow = thead.querySelector('tr');
-
-                headerRow.querySelectorAll('th').forEach(th => {
-                    if (!th.textContent.trim()) {
-                        th.remove();
-                    }
-                });
-
-                const headerCell = document.createElement('th');
-                headerCell.appendChild(headerCheckbox);
-                headerRow.insertBefore(headerCell, headerRow.firstChild);
-
-                helmetListData.forEach(item => {
-                    const row = document.createElement("tr");
-                    row.classList.add('data-helmet');
-
-                    // Add the checkbox cell
-                    const checkboxCell = document.createElement('td');
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'form-check-input';
-                    checkbox.dataset.id = item.id;
-                    checkbox.style.border = '1px solid black'; // Make the border more bold
-
-                    // Add change event to the checkbox
-                    checkbox.addEventListener('change', () => {
-                        if (checkbox.checked) {
-                            checkbox.style.backgroundColor = 'green';
-                            allCheckedRow.push({ code: item.id });
-                        } else {
-                            checkbox.style.backgroundColor = '';
-                            allCheckedRow = allCheckedRow.filter(row => row.code !== item.id);
-                        }
-                    });
-
-                    checkboxCell.appendChild(checkbox);
-                    row.appendChild(checkboxCell);
-
-                    // Room number cell
-                    const codeCell = document.createElement("td");
-                    codeCell.textContent = item.id;
-                    row.appendChild(codeCell);
-
-                    // Room status cell
-                    const nameCell = document.createElement("td");
-                    nameCell.textContent = item.name;
-                    row.appendChild(nameCell);
-
-                    // Append row to the table body
-                    tbody.appendChild(row);
-                });
-
-                const rowsTable = helmetTableBody.getElementsByTagName("tr");
-                firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
-
-                setupTableNavigation("helmetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond");
-            })
-            .catch(error => console.error("Error fetching keys:", error))
-            .finally(() => {
-                loadingIndicator.style.display = 'none';
-            })
+        fetchHelmet();
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         modalListHelmetsContent.classList.remove('slide-out');
@@ -508,6 +1651,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.value = '';
             });
 
+            allCheckedRow = []; // Reset the global array
+
             modalListHelmets.classList.remove('show');
             modalListHelmetsContent.classList.remove('show');
 
@@ -521,31 +1666,52 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const responseBike = await fetch(`/bikes`, {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
             if (!responseBike.ok) {
-                throw new Error('Network response was not ok');
+                const error = await responseBike.json();
+                checkForGlobalError(responseBike, error);
+                showMess('Error', error.message);
+                return;
             }
             bikes = await responseBike.json(); // Store fetched bikes in the global variable
 
             const responseHelmets = await fetch(`/helmets`, {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
             if (!responseHelmets.ok) {
-                throw new Error('Network response was not ok');
+                const error = await responseHelmets.json();
+                checkForGlobalError(responseHelmets, error);
+                showMess('Error', error.message);
+                return;
             }
             helmets = await responseHelmets.json(); // Store fetched bikes in the global variable
 
-            const responseClient = await fetch(`/clients`);
+            const responseClient = await fetch(`/clients`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
             if (!responseClient.ok) {
-                throw new Error('Network response was not ok');
+                const error = await responseClient.json();
+                checkForGlobalError(responseClient, error);
+                showMess('Error', error.message);
+                return;
             }
             clients = await responseClient.json(); // Store fetched bikes in the global variable
 
         } catch (error) {
-            console.error('There was a problem with the fetch operation:', error);
+            showMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -558,18 +1724,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const responseBike = await fetch(`/getHelmetByBike?bikeId=${bikeId}`, {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
             if (!responseBike.ok) {
-                throw new Error('Network response was not ok');
+                const error = await responseBike.json();
+                checkForGlobalError(responseBike, error);
+                showMess('Error', error.message);
+                return;
             }
+
             const result = await responseBike.json();
             document.getElementById('modalHelmetLabel').textContent = result.code ? result.code : 'None';
             document.getElementById('selectedByBikeHelmetId').value = result.helmetId ? result.helmetId : '';
 
         } catch (error) {
-            console.error('There was a problem with the fetch operation:', error);
+            showMess('Error', 'There was a problem with the fetch helmet operation');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -598,6 +1771,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function filterEditSoldiers(query) {
         editSoldierSearchDropdown.innerHTML = '';
         const filteredSoldiers = clients.filter(client => (
+            (client.date_accommodation === '' || (client.date_accommodation !== '' && client.date_free === '')) &&
             client.name.toLowerCase().includes(query.toLowerCase()) ||
             client.namekey.toLowerCase().includes(query.toLowerCase())
         ));
@@ -658,6 +1832,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function filterClient(query) {
         clientSearchDropdown.innerHTML = '';
         const filteredClients = clients.filter(client => (
+            (client.date_accommodation === '' || (client.date_accommodation !== '' && client.date_free === '')) &&
             client.name.toLowerCase().includes(query.toLowerCase()) ||
             client.namekey.toLowerCase().includes(query.toLowerCase())
         ));
@@ -924,7 +2099,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (rentBtn) {
         // When the user clicks on "Rent" button, open the modal with specific text
         rentBtn.onclick = function () {
-            openModal(modal, modalContent);
+            openModal();
             updateLabel(modalText, selectedDateMain.value);
             updateLabel(bikeLabel, bikeSearchInput.value);
             updateLabel(clientLabel, clientSearchInput.value);
@@ -946,7 +2121,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (returnBtn) {
         // When the user clicks on "Return" button, open the modal with specific text
         returnBtn.onclick = function () {
-            openModal(modal, modalContent);
+            openModal();
             updateLabel(modalText, selectedDateMain.value);
             updateLabel(bikeLabel, bikeSearchInput.value);
             updateLabel(clientLabel, clientSearchInput.value);
@@ -966,260 +2141,98 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    if (saveButton) {
-
-        saveButton.onclick = async function () {
-            const icon = document.getElementById("mess-icon");
-            const message = document.getElementById("mess-text");
-            const btnYes = document.getElementById("btnYes");
-
-            const setDate = document.getElementById('date').value;
-            const selectHour = document.getElementById('hourSelect').value;
-            const selectMinute = document.getElementById('minuteSelect').value;
-            const action = document.getElementById("action").value;
-
-            loadingIndicator.style.display = 'flex';
-
-            try {
-                // Fetch bike status
-                const response = await fetch(`/checkBike?bikeId=${selectedBikeId.value}`, {
-                    method: 'GET'
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    console.error('Error fetching the report:', error.details || 'Network response was not ok');
-                    return;
-                }
-
-                const data = await response.json();
-                const dateFrom = new Date(data.datefrom);
-                const dateTo = new Date(`${setDate} ${selectHour}:${selectMinute}`);
-                const dateNow = new Date();
-
-                // Validate input fields
-
-                const isInvalidInput = (action === "Rent" && (
-                    modalText.textContent === "None" ||
-                    bikeLabel.textContent === "None" ||
-                    clientLabel.textContent === "None" ||
-                    selectHour === "Select Hour" ||
-                    selectMinute === "Select Minutes"
-                )) || (action === "Return" && (
-                    modalText.textContent === "None" ||
-                    bikeLabel.textContent === "None" ||
-                    selectHour === "Select Hour" ||
-                    selectMinute === "Select Minutes"
-                ));
-
-                if (isInvalidInput) {
-                    icon.src = "/icon/error.png";
-                    message.textContent = "Please select all fields";
-                    btnYes.style.display = "none";
-                } else if (action === "Rent" && data.status !== 'Available') {
-                    icon.src = "/icon/error.png";
-                    message.textContent = "The bike is already rented!";
-                    btnYes.style.display = "none";
-                } else if (action === "Return" && data.status === 'Available') {
-                    icon.src = "/icon/error.png";
-                    message.textContent = "This bike is not rented!";
-                    btnYes.style.display = "none";
-                } else if (action === "Return" && dateFrom > dateTo) {
-                    icon.src = "/icon/error.png";
-                    message.textContent = "Invalid return date!";
-                    btnYes.style.display = "none";
-                } else if (dateTo > dateNow) {
-                    icon.src = "/icon/error.png";
-                    message.textContent = "Invalid rent date!";
-                    btnYes.style.display = "none";
-                } else {
-                    icon.src = "/icon/information.png";
-                    message.textContent = "Are you sure you want to proceed?";
-                    btnYes.style.display = "block";
-                }
-
-                openModal(modalMess, modalMessContent);
-
-            } catch (error) {
-                console.error("Unexpected error:", error);
-                icon.src = "/icon/error.png";
-                message.textContent = "An error occurred while checking the bike status.";
-                btnYes.style.display = "none";
-                openModal(modalMess, modalMessContent);
-
-            } finally {
-                loadingIndicator.style.display = 'none';
-            }
-        };
-    }
-
-    // When the user clicks on <span> (x), close the modal
-    function spanCloseModal(span, modal, modalContent, checkBox = null) {
-        span.onclick = function () {
-
-            switch (modal) {
-                case modalAddBike:
-                    document.querySelectorAll('#bike-number, #bike-name').forEach((input) => {
-
-                        input.classList.remove('is-valid');
-                        input.classList.remove('is-invalid');
-
-                        input.value = '';
-                    });
-                    break;
-
-                case modalAddHelmet:
-                    document.querySelectorAll('#helmet-number, #helmet-name').forEach((input) => {
-
-                        input.classList.remove('is-valid');
-                        input.classList.remove('is-invalid');
-
-                        input.value = '';
-                    });
-                    break;
-
-                case modalRemoveBike:
-                    document.querySelectorAll('#removeBikeSearch, #selectedRemoveBikeId').forEach((input) => {
-
-                        input.classList.remove('is-valid');
-                        input.classList.remove('is-invalid');
-
-                        input.value = '';
-                    });
-                    break;
-
-                case modalAddMultiBike:
-                    document.getElementById('fileInputBike').value = '';
-                    document.getElementById("progress-multi-bike").style.width = 0 + "%";
-                    break;
-            }
-
-            if (checkBox)
-                checkBox.checked = false;
-
-            closeModal(modal, modalContent);
-        }
-    }
-
-    spanCloseModal(span, modal, modalContent, modalCheckBox);
-    spanCloseModal(spanMess, modalMess, modalMessContent);
-    spanCloseModal(spanRep, modalRep, modalRepContent);
-    spanCloseModal(spanViewRep, modalViewRep, modalViewRepContent);
-    spanCloseModal(spanTotalBike, modalTotalBike, modalTotalBikeContent);
-    spanCloseModal(spanTotalAvailBike, modalTotalAvailableBike, modalTotalAvailableBikeContent);
-    spanCloseModal(spanTotalRepireBike, modalTotalrepireBike, modalTotalrepireBikeContent);
-    spanCloseModal(spanTotalLateBike, modalTotallateBike, modalTotallateBikeContent);
-    spanCloseModal(spanTotalLongTermBike, modalTotalLongTermBike, modalTotalLongTermBikeContent);
-    spanCloseModal(spanSearchBike, modalSearchBike, modalSearchBikeContent);
-    spanCloseModal(spanSearchClient, modalSearchClient, modalSearchClientContent);
-    spanCloseModal(spanSearchHelmet, modalSearchHelmet, modalSearchHelmetContent);
-    spanCloseModal(spanMessRep, modalMessRep, modalMessRepContent);
-    spanCloseModal(spanAddBike, modalAddBike, modalAddBikeContent);
-    spanCloseModal(spanAddHelmet, modalAddHelmet, modalAddHelmetContent);
-    spanCloseModal(spanRemoveBike, modalRemoveBike, modalRemoveBikeContent);
-    spanCloseModal(spanAddMultiBike, modalAddMultiBike, modalAddMultiBikeContent);
-    spanCloseModal(spanAddMultiHelmet, modalAddMultiHelmet, modalAddMultiHelmetContent);
+    document.getElementsByClassName('close-btn')[0].onclick = closeModal;
+    document.getElementsByClassName('close-btn')[1].onclick = closeReportModal;
+    document.getElementsByClassName('close-btn')[2].onclick = closeViewReportModal;
+    document.getElementsByClassName('close-btn')[3].onclick = closeTotalBikeModal;
+    document.getElementsByClassName('close-btn')[4].onclick = closeTotalAvailableBikeModal;
+    document.getElementsByClassName('close-btn')[5].onclick = closeTotalRepireBikeModal;
+    document.getElementsByClassName('close-btn')[6].onclick = closeTotalLateBikeModal;
+    document.getElementsByClassName('close-btn')[7].onclick = closeTotalLongTermBikeModal;
+    document.getElementsByClassName('close-btn')[8].onclick = closeSearchBikeModal;
+    document.getElementsByClassName('close-btn')[9].onclick = closeSearchClientModal;
+    document.getElementsByClassName('close-btn')[10].onclick = closeSearchHelmetModal;
+    document.getElementsByClassName('close-btn')[11].onclick = closeAddBikeModal;
+    document.getElementsByClassName('close-btn')[12].onclick = closeRemoveBikeModal;
+    document.getElementsByClassName('close-btn')[13].onclick = closeAddMultiBikeModal;
+    document.getElementsByClassName('close-btn')[14].onclick = closeEditModal;
+    document.getElementsByClassName('close-btn')[15].onclick = closeListHelmetsModal;
+    document.getElementsByClassName('close-btn')[16].onclick = closeAddHelmetModal;
+    document.getElementsByClassName('close-btn')[17].onclick = closeAddMultiHelmetModal;
+    document.getElementsByClassName('close-btn')[18].onclick = function () {
+        closeMessModal(globalAction);
+    };
 
     // When the user clicks anywhere outside of the modal, close it
-    window.onclick = function (event) {
+    window.addEventListener("click", function (event) {
 
         switch (event.target) {
             case modal:
-                modalCheckBox.checked = false;
-                closeModal(modal, modalContent);
-                break;
-
-            case modalMess:
-                closeModal(modalMess, modalMessContent);
+                closeModal();
                 break;
 
             case modalRep:
-                closeModal(modalRep, modalRepContent);
+                closeReportModal();
                 break;
 
             case modalViewRep:
-                closeModal(modalViewRep, modalViewRepContent);
+                closeViewReportModal();
                 break;
 
             case modalTotalBike:
-                closeModal(modalTotalBike, modalTotalBikeContent);
+                closeTotalBikeModal();
                 break;
 
             case modalTotalAvailableBike:
-                closeModal(modalTotalAvailableBike, modalTotalAvailableBikeContent);
+                closeTotalAvailableBikeModal();
                 break;
 
-            case modalTotalrepireBike:
-                closeModal(modalTotalrepireBike, modalTotalrepireBikeContent);
+            case modalTotalRepireBike:
+                closeTotalRepireBikeModal();
                 break;
 
-            case modalTotallateBike:
-                closeModal(modalTotallateBike, modalTotallateBikeContent);
+            case modalTotalLateBike:
+                closeTotalLateBikeModal();
                 break;
 
             case modalTotalLongTermBike:
-                closeModal(modalTotalLongTermBike, modalTotalLongTermBikeContent);
+                closeTotalLongTermBikeModal();
                 break;
 
             case modalSearchBike:
-                closeModal(modalSearchBike, modalSearchBikeContent);
+                closeSearchBikeModal();
                 break;
 
             case modalSearchClient:
-                closeModal(modalSearchClient, modalSearchClientContent);
+                closeSearchClientModal();
                 break;
 
             case modalSearchHelmet:
-                closeModal(modalSearchHelmet, modalSearchHelmetContent);
+                closeSearchHelmetModal();
                 break;
 
             case modalMessRep:
-                closeModal(modalMessRep, modalMessRepContent);
+                closeMessModal(globalAction);
                 break;
 
             case modalAddBike:
-                closeModal(modalAddBike, modalAddBikeContent);
-                document.querySelectorAll('#bike-number, #bike-name').forEach((input) => {
-
-                    input.classList.remove('is-valid');
-                    input.classList.remove('is-invalid');
-
-                    input.value = '';
-                });
+                closeAddBikeModal();
                 break;
 
             case modalAddHelmet:
-                closeModal(modalAddHelmet, modalAddHelmetContent);
-                document.querySelectorAll('#helmet-number, #helmet-name').forEach((input) => {
-
-                    input.classList.remove('is-valid');
-                    input.classList.remove('is-invalid');
-
-                    input.value = '';
-                });
+                closeAddHelmetModal();
                 break;
 
             case modalRemoveBike:
-                closeModal(modalRemoveBike, modalRemoveBikeContent);
-                document.querySelectorAll('#removeBikeSearch, #selectedRemoveBikeId').forEach((input) => {
-
-                    input.classList.remove('is-valid');
-                    input.classList.remove('is-invalid');
-
-                    input.value = '';
-                });
+                closeRemoveBikeModal();
                 break;
 
             case modalAddMultiBike:
-                closeModal(modalAddMultiBike, modalAddMultiBikeContent);
-                document.getElementById("progress-multi-bike").style.width = 0 + "%";
-                document.getElementById('fileInputBike').value = '';
+                closeAddMultiBikeModal();
                 break;
 
             case modalAddMultiHelmet:
-                closeModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
-                document.getElementById("progress-multi-helmet").style.width = 0 + "%";
-                document.getElementById('fileInputHelmet').value = '';
+                closeAddMultiHelmetModal();
                 break;
 
             case modalEditBike:
@@ -1230,7 +2243,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 closeListHelmetsModal();
                 break;
         }
-    }
+    });
 
     // Add event listener to the checkbox
     modalCheckBox.addEventListener('change', function () {
@@ -1239,12 +2252,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Open the report modal when the Reports button is clicked
     document.getElementById("btnReport").addEventListener("click", function () {
-        openModal(modalRep, modalRepContent);
+        openReportModal();
     });
 
     // Open the report modal when the Reports button is clicked on phone
     document.getElementById("btnReportPhone").addEventListener("click", function () {
-        openModal(modalRep, modalRepContent);
+        openReportModal();
     });
 
     // Open the report modal when the Reports button is clicked
@@ -1258,47 +2271,113 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById("rentedBike").addEventListener("click", function () {
-        openModal(modalTotalBike, modalTotalBikeContent);
+
+        currentPage = 1;
+
+        const headerDate = {
+            'Bike Name': 'namebike',
+            'Hired by': 'namesoldier',
+            'Rented date': 'lb.datefrom'
+        };
+
+        rewriteTableSearch('.all-rented-bike-search-input', 'allRentedBikeTable', headerDate);
+
+        fetchStatusBike('Rented');
+
+        openTotalBikeModal();
     });
 
     document.getElementById("availableBike").addEventListener("click", function () {
-        openModal(modalTotalAvailableBike, modalTotalAvailableBikeContent);
+
+        currentPage = 1;
+
+        const headerDate = {
+            'Bike Name': 'namebike',
+            'Hired by': 'namesoldier',
+            'Rented date': 'lb.datefrom'
+        };
+
+        rewriteTableSearch('.all-available-bike-search-input', 'allAvailableBikeTable', headerDate);
+
+        fetchStatusBike('Available');
+
+        openTotalAvailableBikeModal();
     });
 
     document.getElementById("repairBike").addEventListener("click", function () {
-        openModal(modalTotalrepireBike, modalTotalrepireBikeContent);
+
+        currentPage = 1;
+
+        const headerDate = {
+            'Bike Name': 'namebike',
+            'Hired by': 'namesoldier',
+            'Rented date': 'lb.datefrom'
+        };
+
+        rewriteTableSearch('.all-repire-bike-search-input', 'allRepireBikeTable', headerDate);
+
+        fetchStatusBike('Repair');
+
+        openTotalRepireBikeModal()
     });
 
     document.getElementById("lateBike").addEventListener("click", function () {
-        openModal(modalTotallateBike, modalTotallateBikeContent);
+
+        currentPage = 1;
+
+        const headerDate = {
+            'Bike Name': 'namebike',
+            'Hired by': 'namesoldier',
+            'Rented date': 'lb.datefrom'
+        };
+
+        rewriteTableSearch('.all-late-bike-search-input', 'allLateBikeTable', headerDate);
+
+        fetchStatusBike('Late');
+
+        openTotalLateBikeModal();
     });
 
     document.getElementById("longTermBike").addEventListener("click", function () {
-        openModal(modalTotalLongTermBike, modalTotalLongTermBikeContent);
+
+        currentPage = 1;
+
+        const headerDate = {
+            'Bike Name': 'namebike',
+            'Hired by': 'namesoldier',
+            'Rented date': 'lb.datefrom'
+        };
+
+        rewriteTableSearch('.all-long-term-bike-search-input', 'allLongTermBikeTable', headerDate);
+
+        fetchStatusBike('Long term');
+
+        openTotalLongTermBikeModal();
     });
 
     document.getElementById('addBike').addEventListener("click", function () {
-        openModal(modalAddBike, modalAddBikeContent);
+        openAddBikeModal();
     });
 
     document.getElementById('addHelmet').addEventListener("click", function () {
-        openModal(modalAddHelmet, modalAddHelmetContent);
+        openAddHelmetModal();
     });
 
     document.getElementById('removeBike').addEventListener("click", function () {
-        openModal(modalRemoveBike, modalRemoveBikeContent);
+        openRemoveBikeModal();
     });
 
     document.getElementById('confirmAddMultiBikeBtn').onclick = function () {
-        openModal(modalAddMultiBike, modalAddMultiBikeContent);
+        openAddMultiBikeModal();
     }
 
     document.getElementById('confirmAddMultiHelmetBtn').onclick = function () {
-        openModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
+        openAddMultiHelmetModal();
     }
 
     document.getElementById("searchButtonBike").addEventListener("click", function () {
-        openModal(modalSearchBike, modalSearchBikeContent);
+
+        openSearchBikeModal();
 
         // Clear existing rows from the table
         const existingTableBody = document.querySelector("#searchBikeModal table tbody");
@@ -1315,9 +2394,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Fetch bike data from server
             fetch(`/searchBikes?id=${bikeId}`, {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             })
-                .then(response => response.json())
+                .then(async response => {
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        checkForGlobalError(response, errorData);
+                        throw new Error(errorData.message || 'Unknown error');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     const tableBody = document.querySelector("#searchBikeModal table tbody");
 
@@ -1334,14 +2424,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         const nameCell = document.createElement("td");
                         nameCell.textContent = bike.namesoldier;
+                        nameCell.classList.add("text-wrap");
+                        nameCell.style = "max-width: 200px;";
                         row.appendChild(nameCell);
 
                         const dateFromCell = document.createElement("td");
-                        dateFromCell.textContent = bike.datefrom ? bike.datefrom : "None";
+                        dateFromCell.textContent = bike.datefrom ? formateDate(bike.datefrom) : "None";
+                        dateFromCell.classList.add("text-wrap");
+                        dateFromCell.style = "max-width: 200px;";
                         row.appendChild(dateFromCell);
 
                         const dateToCell = document.createElement("td");
-                        dateToCell.textContent = bike.dateto ? bike.dateto : "None";
+                        dateToCell.textContent = bike.dateto ? formateDate(bike.dateto) : "Still in use";
+                        dateToCell.classList.add("text-wrap");
+                        dateToCell.style = "max-width: 200px;";
                         row.appendChild(dateToCell);
 
                         newTableBody.appendChild(row);
@@ -1351,7 +2447,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.querySelector("#searchBikeModal table").appendChild(newTableBody);
                 })
                 .catch(error => {
-                    console.error('Error fetching bike data:', error);
+                    showMess('Error', error.message);
                 })
                 .finally(() => {
                     loadingIndicator.style.display = 'none';
@@ -1360,7 +2456,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById("searchButtonClient").addEventListener("click", function () {
-        openModal(modalSearchClient, modalSearchClientContent);
+
+        openSearchClientModal();
 
         // Clear existing rows from the table
         const existingTableBody = document.querySelector("#searchClientModal table tbody");
@@ -1377,9 +2474,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Fetch bike data from server
             fetch(`/searchClient?id=${clientId}`, {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             })
-                .then(response => response.json())
+                .then(async response => {
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        checkForGlobalError(response, errorData);
+                        throw new Error(errorData.message || 'Unknown error');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     const tableBody = document.querySelector("#searchClientModal table tbody");
 
@@ -1396,14 +2504,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         const nameCell = document.createElement("td");
                         nameCell.textContent = client.namebike;
+                        nameCell.classList.add("text-wrap");
+                        nameCell.style = "max-width: 200px;";
                         row.appendChild(nameCell);
 
                         const dateFromCell = document.createElement("td");
-                        dateFromCell.textContent = client.datefrom ? client.datefrom : "None";
+                        dateFromCell.textContent = client.datefrom ? formateDate(client.datefrom) : "None";
+                        dateFromCell.classList.add("text-wrap");
+                        dateFromCell.style = "max-width: 200px;";
                         row.appendChild(dateFromCell);
 
                         const dateToCell = document.createElement("td");
-                        dateToCell.textContent = client.dateto ? client.dateto : "None";
+                        dateToCell.textContent = client.dateto ? formateDate(client.dateto) : "Still in use";
+                        dateToCell.classList.add("text-wrap");
+                        dateToCell.style = "max-width: 200px;";
                         row.appendChild(dateToCell);
 
                         newTableBody.appendChild(row);
@@ -1413,7 +2527,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.querySelector("#searchClientModal table").appendChild(newTableBody);
                 })
                 .catch(error => {
-                    console.error('Error fetching bike data:', error);
+                    showMess('Error', error.message);
                 })
                 .finally(() => {
                     loadingIndicator.style.display = 'none';
@@ -1422,7 +2536,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById("searchButtonHelmet").addEventListener("click", function () {
-        openModal(modalSearchHelmet, modalSearchHelmetContent);
+
+        openSearchHelmetModal();
 
         // Clear existing rows from the table
         const existingTableBody = document.querySelector("#searchHelmetModal table tbody");
@@ -1439,9 +2554,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Fetch bike data from server
             fetch(`/searchHelmet?id=${helmetId}`, {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             })
-                .then(response => response.json())
+                .then(async response => {
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        checkForGlobalError(response, errorData);
+                        throw new Error(errorData.message || 'Unknown error');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     const tableBody = document.querySelector("#searchHelmetModal table tbody");
 
@@ -1458,14 +2584,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         const nameCell = document.createElement("td");
                         nameCell.textContent = bike.namesoldier;
+                        nameCell.classList.add("text-wrap");
+                        nameCell.style = "max-width: 200px;";
                         row.appendChild(nameCell);
 
                         const dateFromCell = document.createElement("td");
-                        dateFromCell.textContent = bike.datefrom ? bike.datefrom : "None";
+                        dateFromCell.textContent = bike.datefrom ? formateDate(bike.datefrom) : "None";
+                        dateFromCell.classList.add("text-wrap");
+                        dateFromCell.style = "max-width: 200px;";
                         row.appendChild(dateFromCell);
 
                         const dateToCell = document.createElement("td");
-                        dateToCell.textContent = bike.dateto ? bike.dateto : "None";
+                        dateToCell.textContent = bike.dateto ? formateDate(bike.dateto) : "Still in use";
+                        dateToCell.classList.add("text-wrap");
+                        dateToCell.style = "max-width: 200px;";
                         row.appendChild(dateToCell);
 
                         newTableBody.appendChild(row);
@@ -1475,7 +2607,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.querySelector("#searchHelmetModal table").appendChild(newTableBody);
                 })
                 .catch(error => {
-                    console.error('Error fetching bike data:', error);
+                    showMess('Error', error.message);
                 })
                 .finally(() => {
                     loadingIndicator.style.display = 'none';
@@ -1490,15 +2622,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var isError = false;
         var result = {};
 
-        const icon = document.getElementById('mess-icon-rep');
-        const message = document.getElementById('mess-text-rep');
-        const btnYes = document.getElementById('btnMess');
-        btnYes.style.display = "none";
-
         if (allCheckedRow.length === 0) {
-            icon.src = "/icon/error.png";
-            message.textContent = 'You have not selected any helmets to remove';
-            openModal(modalMessRep, modalMessRepContent);
+            showMess('Error', 'You have not selected any helmets to remove')
             return;
         }
 
@@ -1522,15 +2647,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(data),
                 });
 
+                result = await response.json();
+
                 if (!response.ok) {
+                    checkForGlobalError(response, result);
                     isError = true;
                 }
-
-                result = await response.json();
             }
 
             loadingIndicator.style.display = 'none';
-            closeModal(modalMessRep, modalMessRepContent);
+            closeMessModal();
         });
 
         modalMessRepContent.appendChild(submitButton);
@@ -1546,23 +2672,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 if (isRemove && !isError) {
-                    icon.src = "/icon/information.png";
-                    message.textContent = result.message;
-                    openModal(modalMessRep, modalMessRepContent);
+                    globalAction = 'removeHelmet'
+                    showMess('Info', result.message);
                 } else if (isError) {
-                    icon.src = "/icon/error.png";
-                    message.textContent = result.message || 'An error occurred while adding the bike';
-                    openModal(modalMessRep, modalMessRepContent);
+                    showMess('Error', result.message || 'An error occurred while adding the bike')
                 }
             }
         });
 
         closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
 
-        // Show the warning modal
-        icon.src = "/icon/timeout.png";
-        message.textContent = 'Are you sure you want to remove the selected helmets?';
-        openModal(modalMessRep, modalMessRepContent);
+        showMess('Warnning', 'Are you sure you want to remove the selected helmets?');
     });
 
     function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
@@ -1575,49 +2695,82 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById(pageNumberId).textContent = `${currentPage}/${totalPages}`;
     }
 
-    async function fetchReport() {
+    async function fetchReport(selectDate1, selectDate2, page = 1, pageDate = 1, limit = 10, searchFilters = [], searchFiltersDate = []) {
 
         loadingIndicator.style.display = 'flex';
 
         try {
 
-            const selectedDate1 = document.getElementById('selectedDate1').value;
-            const selectedDate2 = document.getElementById('selectedDate2').value;
+            const searchParams = new URLSearchParams({
+                selectedDate1: selectDate1,
+                selectedDate2: selectDate2,
+                page,
+                pageDate,
+                limit
+            });
 
-            const response = await fetch(`/bicycles/viewReport?selectedDate1=${selectedDate1}&selectedDate2=${selectedDate2}`, {
-                method: 'GET'
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            searchFiltersDate.forEach(filter => {
+                searchParams.append('searchColumnDate', filter.column);
+                searchParams.append('searchValueDate', filter.value);
+            });
+
+            const response = await fetch(`/bicycles/viewReport?${searchParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
             });
 
             if (!response.ok) {
                 const error = await response.json();
-                console.error('Error fetching the report:', error.details || 'Network response was not ok');
+                checkForGlobalError(response, error);
+                showMess('Error', error.message);
+                return;
             }
 
-            const { data, dateTotals } = await response.json();
+            const { data, dateTotals, totalPages, totalPagesTotal } = await response.json();
 
             // Clear existing rows from bike usage details table
             const bikeUsageTableBody = document.getElementById('bikeUsageTable').getElementsByTagName('tbody')[0];
-            bikeUsageTableBody.innerHTML = ''; // Clear all existing rows
+            bikeUsageTableBody.innerHTML = '';
 
-            data.forEach(row => {
-                const newRow = bikeUsageTableBody.insertRow();
-                newRow.insertCell().textContent = row.namebike;
-                newRow.insertCell().textContent = row.namesoldier;
-                newRow.insertCell().textContent = row.country;
-                newRow.insertCell().textContent = row.helmet_code || 'N/A';
-                newRow.insertCell().textContent = row.date_from;
-                newRow.insertCell().textContent = row.date_to;
-                newRow.insertCell().textContent = row.duration;
-            });
-
-            // Populate total bike usage per day table
             const bikeTotalsTableBody = document.getElementById('bikeTotalsTable').getElementsByTagName('tbody')[0];
             bikeTotalsTableBody.innerHTML = '';
 
+            data.forEach(row => {
+                const newRow = bikeUsageTableBody.insertRow();
+                [
+                    row.namebike,
+                    row.namesoldier,
+                    row.country,
+                    row.helmet_code || 'N/A',
+                    row.date_from !== 'Still in use' ? formateDate(row.date_from) : 'Still in use',
+                    row.date_to !== 'Still in use' ? formateDate(row.date_to) : 'Still in use',
+                    row.duration
+                ].forEach(cellValue => {
+                    const cell = newRow.insertCell();
+                    cell.textContent = cellValue;
+                    cell.style.maxWidth = "200px";
+                    cell.classList.add("text-wrap");
+                });
+            });
+
             dateTotals.forEach(row => {
                 const newRow = bikeTotalsTableBody.insertRow();
-                newRow.insertCell().textContent = row.date;
-                newRow.insertCell().textContent = row.total_bikes;
+                [
+                    row.date,
+                    row.total_bikes
+                ].forEach(cellValue => {
+                    const cell = newRow.insertCell();
+                    cell.textContent = cellValue;
+                    cell.style.maxWidth = "200px";
+                    cell.classList.add("text-wrap");
+                });
             });
 
             const rowsTable = bikeUsageTableBody.getElementsByTagName("tr");
@@ -1626,11 +2779,11 @@ document.addEventListener('DOMContentLoaded', function () {
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
             firstUpdateTable(rowsTableDate, 0, 10, 'pageNumberDate');
 
-            setupTableNavigation("bikeUsageTable", "prevBtn", "nextBtn", "pageNumber");
-            setupTableNavigation("bikeTotalsTable", "prevBtnDate", "nextBtnDate", "pageNumberDate");
+            setupTableNavigation("bikeUsageTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, currentPage, searchFilters, searchFiltersDate, selectDate1, selectDate2);
+            setupTableNavigation("bikeTotalsTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesTotal, secondCurrentPage, searchFilters, searchFiltersDate, selectDate1, selectDate2);
 
         } catch (error) {
-            console.error('Error fetching the report:', error);
+            showMess('Error', 'Error fetching the report');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -1639,10 +2792,74 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('form1').addEventListener('submit', async function (event) {
 
+        async function checkBike(action, setDate, selectHour, selectMinute) {
+
+            const isInvalidInput = (action === "Rent" && (
+                modalText.textContent === "None" ||
+                bikeLabel.textContent === "None" ||
+                clientLabel.textContent === "None" ||
+                selectHour === "Select Hour" ||
+                selectMinute === "Select Minutes"
+            )) || (action === "Return" && (
+                modalText.textContent === "None" ||
+                bikeLabel.textContent === "None" ||
+                selectHour === "Select Hour" ||
+                selectMinute === "Select Minutes"
+            ));
+
+            if (isInvalidInput) {
+                showMess('Error', 'Please select all fields');
+                return false;
+            }
+
+            const response = await fetch(`/checkBike?bikeId=${selectedBikeId.value}`, {
+                method: 'GET',
+                headers: {
+                    'X-Is-Fetch': 'true'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                showMess('Error', error.message);
+                return;
+            }
+
+            const data = await response.json();
+            const dateFrom = new Date(data.datefrom);
+            const dateTo = new Date(`${setDate} ${selectHour}:${selectMinute}`);
+            const dateNow = new Date();
+
+            // Validate input fields
+
+            if (action === "Rent" && data.status !== 'Available') {
+                showMess('Error', 'The bike is already rented!');
+                return false;
+
+            } else if (action === "Return" && data.status === 'Available') {
+                showMess('Error', 'This bike is not rented!');
+                return false;
+
+            } else if (action === "Return" && dateFrom > dateTo) {
+                showMess('Error', 'Invalid return date!');
+                return false;
+
+            } else if (dateTo > dateNow) {
+                showMess('Error', 'Invalid rent date!');
+                return false;
+            }
+
+            return true;
+        }
+
         event.preventDefault(); // Prevent default form submission
 
-        const submitButton = event.submitter;
-        submitButton.disabled = true; // Disable the submit button
+        const action = document.getElementById("action").value;
+        const setDate = document.getElementById('date').value;
+
+        const isValid = await checkBike(action, setDate, hourSelect.value, minuteSelect.value);
+        if (!isValid) return;
 
         if (document.getElementById("longTermCheckbox").checked)
             document.getElementById("longTermCheckbox").value = true;
@@ -1650,79 +2867,105 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = {
             bikeId: selectedBikeId.value,
             clientId: selectedClientId.value,
-            actionId: document.getElementById("action").value,
-            dateId: document.getElementById('date').value,
+            actionId: action,
+            dateId: setDate,
             hourSelectId: hourSelect.value,
             minuteSelect: minuteSelect.value,
             ltstatus: document.getElementById("longTermCheckbox").value,
             helmetId: selectedHelmetId.value ? selectedHelmetId.value : ''
         };
 
-        const icon = document.getElementById('mess-icon-rep');
-        const message = document.getElementById('mess-text-rep');
-        const btnYes = document.getElementById('btnMess');
+        const submitButton = document.createElement('button');
+        let isSubmit = false;
+        let hasError = false;
+        let responseData = {};
 
-        loadingIndicator.style.display = 'flex';
+        submitButton.textContent = 'Yes';
+        submitButton.classList.add('btn', 'btn-success');
 
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'CSRF-Token': csrfToken
-                },
-                body: JSON.stringify(data)
-            });
+        submitButton.addEventListener('click', async () => {
+            hasError = false;
+            isSubmit = true;
 
-            // Display success or error messages
-            if (response.ok) {
-                const result = await response.json(); // Parse JSON response
-                message.textContent = result.message;
-            } else {
-                const result = await response.json(); // Parse JSON response
-                icon.src = "/icon/error.png";
-                message.textContent = result.message || 'An unexpected error occurred.';
+            loadingIndicator.style.display = 'flex';
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    checkForGlobalError(response, responseData);
+                    hasError = true;
+                }
+
+                closeMessModal();
             }
+            catch (error) {
+                hasError = true;
 
-            btnYes.style.display = "none";
-            openModal(modalMessRep, modalMessRepContent);
-            this.reset();
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
 
-        } catch (error) {
-            icon.src = "/icon/error.png";
-            message.textContent = 'An error occurred while processing your request.';
-            btnYes.style.display = "none";
-            openModal(modalMessRep, modalMessRepContent);
-            this.reset();
+        modalMessRepContent.appendChild(submitButton);
 
-        } finally {
-            loadingIndicator.style.display = 'none';
-            submitButton.disabled = false; // Re-enable the submit button
-        }
+        // Wait for the modal to close, then check if the submit button was clicked
+        const observer = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show') && isSubmit) {
+                observer.disconnect();
+
+                if (modalMessRepContent.contains(submitButton)) {
+                    // Check if the button is still a child before removing
+                    modalMessRepContent.removeChild(submitButton);
+                }
+            }
+        });
+
+        observer.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Close the warning modal and show appropriate messages based on the result
+        const closeWarningObserver = new MutationObserver(() => {
+            if (!modalMessRep.classList.contains('show')) {
+                closeWarningObserver.disconnect();
+
+                // Explicitly remove submitButton if it's still in the modal content
+                if (modalMessRepContent.contains(submitButton)) {
+                    modalMessRepContent.removeChild(submitButton);
+                }
+
+                if (isSubmit && !hasError) {
+                    globalAction = 'bikeAction'
+                    showMess('Info', `The bike is ${action.toLowerCase()} succesful`);
+                } else if (isSubmit) {
+                    showMess('Error', responseData.message || `An error occurred while ${action.toLowerCase()} bike`);
+                }
+            }
+        });
+
+        closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
+
+        // Show the warning modal
+        showMess('Warnning', `Are you sure you want to ${action.toLowerCase()} bike`);
+
     });
 
     document.getElementById('form2').addEventListener('submit', async function (event) {
 
-        event.preventDefault(); // Prevent default form submission
-
-        const selectDate1 = document.getElementById('selectedDate1').value;
-        const selectDate2 = document.getElementById('selectedDate2').value;
+        event.preventDefault();
 
         loadingIndicator.style.display = 'flex';
 
         try {
-            // Collect filter values if the search inputs are visible
-            const filtersBike = {};
-            document.querySelectorAll('.search-input-view-bike').forEach(input => {
-                filtersBike[input.name || input.id] = input.value.trim();
-            });
-
-            // Collect filter values if the search inputs are visible
-            const filtersBikeDate = {};
-            document.querySelectorAll('.search-input-view-total-bike').forEach(input => {
-                filtersBikeDate[input.name || input.id] = input.value.trim();
-            });
 
             const response = await fetch(document.getElementById('form2').action, {
                 method: 'POST',
@@ -1731,10 +2974,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Content-Type': 'application/json',
                     'CSRF-Token': csrfToken
                 },
-                body: JSON.stringify({ selectedDate1: selectDate1, selectedDate2: selectDate2, filtersBike: filtersBike, filtersBikeDate: filtersBikeDate })
+                body: JSON.stringify({
+                    selectedDate1: globalSelectDate1,
+                    selectedDate2: globalSelectDate2,
+                    filtersBike: globalSearchFilters,
+                    filtersBikeDate: globalSearchFiltersDate
+                })
             });
 
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) {
+                const error = await response.json();
+                checkForGlobalError(response, error);
+                throw new Error(error);
+            }
 
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
@@ -1746,8 +2998,7 @@ document.addEventListener('DOMContentLoaded', function () {
             a.remove();
             window.URL.revokeObjectURL(downloadUrl);
         } catch (error) {
-            console.error('Error:', error);
-            alert(error.message || 'Failed to download the report.');
+            showMess('Error', error.message || 'Failed to download the report.');
 
         } finally {
             loadingIndicator.style.display = 'none';
@@ -1786,16 +3037,11 @@ document.addEventListener('DOMContentLoaded', function () {
             bikeName: bikeName.value
         };
 
-        const icon = document.getElementById('mess-icon-rep');
-        const message = document.getElementById('mess-text-rep');
-        const btnYes = document.getElementById('btnMess');
-
         const submitButton = document.createElement('button');
         var isSubmit = false;
         let hasError = false;
         var responseData = {};
 
-        btnYes.style.display = "none";
         submitButton.textContent = 'Yes';
         submitButton.classList.add('btn', 'btn-success');
 
@@ -1820,10 +3066,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Display success or error messages
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
-                closeModal(modalMessRep, modalMessRepContent);
+                closeMessModal();
 
             } catch (error) {
                 hasError = true;
@@ -1860,23 +3107,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 if (isSubmit && !hasError) {
-                    icon.src = "/icon/information.png";
-                    message.textContent = responseData.message;
-                    openModal(modalMessRep, modalMessRepContent);
+                    globalAction = 'addBike';
+                    showMess('Info', responseData.message);
                 } else if (isSubmit) {
-                    icon.src = "/icon/error.png";
-                    message.textContent = responseData.message || 'An error occurred while adding the bike';
-                    openModal(modalMessRep, modalMessRepContent);
+                    showMess('Error', responseData.message || 'An error occurred while adding the bike')
                 }
             }
         });
 
         closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
 
-        // Show the warning modal
-        icon.src = "/icon/timeout.png";
-        message.textContent = 'Are you sure you want to add this bike?';
-        openModal(modalMessRep, modalMessRepContent);
+        showMess('Warnning', 'Are you sure you want to add this bike?');
     });
 
     document.getElementById('form5').addEventListener('submit', async function (event) {
@@ -1929,16 +3170,11 @@ document.addEventListener('DOMContentLoaded', function () {
             dateFrom: formattedDateFrom
         };
 
-        const icon = document.getElementById('mess-icon-rep');
-        const message = document.getElementById('mess-text-rep');
-        const btnYes = document.getElementById('btnMess');
-
         const submitButton = document.createElement('button');
         var isSubmit = false;
         let hasError = false;
         var responseData = {};
 
-        btnYes.style.display = "none";
         submitButton.textContent = 'Yes';
         submitButton.classList.add('btn', 'btn-success');
 
@@ -1963,10 +3199,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Display success or error messages
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
-                closeModal(modalMessRep, modalMessRepContent);
+                closeMessModal();
 
             } catch (error) {
                 hasError = true;
@@ -2003,23 +3240,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 if (isSubmit && !hasError) {
-                    icon.src = "/icon/information.png";
-                    message.textContent = responseData.message;
-                    openModal(modalMessRep, modalMessRepContent);
+                    globalAction = 'editBike';
+                    showMess('Info', responseData.message)
                 } else if (isSubmit) {
-                    icon.src = "/icon/error.png";
-                    message.textContent = responseData.message || 'An error occurred while editing the bike';
-                    openModal(modalMessRep, modalMessRepContent);
+                    showMess('Error', responseData.message || 'An error occurred while editing the bike')
                 }
             }
         });
 
         closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
 
-        // Show the warning modal
-        icon.src = "/icon/timeout.png";
-        message.textContent = 'Are you sure you want to edit this bike?';
-        openModal(modalMessRep, modalMessRepContent);
+        showMess('Warnning', 'Are you sure you want to edit this bike?');
     });
 
     document.getElementById('form6').addEventListener('submit', async function (event) {
@@ -2054,16 +3285,11 @@ document.addEventListener('DOMContentLoaded', function () {
             helmetName: helmetName.value
         };
 
-        const icon = document.getElementById('mess-icon-rep');
-        const message = document.getElementById('mess-text-rep');
-        const btnYes = document.getElementById('btnMess');
-
         const submitButton = document.createElement('button');
         var isSubmit = false;
         let hasError = false;
         var responseData = {};
 
-        btnYes.style.display = "none";
         submitButton.textContent = 'Yes';
         submitButton.classList.add('btn', 'btn-success');
 
@@ -2088,10 +3314,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Display success or error messages
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
-                closeModal(modalMessRep, modalMessRepContent);
+                closeMessModal();
 
             } catch (error) {
                 hasError = true;
@@ -2128,23 +3355,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 if (isSubmit && !hasError) {
-                    icon.src = "/icon/information.png";
-                    message.textContent = responseData.message;
-                    openModal(modalMessRep, modalMessRepContent);
+                    globalAction = 'addHelmet';
+                    showMess('Info', responseData.message);
                 } else if (isSubmit) {
-                    icon.src = "/icon/error.png";
-                    message.textContent = responseData.message || 'An error occurred while adding the bike';
-                    openModal(modalMessRep, modalMessRepContent);
+                    showMess('Error', responseData.message || 'An error occurred while adding the bike');
                 }
             }
         });
 
         closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
 
-        // Show the warning modal
-        icon.src = "/icon/timeout.png";
-        message.textContent = 'Are you sure you want to add this helmet?';
-        openModal(modalMessRep, modalMessRepContent);
+        showMess('Warnning', 'Are you sure you want to add this helmet?');
     });
 
     selectedStatus.addEventListener('change', () => {
@@ -2246,16 +3467,11 @@ document.addEventListener('DOMContentLoaded', function () {
             bikeRemoveId: bikeRemoveId.value
         };
 
-        const icon = document.getElementById('mess-icon-rep');
-        const message = document.getElementById('mess-text-rep');
-        const btnYes = document.getElementById('btnMess');
-
         const submitButton = document.createElement('button');
         var isSubmit = false;
         let hasError = false;
         var responseData = {};
 
-        btnYes.style.display = "none";
         submitButton.textContent = 'Yes';
         submitButton.classList.add('btn', 'btn-success');
 
@@ -2280,10 +3496,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Display success or error messages
                 if (!response.ok) {
+                    checkForGlobalError(response, responseData);
                     hasError = true;
                 }
 
-                closeModal(modalMessRep, modalMessRepContent);
+                closeMessModal();
 
             } catch (error) {
                 hasError = true;
@@ -2320,23 +3537,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 if (isSubmit && !hasError) {
-                    icon.src = "/icon/information.png";
-                    message.textContent = responseData.message;
-                    openModal(modalMessRep, modalMessRepContent);
+                    globalAction = 'removeBike';
+                    showMess('Info', responseData.message)
                 } else if (isSubmit) {
-                    icon.src = "/icon/error.png";
-                    message.textContent = responseData.message || 'An error occurred while removing the bike';
-                    openModal(modalMessRep, modalMessRepContent);
+                    showMess('Error', responseData.message || 'An error occurred while removing the bike')
                 }
             }
         });
 
         closeWarningObserver.observe(modalMessRep, { attributes: true, attributeFilter: ['class'] });
 
-        // Show the warning modal
-        icon.src = "/icon/timeout.png";
-        message.textContent = 'Are you sure you want to remove this bike?';
-        openModal(modalMessRep, modalMessRepContent);
+        showMess('Warnning', 'Are you sure you want to remove this bike?');
     });
 
     document.getElementById('upload-multi-bike-btn').addEventListener("click", function () {
@@ -2344,16 +3555,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const fileInput = document.getElementById("fileInputBike");
         const file = fileInput.files[0];
 
-        const icon = document.getElementById("mess-icon-rep");
-        const message = document.getElementById("mess-text-rep");
-        const btnYes = document.getElementById("btnMess");
-
-        icon.src = '/icon/error.png';
-        btnYes.style.display = 'none';
-
         if (!file) {
-            message.textContent = 'You have not selected a file to upload';
-            openModal(modalMessRep, modalMessRepContent);
+            showMess('Error', 'You have not selected a file to upload')
             return;
         }
 
@@ -2388,12 +3591,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    document.getElementById("progress-multi-bike").style.width = 0 + "%";
-                    document.getElementById('fileInputBike').value = '';
-                    closeModal(modalAddMultiBike, modalAddMultiBikeContent);
-                    icon.src = '/icon/information.png';
-                    message.textContent = 'File uploaded successfully!';
-                    openModal(modalMessRep, modalMessRepContent);
+                    globalAction = 'uploadMultiBike';
+                    showMess('Info', 'File uploaded successfully!');
                 }, 1000);
 
             } else {
@@ -2407,41 +3606,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         switch (error.type) {
                             case 'Validation':
-                                icon.src = '/icon/error.png';
-                                message.textContent = 'Check the syntax of all rows in the table';
-                                openModal(modalMessRep, modalMessRepContent);
+                                showMess('Error', 'Check the syntax of all rows in the table');
                                 break;
 
                             default:
-                                icon.src = '/icon/error.png';
-                                message.textContent = error.message;
-                                openModal(modalMessRep, modalMessRepContent);
+                                showMess('Error', error.message);
                                 break;
                         }
                     });
 
                 } else {
-                    icon.src = '/icon/error.png';
-                    message.textContent = data.error || "File upload failed.";
-                    openModal(modalMessRep, modalMessRepContent);
+                    showMess('Error', data.error || "File upload failed.");
                 }
-
-                document.getElementById("progress-multi-bike").style.width = 0 + "%";
-                document.getElementById('fileInputBike').value = '';
-                closeModal(modalAddMultiBike, modalAddMultiBikeContent);
             }
         };
 
         xhr.onerror = function () {
-            console.error('Error:', xhr.statusText);
             loadingIndicator.style.display = 'none';
-            document.getElementById("progress-multi-bike").style.width = 0 + "%";
-            document.getElementById('fileInputBike').value = '';
-            closeModal(modalAddMultiBike, modalAddMultiBikeContent);
+            closeAddMultiBikeModal();
 
-            icon.src = '/icon/error.png';
-            message.textContent = "An unexpected error occurred.";
-            openModal(modalMessRep, modalMessRepContent);
+            showMess('Error', 'An unexpected error occurred.');
         };
 
         xhr.send(formData);
@@ -2452,16 +3636,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const fileInput = document.getElementById("fileInputHelmet");
         const file = fileInput.files[0];
 
-        const icon = document.getElementById("mess-icon-rep");
-        const message = document.getElementById("mess-text-rep");
-        const btnYes = document.getElementById("btnMess");
-
-        icon.src = '/icon/error.png';
-        btnYes.style.display = 'none';
-
         if (!file) {
-            message.textContent = 'You have not selected a file to upload';
-            openModal(modalMessRep, modalMessRepContent);
+            showMess('Error', 'You have not selected a file to upload');
             return;
         }
 
@@ -2496,12 +3672,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    document.getElementById("progress-multi-helmet").style.width = 0 + "%";
-                    document.getElementById('fileInputHelmet').value = '';
-                    closeModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
-                    icon.src = '/icon/information.png';
-                    message.textContent = 'File uploaded successfully!';
-                    openModal(modalMessRep, modalMessRepContent);
+                    globalAction = 'uploadMultiHelmet';
+                    showMess('Info', 'File uploaded successfully!');
                 }, 1000);
 
             } else {
@@ -2515,41 +3687,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         switch (error.type) {
                             case 'Validation':
-                                icon.src = '/icon/error.png';
-                                message.textContent = 'Check the syntax of all rows in the table';
-                                openModal(modalMessRep, modalMessRepContent);
+                                showMess('Error', 'Check the syntax of all rows in the table');
                                 break;
 
                             default:
-                                icon.src = '/icon/error.png';
-                                message.textContent = error.message;
-                                openModal(modalMessRep, modalMessRepContent);
+                                showMess('Error', error.message);
                                 break;
                         }
                     });
 
                 } else {
-                    icon.src = '/icon/error.png';
-                    message.textContent = data.error || "File upload failed.";
-                    openModal(modalMessRep, modalMessRepContent);
+                    showMess('Error', data.error || "File upload failed.");
                 }
 
-                document.getElementById("progress-multi-helmet").style.width = 0 + "%";
-                document.getElementById('fileInputHelmet').value = '';
-                closeModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
             }
         };
 
         xhr.onerror = function () {
-            console.error('Error:', xhr.statusText);
             loadingIndicator.style.display = 'none';
-            document.getElementById("progress-multi-helemet").style.width = 0 + "%";
-            document.getElementById('fileInputHelmet').value = '';
-            closeModal(modalAddMultiHelmet, modalAddMultiHelmetContent);
 
-            icon.src = '/icon/error.png';
-            message.textContent = "An unexpected error occurred.";
-            openModal(modalMessRep, modalMessRepContent);
+            closeAddMultiHelmetModal();
+            showMess('Error', "An unexpected error occurred.");
         };
 
         xhr.send(formData);

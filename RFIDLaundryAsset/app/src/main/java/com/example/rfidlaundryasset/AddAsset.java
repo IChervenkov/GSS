@@ -3,9 +3,12 @@ package com.example.rfidlaundryasset;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
@@ -16,6 +19,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.rscja.deviceapi.RFIDWithUHFUART;
@@ -25,6 +29,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.util.ArrayList;
@@ -34,6 +39,8 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -41,10 +48,14 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class AddAsset extends AppCompatActivity {
+public class AddAsset extends AppCompatActivity implements CsrfTokenProvider {
 
+    private boolean isValidCode;
+    private String campId;
+    private String username;
     private final CookieManager cookieManager = new CookieManager();
     private final OkHttpClient client = new OkHttpClient.Builder()
+            .addInterceptor(new CsrfInterceptor(this))
             .cookieJar(new JavaNetCookieJar(cookieManager))
             .build();
     private String csrfToken = null;
@@ -80,35 +91,86 @@ public class AddAsset extends AppCompatActivity {
     private EditText assetReplacedByText;
     private EditText assetRestValueText;
     private EditText assetDescriptionText;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(3); // Adjust pool size as needed
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor(); // Adjust pool size as needed
 
-    private void fetchCsrfToken() {
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return true;
+
+        Network network = cm.getActiveNetwork();
+        if (network == null) return true;
+
+        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+        return capabilities == null ||
+                (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+    }
+
+    @Override
+    public synchronized String getCsrfToken() {
+        return csrfToken;
+    }
+
+    @Override
+    public synchronized void refreshCsrfTokenSync() {
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
+            csrfToken = jsonObject.getString("csrfToken");
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
+        }
+    }
+
+    private void fetchCsrfToken(Runnable onSuccess) {
+
+        if (isNetworkAvailable())
+            return;
+
         Dialog loadingDialog = new Dialog(AddAsset.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        executorService.execute(() -> {
-            try {
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/csrf-token")
-                        .build();
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
 
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful() && response.body() != null) {
-                    String responseBody = response.body().string();
-                    JSONObject jsonObject = new JSONObject(responseBody);
-                    csrfToken = jsonObject.getString("csrfToken");
-
-                } else {
-                    runOnUiThread(() -> Toast.makeText(AddAsset.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
-                }
-            } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(AddAsset.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            } finally {
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
                 runOnUiThread(loadingDialog::dismiss);
+            }
+
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+
+                    String responseBody = Objects.requireNonNull(response.body()).string();
+                    JSONObject jsonObject = new JSONObject(responseBody);
+
+                    if (!response.isSuccessful()) {
+                        String serverMessage = jsonObject.optString("message", "Error when fetch token. Please connect to the support.");
+                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        return;
+                    }
+
+                    csrfToken = jsonObject.getString("csrfToken");
+                    if (onSuccess != null)
+                        runOnUiThread(onSuccess);
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
             }
         });
     }
@@ -120,7 +182,11 @@ public class AddAsset extends AppCompatActivity {
 
         cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
 
-        fetchCsrfToken();
+        isValidCode = GlobalVariable.getVariable(this);
+        campId = GlobalVariable.getCamp(this);
+        username = GlobalVariable.getUsername(this);
+
+        fetchCsrfToken(null);
 
         // Initialize OkHttpClient (single instance)
         Button submitButton = findViewById(R.id.addButton);
@@ -175,37 +241,38 @@ public class AddAsset extends AppCompatActivity {
             String selectedTypeCode = (String) parent.getItemAtPosition(position);
             String selectedBag = typeIdMap.get(selectedTypeCode);
 
-            if (selectedBag != null) {
-                typeAssetId = selectedBag;
-                assetTypeTextList.setText(selectedTypeCode);
+            if (selectedBag == null)
+                return;
 
-                if (!"1".equals(selectedBag)) {
-                    // Disable the assetSubLocationText view
-                    assetSubLocationText.setEnabled(false);
-                    assetSubLocationText.setText(""); // Optionally clear its text
-                    subLocationAssetId = "";
-                } else {
-                    // Enable the assetSubLocationText view
-                    assetSubLocationText.setEnabled(true);
-                }
+            typeAssetId = selectedBag;
+            assetTypeTextList.setText(selectedTypeCode);
+
+            if ("1".equals(selectedBag)) {
+                assetSubLocationText.setEnabled(true);
+                return;
             }
+
+            // Disable the assetSubLocationText view
+            assetSubLocationText.setEnabled(false);
+            assetSubLocationText.setText(""); // Optionally clear its text
+            subLocationAssetId = "";
+
         });
 
         // Initialize RFID reader
         try {
             rfidReader = RFIDWithUHFUART.getInstance();
+            rfidReader.free();
             rfidReader.init();
 
-            Toast.makeText(AddAsset.this, "RFID Reader initialized", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Log.e("AddAsset", "Error: " + e.getMessage());
-            Toast.makeText(AddAsset.this, "Error initializing RFID Reader", Toast.LENGTH_SHORT).show();
+            showPopupWindow("Error initializing RFID Reader");
         }
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
             if (epc.isEmpty()) {
-                Toast.makeText(this, "No EPC content detected!", Toast.LENGTH_SHORT).show();
+                showPopupWindow("No EPC content detected!");
                 return;
             }
 
@@ -242,45 +309,64 @@ public class AddAsset extends AppCompatActivity {
             if (isValidSelection(assetLocation, "asset location")) return;
             if (assetSubLocationText.isEnabled() && assetSubLocation.isEmpty()) {
                 assetSubLocationText.requestFocus();
-                Toast.makeText(this, "Please select an asset sub-location!", Toast.LENGTH_SHORT).show();
+                showPopupWindow("Please select an asset sub-location!");
                 return;
             }
-            if (isValidText(assetCategory, "Asset category", assetCategoriesText, "^[a-zA-Z\\s]*$")) return;
+            if (isValidText(assetCategory, "Asset category", assetCategoriesText, "^[a-zA-Z\\s]*$"))
+                return;
             if (isValidText(assetQuantity, "Asset quantity", assetQuantityText, "^[1-9]*$")) return;
             if (isValidText(assetMrah, "Asset MRAH", assetMrahText, "^[a-zA-Z\\s]*$")) return;
             if (isValidText(assetOwner, "Asset owner", assetOwnerText, "^[a-zA-Z\\s]*$")) return;
-            if (isValidText(assetStatus, "Asset status", assetStatusText, "^[a-zA-Z0-9\\s]*$")) return;
+            if (isValidText(assetStatus, "Asset status", assetStatusText, "^[a-zA-Z0-9\\s]*$"))
+                return;
             if (!assetDescription.matches("^[a-zA-Z\\s]*$")) {
                 assetDescriptionText.requestFocus();
-                Toast.makeText(this, "Asset description is invalid!", Toast.LENGTH_SHORT).show();
+                showPopupWindow("Asset description is invalid!");
                 return;
             }
-            if (isValidText(assetService, "Asset service", assetServiceText, "^[a-zA-Z\\s]*$")) return;
-            if (isValidText(assetM2Inside, "Asset M2 inside", assetM2InsideText, "^([0-9]+,[0-9]+)?$")) return;
-            if (isValidText(assetPurchasePrice, "Asset purchase price", assetPurchasePriceText, "^([0-9]+,[0-9]+)?$")) return;
-            if (isValidText(assetComments, "Asset comments", assetCommentsText, "^[a-zA-Z0-9]*$")) return;
-            if (isValidText(assetReplacedOff, "Asset replaced off", assetReplacedOffText, "^[a-zA-Z0-9]*$")) return;
-            if (isValidText(assetYearOfLifeCycle, "Asset year of life cycle", assetYearOfLifeCycleText, "^[1-9]*$")) return;
-            if (isValidText(assetRestOfLifeCycle, "Asset rest of life cycle", assetRestOfLifeCycleText, "^[1-9]*$")) return;
-            if (isValidText(assetReplacedBy, "Asset replaced by", assetReplacedByText, "^[a-zA-Z0-9]*$")) return;
-            if (isValidText(assetRestValue, "Asset rest value", assetRestValueText, "^[1-9]*$")) return;
+            if (isValidText(assetService, "Asset service", assetServiceText, "^[a-zA-Z\\s]*$"))
+                return;
+            if (isValidText(assetM2Inside, "Asset M2 inside", assetM2InsideText, "^([0-9]+,[0-9]+)?$"))
+                return;
+            if (isValidText(assetPurchasePrice, "Asset purchase price", assetPurchasePriceText, "^([0-9]+,[0-9]+)?$"))
+                return;
+            if (isValidText(assetComments, "Asset comments", assetCommentsText, "^[a-zA-Z0-9]*$"))
+                return;
+            if (isValidText(assetReplacedOff, "Asset replaced off", assetReplacedOffText, "^[a-zA-Z0-9]*$"))
+                return;
+            if (isValidText(assetYearOfLifeCycle, "Asset year of life cycle", assetYearOfLifeCycleText, "^[1-9]*$"))
+                return;
+            if (isValidText(assetRestOfLifeCycle, "Asset rest of life cycle", assetRestOfLifeCycleText, "^[1-9]*$"))
+                return;
+            if (isValidText(assetReplacedBy, "Asset replaced by", assetReplacedByText, "^[a-zA-Z0-9]*$"))
+                return;
+            if (isValidText(assetRestValue, "Asset rest value", assetRestValueText, "^[1-9]*$"))
+                return;
 
-            // Send data
-            sendDataToServer(epc, assetCode, assetName, assetType, assetLocation, assetSubLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription, assetService, assetM2Inside, assetIsFixed, assetDatePurchase, assetDateWrittenOff, assetPurchasePrice, assetComments, assetReplacedOff, assetYearOfLifeCycle, assetRestOfLifeCycle, assetReplacedBy, assetRestValue);
+            new androidx.appcompat.app.AlertDialog.Builder(AddAsset.this)
+                    .setTitle("Attention")
+                    .setMessage("Are you sure you want to add this asset?")
+                    .setPositiveButton("Yes", (dialog, which) ->
+                            sendDataToServer(epc, assetCode, assetName, assetType, assetLocation, assetSubLocation, assetCategory, assetQuantity, assetMrah, assetOwner, assetStatus, assetExpandable, assetDescription, assetService, assetM2Inside, assetIsFixed, assetDatePurchase, assetDateWrittenOff, assetPurchasePrice, assetComments, assetReplacedOff, assetYearOfLifeCycle, assetRestOfLifeCycle, assetReplacedBy, assetRestValue))
+                    .setNegativeButton("No", (dialog, which) -> {
+                        // Do nothing, just dismiss the dialog
+                        dialog.dismiss();
+                    })
+                    .show();
         });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        fetchCsrfToken();
+        fetchCsrfToken(null);
     }
 
     // Helper method to validate text fields
     private boolean isValidText(String input, String fieldName, EditText field, String regex) {
         if (!input.matches(regex)) {
             field.requestFocus();
-            Toast.makeText(this, fieldName + " is invalid!", Toast.LENGTH_SHORT).show();
+            runOnUiThread(() -> showPopupWindow(fieldName + " is invalid!"));
             return true;
         }
         return false;
@@ -289,14 +375,28 @@ public class AddAsset extends AppCompatActivity {
     // Helper method to validate selection fields
     private boolean isValidSelection(String input, String fieldName) {
         if (input.isEmpty()) {
-            Toast.makeText(this, "Please select " + fieldName + "!", Toast.LENGTH_SHORT).show();
+            runOnUiThread(() -> showPopupWindow("Please select " + fieldName + "!"));
             return true;
         }
         return false;
     }
 
-    // Method to send EPC to the server using the persistent OkHttpClient connection
     private void sendDataToServer(String epc, String code, String name, String type, String location, String subLocation, String category, String quantity, String mrah, String owner, String status, String expandable, String description, String service, String m2Inside, boolean isFixed, String datePurchase, String dateWrittenOff, String purchasePrice, String comments, String replacedOff, String yearOfLifeCycle, String restOfLifeCycle, String replacedBy, String restValue) {
+
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
+
+        if (csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(() -> performSendData(epc, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description, service, m2Inside, isFixed, datePurchase, dateWrittenOff, purchasePrice, comments, replacedOff, yearOfLifeCycle, restOfLifeCycle, replacedBy, restValue));
+        } else {
+            performSendData(epc, code, name, type, location, subLocation, category, quantity, mrah, owner, status, expandable, description, service, m2Inside, isFixed, datePurchase, dateWrittenOff, purchasePrice, comments, replacedOff, yearOfLifeCycle, restOfLifeCycle, replacedBy, restValue);
+        }
+    }
+
+    // Method to send EPC to the server using the persistent OkHttpClient connection
+    private void performSendData(String epc, String code, String name, String type, String location, String subLocation, String category, String quantity, String mrah, String owner, String status, String expandable, String description, String service, String m2Inside, boolean isFixed, String datePurchase, String dateWrittenOff, String purchasePrice, String comments, String replacedOff, String yearOfLifeCycle, String restOfLifeCycle, String replacedBy, String restValue) {
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(AddAsset.this);
@@ -305,67 +405,83 @@ public class AddAsset extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        executorService.execute(() -> {
-            try {
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                JSONObject payload = new JSONObject();
-                payload.put("assetEps", epc);
-                payload.put("assetCodeSearch", code);
-                payload.put("assetAddName", name);
-                payload.put("selectedAddTypeId", type);
-                payload.put("selectedAddLocationId", location);
-                payload.put("selectedAddSubLocationId", subLocation);
-                payload.put("assetAddCategorie", category);
-                payload.put("assetQuantity", quantity);
-                payload.put("assetAddMrah", mrah);
-                payload.put("assetAddOwner", owner);
-                payload.put("assetStatus", status);
-                payload.put("assetAddExpandable", expandable);
-                payload.put("assetAddService", service);
-                payload.put("assetAddDescription", description);
-                payload.put("assetAddM2Inside", m2Inside);
-                payload.put("assetAddIsFixed", isFixed);
-                payload.put("assetAddDatePurchase", datePurchase);
-                payload.put("assetAddDateWrittenOff", dateWrittenOff);
-                payload.put("assetAddPurchasePrice", purchasePrice);
-                payload.put("assetAddComments", comments);
-                payload.put("assetAddReplacedOff", replacedOff);
-                payload.put("assetAddYearOfLifeCycle", yearOfLifeCycle);
-                payload.put("assetAddRestOfLifeCycle", restOfLifeCycle);
-                payload.put("assetAddReplacedBy", replacedBy);
-                payload.put("assetAddRestValue", restValue);
-                payload.put("username", GlobalVariable.getUsername(this));
-                payload.put("campId", GlobalVariable.getCamp(this));
-                payload.put("isValidCode", GlobalVariable.getVariable(this));
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject payload = new JSONObject();
 
-                RequestBody body = RequestBody.create(payload.toString(), JSON);
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/assets/addAsset")
-                        .addHeader("X-CSRF-Token", csrfToken)
-                        .post(body)
-                        .build();
+        try {
 
-                try (Response response = client.newCall(request).execute()) {
-                    if (response.isSuccessful()) {
-                        String responseData = Objects.requireNonNull(response.body()).string();
-                        response.body().close(); // Ensure the response is closed
+            payload.put("assetEps", epc);
+            payload.put("assetCodeSearch", code);
+            payload.put("assetAddName", name);
+            payload.put("selectedAddTypeId", type);
+            payload.put("selectedAddLocationId", location);
+            payload.put("selectedAddSubLocationId", subLocation);
+            payload.put("assetAddCategorie", category);
+            payload.put("assetQuantity", quantity);
+            payload.put("assetAddMrah", mrah);
+            payload.put("assetAddOwner", owner);
+            payload.put("assetStatus", status);
+            payload.put("assetAddExpandable", expandable);
+            payload.put("assetAddService", service);
+            payload.put("assetAddDescription", description);
+            payload.put("assetAddM2Inside", m2Inside);
+            payload.put("assetAddIsFixed", isFixed);
+            payload.put("assetAddDatePurchase", datePurchase);
+            payload.put("assetAddDateWrittenOff", dateWrittenOff);
+            payload.put("assetAddPurchasePrice", purchasePrice);
+            payload.put("assetAddComments", comments);
+            payload.put("assetAddReplacedOff", replacedOff);
+            payload.put("assetAddYearOfLifeCycle", yearOfLifeCycle);
+            payload.put("assetAddRestOfLifeCycle", restOfLifeCycle);
+            payload.put("assetAddReplacedBy", replacedBy);
+            payload.put("assetAddRestValue", restValue);
+            payload.put("username", username);
+            payload.put("campId", campId);
+            payload.put("isValidCode", isValidCode);
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Error to parsed data. Please connect to the support!"));
+            runOnUiThread(loadingDialog::dismiss);
+            return;
+        }
 
-                        JSONObject jsonResponse = new JSONObject(responseData);
-                        String message = jsonResponse.optString("message", "Asset has been added successfully.");
-                        runOnUiThread(() -> {
-                            Toast.makeText(AddAsset.this, message, Toast.LENGTH_SHORT).show();
-                            navigateToAssets();
-                        });
-                    } else {
-                        handleError(response);
-                    }
-                }
-            } catch (Exception e) {
-                Log.e("AddAsset", "Error: " + e.getMessage());
-                runOnUiThread(() -> showPopupWindow("Error sending EPCs to server: " + e.getMessage()));
-            } finally {
+        RequestBody body = RequestBody.create(payload.toString(), JSON);
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/assets/addAsset")
+                .addHeader("X-CSRF-Token", csrfToken)
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error when send data. Please connect to the support!"));
                 runOnUiThread(loadingDialog::dismiss);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+
+                    if (!response.isSuccessful()) {
+                        handleError(response);
+                        return;
+                    }
+                    String responseData = Objects.requireNonNull(response.body()).string();
+                    response.body().close(); // Ensure the response is closed
+
+                    JSONObject jsonResponse = new JSONObject(responseData);
+                    String message = jsonResponse.optString("message", "Asset has been added successfully.");
+                    runOnUiThread(() -> {
+                        Toast.makeText(AddAsset.this, message, Toast.LENGTH_SHORT).show();
+                        navigateToAssets();
+                    });
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error when send data. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
             }
         });
     }
@@ -379,21 +495,16 @@ public class AddAsset extends AppCompatActivity {
 
     private void handleError(Response response) {
         try {
-            String errorMessage = "Unknown error occurred";
-            if (response.body() != null) {
-                String responseBody = response.body().string(); // Read response body
-                JSONObject errorJson = new JSONObject(responseBody);
-                errorMessage = errorJson.optString("message", "Internal server error");
-            }
+            String errorMessage;
+            String responseBody = response.body().string(); // Read response body
+            JSONObject errorJson = new JSONObject(responseBody);
+            errorMessage = errorJson.optString("message", "Internal server error");
             String finalErrorMessage = errorMessage;
             runOnUiThread(() -> showPopupWindow(finalErrorMessage));
         } catch (Exception e) {
-            Log.e("AddAsset", "Error: " + e.getMessage());
-            runOnUiThread(() -> showPopupWindow("Failed to process error response: " + e.getMessage()));
+            runOnUiThread(() -> showPopupWindow("Failed to process error response. Please connect to the support!"));
         } finally {
-            if (response.body() != null) {
-                response.body().close(); // Ensure the response body is closed
-            }
+            response.body().close(); // Ensure the response body is closed
         }
     }
 
@@ -403,82 +514,53 @@ public class AddAsset extends AppCompatActivity {
             if (isInventory) {
                 stopInventoryThread();
             } else {
-                executorService.execute(() -> {
-                    final boolean serverActive;
-                    try {
-                        serverActive = isServerActive();
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                    runOnUiThread(() -> {
-                        if (serverActive) {
-                            startInventoryThread();
-                        } else {
-                            Toast.makeText(AddAsset.this, "Server is not active. Cannot start scan.", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                });
+                startInventoryThread();
             }
             return true;
         }
         return super.onKeyDown(keyCode, event);
     }
 
-    // Method to check if the server is active
-    private boolean isServerActive() throws JSONException {
-
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl)
-                .get()
-                .build();
-
-        try {
-            Response response = client.newCall(request).execute(); // Reuse the OkHttpClient instance
-            return response.isSuccessful();
-        } catch (Exception e) {
-            Log.e("AddAsset", "Error: " + e.getMessage());
-            return false;
-        }
-    }
-
     // Method to start inventory (scanning)
     private void startInventoryThread() {
 
         // Start inventory tag reading
-        if (rfidReader.startInventoryTag()) {
-            isInventory = true;
-
-            executorService.execute(() -> {
-
-                while (isInventory && !Thread.currentThread().isInterrupted()) {
-                    UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
-                    if (uhftagInfo == null) {
-                        try {
-                            Thread.sleep(20);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt(); // Properly interrupt the thread
-                            break;
-                        }
-                        continue;
-                    }
-
-                    epc = uhftagInfo.getEPC();
-                    if (epc != null && !epc.isEmpty()) {
-                        stopInventoryThread(); // Stop the inventory scanning when EPC is found
-                        runOnUiThread(() -> updateEpcTextView(epc)); // Update UI with EPC code
-                    }
-                }
-            });
-
-        } else {
-            Toast.makeText(AddAsset.this, "Failed to start scanning", Toast.LENGTH_SHORT).show();
+        if (!rfidReader.startInventoryTag()) {
+            runOnUiThread(() -> showPopupWindow("Failed to start scanning. Check if device supports RFID reader"));
+            return;
         }
+
+        isInventory = true;
+        runOnUiThread(() -> Toast.makeText(this, "Start scanning", Toast.LENGTH_SHORT).show());
+
+        executorService.execute(() -> {
+
+            while (isInventory && !Thread.currentThread().isInterrupted()) {
+                UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
+                if (uhftagInfo == null) {
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt(); // Properly interrupt the thread
+                        break;
+                    }
+                    continue;
+                }
+
+                epc = uhftagInfo.getEPC();
+                if (epc != null && !epc.isEmpty()) {
+                    stopInventoryThread(); // Stop the inventory scanning when EPC is found
+                    runOnUiThread(() -> updateEpcTextView(epc)); // Update UI with EPC code
+                    break;
+                }
+            }
+        });
     }
 
     // Method to stop the background thread for reading tags
     private void stopInventoryThread() {
         if (isInventory) {
+            runOnUiThread(() -> Toast.makeText(this, "Stop scanning", Toast.LENGTH_SHORT).show());
             isInventory = false; // Set flag to false to stop the loop in the thread
             if (rfidReader != null) {
                 rfidReader.stopInventory(); // Stop the RFID inventory
@@ -506,6 +588,9 @@ public class AddAsset extends AppCompatActivity {
 
     private void fetchAssetType() {
 
+        if (isNetworkAvailable())
+            return;
+
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(AddAsset.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -513,55 +598,69 @@ public class AddAsset extends AppCompatActivity {
         Objects.requireNonNull(Objects.requireNonNull(loadingDialog.getWindow())).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        executorService.execute(() -> {
-            try {
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/assets/getAllType?isValidCode=" + isValidCode)
+                .build();
 
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/assets/getAllType?isValidCode=" + GlobalVariable.getVariable(this))
-                        .build();
-
-                Response response = client.newCall(request).execute();
-                if (response.isSuccessful() && response.body() != null) {
-                    final String responseData = response.body().string();
-                    runOnUiThread(() -> {
-                        try {
-                            JSONArray responseJson = new JSONArray(responseData);
-                            populateAssetTypeAutoComplete(responseJson);
-                        } catch (JSONException e) {
-                            Toast.makeText(AddAsset.this, "JSON parsing error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                } else {
-                    runOnUiThread(() -> Toast.makeText(AddAsset.this, "Error fetching data", Toast.LENGTH_SHORT).show());
-                }
-            } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(AddAsset.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            } finally {
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error when get asset type. Please connect to support!"));
                 runOnUiThread(loadingDialog::dismiss);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+
+                    final String responseData = response.body().string();
+
+                    if (!response.isSuccessful()) {
+                        JSONObject errorJson = new JSONObject(responseData);
+                        String errorMessage = errorJson.optString("message", "Internal server error");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
+                    }
+
+                    JSONArray responseJson = new JSONArray(responseData);
+                    runOnUiThread(() -> populateAssetTypeAutoComplete(responseJson));
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error when get asset type. Please connect to support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
             }
         });
     }
 
-    private void populateAssetTypeAutoComplete(JSONArray types) throws JSONException {
+    private void populateAssetTypeAutoComplete(JSONArray types) {
 
-        typeList.clear();
-        typeIdMap.clear();
+        try {
+            typeList.clear();
+            typeIdMap.clear();
 
-        for (int i = 0; i < types.length(); i++) {
-            JSONObject type = types.getJSONObject(i);
-            String typeId = type.getString("id");
-            String typeName = type.getString("name");
+            for (int i = 0; i < types.length(); i++) {
+                JSONObject type = types.getJSONObject(i);
+                String typeId = type.getString("id");
+                String typeName = type.getString("name");
 
-            typeList.add(typeName);
-            typeIdMap.put(typeName, typeId);
+                typeList.add(typeName);
+                typeIdMap.put(typeName, typeId);
+            }
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, typeList);
+            assetTypeTextList.setAdapter(adapter);
+        } catch (JSONException e) {
+            runOnUiThread(() -> showPopupWindow("Invalid asset type data from server!"));
         }
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, typeList);
-        assetTypeTextList.setAdapter(adapter);
     }
 
     private void fetchAssetLocation() {
+
+        if (isNetworkAvailable())
+            return;
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(AddAsset.this);
@@ -570,95 +669,117 @@ public class AddAsset extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
-        executorService.execute(() -> {
-            try {
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/asset/keys?isValidCode=" + isValidCode + "&campId=" + campId)
+                .build();
 
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/asset/keys?isValidCode=" + GlobalVariable.getVariable(this) + "&campId=" + GlobalVariable.getCamp(this))
-                        .build();
+        // Execute the network call
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("Error to get asset location. Please connect to the support!"));
+                runOnUiThread(loadingDialog::dismiss);
+            }
 
-                // Execute the network call
-                Response response = client.newCall(request).execute();
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
 
-                if (response.isSuccessful() && response.body() != null) {
                     final String responseData = response.body().string();
+
+                    if (!response.isSuccessful()) {
+                        JSONObject errorJson = new JSONObject(responseData);
+                        String errorMessage = errorJson.optString("message", "Internal server error");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
+                    }
 
                     // Parse the response
                     JSONArray jsonArray = new JSONArray(responseData);
 
-                    // Maps to store locations and sublocations
-                    ArrayList<String> locations = new ArrayList<>();
-                    Map<String, String> locationIdMap = new HashMap<>();
-                    Map<String, ArrayList<String>> subLocationGroupedByLocation = new HashMap<>();
-                    Map<String, String> subLocationIdMap = new HashMap<>();
-
-                    // Extract unique locations and sub-locations
-                    for (int i = 0; i < jsonArray.length(); i++) {
-                        JSONObject row = jsonArray.getJSONObject(i);
-
-                        String roomId = row.optString("roomid", "Unknown Room Id");
-                        String nameroom = row.optString("nameroom", "Unknown Room");
-                        String keyId = row.optString("id", "Unknown Key Id");
-                        String namekey = row.optString("name", "Unknown Key");
-
-                        if (!locations.contains(nameroom)) {
-                            locations.add(nameroom);
-                            locationIdMap.put(nameroom, roomId);
-                            subLocationGroupedByLocation.put(roomId, new ArrayList<>());
-                        }
-
-                        if (subLocationGroupedByLocation.containsKey(roomId)) {
-                            Objects.requireNonNull(subLocationGroupedByLocation.get(roomId)).add(namekey);
-                            subLocationIdMap.put(namekey, keyId);
-                        }
-                    }
-
                     // Populate the dropdowns on the main thread
-                    runOnUiThread(() -> {
-                        ArrayAdapter<String> locationAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, locations);
-                        assetLocationText.setAdapter(locationAdapter);
+                    runOnUiThread(() -> populateAssetLocationAutoComplete(jsonArray));
 
-                        assetLocationText.setOnItemClickListener((parent, view, position, id) -> {
-                            String selectedLocation = (String) parent.getItemAtPosition(position);
-                            locationAssetId = locationIdMap.get(selectedLocation);
-                            assetLocationText.setText(selectedLocation);
-
-                            // Update sublocations based on the selected location
-                            ArrayList<String> filteredSubLocations = subLocationGroupedByLocation.get(locationAssetId);
-                            if (filteredSubLocations != null && "1".equals(typeAssetId)) { // Check if typeId is "1"
-                                ArrayAdapter<String> subLocationAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, filteredSubLocations);
-                                assetSubLocationText.setAdapter(subLocationAdapter);
-                                assetSubLocationText.setEnabled(true);
-                            } else {
-                                assetSubLocationText.setEnabled(false);
-                                assetSubLocationText.setText(""); // Clear the sublocation field
-                                subLocationAssetId = ""; // Clear the sublocation ID
-                            }
-                        });
-
-
-                        assetSubLocationText.setOnItemClickListener((parent, view, position, id) -> {
-                            String selectedSubLocation = (String) parent.getItemAtPosition(position);
-                            subLocationAssetId = subLocationIdMap.get(selectedSubLocation);
-                            assetSubLocationText.setText(selectedSubLocation);
-                        });
-                    });
-
-                } else {
-                    runOnUiThread(() -> Toast.makeText(AddAsset.this, "Error fetching location data", Toast.LENGTH_SHORT).show());
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error to get asset location. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
-            } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(AddAsset.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            } finally {
-                runOnUiThread(loadingDialog::dismiss);
             }
         });
+    }
+
+    private void populateAssetLocationAutoComplete(JSONArray jsonArray) {
+
+        try {
+            // Maps to store locations and sublocations
+            ArrayList<String> locations = new ArrayList<>();
+            Map<String, String> locationIdMap = new HashMap<>();
+            Map<String, ArrayList<String>> subLocationGroupedByLocation = new HashMap<>();
+            Map<String, String> subLocationIdMap = new HashMap<>();
+
+            // Extract unique locations and sub-locations
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject row = jsonArray.getJSONObject(i);
+
+                String roomId = row.optString("roomid", "Unknown Room Id");
+                String nameroom = row.optString("nameroom", "Unknown Room");
+                String keyId = row.optString("id", "Unknown Key Id");
+                String namekey = row.optString("name", "Unknown Key");
+
+                if (!locations.contains(nameroom)) {
+                    locations.add(nameroom);
+                    locationIdMap.put(nameroom, roomId);
+                    subLocationGroupedByLocation.put(roomId, new ArrayList<>());
+                }
+
+                if (subLocationGroupedByLocation.containsKey(roomId)) {
+                    Objects.requireNonNull(subLocationGroupedByLocation.get(roomId)).add(namekey);
+                    subLocationIdMap.put(namekey, keyId);
+                }
+            }
+
+            ArrayAdapter<String> locationAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, locations);
+            assetLocationText.setAdapter(locationAdapter);
+
+            assetLocationText.setOnItemClickListener((parent, view, position, id) -> {
+                String selectedLocation = (String) parent.getItemAtPosition(position);
+                locationAssetId = locationIdMap.get(selectedLocation);
+                assetLocationText.setText(selectedLocation);
+
+                // Update sublocations based on the selected location
+                ArrayList<String> filteredSubLocations = subLocationGroupedByLocation.get(locationAssetId);
+                if (filteredSubLocations != null && "1".equals(typeAssetId)) { // Check if typeId is "1"
+                    ArrayAdapter<String> subLocationAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, filteredSubLocations);
+                    assetSubLocationText.setAdapter(subLocationAdapter);
+                    assetSubLocationText.setEnabled(true);
+                    return;
+                }
+
+                assetSubLocationText.setEnabled(false);
+                assetSubLocationText.setText(""); // Clear the sublocation field
+                subLocationAssetId = ""; // Clear the sublocation ID
+            });
+
+            assetSubLocationText.setOnItemClickListener((parent, view, position, id) -> {
+                String selectedSubLocation = (String) parent.getItemAtPosition(position);
+                subLocationAssetId = subLocationIdMap.get(selectedSubLocation);
+                assetSubLocationText.setText(selectedSubLocation);
+            });
+        } catch (JSONException e) {
+            runOnUiThread(() -> showPopupWindow("Invalid location data from server!"));
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         executorService.shutdown(); // Shutdown executor properly
+
+        stopInventoryThread();
+        if (rfidReader != null) {
+            rfidReader.free();
+        }
     }
 }

@@ -1,22 +1,25 @@
 package com.example.nfcreader;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Typeface;
 
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
 import android.nfc.NfcAdapter;
 
-import android.util.Log;
 import android.view.View;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.nfc.Tag;
 
 import okhttp3.Call;
@@ -40,9 +43,24 @@ import java.util.Objects;
 
 public class SearchBike extends AppCompatActivity {
 
+    private boolean isValidCode;
     private NfcAdapter nfcAdapter;
     private TextView nfcTextView;
     private final OkHttpClient client = new OkHttpClient();
+
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return true;
+
+        Network network = cm.getActiveNetwork();
+        if (network == null) return true;
+
+        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+        return capabilities == null ||
+                (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+    }
 
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
@@ -50,13 +68,15 @@ public class SearchBike extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_bike);
 
+        isValidCode = GlobalVariable.getVariable(this);
+
         nfcTextView = findViewById(R.id.bike_info);
 
         // Initialize NFC Adapter
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
-            Toast.makeText(this, "NFC is not available on this device.", Toast.LENGTH_LONG).show();
+            showPopupWindow("NFC is not available on this device.");
             finish();
             return;
         }
@@ -114,11 +134,10 @@ public class SearchBike extends AppCompatActivity {
     // Method to call the API endpoint
     private void readBikeDataFromServer(String nfcData) {
 
-        // Define the request
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/readBikeNfc?nfcData=" + nfcData + "&isValidCode=" + GlobalVariable.getVariable(this))
-                .build();
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(SearchBike.this);
@@ -127,37 +146,42 @@ public class SearchBike extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
+        // Define the request
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/readBikeNfc?nfcData=" + nfcData + "&isValidCode=" + isValidCode)
+                .build();
+
         // Make the network call asynchronously
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e("SearchBike", "Error: " + e.getMessage());
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(SearchBike.this, "Failed to read bike data", Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Failed to read bike data. Please connect to the support!"));
             }
 
             @SuppressLint("SetTextI18n")
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
 
-                runOnUiThread(loadingDialog::dismiss);
-
-                if (response.isSuccessful()) {
+                try {
+                    // Parse the response if it's JSON
                     String responseData = Objects.requireNonNull(response.body()).string();
-                    try {
-                        // Parse the response if it's JSON
-                        JSONObject jsonResponse = new JSONObject(responseData);
-                        final String bikeName = jsonResponse.getString("namebike");
+                    JSONObject jsonResponse = new JSONObject(responseData);
 
-                        // Update the UI with the bike name
-                        runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
-                    } catch (JSONException e) {
-                        Log.e("SearchBike", "Error: " + e.getMessage());
+                    if (!response.isSuccessful()) {
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
                     }
-                } else {
-                    runOnUiThread(() -> Toast.makeText(SearchBike.this, "Bike not found", Toast.LENGTH_SHORT).show());
+
+                    final String bikeName = jsonResponse.getString("namebike");
+                    runOnUiThread(() -> nfcTextView.setText("Bike code: " + bikeName));
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Failed to read bike data. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         });
@@ -165,11 +189,9 @@ public class SearchBike extends AppCompatActivity {
 
     private void loadBikeData(String bikeId) {
 
-        // Make network request to your server endpoint
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/searchBikes?id=" + bikeId + "&isValidCode=" + GlobalVariable.getVariable(this))
-                .build();
+        if (isNetworkAvailable()) {
+            return;
+        }
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(SearchBike.this);
@@ -178,35 +200,39 @@ public class SearchBike extends AppCompatActivity {
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
+        // Make network request to your server endpoint
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/searchBikes?id=" + bikeId + "&isValidCode=" + isValidCode)
+                .build();
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(SearchBike.this, "Error fetching data from server: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Error fetching data from server. Please connect to the support!"));
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
 
-                runOnUiThread(loadingDialog::dismiss);
-
-                if (response.isSuccessful() && response.body() != null) {
+                try {
                     String responseData = response.body().string();
-                    try {
-                        JSONArray bikesArray = new JSONArray(responseData);
-                        runOnUiThread(() -> updateTableLayout(bikesArray));
-                    } catch (JSONException e) {
-                        Log.e("SearchBike", "Error: " + e.getMessage());
-                        runOnUiThread(() ->
-                                Toast.makeText(SearchBike.this, "Error parsing data: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                        );
+                    JSONArray bikesArray = new JSONArray(responseData);
+
+                    if (!response.isSuccessful()) {
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
                     }
-                } else {
-                    runOnUiThread(() ->
-                            Toast.makeText(SearchBike.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show()
-                    );
+
+                    runOnUiThread(() -> updateTableLayout(bikesArray));
+                    
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Error fetching data from server. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         });
@@ -216,7 +242,7 @@ public class SearchBike extends AppCompatActivity {
         try {
             TableLayout tableLayout = findViewById(R.id.table_layout);
             tableLayout.removeAllViews();
-            tableLayout.setPadding(0,0,0,10);
+            tableLayout.setPadding(0, 0, 0, 10);
 
             // Iterate through the JSON array to extract each bike's data
             for (int i = 0; i < bikesArray.length(); i++) {
@@ -232,11 +258,9 @@ public class SearchBike extends AppCompatActivity {
                 tableLayout.addView(createDetailRow("Date From", dateFrom));
                 tableLayout.addView(createDetailRow("Date To", dateTo));
 
-
             }
         } catch (JSONException e) {
-            Log.e("SearchBike", "Error: " + e.getMessage());
-            Toast.makeText(this, "Error updating UI: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            runOnUiThread(() ->showPopupWindow("Error updating UI. Please connect to the support!"));
         }
     }
 
@@ -266,5 +290,15 @@ public class SearchBike extends AppCompatActivity {
         TableRow.LayoutParams params = new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, 100); // Height of the spacer
         spacer.setLayoutParams(params);
         return spacer;
+    }
+
+    private void showPopupWindow(String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Error");
+        builder.setMessage(message);
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            // Reset the flag once the error dialog is clos
+        });
+        builder.show();
     }
 }

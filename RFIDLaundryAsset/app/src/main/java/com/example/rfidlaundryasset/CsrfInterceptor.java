@@ -1,4 +1,4 @@
-package com.example.nfcreader;
+package com.example.rfidlaundryasset;
 
 import androidx.annotation.NonNull;
 

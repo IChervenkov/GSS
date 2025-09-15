@@ -1,4 +1,4 @@
-package com.example.rfidlaundryreader;
+package com.example.ratefitnescleaning;
 
 public interface CsrfTokenProvider {
     String getCsrfToken();

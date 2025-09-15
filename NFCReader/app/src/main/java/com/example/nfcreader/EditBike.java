@@ -1,15 +1,19 @@
 package com.example.nfcreader;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -43,8 +47,11 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class EditBike extends AppCompatActivity {
+public class EditBike extends AppCompatActivity implements CsrfTokenProvider {
 
+    private boolean isValidCode;
+    private String campId;
+    private String username;
     private NfcAdapter nfcAdapter;
     private String oldNfcContent = "";
     private String newNfcContent = "";
@@ -59,7 +66,45 @@ public class EditBike extends AppCompatActivity {
     private final Map<String, String> bikeIdMap = new HashMap<>();
     private AutoCompleteTextView bikeAutoCompleteTextView;
 
-    private void fetchCsrfToken() {
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return true;
+
+        Network network = cm.getActiveNetwork();
+        if (network == null) return true;
+
+        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+        return capabilities == null ||
+                (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+    }
+
+    @Override
+    public synchronized String getCsrfToken() {
+        return csrfToken;
+    }
+
+    @Override
+    public synchronized void refreshCsrfTokenSync() {
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/csrf-token")
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
+            csrfToken = jsonObject.getString("csrfToken");
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
+        }
+    }
+
+    private void fetchCsrfToken(Runnable onSuccess) {
+
+        if (isNetworkAvailable())
+            return;
+
         Dialog loadingDialog = new Dialog(EditBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
@@ -74,26 +119,25 @@ public class EditBike extends AppCompatActivity {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(EditBike.this, "Token error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(loadingDialog::dismiss);
+                runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                runOnUiThread(loadingDialog::dismiss); // Always dismiss dialog first
 
-                if (response.isSuccessful() && response.body() != null) {
-                    try {
-                        String responseBody = response.body().string();
-                        JSONObject jsonObject = new JSONObject(responseBody);
-                        csrfToken = jsonObject.getString("csrfToken");
-                    } catch (JSONException e) {
-                        runOnUiThread(() -> Toast.makeText(EditBike.this, "Error parsing token", Toast.LENGTH_SHORT).show());
-                    }
-                } else {
-                    runOnUiThread(() -> Toast.makeText(EditBike.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show());
+                try {
+                    String responseBody = response.body().string();
+                    JSONObject jsonObject = new JSONObject(responseBody);
+                    csrfToken = jsonObject.getString("csrfToken");
+                    if (onSuccess != null)
+                        runOnUiThread(onSuccess);
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
+
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss); // Always dismiss dialog first
                 }
             }
         });
@@ -107,6 +151,10 @@ public class EditBike extends AppCompatActivity {
 
         cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
 
+        isValidCode = GlobalVariable.getVariable(this);
+        campId = GlobalVariable.getCamp(this);
+        username = GlobalVariable.getUsername(this);
+
         bikeAutoCompleteTextView = findViewById(R.id.bikeAutoCompleteTextView);
 
         newNfcTextView = findViewById(R.id.newNfcTextView);
@@ -114,14 +162,9 @@ public class EditBike extends AppCompatActivity {
         Button submitHelmetButton = findViewById(R.id.editHelmetButton);
         bikeNameText = findViewById(R.id.bikeNameEditText);
 
-        fetchCsrfToken();
+        fetchCsrfToken(null);
 
-        // Fetch bike from the server
-        try {
-            fetchAvailableBikesAndHelmets();
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        }
+        fetchAvailableBikesAndHelmets();
 
         bikeAutoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> {
             String selectedBikeName = (String) parent.getItemAtPosition(position);
@@ -133,7 +176,7 @@ public class EditBike extends AppCompatActivity {
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
-            Toast.makeText(this, "NFC is not available on this device.", Toast.LENGTH_LONG).show();
+            showPopupWindow("NFC is not available on this device.");
             finish();
             return;
         }
@@ -143,41 +186,65 @@ public class EditBike extends AppCompatActivity {
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
-            if (!oldNfcContent.isEmpty() && !newNfcContent.isEmpty()) {
-                String bikeName = bikeNameText.getText().toString().trim();
-
-                // Check if bikeName matches the required format
-                if (!bikeName.matches("^[0-9]{5}/[A-Za-z\\s]+$")) {
-                    Toast.makeText(this, "Please enter a valid bike name (e.g., '12345/Bike Name')!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                sendDataToServer(oldNfcContent, newNfcContent, bikeName);
-
-            } else {
-                Toast.makeText(this, "No NFC content detected!", Toast.LENGTH_SHORT).show();
+            if (oldNfcContent.isEmpty() || newNfcContent.isEmpty()) {
+                showPopupWindow("Please scans a NFC tag or chose old one");
+                return;
             }
+            String bikeName = bikeNameText.getText().toString().trim();
+
+            // Check if bikeName matches the required format
+            if (!bikeName.matches("^[0-9]{5}/[A-Za-z\\s]+$")) {
+                showPopupWindow("Please enter a valid bike name (e.g., '12345/Bike Name')!");
+                return;
+            }
+
+            // Show a confirmation dialog
+            new androidx.appcompat.app.AlertDialog.Builder(EditBike.this)
+                    .setTitle("Attention")
+                    .setMessage("Are you sure you want to edit this bike?")
+                    .setPositiveButton("Yes", (dialog, which) ->
+                            sendDataToServer(oldNfcContent, newNfcContent, bikeName))
+                    .setNegativeButton("No", (dialog, which) -> {
+                        // Do nothing, just dismiss the dialog
+                        dialog.dismiss();
+                    })
+                    .show();
         });
 
         submitHelmetButton.setOnClickListener(v -> {
-            if (!oldNfcContent.isEmpty() && !newNfcContent.isEmpty()) {
-                String helmetName = bikeNameText.getText().toString().trim();
-
-                // Check if bikeName matches the required format
-                if (!helmetName.matches("^[0-9]+/[A-Za-z\\s]+$")) {
-                    Toast.makeText(this, "Please enter a valid bike name (e.g., '123/Helmet Name')!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                sendHelmetDataToServer(oldNfcContent, newNfcContent, helmetName);
-
-            } else {
-                Toast.makeText(this, "No NFC content detected!", Toast.LENGTH_SHORT).show();
+            if (oldNfcContent.isEmpty() || newNfcContent.isEmpty()) {
+                showPopupWindow("Please scans a NFC tag or chose old one");
+                return;
             }
+            String helmetName = bikeNameText.getText().toString().trim();
+
+            // Check if bikeName matches the required format
+            if (!helmetName.matches("^[0-9]+/[A-Za-z\\s]+$")) {
+                showPopupWindow("Please enter a valid helmet name (e.g., '123/Helmet Name')!");
+                return;
+            }
+
+            // Show a confirmation dialog
+            new androidx.appcompat.app.AlertDialog.Builder(EditBike.this)
+                    .setTitle("Attention")
+                    .setMessage("Are you sure you want to edit this helmet?")
+                    .setPositiveButton("Yes", (dialog, which) ->
+                            sendHelmetDataToServer(oldNfcContent, newNfcContent, helmetName))
+                    .setNegativeButton("No", (dialog, which) -> {
+                        // Do nothing, just dismiss the dialog
+                        dialog.dismiss();
+                    })
+                    .show();
         });
     }
 
-    private void fetchAvailableBikesAndHelmets() throws JSONException {
+    private void fetchAvailableBikesAndHelmets() {
+
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
+
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(EditBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -187,11 +254,11 @@ public class EditBike extends AppCompatActivity {
 
         String baseUrl = getString(R.string.base_url);
         Request bikeRequest = new Request.Builder()
-                .url(baseUrl + "/bikes?campId=" + GlobalVariable.getCamp(this) + "&isValidCode=" + GlobalVariable.getVariable(this))
+                .url(baseUrl + "/bikes?campId=" + campId + "&isValidCode=" + isValidCode)
                 .build();
 
         Request helmetRequest = new Request.Builder()
-                .url(baseUrl + "/helmets?campId=" + GlobalVariable.getCamp(this) + "&isValidCode=" + GlobalVariable.getVariable(this))
+                .url(baseUrl + "/helmets?campId=" + campId + "&isValidCode=" + isValidCode)
                 .build();
 
         AtomicInteger pendingRequests = new AtomicInteger(2); // Track pending requests
@@ -200,46 +267,40 @@ public class EditBike extends AppCompatActivity {
         Callback commonCallback = new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> {
-                    Toast.makeText(EditBike.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    if (pendingRequests.decrementAndGet() == 0) {
-                        loadingDialog.dismiss();
-                    }
-                });
+                runOnUiThread(() -> showPopupWindow("Error to fetch bike and helmet. Please connect to the support!"));
+                if (pendingRequests.decrementAndGet() == 0) {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
+
             }
 
             @Override
-            public void onResponse(@NonNull Call call, Response response) throws IOException {
-                if (response.isSuccessful()) {
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+
+                try {
                     final String responseData = Objects.requireNonNull(response.body()).string();
-                    runOnUiThread(() -> {
-                        try {
-                            JSONArray dataArray = new JSONArray(responseData);
-                            synchronized (combinedArray) { // Ensure thread safety
-                                for (int i = 0; i < dataArray.length(); i++) {
-                                    combinedArray.put(dataArray.getJSONObject(i));
-                                }
-                            }
-                        } catch (JSONException e) {
-                            Log.e("EditBike", "Error: " + e.getMessage());
+
+                    if (!response.isSuccessful()) {
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
+                    }
+
+                    JSONArray dataArray = new JSONArray(responseData);
+                    synchronized (combinedArray) { // Ensure thread safety
+                        for (int i = 0; i < dataArray.length(); i++) {
+                            combinedArray.put(dataArray.getJSONObject(i));
                         }
-                        if (pendingRequests.decrementAndGet() == 0) {
-                            // Once both requests complete, process combined result
-                            try {
-                                populateBikeAutoComplete(combinedArray);
-                            } catch (JSONException e) {
-                                throw new RuntimeException(e);
-                            }
-                            loadingDialog.dismiss();
-                        }
-                    });
-                } else {
-                    runOnUiThread(() -> {
-                        Toast.makeText(EditBike.this, "Error fetching data", Toast.LENGTH_SHORT).show();
-                        if (pendingRequests.decrementAndGet() == 0) {
-                            loadingDialog.dismiss();
-                        }
-                    });
+                    }
+
+                    if (pendingRequests.decrementAndGet() == 0)
+                        runOnUiThread(() -> populateBikeAutoComplete(combinedArray));
+
+                } catch (Exception e) {
+                    runOnUiThread(() -> showPopupWindow("Error to fetch bike and helmet. Please connect to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         };
@@ -248,25 +309,44 @@ public class EditBike extends AppCompatActivity {
         client.newCall(helmetRequest).enqueue(commonCallback);
     }
 
-    private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
+    private void populateBikeAutoComplete(JSONArray bikes) {
 
         ownerList.clear();
         bikeIdMap.clear();
 
-        for (int i = 0; i < bikes.length(); i++) {
-            JSONObject bike = bikes.getJSONObject(i);
-            String bikeId = bike.getString("id");
-            String bikeName = bike.getString("name");
+        try {
+            for (int i = 0; i < bikes.length(); i++) {
+                JSONObject bike = bikes.getJSONObject(i);
+                String bikeId = bike.getString("id");
+                String bikeName = bike.getString("name");
 
-            ownerList.add(bikeName);
-            bikeIdMap.put(bikeName, bikeId);
+                ownerList.add(bikeName);
+                bikeIdMap.put(bikeName, bikeId);
+            }
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
+            bikeAutoCompleteTextView.setAdapter(adapter);
+
+        } catch (Exception e) {
+            runOnUiThread(() -> showPopupWindow("Failed to parse bike/helmet list. Please connect to the support!"));
         }
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
-        bikeAutoCompleteTextView.setAdapter(adapter);
     }
 
     private void sendDataToServer(String oldNfcContent, String newNfcContent, String bikeName) {
+
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
+
+        if (csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(() -> performSendData(oldNfcContent, newNfcContent, bikeName));
+        } else {
+            performSendData(oldNfcContent, newNfcContent, bikeName);
+        }
+    }
+
+    private void performSendData(String oldNfcContent, String newNfcContent, String bikeName) {
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(EditBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -280,68 +360,77 @@ public class EditBike extends AppCompatActivity {
             jsonData.put("oldBikeId", oldNfcContent);
             jsonData.put("newBikeId", newNfcContent);
             jsonData.put("bikeName", bikeName);
-            jsonData.put("username", GlobalVariable.getCamp(this));
-            jsonData.put("campId", GlobalVariable.getCamp(this));
-            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
+            jsonData.put("username", username);
+            jsonData.put("campId", campId);
+            jsonData.put("isValidCode", isValidCode);
 
-            RequestBody body = RequestBody.create(jsonData.toString(), JSON);
-            String baseUrl = getString(R.string.base_url);
-            Request request = new Request.Builder()
-                    .url(baseUrl + "/editParameturBike")
-                    .addHeader("X-CSRF-Token", csrfToken)
-                    .patch(body)
-                    .build();
-
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        loadingDialog.dismiss();
-                    });
-                }
-
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    if (response.body() != null) {
-                        String responseData = response.body().string();
-                        try {
-                            JSONObject jsonResponse = new JSONObject(responseData);
-                            if (response.isSuccessful()) {
-                                String message = jsonResponse.optString("message", "Bike edit successfully.");
-                                runOnUiThread(() -> {
-                                    Toast.makeText(EditBike.this, message, Toast.LENGTH_SHORT).show();
-                                    Intent intent = new Intent(EditBike.this, MainActivity.class);
-                                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    startActivity(intent);
-                                    finish();
-                                });
-                            } else {
-                                String error = jsonResponse.optString("error", "Server error occurred.");
-                                runOnUiThread(() -> Toast.makeText(EditBike.this, "Error: " + error, Toast.LENGTH_SHORT).show());
-                            }
-                        } catch (JSONException e) {
-                            Log.e("EditBike", "Error: " + e.getMessage());
-                            runOnUiThread(() -> Toast.makeText(EditBike.this, "Error processing response", Toast.LENGTH_SHORT).show());
-                        }
-                    } else {
-                        runOnUiThread(() -> {
-                            Toast.makeText(EditBike.this, "Response body is null", Toast.LENGTH_SHORT).show();
-                            loadingDialog.dismiss();
-                        });
-                    }
-                }
-            });
         } catch (JSONException e) {
-            Log.e("EditBike", "Error: " + e.getMessage());
-            runOnUiThread(() -> {
-                Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                loadingDialog.dismiss();
-            });
+            runOnUiThread(() -> showPopupWindow("There is a problem with send bike data to the server. Please contact to the support!"));
+            runOnUiThread(loadingDialog::dismiss);
+            return;
         }
+
+        RequestBody body = RequestBody.create(jsonData.toString(), JSON);
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/editParameturBike")
+                .addHeader("X-CSRF-Token", csrfToken)
+                .patch(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("There is a problem with send bike data to the server. Please contact to the support!"));
+                runOnUiThread(loadingDialog::dismiss);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject jsonResponse = new JSONObject(responseData);
+
+                    if (!response.isSuccessful()) {
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
+                    }
+
+                    String message = jsonResponse.optString("message", "Bike edit successfully.");
+                    runOnUiThread(() -> {
+                        Toast.makeText(EditBike.this, message, Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(EditBike.this, MainActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        finish();
+                    });
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("There is a problem with send bike data to the server. Please contact to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
+            }
+        });
     }
 
     private void sendHelmetDataToServer(String oldNfcContent, String newNfcContent, String helmetName) {
+
+        if (isNetworkAvailable()) {
+            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            return;
+        }
+
+        if (csrfToken == null || csrfToken.isEmpty()) {
+            fetchCsrfToken(() -> performSendHelmetData(oldNfcContent, newNfcContent, helmetName));
+        } else {
+            performSendHelmetData(oldNfcContent, newNfcContent, helmetName);
+        }
+    }
+
+    private void performSendHelmetData(String oldNfcContent, String newNfcContent, String helmetName) {
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(EditBike.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
@@ -351,76 +440,71 @@ public class EditBike extends AppCompatActivity {
 
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");
         JSONObject jsonData = new JSONObject();
+
         try {
             jsonData.put("oldHelmetId", oldNfcContent);
             jsonData.put("newHelmetId", newNfcContent);
             jsonData.put("helmetName", helmetName);
-            jsonData.put("username", GlobalVariable.getUsername(this));
-            jsonData.put("campId", GlobalVariable.getCamp(this));
-            jsonData.put("isValidCode", GlobalVariable.getVariable(this));
-
-            RequestBody body = RequestBody.create(jsonData.toString(), JSON);
-            String baseUrl = getString(R.string.base_url);
-            Request request = new Request.Builder()
-                    .url(baseUrl + "/editParameturHelmet")
-                    .addHeader("X-CSRF-Token", csrfToken)
-                    .patch(body)
-                    .build();
-
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        loadingDialog.dismiss();
-                    });
-                }
-
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    if (response.body() != null) {
-                        String responseData = response.body().string();
-                        try {
-                            JSONObject jsonResponse = new JSONObject(responseData);
-                            if (response.isSuccessful()) {
-                                String message = jsonResponse.optString("message", "Helmet edit successfully.");
-                                runOnUiThread(() -> {
-                                    Toast.makeText(EditBike.this, message, Toast.LENGTH_SHORT).show();
-                                    Intent intent = new Intent(EditBike.this, MainActivity.class);
-                                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    startActivity(intent);
-                                    finish();
-                                });
-                            } else {
-                                String error = jsonResponse.optString("error", "Server error occurred.");
-                                runOnUiThread(() -> Toast.makeText(EditBike.this, "Error: " + error, Toast.LENGTH_SHORT).show());
-                            }
-                        } catch (JSONException e) {
-                            Log.e("EditBike", "Error: " + e.getMessage());
-                            runOnUiThread(() -> Toast.makeText(EditBike.this, "Error processing response", Toast.LENGTH_SHORT).show());
-                        }
-                    } else {
-                        runOnUiThread(() -> {
-                            Toast.makeText(EditBike.this, "Response body is null", Toast.LENGTH_SHORT).show();
-                            loadingDialog.dismiss();
-                        });
-                    }
-                }
-            });
+            jsonData.put("username", username);
+            jsonData.put("campId", campId);
+            jsonData.put("isValidCode", isValidCode);
         } catch (JSONException e) {
-            Log.e("EditBike", "Error: " + e.getMessage());
-            runOnUiThread(() -> {
-                Toast.makeText(EditBike.this, "Unexpected error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                loadingDialog.dismiss();
-            });
+            runOnUiThread(() -> showPopupWindow("There is a problem with send helmet data to the server. Please contact to the support!"));
+            runOnUiThread(loadingDialog::dismiss);
+            return;
         }
+
+        RequestBody body = RequestBody.create(jsonData.toString(), JSON);
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/editParameturHelmet")
+                .addHeader("X-CSRF-Token", csrfToken)
+                .patch(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> showPopupWindow("There is a problem with send helmet data to the server. Please contact to the support!"));
+                runOnUiThread(loadingDialog::dismiss);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+
+                try {
+                    String responseData = response.body().string();
+                    JSONObject jsonResponse = new JSONObject(responseData);
+
+                    if (!response.isSuccessful()) {
+                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
+                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        return;
+                    }
+
+                    String message = jsonResponse.optString("message", "Helmet edit successfully.");
+                    runOnUiThread(() -> {
+                        Toast.makeText(EditBike.this, message, Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(EditBike.this, MainActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        finish();
+                    });
+
+                } catch (JSONException e) {
+                    runOnUiThread(() -> showPopupWindow("There is a problem with send helmet data to the server. Please contact to the support!"));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
+                }
+            }
+        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        fetchCsrfToken();
+        fetchCsrfToken(null);
 
         Intent intent = new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
@@ -445,7 +529,7 @@ public class EditBike extends AppCompatActivity {
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     private void handleIntent(Intent intent) {
         Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag.class);
-        if(tag != null) {
+        if (tag != null) {
             // Get the NFC ID (UID)
             byte[] tagId = tag.getId();
             String nfcId = bytesToHex(tagId);
@@ -461,5 +545,15 @@ public class EditBike extends AppCompatActivity {
             sb.append(String.format("%02X", b));
         }
         return sb.toString();
+    }
+
+    private void showPopupWindow(String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Error");
+        builder.setMessage(message);
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            // Reset the flag once the error dialog is clos
+        });
+        builder.show();
     }
 }
