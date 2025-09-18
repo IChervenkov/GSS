@@ -213,6 +213,24 @@ document.addEventListener('DOMContentLoaded', function () {
     let globalAction = '';
     let globalCleanedRoomNumber = '';
 
+    let currentFetchController = null;
+
+    function startLoading() {
+        loadingIndicator.style.display = 'flex';
+    }
+
+    function stopLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
+    function debounce(func, delay) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
     var isWarning = false;
 
     const toggleInputValidity = (input, isValid) => {
@@ -236,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch soldier from the server
     async function fetchSpecialRoom(numBuild) {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const response = await fetch(`/specialRooms?numBuild=${numBuild}`, {
@@ -259,7 +277,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -311,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch soldier from the server
     async function fetchSpecialKey(numRoom) {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const response = await fetch(`/specialKeys?numRoom=${numRoom}`, {
@@ -334,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -386,7 +404,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch all keys from the server
     async function fetchAllKey() {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const response = await fetch(`/keys`, {
@@ -409,7 +427,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -466,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const maleCard = selectedAllKey.getAttribute('data-male-card');
             const laundryBag = selectedAllKey.getAttribute('data-laundry-bag');
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             const response = await fetch(`/getKeyBuildigType?keyId=${keycode}`, {
                 method: 'GET',
@@ -487,7 +505,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     showGlobalMess('Error', error.message);
                 })
                 .finally(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                 });
 
             typeBuild.value = response.type;
@@ -505,7 +523,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch soldier from the server
     async function fetchItem() {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const response = await fetch(`/clients`, {
@@ -527,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -677,7 +695,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch soldier from the server
     async function fetchFreeBag() {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const responseBag = await fetch(`/freeBags`, {
@@ -701,14 +719,14 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
     // Function to fetch soldier from the server
     async function fetchBag() {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const responseBag = await fetch(`/bags`, {
@@ -732,7 +750,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -867,7 +885,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch soldier from the server
     async function fetchBuilding() {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const responseBuild = await fetch(`/builds`, {
@@ -890,7 +908,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -939,7 +957,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch room from the server
     async function fetchRoom() {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const response = await fetch(`/rooms`, {
@@ -971,7 +989,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -1009,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedSoldier = event.target;
         if (selectedSoldier && selectedSoldier.dataset.id) {
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             toggleInputValidity(soldierSearchMoveInput, true);
 
@@ -1024,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             })
                 .finally(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                 });
 
             if (!responseSoldier.ok) {
@@ -1174,7 +1192,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchListKeys(cleanedRoomNumber, page = 1, limit = 10, searchFilters = []) {
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -1193,7 +1218,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -1355,13 +1381,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowsTable = tableBody.getElementsByTagName("tr");
             firstUpdateTable(rowsTable, 0, 10, 'pageNumberFifth');
 
-            setupTableNavigation("keyListTable", "prevBtnFifth", "nextBtnFifth", "pageNumberFifth", limit, totalKeyListData, currentPage, searchFilters, [], cleanedRoomNumber);
+            setupTableNavigation("keyListTable", "prevBtnFifth", "nextBtnFifth", "pageNumberFifth", limit, totalKeyListData, page, searchFilters, [], cleanedRoomNumber);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showGlobalMess('Error', 'An error occurred while fetching keys items. Please try again later.');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
 
     }
@@ -1511,7 +1538,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelectorAll(`${className}`).forEach((input) => {
 
-            input.addEventListener('input', () => {
+            input.addEventListener('input', debounce(() => {
 
                 const filters = document.querySelectorAll(`${className}`);
                 const headerCells = document.querySelectorAll(`#${tableName} thead th`);
@@ -1570,7 +1597,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         currentPage = 1;
                         filters.forEach((input, columnIndex) => {
                             const searchTerm = input.value.trim().toLowerCase();
-                            const headerLabel = headerCells[columnIndex]?.innerText.trim();
+                            const headerLabel = headerCells[columnIndex + 1]?.innerText.trim();
                             const columnName = headerMap[headerLabel];
 
                             if (searchTerm === '' || !/^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/.test(searchTerm)) return;
@@ -1613,7 +1640,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, 10, globalSearchFilters, searchFilters);
                         break;
                 }
-            });
+            }, 400));
         });
     }
 
@@ -1626,7 +1653,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const tableBody = document.getElementById("additionalItemTableBody");
         tableBody.innerHTML = "";
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -1644,7 +1678,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -1714,7 +1749,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         hasError = false;
                         isSubmit = true;
 
-                        loadingIndicator.style.display = 'flex';
+                        startLoading();
 
                         try {
                             const data = {
@@ -1744,7 +1779,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         } catch (error) {
                             hasError = true;
                         } finally {
-                            loadingIndicator.style.display = 'none';
+                            stopLoading();
                         }
                     });
 
@@ -1802,13 +1837,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowsTable = tableBody.getElementsByTagName("tr");
             firstUpdateTable(rowsTable, 0, 10, 'pageNumberTherd');
 
-            setupTableNavigation("additonalItemTable", "prevBtnTherd", "nextBtnTherd", "pageNumberTherd", limit, totalAdditionalItems, currentPage, searchFilters);
+            setupTableNavigation("additonalItemTable", "prevBtnTherd", "nextBtnTherd", "pageNumberTherd", limit, totalAdditionalItems, page, searchFilters);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showGlobalMess('Error', 'An error occurred while fetching additional items. Please try again later.');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
 
     }
@@ -1985,7 +2021,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const assetTableBody = document.getElementById('soldierTable').getElementsByTagName('tbody')[0];
         tbody.innerHTML = '';
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -2003,7 +2046,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -2169,13 +2213,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowsTable = assetTableBody.getElementsByTagName("tr");
             firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
 
-            setupTableNavigation("soldierTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalSoldierListData, currentPage, searchFilters);
+            setupTableNavigation("soldierTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalSoldierListData, page, searchFilters);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showGlobalMess('Error', 'An error occurred while fetching upcoming data. Please try again later.');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
     }
 
@@ -2309,7 +2354,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const upcomingActionTableBody = document.getElementById('upcomingActionTable').getElementsByTagName('tbody')[0];
         tbody.innerHTML = '';
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -2327,7 +2379,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -2395,13 +2448,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowsTable = upcomingActionTableBody.getElementsByTagName("tr");
             firstUpdateTable(rowsTable, 0, 10, 'pageNumberFourth');
 
-            setupTableNavigation("upcomingActionTable", "prevBtnFourth", "nextBtnFourth", "pageNumberFourth", limit, totalUpcomingAction, currentPage, searchFilters);
+            setupTableNavigation("upcomingActionTable", "prevBtnFourth", "nextBtnFourth", "pageNumberFourth", limit, totalUpcomingAction, page, searchFilters);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showGlobalMess('Error', 'An error occurred while fetching upcoming data. Please try again later.');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
     }
 
@@ -2891,6 +2945,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         async function updateLeftNavigation() {
+
+            startLoading();
+
             try {
                 const res = await fetch(`/accommodation?isFirstTime=${isFirstTime.value}`, {
                     method: 'GET',
@@ -2989,6 +3046,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (error) {
                 showGlobalMess('Error', error.message);
+            } finally {
+                stopLoading();
             }
         }
 
@@ -3433,7 +3492,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchReport(selectDate1, selectDate2, page = 1, pageDate = 1, limit = 10, searchFilters = [], searchFiltersMove = []) {
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -3459,7 +3525,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -3517,14 +3584,15 @@ document.addEventListener('DOMContentLoaded', function () {
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
             firstUpdateTable(rowsTableMove, 0, 10, 'pageNumberDate');
 
-            setupTableNavigation("soldierUsageTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, currentPage, searchFilters, searchFiltersMove, "", selectDate1, selectDate2);
-            setupTableNavigation("soldierMoveTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesMove, secondCurrentPage, searchFilters, searchFiltersMove, "", selectDate1, selectDate2);
+            setupTableNavigation("soldierUsageTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, page, searchFilters, searchFiltersMove, "", selectDate1, selectDate2);
+            setupTableNavigation("soldierMoveTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesMove, pageDate, searchFilters, searchFiltersMove, "", selectDate1, selectDate2);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showGlobalMess('Error', 'Cannot fetch report data');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -3702,7 +3770,7 @@ document.addEventListener('DOMContentLoaded', function () {
         submitButton.classList.add('btn', 'btn-success');
         submitButton.addEventListener('click', async () => {
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             for (const data of allCheckedRow) {
 
@@ -3726,7 +3794,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             closeGlobalMessModal();
         });
 
@@ -3782,7 +3850,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault();
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
 
@@ -3821,7 +3889,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', error.message || 'Failed to download the report.');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -3868,7 +3936,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
             if (percentage >= 100)
-                loadingIndicator.style.display = 'flex';
+                startLoading();
         };
 
         updateProgressBar(0);
@@ -3892,12 +3960,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                     globalAction = 'uploadSoldier';
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3914,7 +3982,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         xhr.onerror = function () {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -3937,7 +4005,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
             if (percentage >= 100)
-                loadingIndicator.style.display = 'flex';
+                startLoading();
         };
 
         updateProgressBar(0);
@@ -3961,12 +4029,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                     globalAction = 'uploadRooms';
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3983,7 +4051,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         xhr.onerror = function () {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -4006,7 +4074,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
             if (percentage >= 100)
-                loadingIndicator.style.display = 'flex';
+                startLoading();
         };
 
         updateProgressBar(0);
@@ -4030,12 +4098,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                     globalAction = 'uploadKeys';
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -4052,7 +4120,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         xhr.onerror = function () {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -4075,7 +4143,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
             if (percentage >= 100)
-                loadingIndicator.style.display = 'flex';
+                startLoading();
         };
 
         updateProgressBar(0);
@@ -4099,12 +4167,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                     globalAction = 'uploadReleaseRooms';
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -4121,7 +4189,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         xhr.onerror = function () {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -4144,7 +4212,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
             if (percentage >= 100)
-                loadingIndicator.style.display = 'flex';
+                startLoading();
         };
 
         updateProgressBar(0);
@@ -4168,12 +4236,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                     globalAction = 'uploadMultiSoldier';
                     showGlobalMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
 
@@ -4201,7 +4269,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         xhr.onerror = function () {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             showGlobalMess("Error", "An unexpected error occurred.");
         };
 
@@ -4262,7 +4330,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -4285,7 +4353,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
 
             closeGlobalMessModal();
@@ -4415,7 +4483,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -4440,7 +4508,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -4512,7 +4580,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
 
@@ -4536,7 +4604,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
 
             closeGlobalMessModal();
@@ -4633,7 +4701,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -4660,7 +4728,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -4762,7 +4830,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -4788,7 +4856,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -4855,7 +4923,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -4881,7 +4949,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -4972,7 +5040,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -4998,7 +5066,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -5079,7 +5147,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
 
@@ -5106,7 +5174,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -5201,7 +5269,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -5225,7 +5293,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
 
             closeGlobalMessModal();
@@ -5312,7 +5380,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -5336,7 +5404,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
 
             closeGlobalMessModal();
@@ -5380,7 +5448,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function handleSoldierRelocation() {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
 
@@ -5490,7 +5558,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', error.message);
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -5529,13 +5597,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function fetchTableData(page, mainSortedPar = {}, numBuild = "") {
+
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
+
         const query = buildQueryParams(page, mainSortedPar, numBuild);
         try {
             const res = await fetch(`/accommodation?${query}`, {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!res.ok) {
@@ -5543,6 +5622,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkForGlobalError(res, error);
                 throw new Error(error.message);
             }
+
             const { nameroomSetCount, totalCount, totalFreeBeds, totalOccupiedBeds, buildType } = await res.json();
 
             mainTotalRows = parseInt(totalCount);
@@ -5556,7 +5636,10 @@ document.addEventListener('DOMContentLoaded', function () {
             renderTable(nameroomSetCount);
             renderPagination();
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showGlobalMess('Error', error.message);
+        } finally {
+            stopLoading();
         }
     }
 
@@ -5664,9 +5747,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const headerLabel = headerCells[index]?.innerText.trim();
         const columnName = mainHeaderMap[headerLabel];
 
-        input.addEventListener('input', () => {
+        input.addEventListener('input', debounce(() => {
             const searchTerm = input.value.trim().toLowerCase();
 
+            // Remove old filter for this column
             filters = filters.filter(f => f.column !== columnName);
 
             if (columnName && searchTerm) {
@@ -5674,8 +5758,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             fetchTableData(1, mainSortedPar, selectedBuilding);
-        });
+        }, 400));
     });
+
 
     // Function to sort data and update the table
     function sortTableData(column) {
@@ -5751,7 +5836,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Add click event to the Delete button
             deleteBtn.addEventListener('click', async () => {
 
-                loadingIndicator.style.display = 'flex';
+                startLoading();
 
                 try {
                     if (document.getElementById('curent-dest').value !== numBuild) {
@@ -5786,7 +5871,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     deleteBtn.remove();
 
                 } finally {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                 }
             });
 
@@ -5840,7 +5925,7 @@ document.addEventListener('DOMContentLoaded', function () {
         submitButton.classList.add('btn', 'btn-success');
         submitButton.addEventListener('click', async () => {
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             for (const data of allCheckedRow) {
 
@@ -5864,7 +5949,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             closeGlobalMessModal();
         });
 
@@ -5937,7 +6022,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('downloadUpcomingActions').addEventListener("click", async function () {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
 
@@ -5971,7 +6056,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showGlobalMess('Error', error.message || 'Failed to download the file.');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     });
 });

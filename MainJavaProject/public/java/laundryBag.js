@@ -102,6 +102,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTransportationToDropOffPage = 1;
     let currentReadyToPickUpPage = 1;
 
+    let currentFetchController = null;
+
+    function startLoading() {
+        loadingIndicator.style.display = 'flex';
+    }
+
+    function stopLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
+    function debounce(func, delay) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
     // Helper function to toggle input validity
     const toggleInputValidity = (input, isValid) => {
         input.classList.toggle('is-valid', isValid);
@@ -167,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to fetch bags from the server
     async function fetchBags(status = 'None') {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
 
@@ -196,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
             openMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -323,38 +341,48 @@ document.addEventListener('DOMContentLoaded', () => {
             spanElement.innerHTML = '';
             listStatusElement.innerHTML = '';
 
-            const response = await fetch(`/laundry?isFirstTime=false`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
+            startLoading();
+
+            try {
+
+                const response = await fetch(`/laundry?isFirstTime=false`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Is-Fetch': 'true'
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    checkForGlobalError(response, error);
+                    showMess('Error', error.message);
+                    return;
                 }
-            });
 
-            if (!response.ok) {
-                const error = await response.json();
-                checkForGlobalError(response, error);
-                showMess('Error', error.message);
-                return;
-            }
+                let { totalCounts, bagData } = await response.json();
 
-            let { totalCounts, bagData } = await response.json();
+                if (spanElement && listStatusElement) {
+                    spanElement.textContent = totalCounts[status] || 0;
 
-            if (spanElement && listStatusElement) {
-                spanElement.textContent = totalCounts[status] || 0;
-
-                if (bagData[status] && bagData[status].length > 0)
-                    bagData[status].forEach(bag => {
+                    if (bagData[status] && bagData[status].length > 0)
+                        bagData[status].forEach(bag => {
+                            const p = document.createElement('p');
+                            p.textContent = `${bag.type}: ${bag.count}`;
+                            listStatusElement.appendChild(p);
+                        })
+                    else {
                         const p = document.createElement('p');
-                        p.textContent = `${bag.type}: ${bag.count}`;
+                        p.textContent = `There are no bags in this section`;
                         listStatusElement.appendChild(p);
-                    })
-                else {
-                    const p = document.createElement('p');
-                    p.textContent = `There are no bags in this section`;
-                    listStatusElement.appendChild(p);
-                }
+                    }
 
-            }
+                }
+            } catch (error) {
+                showMess('Error', 'An error occurred while fetching bags. Please try again later.');
+
+            } finally {
+                stopLoading();
+            };
         }
 
         // Add the slide-out effect
@@ -815,7 +843,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelectorAll(`${className}`).forEach((input) => {
 
-            input.addEventListener('input', () => {
+            input.addEventListener('input', debounce(() => {
 
                 const filters = document.querySelectorAll(`${className}`);
                 const headerCells = document.querySelectorAll(`#${tableName} thead th`);
@@ -945,7 +973,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         fetchReport(selectDate1, selectDate2, currentPage, secondCurrentPage, 10, globalSearchFilters, searchFilters);
                         break;
                 }
-            });
+            }, 400));
         });
     }
 
@@ -1112,7 +1140,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const tbody = document.getElementById('bagsTable').getElementsByTagName('tbody')[0];
         tbody.innerHTML = ''; // Clear existing rows
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -1130,7 +1165,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -1248,13 +1284,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const rowsTable = tbody.getElementsByTagName("tr");
             firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
 
-            setupTableNavigation("bagsTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalPages, currentPage, "", "", searchFilters);
+            setupTableNavigation("bagsTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalPages, page, "", "", searchFilters);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', 'An error occurred while fetching bags. Please try again later.');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
 
     }
@@ -1497,7 +1534,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const tbody = document.getElementById(`${tableContent}`);
         tbody.innerHTML = '';
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -1516,7 +1560,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -1635,40 +1680,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'Drop off':
                     setupTableNavigation(
                         tableContent, `prevBtn${navigationPart}`, `nextBtn${navigationPart}`, `pageNumber${navigationPart}`,
-                        limit, totalPages, currentDropOffPage, "", "", searchFilters, "", clickStatus, nextDestination, navigationPart);
+                        limit, totalPages, page, "", "", searchFilters, "", clickStatus, nextDestination, navigationPart);
                     break;
 
                 case 'Transportation to laundry facility':
                     setupTableNavigation(
                         tableContent, `prevBtn${navigationPart}`, `nextBtn${navigationPart}`, `pageNumber${navigationPart}`,
-                        limit, totalPages, currentTransportationToLaundryFacilityPage, "", "", searchFilters, "", clickStatus, nextDestination, navigationPart);
+                        limit, totalPages, page, "", "", searchFilters, "", clickStatus, nextDestination, navigationPart);
                     break;
 
                 case 'Laundry facility':
                     setupTableNavigation(
                         tableContent, `prevBtn${navigationPart}`, `nextBtn${navigationPart}`, `pageNumber${navigationPart}`,
-                        limit, totalPages, currentLaundryFacilityPage, "", "", searchFilters, "", clickStatus, nextDestination, navigationPart);
+                        limit, totalPages, page, "", "", searchFilters, "", clickStatus, nextDestination, navigationPart);
                     break;
 
                 case 'Transportation to pick up':
                     setupTableNavigation(
                         tableContent, `prevBtn${navigationPart}`, `nextBtn${navigationPart}`, `pageNumber${navigationPart}`,
-                        limit, totalPages, currentTransportationToDropOffPage, "", "", searchFilters, "", clickStatus, nextDestination, navigationPart);
+                        limit, totalPages, page, "", "", searchFilters, "", clickStatus, nextDestination, navigationPart);
                     break;
 
                 default:
                     setupTableNavigation(
                         tableContent, `prevBtn${navigationPart}`, `nextBtn${navigationPart}`, `pageNumber${navigationPart}`,
-                        limit, totalPages, currentReadyToPickUpPage, "", "", searchFilters, "", clickStatus, nextDestination, navigationPart);
+                        limit, totalPages, page, "", "", searchFilters, "", clickStatus, nextDestination, navigationPart);
                     break;
             }
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             checkForGlobalError(response, error);
             openMess('Error', 'Error fetching or processing data');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -1797,7 +1843,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitButton.classList.add('btn', 'btn-success');
         submitButton.addEventListener('click', async () => {
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             for (const data of allCheckedListBagsRow) {
 
@@ -1821,7 +1867,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             closeMessModal();
         });
 
@@ -1878,7 +1924,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 isMoved = true;
 
-                loadingIndicator.style.display = 'flex';
+                startLoading();
 
                 for (const data of allCheckedRow) {
 
@@ -1900,7 +1946,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 closeMessModal();
             });
 
@@ -1951,7 +1997,7 @@ document.addEventListener('DOMContentLoaded', () => {
             submitButton.classList.add('btn', 'btn-success');
             submitButton.addEventListener('click', async () => {
 
-                loadingIndicator.style.display = 'flex';
+                startLoading();
 
                 for (const data of allCheckedRow) {
 
@@ -1976,7 +2022,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 closeMessModal();
             });
 
@@ -2057,7 +2103,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchReport(selectDate1, selectDate2, page = 1, pageDate = 1, limit = 10, searchFilters = [], searchFiltersDate = []) {
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -2083,7 +2136,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -2184,14 +2238,15 @@ document.addEventListener('DOMContentLoaded', () => {
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
             firstUpdateTable(rowsTableNational, 0, 10, 'pageNumberDate');
 
-            setupTableNavigation("bagsWashedTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, currentPage, selectDate1, selectDate2, searchFilters, searchFiltersDate);
-            setupTableNavigation("bagsWashedNationalityTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesNational, secondCurrentPage, selectDate1, selectDate2, searchFilters, searchFiltersDate);
+            setupTableNavigation("bagsWashedTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, page, selectDate1, selectDate2, searchFilters, searchFiltersDate);
+            setupTableNavigation("bagsWashedNationalityTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesNational, pageDate, selectDate1, selectDate2, searchFilters, searchFiltersDate);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             openMess('Error', 'Error fetching the report');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -2238,7 +2293,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hasError = false; // Track if an error occurs
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(document.getElementById(formId).action, {
@@ -2262,7 +2317,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
 
             closeMessModal();
@@ -2365,7 +2420,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hasError = false; // Track if an error occurs
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(document.getElementById('form6').action, {
@@ -2388,7 +2443,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
 
             closeMessModal();
@@ -2466,7 +2521,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(document.getElementById('form7').action, {
@@ -2490,7 +2545,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
 
             closeMessModal();
@@ -2552,7 +2607,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         event.preventDefault();
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
 
@@ -2591,7 +2646,7 @@ document.addEventListener('DOMContentLoaded', () => {
             openMess('Error', error.message || 'Failed to download the report.');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 

@@ -29,6 +29,24 @@ document.addEventListener('DOMContentLoaded', function () {
         'Number of visits': 'soldier_count'
     };
 
+    let currentFetchController = null;
+
+    function startLoading() {
+        loadingIndicator.style.display = 'flex';
+    }
+
+    function stopLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
+    function debounce(func, delay) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
     const formateDate = isoString => {
         const date = new Date(isoString);
 
@@ -76,13 +94,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const formattedDate1 = date1 ? formatDate(date1) : '';
         const formattedDate2 = date2 ? formatDate(date2) : '';
 
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
+
         const query = buildQueryParams(page, formattedDate1, formattedDate2);
         try {
             const res = await fetch(`/fitness?${query}`, {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
             
             if (!res.ok) {
@@ -101,7 +129,10 @@ document.addEventListener('DOMContentLoaded', function () {
             renderTable(data);
             renderPagination();
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', error.message);
+        } finally {
+            stopLoading();
         }
     }
 
@@ -211,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const headerLabel = headerCells[index]?.innerText.trim();
         const columnName = mainHeaderMap[headerLabel];
 
-        input.addEventListener('input', () => {
+        input.addEventListener('input', debounce(() => {
             const searchTerm = input.value.trim().toLowerCase();
 
             filters = filters.filter(f => f.column !== columnName);
@@ -221,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             fetchTableData(1);
-        });
+        }, 400));
     });
 
     function showMess(type, message) {
@@ -303,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Download the report document when the Reports button is clicked
     document.getElementById("btnReport").addEventListener("click", async () => {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
 
@@ -357,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showMess('Error', error.message);
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     });
 });

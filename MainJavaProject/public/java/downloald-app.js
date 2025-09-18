@@ -8,11 +8,11 @@ document.addEventListener('DOMContentLoaded', function () {
             window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
     };
 
-    function showLoading() {
+    function startLoading() {
         loadingIndicator.style.display = 'flex';
     }
 
-    function hideLoading() {
+    function stopLoading() {
         loadingIndicator.style.display = 'none';
     }
 
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (downloadApp.disabled) return; // Prevent multiple clicks
                 downloadApp.disabled = true;
 
-                showLoading();
+                startLoading();
 
                 let url, appName;
                 switch (buttonId) {
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         showMessError(err.message);
                     })
                     .finally(() => {
-                        hideLoading();
+                        stopLoading();
                         downloadApp.disabled = false; // Re-enable the button
                     });
             });

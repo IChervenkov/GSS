@@ -3,6 +3,16 @@ const hiddenCode = document.getElementById("code");
 const form = document.getElementById("checkForm");
 const errorMessage = document.getElementById("errorMessage");
 
+const loadingIndicator = document.getElementById('loadingIndicator');
+
+function startLoading() {
+    loadingIndicator.style.display = 'flex';
+}
+
+function stopLoading() {
+    loadingIndicator.style.display = 'none';
+}
+
 function collectCode() {
     let codeValue = "";
     inputs.forEach(box => codeValue += box.value);
@@ -31,6 +41,9 @@ inputs.forEach((input, index) => {
 });
 
 async function submitCode(code) {
+
+    startLoading();
+
     try {
         const res = await fetch(form.action, {
             method: "POST",
@@ -55,6 +68,8 @@ async function submitCode(code) {
         }
     } catch (err) {
         showError("Something went wrong. Try again.");
+    } finally {
+        stopLoading();
     }
 }
 

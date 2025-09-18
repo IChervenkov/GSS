@@ -5974,14 +5974,14 @@ class Server {
                             COUNT(
                                 CASE 
                                     WHEN b.type = 'Accommodation' AND s.id IS NULL AND a.location_key IS NOT NULL THEN k.id
-                                    WHEN b.type = 'Accommodation' AND s.id IS NULL AND r.nameroom ~ '^(\\d+/\\d+/E|\\d+/D\\d*)$' THEN k.id
+                                    WHEN b.type = 'Accommodation' AND s.id IS NULL AND r.nameroom ~ '^(\\d+/\\d+/E\\d*|\\d+/D\\d*)$' THEN k.id
                                     WHEN b.type != 'Accommodation' AND s.id IS NULL THEN k.id
                                 END
                             ) AS countFreeBeds,
                             COUNT(
                                 CASE 
                                     WHEN b.type = 'Accommodation' AND a.location_key IS NOT NULL THEN k.id
-                                    WHEN b.type = 'Accommodation' AND r.nameroom ~ '^(\\d+/\\d+/E|\\d+/D\\d*)$' THEN k.id
+                                    WHEN b.type = 'Accommodation' AND r.nameroom ~ '^(\\d+/\\d+/E\\d*|\\d+/D\\d*)$' THEN k.id
                                     WHEN b.type != 'Accommodation' THEN k.id
                                 END
                             ) AS countAllBeds

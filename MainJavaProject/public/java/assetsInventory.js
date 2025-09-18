@@ -239,6 +239,24 @@ document.addEventListener('DOMContentLoaded', function () {
     var oldAssetNameKey;
     var isInfo = true;
 
+    let currentFetchController = null;
+
+    function startLoading() {
+        loadingIndicator.style.display = 'flex';
+    }
+
+    function stopLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
+    function debounce(func, delay) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
     const toggleInputValidity = (input, isValid) => {
         input.classList.toggle('is-valid', isValid);
         input.classList.toggle('is-invalid', !isValid);
@@ -255,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const loadingIndicator = document.getElementById('loadingIndicator');
 
     function fetchTypeData() {
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         fetch(`/assets/getAllType`, {
             method: 'GET',
@@ -279,13 +297,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 showMess('Error', error.message);
             })
             .finally(() => {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             });
     }
 
     fetchTypeData();
 
-    loadingIndicator.style.display = 'flex';
+    startLoading();
 
     fetch(`/allKeys`, {
         method: 'GET',
@@ -339,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showMess('Error', error.message);
         })
         .finally(() => {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         });
 
     function buildQueryParams(page, mainSortedPar, numBuild) {
@@ -365,14 +383,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function fetchTableData(page, mainSortedPar = {}, numBuild = "") {
+
+        startLoading();
+
         const query = buildQueryParams(page, mainSortedPar, numBuild);
+
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
         try {
             const res = await fetch(`/assets?${query}`, {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                }, 
+                signal
             });
+
             if (!res.ok) {
                 const error = await res.json();
                 checkForGlobalError(res, error);
@@ -387,8 +418,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             renderTable(inventory);
             renderPagination();
+
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error fetching table data');
+        } finally {
+            stopLoading();
         }
     }
 
@@ -496,7 +531,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const headerLabel = headerCells[index]?.innerText.trim();
         const columnName = mainHeaderMap[headerLabel];
 
-        input.addEventListener('input', () => {
+        input.addEventListener('input', debounce(() => {
             const searchTerm = input.value.trim().toLowerCase();
 
             filters = filters.filter(f => f.column !== columnName);
@@ -506,7 +541,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             fetchTableData(1, mainSortedPar, selectedBuilding);
-        });
+        }, 400));
     });
 
     // Function to sort data and update the table
@@ -768,7 +803,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchAllAsset() {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const responseAsset = await fetch(`/getAllAssets`, {
@@ -791,7 +826,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -881,7 +916,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const expandable = selectedAllAsset.getAttribute('data-expandable');
             const description = selectedAllAsset.getAttribute('data-description');
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             fetch(`/assets/getSortedAssets`, {
                 method: 'GET',
@@ -913,7 +948,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .catch(error => showMess('Error', error.message))
                 .finally(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                 });
 
             selectAllAssetInput.value = '';
@@ -1788,7 +1823,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const lostItemsTable = document.getElementById('lostItemsTableBody');
         lostItemsTable.innerHTML = '';
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -1806,7 +1848,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -1872,7 +1915,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         hasError = false;
                         isSubmit = true;
 
-                        loadingIndicator.style.display = 'flex';
+                        startLoading();
 
                         try {
                             const data = {
@@ -1902,7 +1945,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         } catch (error) {
                             hasError = true;
                         } finally {
-                            loadingIndicator.style.display = 'none';
+                            stopLoading();
                         }
                     });
 
@@ -1959,12 +2002,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowsTable = lostItemsTable.getElementsByTagName("tr");
             firstUpdateTable(rowsTable, 0, 10, 'pageNumberTherd');
 
-            setupTableNavigation("lostItemsTable", "prevBtnTherd", "nextBtnTherd", "pageNumberTherd", limit, totalLostItems, currentPage, "", "", searchFilters);
+            setupTableNavigation("lostItemsTable", "prevBtnTherd", "nextBtnTherd", "pageNumberTherd", limit, totalLostItems, page, "", "", searchFilters);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', 'An error occurred while fetching lost items. Please try again later.');
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
     }
 
@@ -2185,7 +2229,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelectorAll(`${className}`).forEach((input) => {
 
-            input.addEventListener('input', () => {
+            input.addEventListener('input', debounce(() => {
 
                 const filters = document.querySelectorAll(`${className}`);
                 const headerCells = document.querySelectorAll(`#${tableName} thead th`);
@@ -2322,7 +2366,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         fetchSortedAsset(numRoom, currentPage, 10, searchFilters, sortedPar);
                         break;
                 }
-            });
+            }, 400));
         });
     }
 
@@ -2380,7 +2424,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const smallTableBody = document.getElementById('smallWorkhouse').getElementsByTagName('tbody')[0];
         smallTableBody.innerHTML = '';
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -2508,7 +2559,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -2636,14 +2688,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowsSmallTable = smallTableBody.getElementsByTagName("tr");
             firstUpdateTable(rowsSmallTable, 0, 7, 'pageNumberFifth');
 
-            setupTableNavigation("largeWorkhouse", "prevBtnFourth", "nextBtnFourth", "pageNumberFourth", limit, totalPagesLarge, currentPage, "", "", searchFiltersLarge, searchFiltersSmall);
-            setupTableNavigation("smallWorkhouse", "prevBtnFifth", "nextBtnFifth", "pageNumberFifth", limit, totalPagesSmall, secondCurrentPage, "", "", searchFiltersLarge, searchFiltersSmall);
+            setupTableNavigation("largeWorkhouse", "prevBtnFourth", "nextBtnFourth", "pageNumberFourth", limit, totalPagesLarge, pageLarge, "", "", searchFiltersLarge, searchFiltersSmall);
+            setupTableNavigation("smallWorkhouse", "prevBtnFifth", "nextBtnFifth", "pageNumberFifth", limit, totalPagesSmall, pageSmall, "", "", searchFiltersLarge, searchFiltersSmall);
 
         } catch (error) {
-            console.error(error);
+            if (error.name === 'AbortError') return;
             showMess('Error', 'Cannot fetch clean item data');
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -2854,7 +2906,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const tbody = document.getElementById('tableBodyItemTraceabilityModal');
         tbody.innerHTML = '';
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -2872,7 +2931,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -2923,12 +2983,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowsTable = itemTraceabilityTableBody.getElementsByTagName("tr");
             firstUpdateTable(rowsTable, 0, 10, 'pageNumberSixth');
 
-            setupTableNavigation("itemTraceabilityTable", "prevBtnSixth", "nextBtnSixth", "pageNumberSixth", limit, totalPages, currentPage, "", "", searchFilters);
+            setupTableNavigation("itemTraceabilityTable", "prevBtnSixth", "nextBtnSixth", "pageNumberSixth", limit, totalPages, page, "", "", searchFilters);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', 'An error occurred while fetching item tracability. Please try again later.');
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
     }
 
@@ -2978,7 +3039,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const mainAccordion = document.getElementById('mainAccordion');
         mainAccordion.innerHTML = '';
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
 
@@ -3072,12 +3133,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const accordeonRows = mainAccordion.querySelectorAll(".accordion-main-item");
             firstUpdateTable(accordeonRows, 0, limit, 'pageNumberSeventh');
 
-            setupTableNavigation("mainAccordion", "prevBtnSeventh", "nextBtnSeventh", "pageNumberSeventh", limit, totalPages, currentPage);
+            setupTableNavigation("mainAccordion", "prevBtnSeventh", "nextBtnSeventh", "pageNumberSeventh", limit, totalPages, page);
 
         } catch (error) {
             showMess('Error', 'An error occurred while fetching inventory. Please try again later.');
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
     }
 
@@ -3346,7 +3407,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const tbody = document.getElementById('tableBodyModal');
         tbody.innerHTML = '';
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -3370,7 +3438,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -3522,9 +3591,10 @@ document.addEventListener('DOMContentLoaded', function () {
             setupTableNavigation("assetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalPages, page, "", "", searchFilters, [], numRoom);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', 'An error occurred while fetching sort asset. Please try again later.');
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
     }
 
@@ -3825,7 +3895,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
             if (percentage >= 100)
-                loadingIndicator.style.display = 'flex';
+                startLoading();
         };
 
         updateProgressBar(0);
@@ -3849,12 +3919,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                     globalAction = 'addMultiCleanItem';
                     showMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3871,7 +3941,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         xhr.onerror = function () {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             showMess("Error", "An unexpected error occurred.");
         };
 
@@ -3894,7 +3964,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
             if (percentage >= 100)
-                loadingIndicator.style.display = 'flex';
+                startLoading();
         };
 
         updateProgressBar(0);
@@ -3918,12 +3988,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                     globalAction = 'editMultiAssets';
                     showMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -3940,7 +4010,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         xhr.onerror = function () {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             showMess("Error", "An unexpected error occurred.");
         };
 
@@ -3963,7 +4033,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
             if (percentage >= 100)
-                loadingIndicator.style.display = 'flex';
+                startLoading();
         };
 
         updateProgressBar(0);
@@ -3987,12 +4057,12 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                     globalAction = 'addMultiAssets';
                     showMess("Info", "File uploaded successfully!");
                 }, 1000);
             } else {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 const data = JSON.parse(xhr.responseText);
                 if (data.errors) {
                     data.errors.forEach(error => {
@@ -4009,7 +4079,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         xhr.onerror = function () {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             showMess("Error", "An unexpected error occurred.");
         };
 
@@ -4054,7 +4124,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const data = {
@@ -4084,7 +4154,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -4173,7 +4243,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const data = {
@@ -4203,7 +4273,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -4269,7 +4339,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
 
@@ -4294,7 +4364,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -4355,7 +4425,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchReport(selectDate1, selectDate2, page = 1, pageDate = 1, limit = 10, searchFilters = [], searchFiltersDate = []) {
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -4381,7 +4458,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -4637,14 +4715,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
 
-            setupTableNavigation("assetsTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, currentPage, selectDate1, selectDate2, searchFilters, searchFiltersDate);
-            setupTableNavigation("assetDateTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesDate, secondCurrentPage, selectDate1, selectDate2, searchFilters, searchFiltersDate);
+            setupTableNavigation("assetsTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, page, selectDate1, selectDate2, searchFilters, searchFiltersDate);
+            setupTableNavigation("assetDateTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesDate, pageDate, selectDate1, selectDate2, searchFilters, searchFiltersDate);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', 'Cannot fetch report data');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -4772,7 +4851,7 @@ document.addEventListener('DOMContentLoaded', function () {
             isRemove = true;
             hasError = false;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 for (const data of allCheckedRow) {
@@ -4818,7 +4897,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
                 result = { message: 'An error occurred while processing the request.' };
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
 
             closeMessModal();
@@ -5009,7 +5088,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -5034,7 +5113,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -5160,7 +5239,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -5185,7 +5264,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -5264,7 +5343,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
 
@@ -5290,7 +5369,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -5369,7 +5448,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
 
@@ -5395,7 +5474,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -5478,7 +5557,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
 
@@ -5504,7 +5583,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -5548,7 +5627,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault();
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
 
@@ -5592,7 +5671,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showMess('Error', error.message || 'Failed to download the report.');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -5637,7 +5716,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
 
@@ -5663,7 +5742,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -5742,7 +5821,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
 
@@ -5768,7 +5847,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -5853,7 +5932,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
 
@@ -5879,7 +5958,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 

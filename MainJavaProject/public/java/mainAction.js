@@ -44,6 +44,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchPattern = /^[a-zA-Z0-9\s!&\)\(._\/:,\-]*$/;
     const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%&]{8,}$/;
 
+    let currentFetchController = null;
+
+    function startLoading() {
+        loadingIndicator.style.display = 'flex';
+    }
+
+    function stopLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
+    function debounce(func, delay) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
     const toggleInputValidity = (input, isValid) => {
         input.classList.toggle('is-valid', isValid);
         input.classList.toggle('is-invalid', !isValid);
@@ -114,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelectorAll(`${className}`).forEach((input) => {
 
-            input.addEventListener('input', () => {
+            input.addEventListener('input', debounce(() => {
 
                 const filters = document.querySelectorAll(`${className}`);
                 const headerCells = document.querySelectorAll(`#${tableName} thead th`);
@@ -153,7 +171,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         fetchUsersList(currentPage, 10, searchFilters);
                         break;
                 }
-            });
+            }, 400));
         });
     }
 
@@ -236,6 +254,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         async function updateLeftNavigation() {
+
+            startLoading();
+
             try {
 
                 const res = await fetch('/getCamp', {
@@ -299,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         document.querySelectorAll('.left-nav ul li button').forEach(btn => btn.classList.remove('pinClass'));
                         event.target.classList.add('pinClass');
 
-                        loadingIndicator.style.display = 'flex';
+                        startLoading();
 
                         try {
                             const response = await fetch('/setCampValue', {
@@ -325,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         } catch (error) {
                             showMess('Error', 'Network error or server is unavailable.');
                         } finally {
-                            loadingIndicator.style.display = 'none';
+                            stopLoading();
                         }
                     });
 
@@ -337,6 +358,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             } catch (err) {
                 showMess('Error', `Error fetching navigation data`);
+            } finally {
+                stopLoading();
             }
         }
 
@@ -588,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function () {
             isRemove = true;
             hasError = false;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
 
@@ -615,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
                 result = { message: 'An error occurred while processing the request.' };
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
 
             closeMessModal();
@@ -663,7 +686,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.left-nav ul li button').forEach(btn => btn.classList.remove('pinClass'));
             event.target.classList.add('pinClass');
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch('/setCampValue', {
@@ -689,15 +712,16 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 showMess('Error', 'Network error or server is unavailable.');
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
     });
 
     async function loadPermissionsHeaders() {
-        try {
 
-            loadingIndicator.style.display = 'flex';
+        startLoading();
+
+        try {
 
             const response = await fetch(`/permissions/data`, {
                 method: 'GET',
@@ -766,15 +790,22 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             showMess('Error', 'Failed to load permissions. Please connect to the support.');
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
     async function loadPermissionsData(page = 1, limit = 10, searchFilters = []) {
 
-        try {
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
 
-            loadingIndicator.style.display = 'flex';
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
+
+        try {
 
             const searchParams = new URLSearchParams({
                 page,
@@ -790,7 +821,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -862,12 +894,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowsTable = tbody.getElementsByTagName("tr");
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
 
-            setupTableNavigation("permissionsTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, currentPage, searchFilters);
+            setupTableNavigation("permissionsTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, page, searchFilters);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', 'Failed to load permissions. Please connect to the support.');
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -875,7 +908,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const tbody = document.getElementById('tableUserBody');
         const userTableBody = document.getElementById('usersTable').getElementsByTagName('tbody')[0];
         tbody.innerHTML = '';
-        loadingIndicator.style.display = 'flex';
+
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
             const searchParams = new URLSearchParams({ page, limit });
@@ -886,7 +927,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const response = await fetch(`/getUsers?${searchParams.toString()}`, {
                 method: 'GET',
-                headers: { 'X-Is-Fetch': 'true' }
+                headers: { 'X-Is-Fetch': 'true' },
+                signal
             });
 
             if (!response.ok) {
@@ -1021,17 +1063,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const rowsTable = userTableBody.getElementsByTagName("tr");
             firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
-            setupTableNavigation("usersTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalUsersListData, currentPage, searchFilters);
+            setupTableNavigation("usersTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalUsersListData, page, searchFilters);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', 'An error occurred while fetching users data. Please try again later.');
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
     // helper to call /admin/verify
     async function verifyUserRequest(userId, decision) {
+
+        startLoading();
+                        
         try {
             const response = await fetch('/admin/verify', {
                 method: 'POST',
@@ -1053,6 +1099,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (err) {
             showMess('Error', 'Network error while verifying request');
+        } finally {
+            stopLoading();
         }
     }
 
@@ -1120,7 +1168,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -1145,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -1210,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -1235,7 +1283,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -1319,7 +1367,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -1344,7 +1392,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -1432,7 +1480,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -1457,7 +1505,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (error) {
                 hasError = true;
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 

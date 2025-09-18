@@ -13,6 +13,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const stringPattern = /^[a-zA-Z0-9\s]+$/;
     const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%&]{8,}$/;
 
+    function startLoading() {
+        loadingIndicator.style.display = 'flex';
+    }
+
+    function stopLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
     const toggleInputValidity = (input, isValid) => {
         input.classList.toggle('is-valid', isValid);
         input.classList.toggle('is-invalid', !isValid);
@@ -56,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function () {
             newPassword: newPassword.value
         };
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const response = await fetch(this.action, {
@@ -98,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function () {
             errorMess.textContent = 'There was a problem changing your password. Please contact support!';
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 });

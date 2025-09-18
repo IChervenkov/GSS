@@ -8,6 +8,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const loadingIndicator = document.getElementById('loadingIndicator');
 
+    function startLoading() {
+        loadingIndicator.style.display = 'flex';
+    }
+
+    function stopLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
     const toggleInputValidity = (input, isValid) => {
         input.classList.toggle('is-valid', isValid);
         input.classList.toggle('is-invalid', !isValid);
@@ -48,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
             password: password.value
         };
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const response = await fetch(this.action, {
@@ -85,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
             errorMess.textContent = 'There is a problem signing you in. Please contact support!';
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 });

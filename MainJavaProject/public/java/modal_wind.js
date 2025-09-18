@@ -159,6 +159,24 @@ document.addEventListener('DOMContentLoaded', function () {
         return `${year}-${month}-${day} ${hourStr}:${minutes} ${ampm}`;
     }
 
+    let currentFetchController = null;
+
+    function startLoading() {
+        loadingIndicator.style.display = 'flex';
+    }
+
+    function stopLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
+    function debounce(func, delay) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
     // Helper function to toggle input validity
     const toggleInputValidity = (input, isValid) => {
         input.classList.toggle('is-valid', isValid);
@@ -187,13 +205,25 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function fetchTableData(page) {
+        
         const query = buildQueryParams(page);
+
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
+
         try {
             const res = await fetch(`/bicycles?${query}`, {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!res.ok) {
@@ -217,7 +247,10 @@ document.addEventListener('DOMContentLoaded', function () {
             renderPagination();
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', error.message);
+        } finally {
+            stopLoading();
         }
     }
 
@@ -368,7 +401,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelectorAll(`${className}`).forEach((input) => {
 
-            input.addEventListener('input', () => {
+            input.addEventListener('input', debounce(() => {
 
                 const filters = document.querySelectorAll(`${className}`);
                 const headerCells = document.querySelectorAll(`#${tableName} thead th`);
@@ -499,7 +532,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         fetchHelmet(currentPage, 10, searchFilters);
                         break;
                 }
-            });
+            }, 400));
         });
     }
 
@@ -557,7 +590,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const tbody = document.getElementById(`${statusTableBodyId}`);
         tbody.innerHTML = '';
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -576,7 +616,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -622,10 +663,11 @@ document.addEventListener('DOMContentLoaded', function () {
             setupTableNavigation(statusTableId, prevBtn, nextBtn, pageNumber, limit, totalPages, page, searchFilters);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', 'An error occurred while fetching status bike. Please try again later.')
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
     }
 
@@ -635,7 +677,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const helmetTableBody = document.getElementById('helmetTable').getElementsByTagName('tbody')[0];
         tbody.innerHTML = '';
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -653,7 +702,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -767,12 +817,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowsTable = helmetTableBody.getElementsByTagName("tr");
             firstUpdateTable(rowsTable, 0, 10, 'pageNumberSecond');
 
-            setupTableNavigation("helmetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalPages, currentPage, searchFilters);
+            setupTableNavigation("helmetTable", "prevBtnSecond", "nextBtnSecond", "pageNumberSecond", limit, totalPages, page, searchFilters);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', 'An error occurred while fetching helmet data. Please try again later.')
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         };
     }
 
@@ -781,7 +832,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const headerLabel = headerCells[index]?.innerText.trim();
         const columnName = mainHeaderMap[headerLabel];
 
-        input.addEventListener('input', () => {
+        input.addEventListener('input', debounce(() => {
             const searchTerm = input.value.trim().toLowerCase();
 
             filters = filters.filter(f => f.column !== columnName);
@@ -791,7 +842,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             fetchTableData(1);
-        });
+        }, 400));
     });
 
     document.getElementById('form1').addEventListener('keypress', function (event) {
@@ -1662,7 +1713,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch bikes from the server
     async function fetchItem() {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const responseBike = await fetch(`/bikes`, {
@@ -1714,13 +1765,13 @@ document.addEventListener('DOMContentLoaded', function () {
             showMess('Error', 'There was a problem with the fetch operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
     async function fetchHelmetBike(bikeId) {
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
             const responseBike = await fetch(`/getHelmetByBike?bikeId=${bikeId}`, {
@@ -1745,7 +1796,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showMess('Error', 'There was a problem with the fetch helmet operation');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
@@ -2390,7 +2441,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (bikeContent.length != 0) {
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             // Fetch bike data from server
             fetch(`/searchBikes?id=${bikeId}`, {
@@ -2450,7 +2501,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     showMess('Error', error.message);
                 })
                 .finally(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                 });
         }
     });
@@ -2470,7 +2521,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (clientContent.length != 0) {
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             // Fetch bike data from server
             fetch(`/searchClient?id=${clientId}`, {
@@ -2530,7 +2581,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     showMess('Error', error.message);
                 })
                 .finally(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                 });
         }
     });
@@ -2550,7 +2601,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (helmetContent.length != 0) {
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             // Fetch bike data from server
             fetch(`/searchHelmet?id=${helmetId}`, {
@@ -2610,7 +2661,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     showMess('Error', error.message);
                 })
                 .finally(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                 });
         }
     });
@@ -2631,7 +2682,7 @@ document.addEventListener('DOMContentLoaded', function () {
         submitButton.classList.add('btn', 'btn-success');
         submitButton.addEventListener('click', async () => {
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             for (const data of allCheckedRow) {
 
@@ -2655,7 +2706,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             closeMessModal();
         });
 
@@ -2697,7 +2748,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchReport(selectDate1, selectDate2, page = 1, pageDate = 1, limit = 10, searchFilters = [], searchFiltersDate = []) {
 
-        loadingIndicator.style.display = 'flex';
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
+        const { signal } = currentFetchController;
+
+        startLoading();
 
         try {
 
@@ -2723,7 +2781,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'GET',
                 headers: {
                     'X-Is-Fetch': 'true'
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -2779,20 +2838,23 @@ document.addEventListener('DOMContentLoaded', function () {
             firstUpdateTable(rowsTable, 0, 10, 'pageNumber');
             firstUpdateTable(rowsTableDate, 0, 10, 'pageNumberDate');
 
-            setupTableNavigation("bikeUsageTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, currentPage, searchFilters, searchFiltersDate, selectDate1, selectDate2);
-            setupTableNavigation("bikeTotalsTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesTotal, secondCurrentPage, searchFilters, searchFiltersDate, selectDate1, selectDate2);
+            setupTableNavigation("bikeUsageTable", "prevBtn", "nextBtn", "pageNumber", limit, totalPages, page, searchFilters, searchFiltersDate, selectDate1, selectDate2);
+            setupTableNavigation("bikeTotalsTable", "prevBtnDate", "nextBtnDate", "pageNumberDate", limit, totalPagesTotal, pageDate, searchFilters, searchFiltersDate, selectDate1, selectDate2);
 
         } catch (error) {
+            if (error.name === 'AbortError') return;
             showMess('Error', 'Error fetching the report');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     }
 
     document.getElementById('form1').addEventListener('submit', async function (event) {
 
         async function checkBike(action, setDate, selectHour, selectMinute) {
+
+            startLoading();
 
             const isInvalidInput = (action === "Rent" && (
                 modalText.textContent === "None" ||
@@ -2812,45 +2874,53 @@ document.addEventListener('DOMContentLoaded', function () {
                 return false;
             }
 
-            const response = await fetch(`/checkBike?bikeId=${selectedBikeId.value}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
+            try {
+
+                const response = await fetch(`/checkBike?bikeId=${selectedBikeId.value}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Is-Fetch': 'true'
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    checkForGlobalError(response, error);
+                    showMess('Error', error.message);
+                    return false;
                 }
-            });
 
-            if (!response.ok) {
-                const error = await response.json();
-                checkForGlobalError(response, error);
-                showMess('Error', error.message);
-                return;
+                const data = await response.json();
+                const dateFrom = new Date(data.datefrom);
+                const dateTo = new Date(`${setDate} ${selectHour}:${selectMinute}`);
+                const dateNow = new Date();
+
+                // Validate input fields
+
+                if (action === "Rent" && data.status !== 'Available') {
+                    showMess('Error', 'The bike is already rented!');
+                    return false;
+
+                } else if (action === "Return" && data.status === 'Available') {
+                    showMess('Error', 'This bike is not rented!');
+                    return false;
+
+                } else if (action === "Return" && dateFrom > dateTo) {
+                    showMess('Error', 'Invalid return date!');
+                    return false;
+
+                } else if (dateTo > dateNow) {
+                    showMess('Error', 'Invalid rent date!');
+                    return false;
+                }
+
+                return true;
+                
+            } catch (error) {
+                showMess('Error', 'Error check status bike');
+            } finally {
+                stopLoading();
             }
-
-            const data = await response.json();
-            const dateFrom = new Date(data.datefrom);
-            const dateTo = new Date(`${setDate} ${selectHour}:${selectMinute}`);
-            const dateNow = new Date();
-
-            // Validate input fields
-
-            if (action === "Rent" && data.status !== 'Available') {
-                showMess('Error', 'The bike is already rented!');
-                return false;
-
-            } else if (action === "Return" && data.status === 'Available') {
-                showMess('Error', 'This bike is not rented!');
-                return false;
-
-            } else if (action === "Return" && dateFrom > dateTo) {
-                showMess('Error', 'Invalid return date!');
-                return false;
-
-            } else if (dateTo > dateNow) {
-                showMess('Error', 'Invalid rent date!');
-                return false;
-            }
-
-            return true;
         }
 
         event.preventDefault(); // Prevent default form submission
@@ -2887,7 +2957,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -2913,7 +2983,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -2963,7 +3033,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault();
 
-        loadingIndicator.style.display = 'flex';
+        startLoading();
 
         try {
 
@@ -3001,7 +3071,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showMess('Error', error.message || 'Failed to download the report.');
 
         } finally {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
         }
     });
 
@@ -3049,7 +3119,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -3076,7 +3146,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -3182,7 +3252,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -3209,7 +3279,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -3297,7 +3367,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -3324,7 +3394,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -3479,7 +3549,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = false;
             isSubmit = true;
 
-            loadingIndicator.style.display = 'flex';
+            startLoading();
 
             try {
                 const response = await fetch(this.action, {
@@ -3506,7 +3576,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 hasError = true;
 
             } finally {
-                loadingIndicator.style.display = 'none';
+                stopLoading();
             }
         });
 
@@ -3566,7 +3636,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
             if (percentage >= 100)
-                loadingIndicator.style.display = 'flex';
+                startLoading();
         };
 
         updateProgressBar(0);
@@ -3590,14 +3660,14 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                     globalAction = 'uploadMultiBike';
                     showMess('Info', 'File uploaded successfully!');
                 }, 1000);
 
             } else {
 
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 const data = JSON.parse(xhr.responseText);
 
                 if (data.errors) {
@@ -3622,7 +3692,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         xhr.onerror = function () {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
             closeAddMultiBikeModal();
 
             showMess('Error', 'An unexpected error occurred.');
@@ -3647,7 +3717,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateProgressBar = (percentage) => {
             progressBar.style.width = percentage + "%";
             if (percentage >= 100)
-                loadingIndicator.style.display = 'flex';
+                startLoading();
         };
 
         updateProgressBar(0);
@@ -3671,14 +3741,14 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onload = function () {
             if (xhr.status === 200) {
                 setTimeout(() => {
-                    loadingIndicator.style.display = 'none';
+                    stopLoading();
                     globalAction = 'uploadMultiHelmet';
                     showMess('Info', 'File uploaded successfully!');
                 }, 1000);
 
             } else {
 
-                loadingIndicator.style.display = 'none';
+                stopLoading();
                 const data = JSON.parse(xhr.responseText);
 
                 if (data.errors) {
@@ -3704,7 +3774,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         xhr.onerror = function () {
-            loadingIndicator.style.display = 'none';
+            stopLoading();
 
             closeAddMultiHelmetModal();
             showMess('Error', "An unexpected error occurred.");
