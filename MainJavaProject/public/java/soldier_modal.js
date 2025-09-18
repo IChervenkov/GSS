@@ -5627,8 +5627,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             mainTotalRows = parseInt(totalCount);
             mainCurrentPage = page;
-            document.getElementById('freeBed').value = totalFreeBeds;
-            document.getElementById('totalOccupiedBeds').value = totalOccupiedBeds;
+            document.getElementById('freeBed').textContent = `Free Beds: ${totalFreeBeds}`;
+            document.getElementById('totalOccupiedBeds').textContent = `Occupied Beds: ${totalOccupiedBeds}`;
 
             typeBuild.value = buildType;
             document.getElementById('previewTypeBuild').value = buildType;

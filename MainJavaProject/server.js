@@ -3266,7 +3266,7 @@ class Server {
                 AND bike_times.status = 'Rented';`);
 
                 // Query the database for the user
-                const [result_bike, result_filter_bike, get_permission] = await Promise.all([
+                const [result_bike, result_filter_bike, result_count, get_permission] = await Promise.all([
                     client.query(
                         `SELECT 
                             namebike, 
@@ -3310,14 +3310,31 @@ class Server {
                                 WHEN b.status = 'Available' THEN 3 
                                 ELSE 4 
                             END, b.status
-                        LIMIT $${limitIndex} OFFSET $${offsetIndex};`, values),
+                        LIMIT $${limitIndex} OFFSET $${offsetIndex};`,
+                        values
+                    ),
+
+                    client.query(
+                        `SELECT COUNT(*) AS total
+                            FROM (
+                                SELECT 1
+                                FROM bicycles b 
+                                LEFT JOIN (SELECT bikeId, soldierId, datefrom, helmet_id, ROW_NUMBER() OVER (PARTITION BY bikeId ORDER BY datefrom DESC) AS rn FROM bikeSoldier) lb ON b.id = lb.bikeId AND lb.rn = 1 
+                                LEFT JOIN soldier s ON lb.soldierId = s.id
+                                LEFT JOIN helmets h ON lb.helmet_id = h.id
+                                ${whereClause}
+                                GROUP BY namebike, b.status, namesoldier, h.code, lb.datefrom
+                                ${havingClause}
+                            ) sub;`,
+                        values.slice(0, values.length - 2)
+                    ),
 
                     client.query(`
                         SELECT permission_name FROM permission p
                         JOIN user_permission up ON up.perm_id = p.id AND up.user_id = $1;`, [req.session.userId])
                 ]);
 
-                const totalCount = result_bike.rows.length;
+                const totalCount = parseInt(result_count.rows[0].total, 10);
 
                 result_filter_bike.rows.forEach(element => {
                     data.push({
