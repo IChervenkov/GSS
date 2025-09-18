@@ -6026,6 +6026,43 @@ class Server {
 
                 values.push(limit, offset);
 
+                const queryTotals = `
+                    WITH room_data AS (
+                        SELECT
+                            r.nameroom,
+                            COUNT(
+                                CASE 
+                                    WHEN b.type = 'Accommodation' AND s.id IS NULL AND a.location_key IS NOT NULL THEN k.id
+                                    WHEN b.type = 'Accommodation' AND s.id IS NULL AND r.nameroom ~ '^(\\d+/\\d+/E\\d*|\\d+/D\\d*)$' THEN k.id
+                                    WHEN b.type != 'Accommodation' AND s.id IS NULL THEN k.id
+                                END
+                            ) AS countFreeBeds,
+                            COUNT(
+                                CASE 
+                                    WHEN b.type = 'Accommodation' AND a.location_key IS NOT NULL THEN k.id
+                                    WHEN b.type = 'Accommodation' AND r.nameroom ~ '^(\\d+/\\d+/E\\d*|\\d+/D\\d*)$' THEN k.id
+                                    WHEN b.type != 'Accommodation' THEN k.id
+                                END
+                            ) AS countAllBeds
+                        FROM rooms r
+                        LEFT JOIN roomskey rk ON r.id = rk.roomid
+                        LEFT JOIN key k ON k.id = rk.keyid
+                        LEFT JOIN soldier s ON s.id = k.soldierid
+                        LEFT JOIN buildroom br ON br.roomid = r.id
+                        LEFT JOIN buildings b ON b.id = br.buildid
+                        LEFT JOIN assets a ON a.location_key = k.id
+                        WHERE ${whereClause}
+                        GROUP BY r.nameroom
+                        ${havingClause}
+                    )
+                    SELECT 
+                        SUM(CASE WHEN nameroom !~ '^(\\d+/\\d+/E\\d*|\\d+/D\\d*)$' THEN countFreeBeds ELSE 0 END) AS totalFreeBeds,
+                        SUM(CASE WHEN nameroom !~ '^(\\d+/\\d+/E\\d*|\\d+/D\\d*)$' THEN (countAllBeds - countFreeBeds) ELSE 0 END) AS totalOccupiedBeds
+                    FROM room_data;
+                `;
+
+                const totalValues = values.slice(0, values.length - 2);
+
                 const queryCount = `SELECT COUNT(*) AS totalCount FROM (
                     SELECT 1 FROM rooms r
                     LEFT JOIN roomskey rk ON r.id = rk.roomid
@@ -6045,9 +6082,10 @@ class Server {
                     SELECT permission_name FROM permission p
                     JOIN user_permission up ON up.perm_id = p.id AND up.user_id = $1;`;
 
-                const [mainResult, countResult, get_permission, resultBuild] = await Promise.all([
+                const [mainResult, countResult, totalsResult, get_permission, resultBuild] = await Promise.all([
                     client.query(queryMain, values),
                     client.query(queryCount, countValues),
+                    client.query(queryTotals, totalValues),
                     client.query(queryPermission, [req.session.userId]),
                     client.query(`
                         SELECT b.id, b.namebuilding, b.type, COUNT(
@@ -6091,14 +6129,8 @@ class Server {
                     roomStatus: row.room_status
                 }));
 
-                let totalFreeBeds = 0;
-                let totalOccupiedBeds = 0;
-                nameroomSetCount.forEach(room => {
-                    if (!/^(\d+\/\d+\/E\d*|\d+\/D\d*)$/.test(room.nameroom)) {
-                        totalFreeBeds += parseInt(room.countFreeBeds, 10);
-                        totalOccupiedBeds += (parseInt(room.countAllBeds, 10) - parseInt(room.countFreeBeds, 10));
-                    }
-                });
+                const totalFreeBeds = parseInt(totalsResult.rows[0]?.totalfreebeds || 0, 10);
+                const totalOccupiedBeds = parseInt(totalsResult.rows[0]?.totaloccupiedbeds || 0, 10);
 
                 let type = '';
                 if (numBuild) {
