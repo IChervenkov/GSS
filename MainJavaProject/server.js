@@ -6391,7 +6391,7 @@ class Server {
                 }
 
                 const check_exist_soldier = await client.query(`SELECT * FROM soldier WHERE id = $1;`, [soldierId]);
-                if (check_exist_soldier.rows.length === 0) {
+                if (soldierId !== '' && check_exist_soldier.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.status(400).json({ message: 'This soldier is not exist. It has probably been modified.' });
                 }
@@ -6502,6 +6502,11 @@ class Server {
                         [keyCodeId]
                     );
 
+                    if(res_query.rows.length === 0 || res_query.rows[0].soldierid === null) {
+                        await client.query('ROLLBACK');
+                        return res.status(400).json({ message: 'This key is not assigned to any soldier.' });
+                    }
+
                     const [check_laundry_bag, check_bike, check_additional_item] = await Promise.all([
                         client.query(`SELECT l.status FROM laundrybags l
                                         LEFT JOIN soldier s ON s.laundry_bag_id = l.id
@@ -6543,6 +6548,17 @@ class Server {
                         [req.session.username, `Release soldier with number ${res_query.rows[0].soldierid}`]);
 
                 } else {
+
+                    const res_query = await client.query(
+                        "SELECT soldierid FROM key WHERE id = $1;",
+                        [keyCodeId]
+                    );
+
+                    if(res_query.rows.length === 0 || res_query.rows[0].soldierid === null) {
+                        await client.query('ROLLBACK');
+                        return res.status(400).json({ message: 'This key is not assigned to any soldier.' });
+                    }
+
                     await client.query(
                         "UPDATE key SET soldierid = NULL WHERE id = $1;",
                         [keyCodeId]
@@ -7101,7 +7117,7 @@ class Server {
                     }
 
                     const check_exist_move_soldier = await client.query(`SELECT * FROM soldier WHERE id = $1;`, [soldMoveId]);
-                    if (check_exist_move_soldier.rows.length === 0) {
+                    if (soldMoveId !== '' && check_exist_move_soldier.rows.length === 0) {
                         await client.query('ROLLBACK');
                         return res.status(400).json({ message: `This soldier ${soldMoveId} is not exist. It has probably been modified.` });
                     }
@@ -7191,7 +7207,7 @@ class Server {
                     return res.status(400).json({ message: `The selected key is not exist. It has probably been modified.` });
                 }
 
-                if (checkBagExist.rows.length === 0) {
+                if (soldierBag !== '' && checkBagExist.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.status(400).json({ message: `The selected bag is not exist. It has probably been modified.` });
                 }
@@ -8358,39 +8374,9 @@ class Server {
                         laundry_code,
                         nameroom,
                         roomid,
+                        asset_id,
                         building_type
-                    FROM key_info
-                    WHERE building_type = 'Accommodation' AND asset_id IS NOT NULL
-
-                    UNION
-
-                    SELECT 
-                        id,
-                        namekey,
-                        namesoldier,
-                        country,
-                        meal_card,
-                        laundry_code,
-                        nameroom,
-                        roomid,
-                        building_type
-                    FROM key_info
-                    WHERE building_type <> 'Accommodation'
-
-                    UNION
-
-                    SELECT 
-                        id,
-                        namekey,
-                        namesoldier,
-                        country,
-                        meal_card,
-                        laundry_code,
-                        nameroom,
-                        roomid,
-                        building_type
-                    FROM key_info
-                    WHERE nameroom SIMILAR TO '%/(E|D)[0-9]*';`, [req.session.camp]);
+                    FROM key_info;`, [req.session.camp]);
 
                 const result_key_data = result.rows;
                 let total_res = [];
@@ -8405,7 +8391,9 @@ class Server {
                         laundryBag: row.laundry_code ? row.laundry_code : 'Undefined',
                         roomid: row.roomid,
                         nameroom: row.nameroom,
-                        building_type: row.building_type
+                        building_type: row.building_type,
+                        isLock: !row.asset_id && row.building_type === 'Accommodation' &&
+                            !/^(\d+\/\d+\/E\d*\/\d+|\d+\/D\d*\/\d+)$/.test(row.namekey)
                     });
                 }));
 
@@ -9133,8 +9121,8 @@ class Server {
 
                 if (result_quantity.rows[0].quantity === quantity) {
                     await Promise.all([
-                        client.query(`DELETE FROM additionalitem WHERE id = $1;`, [id]),
                         client.query(`UPDATE laundrybags SET soldier_id = NULL WHERE id = (SELECT bag_id FROM additionalitem WHERE id = $1);`, [id]),
+                        client.query(`DELETE FROM additionalitem WHERE id = $1;`, [id]),
                         client.query(`INSERT INTO usermonitoring (username, location) VALUES ($1, $2);`,
                             [req.session.username, `Return additional item`])
                     ]);
@@ -11201,55 +11189,38 @@ class Server {
 
                 const [result, result_nationality, countResult, countResultNational] = await Promise.all([
                     client.query(`
-                        SELECT * 
+                        SELECT *
                         FROM (
                             SELECT 
-                                l.code,
-                                l.type,
-                                CASE
-                                    WHEN EXISTS (
-                                        SELECT 1 FROM laundryreport lr2
-                                        JOIN laundrybags l2 ON l2.id = lr2.bag_id
-                                        WHERE l2.code = l.code
+                            l.code,
+                            l.type,
+                            CASE
+
+                                WHEN lr.date_ready_to_pick_up IS NOT NULL 
+                                    AND lr.date_drop_off = lr.date_ready_to_pick_up 
+                                THEN 'Picked up'
+                            
+                                WHEN EXISTS (
+                                    SELECT 1
+                                    FROM laundryreport lr2
+                                    JOIN laundrybags l2 ON l2.id = lr2.bag_id
+                                    WHERE l2.code = l.code
                                         AND lr2.date_drop_off > lr.date_drop_off
-                                        AND (
-                                            l2.status = 'Drop off' OR 
-                                            l2.status = 'Transportation to laundry facility' OR 
-                                            l2.status = 'Laundry facility' OR
-                                            l2.status = 'Transportation to pick up' OR
-                                            l2.status = 'Ready to pick up'
-                                        )
+                                        AND (l2.status = 'Picked up' OR l2.status = 'None')
                                     ) THEN 'Picked up'
 
-                                    WHEN l.status = 'None' 
-                                        OR (lr.date_drop_off IS NOT NULL AND lr.date_ready_to_pick_up IS NOT NULL AND l.status <> 'Ready to pick up')
-                                        OR (l.status = 'None' AND lr.date_ready_to_pick_up IS NULL)
-                                    THEN 'Picked up'
+                                WHEN l.status = 'None' THEN 'Picked up'
+                                ELSE l.status
+                            END AS status,
 
-                                    ELSE l.status
-                                END AS status,
+                            s.namesoldier,
+                            s.country,
+                            TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off,
 
-                                s.namesoldier,
-                                s.country,
-                                TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off,
-                                CASE 
-                                WHEN EXISTS (
-                                        SELECT 1 FROM laundryreport lr2
-                                        JOIN laundrybags l2 ON l2.id = lr2.bag_id
-                                        WHERE l2.code = l.code
-                                        AND lr2.date_drop_off > lr.date_drop_off
-                                        AND (
-                                            l2.status = 'Drop off' OR 
-                                            l2.status = 'Transportation to laundry facility' OR 
-                                            l2.status = 'Laundry facility' OR
-                                            l2.status = 'Transportation to pick up' OR
-                                            l2.status = 'Ready to pick up'
-                                        )
-                                        AND lr.date_ready_to_pick_up IS NULL 
-                                    ) THEN 'Remove by user'
-                                    WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
-                                    ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
-                                END AS date_ready_to_pick_up
+                            CASE
+                                WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
+                                ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
+                            END AS date_ready_to_pick_up
 
                             FROM laundrybags l
                             JOIN laundryreport lr ON lr.bag_id = l.id
@@ -11258,7 +11229,8 @@ class Server {
                             ORDER BY l.code, lr.date_drop_off
                         ) sub
                         ${whereClause}
-                        LIMIT $${limitIndex} OFFSET $${offsetIndex};`, values),
+                        LIMIT $${limitIndex} OFFSET $${offsetIndex};
+                        `, values),
 
                     client.query(`
                         SELECT *
@@ -11279,52 +11251,33 @@ class Server {
                         SELECT COUNT(*) AS count
                         FROM (
                             SELECT 
-                                l.code,
-                                l.type,
-                                CASE
-                                    WHEN EXISTS (
-                                        SELECT 1 FROM laundryreport lr2
-                                        JOIN laundrybags l2 ON l2.id = lr2.bag_id
-                                        WHERE l2.code = l.code
-                                        AND lr2.date_drop_off > lr.date_drop_off
-                                        AND (
-                                            l2.status = 'Drop off' OR 
-                                            l2.status = 'Transportation to laundry facility' OR 
-                                            l2.status = 'Laundry facility' OR
-                                            l2.status = 'Transportation to pick up' OR
-                                            l2.status = 'Ready to pick up'
-                                        )
-                                    ) THEN 'Picked up'
+                            l.code,
+                            l.type,
+                            CASE
 
-                                    WHEN l.status = 'None' 
-                                        OR (lr.date_drop_off IS NOT NULL AND lr.date_ready_to_pick_up IS NOT NULL AND l.status <> 'Ready to pick up')
-                                        OR (l.status = 'None' AND lr.date_ready_to_pick_up IS NULL)
-                                    THEN 'Picked up'
+                                WHEN lr.date_ready_to_pick_up IS NOT NULL 
+                                    AND lr.date_drop_off = lr.date_ready_to_pick_up 
+                                THEN 'Picked up'
 
-                                    ELSE l.status
-                                END AS status,
-
-                                s.namesoldier,
-                                s.country,
-                                TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off,
-                                CASE 
                                 WHEN EXISTS (
-                                        SELECT 1 FROM laundryreport lr2
-                                        JOIN laundrybags l2 ON l2.id = lr2.bag_id
-                                        WHERE l2.code = l.code
+                                    SELECT 1
+                                    FROM laundryreport lr2
+                                    JOIN laundrybags l2 ON l2.id = lr2.bag_id
+                                    WHERE l2.code = l.code
                                         AND lr2.date_drop_off > lr.date_drop_off
-                                        AND (
-                                            l2.status = 'Drop off' OR 
-                                            l2.status = 'Transportation to laundry facility' OR 
-                                            l2.status = 'Laundry facility' OR
-                                            l2.status = 'Transportation to pick up' OR
-                                            l2.status = 'Ready to pick up'
-                                        )
-                                        AND lr.date_ready_to_pick_up IS NULL 
-                                    ) THEN 'Remove by user'
-                                    WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
-                                    ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
-                                END AS date_ready_to_pick_up
+                                        AND (l2.status = 'Picked up' OR l2.status = 'None')
+                                    ) THEN 'Picked up'
+                                WHEN l.status = 'None' THEN 'Picked up'
+                                ELSE l.status
+                            END AS status,
+
+                            s.namesoldier,
+                            s.country,
+                            TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off,
+                            CASE
+                                WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
+                                ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
+                            END AS date_ready_to_pick_up
 
                             FROM laundrybags l
                             JOIN laundryreport lr ON lr.bag_id = l.id
@@ -11448,55 +11401,38 @@ class Server {
                 const [result, result_national] = await Promise.all([
 
                     client.query(`
-                        SELECT * 
+                        SELECT *
                         FROM (
                             SELECT 
-                                l.code,
-                                l.type,
-                                CASE
-                                    WHEN EXISTS (
-                                        SELECT 1 FROM laundryreport lr2
-                                        JOIN laundrybags l2 ON l2.id = lr2.bag_id
-                                        WHERE l2.code = l.code
-                                        AND lr2.date_drop_off > lr.date_drop_off
-                                        AND (
-                                            l2.status = 'Drop off' OR 
-                                            l2.status = 'Transportation to laundry facility' OR 
-                                            l2.status = 'Laundry facility' OR
-                                            l2.status = 'Transportation to pick up' OR
-                                            l2.status = 'Ready to pick up'
-                                        )
-                                    ) THEN 'Picked up'
+                            l.code,
+                            l.type,
+                            CASE
 
-                                    WHEN l.status = 'None' 
-                                        OR (lr.date_drop_off IS NOT NULL AND lr.date_ready_to_pick_up IS NOT NULL AND l.status <> 'Ready to pick up')
-                                        OR (l.status = 'None' AND lr.date_ready_to_pick_up IS NULL)
-                                    THEN 'Picked up'
+                                WHEN lr.date_ready_to_pick_up IS NOT NULL 
+                                    AND lr.date_drop_off = lr.date_ready_to_pick_up 
+                                THEN 'Picked up'
 
-                                    ELSE l.status
-                                END AS status,
-
-                                s.namesoldier,
-                                s.country,
-                                TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off,
-                                CASE 
                                 WHEN EXISTS (
-                                        SELECT 1 FROM laundryreport lr2
-                                        JOIN laundrybags l2 ON l2.id = lr2.bag_id
-                                        WHERE l2.code = l.code
-                                        AND lr2.date_drop_off > lr.date_drop_off
-                                        AND (
-                                            l2.status = 'Drop off' OR 
-                                            l2.status = 'Transportation to laundry facility' OR 
-                                            l2.status = 'Laundry facility' OR
-                                            l2.status = 'Transportation to pick up' OR
-                                            l2.status = 'Ready to pick up'
-                                        )
-                                        AND lr.date_ready_to_pick_up IS NULL 
-                                    ) THEN 'Remove by user'
-                                    WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
-                                    ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
-                                END AS date_ready_to_pick_up
+                                SELECT 1
+                                FROM laundryreport lr2
+                                JOIN laundrybags l2 ON l2.id = lr2.bag_id
+                                WHERE l2.code = l.code
+                                    AND lr2.date_drop_off > lr.date_drop_off
+                                    AND (l2.status = 'Picked up' OR l2.status = 'None')
+                                ) THEN 'Picked up'
+
+                                WHEN l.status = 'None' THEN 'Picked up'
+                                ELSE l.status
+                            END AS status,
+
+                            s.namesoldier,
+                            s.country,
+                            TO_CHAR(lr.date_drop_off, 'YYYY-MM-DD HH24:MI') AS date_drop_off,
+
+                            CASE
+                                WHEN l.status = 'None' AND lr.date_ready_to_pick_up IS NULL THEN 'Remove by user'
+                                ELSE TO_CHAR(lr.date_ready_to_pick_up, 'YYYY-MM-DD HH24:MI')
+                            END AS date_ready_to_pick_up
 
                             FROM laundrybags l
                             JOIN laundryreport lr ON lr.bag_id = l.id
@@ -11523,7 +11459,6 @@ class Server {
 
                 const filteredLaundry = result.rows;
                 const filteredLaundryNational = result_national.rows;
-
 
                 await Promise.all(filteredLaundry.map(async ({ code, namesoldier, country, type, status, date_drop_off, date_ready_to_pick_up }, index) => {
                     const row = worksheet1.addRow([code, namesoldier, country, type, status, date_drop_off, date_ready_to_pick_up || 'No departure date']);

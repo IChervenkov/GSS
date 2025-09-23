@@ -453,6 +453,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 li.setAttribute('data-country', key.country);
                 li.setAttribute('data-male-card', key.maleCard);
                 li.setAttribute('data-laundry-bag', key.laundryBag);
+
+                if (key.isLock) {
+                    li.setAttribute('title', 'This key is locked');
+                    li.setAttribute('aria-disabled', 'true');
+                    li.classList.add('disabled', 'locked');
+                    const lockIcon = document.createElement('i');
+                    lockIcon.className = 'bi bi-lock ms-2';
+                    li.appendChild(lockIcon);
+                }
+
                 selectAllKeyDropdown.appendChild(li);
             });
         } else {
@@ -497,7 +507,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!response.ok) {
                         const errorData = await response.json();
                         checkForGlobalError(response, errorData);
-                        throw new Error(errorData.message || 'Unknown error');
+                        showGlobalMess('Error', errorData.message);
+                        return;
                     }
                     return response.json();
                 })
@@ -632,6 +643,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const filteredKey = allKeys.filter(key =>
             key.building_type === 'Accommodation' &&
             !/(E|D)[0-9]*/.test(key.name) &&
+            !key.isLock &&
             key.name.toLowerCase().includes(query.toLowerCase()));
 
         if (filteredKey.length > 0) {
@@ -2959,7 +2971,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!res.ok) {
                     const error = await res.json();
                     checkForGlobalError(res, error);
-                    throw new Error(error.message);
+                    showGlobalMess('Error', error.message);
+                    return;
                 }
                 const { navBuild, permissions } = await res.json();
 
@@ -3872,7 +3885,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 const error = await response.json();
                 checkForGlobalError(response, error);
-                throw new Error(error.message);
+                showGlobalMess('Error', error.message || 'Failed to download the report.');
+                return;
             }
 
             const blob = await response.blob();
@@ -5508,7 +5522,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (!respons.ok) {
                                 const error = await respons.json();
                                 checkForGlobalError(respons, error);
-                                throw new Error(error.message || 'Unknown error');
+                                showGlobalMess('Error', error.message);
+                                return;
                             }
 
                             globalAction = 'moveSoldier';
@@ -5541,7 +5556,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (!respons.ok) {
                                 const error = await respons.json();
                                 checkForGlobalError(respons, error);
-                                throw new Error(error.message || 'Unknown error');
+                                showGlobalMess('Error', error.message);
+                                return;
                             }
 
                             globalAction = 'moveSoldier';
@@ -5620,7 +5636,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!res.ok) {
                 const error = await res.json();
                 checkForGlobalError(res, error);
-                throw new Error(error.message);
+                showGlobalMess('Error', error.message);
+                return;
             }
 
             const { nameroomSetCount, totalCount, totalFreeBeds, totalOccupiedBeds, buildType } = await res.json();
@@ -6039,7 +6056,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 const error = await response.json();
                 checkForGlobalError(response, error);
-                throw new Error(error.message);
+                showGlobalMess('Error', error.message || 'Failed to download the file.');
+                return;
             }
 
             const blob = await response.blob();

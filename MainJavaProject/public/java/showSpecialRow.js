@@ -116,7 +116,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!res.ok) {
                 const error = await res.json();
                 checkForGlobalError(res, error);
-                throw new Error('Failed to fetch data');
+                showMess('Error', 'Failed to fetch data');
+                return;
             }
             const { data, total_data, totalCount } = await res.json();
 
@@ -365,7 +366,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 const error = await response.json();
                 checkForGlobalError(response, error);
-                throw new Error('Failed to generate the report.');
+                showMess('Error', 'Failed to generate the report.');
+                return;
             }
 
             // Convert the response to a Blob

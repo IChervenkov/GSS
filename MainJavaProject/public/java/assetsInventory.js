@@ -286,7 +286,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!response.ok) {
                     const errorData = await response.json();
                     checkForGlobalError(response, errorData);
-                    throw new Error(errorData.message || 'Unknown error');
+                    showMess('Error', errorData.message);
+                    return;
                 }
                 return response.json();
             })
@@ -316,7 +317,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 const errorData = await response.json();
                 checkForGlobalError(response, errorData);
-                throw new Error(errorData.message || 'Unknown error');
+                showMess('Error', errorData.message);
+                return;
             }
             return response.json();
         })
@@ -338,7 +340,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 const errorData = await response.json();
                 checkForGlobalError(response, errorData);
-                throw new Error(errorData.message || 'Unknown error');
+                showMess('Error', errorData.message);
+                return;
             }
             return response.json();
         })
@@ -929,7 +932,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!response.ok) {
                         const errorData = await response.json();
                         checkForGlobalError(response, errorData);
-                        throw new Error(errorData.message || 'Unknown error');
+                        showMess('Error', errorData.message);
+                        return;
                     }
                     return response.json();
                 })
@@ -5654,7 +5658,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 const error = await response.json();
                 checkForGlobalError(response, error);
-                throw new Error(error.message);
+                showMess('Error', error.message);
+                return;
             }
 
             const blob = await response.blob();

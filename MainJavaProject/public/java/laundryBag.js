@@ -2181,7 +2181,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cell.style.maxWidth = "200px";
 
                 cell = newRow.insertCell();
-                cell.textContent = row.date_drop_off === row.date_ready_to_pick_up ? 'Picked up' : row.status;
+                cell.textContent = row.status;
                 cell.className = "text-wrap";
                 cell.style.maxWidth = "200px";
 
@@ -2629,7 +2629,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 const error = await response.json()
                 checkForGlobalError(response, error);
-                throw new Error(error.message);
+                openMess('Error', error.message || 'Failed to download the report.');
+                return;
             }
 
             const blob = await response.blob();

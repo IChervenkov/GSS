@@ -229,7 +229,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!res.ok) {
                 const error = await res.json();
                 checkForGlobalError(res, error);
-                throw new Error('Failed to fetch data');
+                showMess('Error', error.message);
+                return;
             }
             const { data, totalBike, rentedBike, availableBike, repairBike, lateBike, longTermBike, totalCount } = await res.json();
 
@@ -2455,7 +2456,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!response.ok) {
                         const errorData = await response.json();
                         checkForGlobalError(response, errorData);
-                        throw new Error(errorData.message || 'Unknown error');
+                        showMess('Error', errorData.message);
+                        return;
                     }
                     return response.json();
                 })
@@ -2535,7 +2537,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!response.ok) {
                         const errorData = await response.json();
                         checkForGlobalError(response, errorData);
-                        throw new Error(errorData.message || 'Unknown error');
+                        showMess('Error', errorData.message);
+                        return;
                     }
                     return response.json();
                 })
@@ -2615,7 +2618,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!response.ok) {
                         const errorData = await response.json();
                         checkForGlobalError(response, errorData);
-                        throw new Error(errorData.message || 'Unknown error');
+                        showMess('Error', errorData.message);
+                        return;
                     }
                     return response.json();
                 })
@@ -3055,7 +3059,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 const error = await response.json();
                 checkForGlobalError(response, error);
-                throw new Error(error);
+                showMess('Error', error.message);
+                return;
             }
 
             const blob = await response.blob();

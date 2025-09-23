@@ -68,7 +68,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (!response.ok) {
                             const errorData = await response.json();
                             checkForGlobalError(response, errorData);
-                            throw new Error(data.message || 'Failed to download file');
+                            showMessError(data.message);
+                            return;
                         }
 
                         return response.blob();
