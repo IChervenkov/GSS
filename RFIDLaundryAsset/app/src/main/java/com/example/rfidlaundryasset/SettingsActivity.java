@@ -181,7 +181,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/apk-asset-version??isValidCode=" + isValidCode)
+                .url(baseUrl + "/apk-asset-version?isValidCode=" + isValidCode)
                 .build();
 
 
