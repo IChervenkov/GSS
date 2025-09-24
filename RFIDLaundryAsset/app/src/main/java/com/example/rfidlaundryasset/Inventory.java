@@ -902,7 +902,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                 String assetStatus = asset.getString("inventory_status");
                 String assetId = asset.getString("id");
                 String assetCode = asset.getString("code");
-                String assetName = asset.getString("name");
+                String assetName = asset.getString("name_assets");
                 String assetQuantity = asset.getString("quantity");
 
                 TableRow row = new TableRow(this);

@@ -10413,9 +10413,6 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            if (!req.body.isValidCode)
-                return res.status(400).json({ message: "Invalid code" });
-
             const { codes, destination, prev_destination, campId } = req.body;
 
             if (!Array.isArray(codes)) {
@@ -11206,7 +11203,6 @@ class Server {
                                     JOIN laundrybags l2 ON l2.id = lr2.bag_id
                                     WHERE l2.code = l.code
                                         AND lr2.date_drop_off > lr.date_drop_off
-                                        AND (l2.status = 'Picked up' OR l2.status = 'None')
                                     ) THEN 'Picked up'
 
                                 WHEN l.status = 'None' THEN 'Picked up'
@@ -11265,7 +11261,6 @@ class Server {
                                     JOIN laundrybags l2 ON l2.id = lr2.bag_id
                                     WHERE l2.code = l.code
                                         AND lr2.date_drop_off > lr.date_drop_off
-                                        AND (l2.status = 'Picked up' OR l2.status = 'None')
                                     ) THEN 'Picked up'
                                 WHEN l.status = 'None' THEN 'Picked up'
                                 ELSE l.status
@@ -11418,7 +11413,6 @@ class Server {
                                 JOIN laundrybags l2 ON l2.id = lr2.bag_id
                                 WHERE l2.code = l.code
                                     AND lr2.date_drop_off > lr.date_drop_off
-                                    AND (l2.status = 'Picked up' OR l2.status = 'None')
                                 ) THEN 'Picked up'
 
                                 WHEN l.status = 'None' THEN 'Picked up'
@@ -11856,7 +11850,7 @@ class Server {
             }
 
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.4-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.4.1-release.apk');
 
             // Check legality and existence of the APK file
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -11865,7 +11859,7 @@ class Server {
 
             // Set proper headers for an APK file
             res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
-            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryAsset-1.4-release.apk"'); // Force download with custom filename
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryAsset-1.4.1-release.apk"'); // Force download with custom filename
 
             // Use res.download() to send the file to the client
             res.download(apkFilePath, (err) => {
@@ -11878,7 +11872,7 @@ class Server {
         });
 
         this.app.get('/apk-asset-version', this.isLoggedIn.bind(this), (req, res) => {
-            res.json({ version: "1.4", apkUrl: "/download-apk-asset" });
+            res.json({ version: "1.4.1", apkUrl: "/download-apk-asset" });
         });
 
         this.app.get('/allAssets', this.isLoggedIn.bind(this), async (req, res) => {
@@ -12388,7 +12382,7 @@ class Server {
                             LEFT JOIN assetstype t ON t.id = a.type_id
                             LEFT JOIN rooms r ON r.id = a.location_room
                             LEFT JOIN key k ON k.id = a.location_key
-                            WHERE location_room = $1;`, [numRoom]),
+                            WHERE location_room = $1 AND camp_id = $2;`, [numRoom, campId]),
                         client.query(`
                             SELECT a.id, code, name_assets, t.type_name, 
                                 r.nameroom, k.id AS keyid, k.namekey, categorie, 
@@ -15030,7 +15024,7 @@ class Server {
             }
 
             const page = parseInt(req.query.page || 1, 10);
-            const limit = parseInt(req.query.limit || 7, 10);
+            const limit = parseInt(req.query.limit || 5, 10);
             const offset = (page - 1) * limit;
 
             const client = await pool.connect();

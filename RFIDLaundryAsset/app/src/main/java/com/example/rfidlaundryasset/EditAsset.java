@@ -318,7 +318,6 @@ public class EditAsset extends AppCompatActivity implements CsrfTokenProvider {
             if (isValidText(assetPurchasePrice, "asset purchase price", "^([0-9]+,[0-9]+)?$"))
                 return;
             if (isValidText(assetStatus, "asset status", "^[a-zA-Z0-9]*$")) return;
-            if (isValidText(assetExpandable, "asset expandable", "^[a-zA-Z0-9]*$")) return;
             if (isValidText(assetService, "asset service", "^[a-zA-Z\\s]*$")) return;
             if (isValidText(assetDescription, "asset description", "^[a-zA-Z0-9\\s]*$")) return;
 

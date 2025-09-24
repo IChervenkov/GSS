@@ -3038,7 +3038,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    async function fetchInventory(page = 1, limit = 7) {
+    async function fetchInventory(page = 1, limit = 5) {
 
         const mainAccordion = document.getElementById('mainAccordion');
         mainAccordion.innerHTML = '';

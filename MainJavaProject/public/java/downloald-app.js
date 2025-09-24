@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         break;
                     case 'downloadRFIDAppBtnAsset':
                         url = '/download-apk-asset';
-                        appName = 'RFIDLaundryAsset-1.4-release.apk';
+                        appName = 'RFIDLaundryAsset-1.4.1-release.apk';
                         break;
                     case 'downloadTabletAppBtn':
                         url = '/download-apk-gym';

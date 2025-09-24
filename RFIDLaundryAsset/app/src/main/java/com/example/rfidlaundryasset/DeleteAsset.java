@@ -234,7 +234,7 @@ public class DeleteAsset extends AppCompatActivity implements CsrfTokenProvider 
                     final String responseData = response.body().string();
                     JSONObject responseJson = new JSONObject(responseData);
 
-                    if (response.isSuccessful()) {
+                    if (!response.isSuccessful()) {
                         handleError(response);
                         return;
                     }
@@ -418,7 +418,7 @@ public class DeleteAsset extends AppCompatActivity implements CsrfTokenProvider 
                     String responseData = Objects.requireNonNull(response.body()).string();
                     response.body().close(); // Ensure the response is closed
 
-                    if (response.isSuccessful()) {
+                    if (!response.isSuccessful()) {
                         handleError(response);
                         return;
                     }
