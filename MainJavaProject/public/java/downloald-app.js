@@ -42,11 +42,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 switch (buttonId) {
                     case 'downloadBtn':
                         url = '/download-apk-bike';
-                        appName = 'NFCReader-1.4-release.apk';
+                        appName = 'NFCReader-1.4.1-release.apk';
                         break;
                     case 'downloadRFIDAppBtn':
                         url = '/download-apk-laundry';
-                        appName = 'RFIDLaundryReader-1.4-release.apk';
+                        appName = 'RFIDLaundryReader-1.4.1-release.apk';
                         break;
                     case 'downloadRFIDAppBtnAsset':
                         url = '/download-apk-asset';

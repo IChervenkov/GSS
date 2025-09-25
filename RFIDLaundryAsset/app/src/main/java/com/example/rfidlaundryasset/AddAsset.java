@@ -266,13 +266,13 @@ public class AddAsset extends AppCompatActivity implements CsrfTokenProvider {
             rfidReader.init();
 
         } catch (Exception e) {
-            showPopupWindow("Error initializing RFID Reader");
+            runOnUiThread(() -> showPopupWindow("Error initializing RFID Reader"));
         }
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
             if (epc.isEmpty()) {
-                showPopupWindow("No EPC content detected!");
+                runOnUiThread(() -> showPopupWindow("No EPC content detected!"));
                 return;
             }
 
@@ -309,7 +309,7 @@ public class AddAsset extends AppCompatActivity implements CsrfTokenProvider {
             if (isValidSelection(assetLocation, "asset location")) return;
             if (assetSubLocationText.isEnabled() && assetSubLocation.isEmpty()) {
                 assetSubLocationText.requestFocus();
-                showPopupWindow("Please select an asset sub-location!");
+                runOnUiThread(() -> showPopupWindow("Please select an asset sub-location!"));
                 return;
             }
             if (isValidText(assetCategory, "Asset category", assetCategoriesText, "^[a-zA-Z\\s]*$"))
@@ -321,7 +321,7 @@ public class AddAsset extends AppCompatActivity implements CsrfTokenProvider {
                 return;
             if (!assetDescription.matches("^[a-zA-Z\\s]*$")) {
                 assetDescriptionText.requestFocus();
-                showPopupWindow("Asset description is invalid!");
+                runOnUiThread(() -> showPopupWindow("Asset description is invalid!"));
                 return;
             }
             if (isValidText(assetService, "Asset service", assetServiceText, "^[a-zA-Z\\s]*$"))

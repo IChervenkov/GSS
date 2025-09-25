@@ -615,6 +615,8 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
             payload.put("code", code);
         } catch (Exception e) {
             runOnUiThread(() -> showPopupWindow("Error verifying 2FA. Please connect to support!"));
+            runOnUiThread(loadingDialog::dismiss);
+            return;
         }
 
         RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));

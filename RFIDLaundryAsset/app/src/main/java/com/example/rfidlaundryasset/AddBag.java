@@ -168,14 +168,14 @@ public class AddBag extends AppCompatActivity implements CsrfTokenProvider {
             rfidReader.init();
 
         } catch (Exception e) {
-            showPopupWindow("Error initializing RFID Reader");
+            runOnUiThread(() -> showPopupWindow("Error initializing RFID Reader"));
         }
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
             // Check for EPC content
             if (epc.isEmpty()) {
-                showPopupWindow("No EPC content detected!");
+                runOnUiThread(() -> showPopupWindow("No EPC content detected!"));
                 return;
             }
 
@@ -188,7 +188,7 @@ public class AddBag extends AppCompatActivity implements CsrfTokenProvider {
             if (isValidText(bagCode, "Bag code", bagCodeText, "^[a-zA-Z0-9]+$")) return;
             if (isValidText(bagType, "Bag type", bagTypeText, "^[a-zA-Z0-9\\s]+$")) return;
             if (bagMaxWash.isEmpty()) {
-                showPopupWindow("Please enter a maximum wash number!");
+                runOnUiThread(() -> showPopupWindow("Please enter a maximum wash number!"));
                 return;
             }
 

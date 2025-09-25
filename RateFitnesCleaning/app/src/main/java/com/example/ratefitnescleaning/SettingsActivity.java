@@ -180,7 +180,7 @@ public class SettingsActivity extends AppCompatActivity {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                showPopupWindow("There is a problem with app update. Please connect to the support.");
+                runOnUiThread(() -> showPopupWindow("There is a problem with app update. Please connect to the support."));
                 runOnUiThread(loadingDialog::dismiss);
             }
 

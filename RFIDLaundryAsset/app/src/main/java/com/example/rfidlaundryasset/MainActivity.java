@@ -24,7 +24,6 @@ import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.util.Base64;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.widget.EditText;
@@ -168,7 +167,8 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e("UpdateCheck", "Error: " + e.getMessage());
+                runOnUiThread(() -> showPopupWindow("There is a problem with the app update process. Please connect to the support."));
+                runOnUiThread(loadingDialog::dismiss);
             }
 
             @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
@@ -618,6 +618,8 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
 
                 } catch (Exception e) {
                     runOnUiThread(() -> showPopupWindow("Error verifying 2FA: " + e.getMessage()));
+                } finally {
+                    runOnUiThread(loadingDialog::dismiss);
                 }
             }
         });

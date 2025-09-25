@@ -172,13 +172,13 @@ public class DeleteAsset extends AppCompatActivity implements CsrfTokenProvider 
             rfidReader.init();
 
         } catch (Exception e) {
-            showPopupWindow("Error initializing RFID Reader");
+            runOnUiThread(() -> showPopupWindow("Error initializing RFID Reader"));
         }
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
             if (epc.isEmpty()) {
-                showPopupWindow("No EPC content detected!");
+                runOnUiThread(() -> showPopupWindow("No EPC content detected!"));
                 return;
             }
             new androidx.appcompat.app.AlertDialog.Builder(DeleteAsset.this)

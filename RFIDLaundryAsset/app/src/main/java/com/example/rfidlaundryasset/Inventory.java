@@ -183,7 +183,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
             rfidReader.init();
 
         } catch (Exception e) {
-            showPopupWindow("Error initializing RFID Reader");
+            runOnUiThread(() -> showPopupWindow("Error initializing RFID Reader"));
         }
 
         locationAutoCompleteTextView = findViewById(R.id.locationAutoCompleteTextView);

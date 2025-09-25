@@ -3105,7 +3105,7 @@ class Server {
                 client.release();
             }
 
-            const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.4-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.4.1-release.apk');
 
             // Check APK file existence and legality
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -3114,7 +3114,7 @@ class Server {
 
             // Serve the APK with proper headers
             res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-            res.setHeader('Content-Disposition', 'attachment; filename="NFCReader-1.4-release.apk"');
+            res.setHeader('Content-Disposition', 'attachment; filename="NFCReader-1.4.1-release.apk"');
             res.download(apkFilePath, (err) => {
                 if (err) {
                     console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -3125,7 +3125,7 @@ class Server {
         });
 
         this.app.get('/apk-bike-version', this.isLoggedIn.bind(this), (req, res) => {
-            res.json({ version: "1.4", apkUrl: "/download-apk-bike" });
+            res.json({ version: "1.4.1", apkUrl: "/download-apk-bike" });
         });
 
         // Section bicycles
@@ -10240,7 +10240,7 @@ class Server {
             }
 
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.4-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.4.1-release.apk');
 
             // Check legality and existence of the APK file
             if (!this.checkApkFileLegality(apkFilePath, res)) {
@@ -10249,7 +10249,7 @@ class Server {
 
             // Set proper headers for an APK file
             res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
-            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.4-release.apk"'); // Force download with custom filename
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.4.1-release.apk"'); // Force download with custom filename
 
             // Use res.download() to send the file to the client
             res.download(apkFilePath, (err) => {
@@ -10262,7 +10262,7 @@ class Server {
         });
 
         this.app.get('/apk-laundry-version', this.isLoggedIn.bind(this), (req, res) => {
-            res.json({ version: "1.4", apkUrl: "/download-apk-laundry" });
+            res.json({ version: "1.4.1", apkUrl: "/download-apk-laundry" });
         });
 
         this.app.get('/laundry', this.isLoggedIn.bind(this), async (req, res) => {
