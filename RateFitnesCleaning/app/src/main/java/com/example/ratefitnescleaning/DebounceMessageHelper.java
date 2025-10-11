@@ -1,4 +1,4 @@
-package com.example.nfcreader;
+package com.example.ratefitnescleaning;
 
 import android.app.Activity;
 import android.app.AlertDialog;

@@ -36,8 +36,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.CookieManager;
-import java.net.CookiePolicy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -51,34 +49,29 @@ import java.util.concurrent.Executors;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
+public class Inventory extends AppCompatActivity {
 
+    private Call currentCall;
     private RFIDWithUHFUART rfidReader;
-    private boolean isValidCode;
     private boolean shouldStopScanning;
     private String campId;
     private String username;
     private boolean isScaning = false;
     private boolean isSetRoom = false;
-    private final CookieManager cookieManager = new CookieManager();
-    private final OkHttpClient client = new OkHttpClient.Builder()
-            .addInterceptor(new CsrfInterceptor(this))
-            .cookieJar(new JavaNetCookieJar(cookieManager))
-            .build();
+    private OkHttpClient client;
     private final ArrayList<String> ownerList = new ArrayList<>();
     private final Map<String, String> locationIdMap = new HashMap<>();
     private final Map<String, Map<String, String>> sublocationIdMap = new HashMap<>();
     private AutoCompleteTextView locationAutoCompleteTextView;
-    private String csrfToken = null;
     private String curentLocation = null;
     private final List<JSONObject> additionalAssetsArrayList = new ArrayList<>();
+    private final DebounceMessageHelper messageHelper = new DebounceMessageHelper(this);
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     private boolean isNetworkAvailable() {
@@ -96,85 +89,16 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
     }
 
     @Override
-    public synchronized String getCsrfToken() {
-        return csrfToken;
-    }
-
-    @Override
-    public synchronized void refreshCsrfTokenSync() {
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/csrf-token")
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
-            csrfToken = jsonObject.getString("csrfToken");
-        } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
-        }
-    }
-
-    private void fetchCsrfToken(Runnable onSuccess) {
-
-        if (isNetworkAvailable())
-            return;
-
-        Dialog loadingDialog = new Dialog(Inventory.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false);
-        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
-
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/csrf-token")
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
-                runOnUiThread(loadingDialog::dismiss);
-            }
-
-            public void onResponse(@NonNull Call call, @NonNull Response response) {
-                try {
-
-                    String responseBody = Objects.requireNonNull(response.body()).string();
-                    JSONObject jsonObject = new JSONObject(responseBody);
-
-                    if (!response.isSuccessful()) {
-                        String serverMessage = jsonObject.optString("message", "Error when fetch token. Please connect to the support.");
-                        runOnUiThread(() -> showPopupWindow(serverMessage));
-                        return;
-                    }
-
-                    csrfToken = jsonObject.getString("csrfToken");
-                    if (onSuccess != null)
-                        runOnUiThread(onSuccess);
-
-                } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
-                } finally {
-                    runOnUiThread(loadingDialog::dismiss);
-                }
-            }
-        });
-    }
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_inventory);
 
-        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        client = new OkHttpClient.Builder()
+                .addInterceptor(new JwtInterceptor(this))
+                .build();
 
-        isValidCode = GlobalVariable.getVariable(this);
         campId = GlobalVariable.getCamp(this);
         username = GlobalVariable.getUsername(this);
-
-        fetchCsrfToken(null);
 
         // Initialize RFID reader
         try {
@@ -183,7 +107,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
             rfidReader.init();
 
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Error initializing RFID Reader"));
+            messageHelper.showError("Error initializing RFID Reader");
         }
 
         locationAutoCompleteTextView = findViewById(R.id.locationAutoCompleteTextView);
@@ -206,12 +130,6 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        fetchCsrfToken(null);
-    }
-
-    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == 293) {
             if (isScaning) {
@@ -219,7 +137,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
             } else if (isSetRoom) {
                 startScanningThread();
             } else {
-                runOnUiThread(() -> showPopupWindow("No room selected for inventory."));
+                messageHelper.showError("No room selected for inventory.");
             }
 
             return true;
@@ -228,11 +146,41 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
         return super.onKeyDown(keyCode, event);
     }
 
+    private void cancelAllCalls() {
+        // Cancel refresh call if active
+        Call refreshCall = GlobalVariable.getRefreshCall();
+        if (refreshCall != null && !refreshCall.isExecuted()) {
+            refreshCall.cancel();
+        }
+
+        // Cancel logout call if active
+        Call logoutCall = GlobalVariable.getLogoutCall();
+        if (logoutCall != null && !logoutCall.isExecuted()) {
+            logoutCall.cancel();
+        }
+
+        // Cancel current API call if active
+        if (currentCall != null && !currentCall.isExecuted()) {
+            currentCall.cancel();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        cancelAllCalls();
+        executorService.shutdown();
+        stopScanningThread();
+        if (rfidReader != null) {
+            rfidReader.free();
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executorService.shutdown(); // Ensures proper shutdown of background tasks
-
+        cancelAllCalls();
+        executorService.shutdown();
         stopScanningThread();
         if (rfidReader != null) {
             rfidReader.free();
@@ -253,22 +201,18 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
 
     private void startScanningThread() {
 
-        if(isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+        if (isNetworkAvailable()) {
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
-        if(csrfToken == null || csrfToken.isEmpty()) {
-            fetchCsrfToken(this::performStartScanning);
-        } else {
-            performStartScanning();
-        }
+        performStartScanning();
     }
 
     private void performStartScanning() {
 
         if (!rfidReader.startInventoryTag()) {
-            runOnUiThread(() -> showPopupWindow("Failed to start scanning. Check if device supports RFID reader"));
+            messageHelper.showError("Failed to start scanning. Check if device supports RFID reader");
             return;
         }
 
@@ -314,10 +258,9 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                 try {
                     jsonPayload.put("code", epc);
                     jsonPayload.put("location", curentLocation);
-                    jsonPayload.put("isValidCode", isValidCode);
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when parsing of send data. Please connect to the support"));
+                    messageHelper.showError("Error when parsing of send data. Please connect to the support");
                     return;
                 }
 
@@ -326,15 +269,15 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
 
                 String baseUrl = getString(R.string.base_url);
                 Request request = new Request.Builder()
-                        .url(baseUrl + "/checkAndChangeScanningAsset")
-                        .addHeader("X-CSRF-Token", csrfToken)
+                        .url(baseUrl + "/api/checkAndChangeScanningAsset")
                         .post(body)
                         .build();
 
-                client.newCall(request).enqueue(new Callback() {
+                currentCall = client.newCall(request);
+                currentCall.enqueue(new Callback() {
                     @Override
                     public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        runOnUiThread(() -> showPopupWindow("Error when check scanning data. Please connect to the support!"));
+                        messageHelper.showError("Error when check scanning data. Please connect to the support!");
                     }
 
                     @Override
@@ -355,7 +298,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                                 }
 
                                 String finalErrorMessage = errorMessage;
-                                runOnUiThread(() -> showPopupWindow(finalErrorMessage));
+                                messageHelper.showError(finalErrorMessage);
 
                                 if (shouldStopScanning) {
                                     stopScanningThread();
@@ -375,22 +318,12 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                             runOnUiThread(() -> updateAdditionalAssetTable(epc));
 
                         } catch (Exception e) {
-                            runOnUiThread(() -> showPopupWindow("Error when check scanning data. Please connect to the support!"));
+                            messageHelper.showError("Error when check scanning data. Please connect to the support!");
                         }
                     }
                 });
             }
         });
-    }
-
-    private void showPopupWindow(String message) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Error");
-        builder.setMessage(message);
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            // Reset the flag once the error dialog is clos
-        });
-        builder.show();
     }
 
     private void fetchRoom() {
@@ -406,13 +339,14 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
         loadingDialog.show();
 
         String baseUrl = getString(R.string.base_url);
-        String url = baseUrl + "/getInventoryLocation?isValidCode=" + isValidCode + "&campId=" + campId;
+        String url = baseUrl + "/api/getInventoryLocation?campId=" + campId;
         Request request = new Request.Builder().url(url).build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error when fetch location. Please connect to the support!"));
+                messageHelper.showError("Error when fetch location. Please connect to the support!");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -425,7 +359,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                     if (!response.isSuccessful()) {
                         JSONObject errorJson = new JSONObject(responseData);
                         String errorMessage = errorJson.optString("message", "Internal server error");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -437,7 +371,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                     runOnUiThread(() -> populateSublocations(sublocationsArray));
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when fetch location. Please connect to the support!"));
+                    messageHelper.showError("Error when fetch location. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -464,7 +398,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                     android.R.layout.simple_dropdown_item_1line, ownerList);
             locationAutoCompleteTextView.setAdapter(adapter);
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Invalid asset location data from server!"));
+            messageHelper.showError("Invalid asset location data from server!");
         }
     }
 
@@ -484,7 +418,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                 map.put(keyName, keyId);
             }
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Invalid asset sub-location data from server!"));
+            messageHelper.showError("Invalid asset sub-location data from server!");
         }
     }
 
@@ -501,16 +435,15 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
         loadingDialog.show();
 
         String baseUrl = getString(R.string.base_url);
-        String url = baseUrl + "/assets/getSortedAssets?numRoom=" + locationId
-                + "&campId=" + campId
-                + "&isValidCode=" + isValidCode;
+        String url = baseUrl + "/api/assets/getSortedAssets?numRoom=" + locationId + "&campId=" + campId;
 
         Request request = new Request.Builder().url(url).build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error when load asset data. Please connect to the support!"));
+                messageHelper.showError("Error when load asset data. Please connect to the support!");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -523,7 +456,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                     if (!response.isSuccessful()) {
                         JSONObject errorJson = new JSONObject(responseData);
                         String errorMessage = errorJson.optString("message", "Internal server error");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -531,7 +464,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                     runOnUiThread(() -> updateTableLayout(assetsArray));
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when load asset data. Please connect to the support!"));
+                    messageHelper.showError("Error when load asset data. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -552,14 +485,15 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
         loadingDialog.show();
 
         String baseUrl = getString(R.string.base_url);
-        String url = baseUrl + "/getDataForAdditionalAsset?assetId=" + epc
-                + "&isValidCode=" + isValidCode;
+        String url = baseUrl + "/api/getDataForAdditionalAsset?assetId=" + epc;
+
         Request request = new Request.Builder().url(url).build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error when update additional asset data. Please connect to the support!"));
+                messageHelper.showError("Error when update additional asset data. Please connect to the support!");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -572,7 +506,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                     if (!response.isSuccessful()) {
                         JSONObject errorJson = new JSONObject(responseData);
                         String errorMessage = errorJson.optString("message", "Internal server error");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -585,7 +519,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                     runOnUiThread(() -> updateAdditionalTableLayout(additionalAssetsArrayList));
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when update additional asset data. Please connect to the support!"));
+                    messageHelper.showError("Error when update additional asset data. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -661,7 +595,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                 changeButton.setOnClickListener(v -> {
 
                     if (isScaning) {
-                        runOnUiThread(() -> showPopupWindow("Please stop scanning before relocating asset."));
+                        messageHelper.showError("Please stop scanning before relocating asset.");
                         return;
                     }
 
@@ -787,22 +721,18 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
             }
 
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("There is a problem with update additional table data. Please connect to the support!"));
+            messageHelper.showError("There is a problem with update additional table data. Please connect to the support!");
         }
     }
 
     private void updateAdditionalAssetLocation(String assetId, String locationId, String sublocationId) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
-        if (csrfToken == null || csrfToken.isEmpty()) {
-            fetchCsrfToken(() -> performUpdateAdditionalAssetLocation(assetId, locationId, sublocationId));
-        } else {
-                performUpdateAdditionalAssetLocation(assetId, locationId, sublocationId);
-        }
+        performUpdateAdditionalAssetLocation(assetId, locationId, sublocationId);
     }
 
     private void performUpdateAdditionalAssetLocation(String assetId, String locationId, String sublocationId) {
@@ -815,25 +745,25 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
             payload.put("locationId", locationId);
             payload.put("sublocationId", sublocationId);
             payload.put("username", username);
-            payload.put("isValidCode", isValidCode);
             payload.put("campId", campId);
+
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("There is a problem with parsing data in additional asset location table data. Please connect to the support!"));
+            messageHelper.showError("There is a problem with parsing data in additional asset location table data. Please connect to the support!");
             return;
         }
 
         RequestBody body = RequestBody.create(payload.toString(), JSON);
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/updateAssetLocation")
-                .addHeader("X-CSRF-Token", csrfToken)
+                .url(baseUrl + "/api/updateAssetLocation")
                 .post(body)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("There is a problem with fetch data in additional asset location table data. Please connect to the support!"));
+                messageHelper.showError("There is a problem with fetch data in additional asset location table data. Please connect to the support!");
             }
 
             @Override
@@ -845,7 +775,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
 
                     if (!response.isSuccessful()) {
                         String errorMessage = responseBody.optString("message", "Internal server error");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -867,7 +797,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                     runOnUiThread(() -> updateAdditionalTableLayout(new ArrayList<>(additionalAssetsArrayList)));
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("There is a problem with fetch data in additional asset location table data. Please connect to the support!"));
+                    messageHelper.showError("There is a problem with fetch data in additional asset location table data. Please connect to the support!");
                 }
             }
         });
@@ -958,7 +888,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                 changeButton.setOnClickListener(v -> {
 
                     if (isScaning) {
-                        runOnUiThread(() -> showPopupWindow("Please stop scanning before editing quantity"));
+                        messageHelper.showError("Please stop scanning before editing quantity");
                         return;
                     }
 
@@ -1017,22 +947,18 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                 tableLayout.addView(row);
             }
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("There is a problem with update table data. Please connect to the support!"));
+            messageHelper.showError("There is a problem with update table data. Please connect to the support!");
         }
     }
 
     private void EditQuantity(String newQuantity, String assetId) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
-        if (csrfToken == null || csrfToken.isEmpty()) {
-            fetchCsrfToken(() -> performEditQuantity(newQuantity, assetId));
-        } else {
-            performEditQuantity(newQuantity, assetId);
-        }
+        performEditQuantity(newQuantity, assetId);
     }
 
     private void performEditQuantity(String newQuantity, String assetId) {
@@ -1044,25 +970,25 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
             payload.put("id", assetId);
             payload.put("newQuantity", newQuantity);
             payload.put("username", username);
-            payload.put("isValidCode", isValidCode);
             payload.put("campId", campId);
+
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Error when parsing of send data. Please connect to the support"));
+            messageHelper.showError("Error when parsing of send data. Please connect to the support");
             return;
         }
 
         RequestBody body = RequestBody.create(payload.toString(), JSON);
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/updateAssetQuantity")
-                .addHeader("X-CSRF-Token", csrfToken)
+                .url(baseUrl + "/api/updateAssetQuantity")
                 .post(body)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error when edit quantity asset. Please connect to the support!"));
+                messageHelper.showError("Error when edit quantity asset. Please connect to the support!");
             }
 
             @Override
@@ -1074,7 +1000,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
 
                     if (!response.isSuccessful()) {
                         String errorMessage = responseBody.optString("message", "Internal server error");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -1083,7 +1009,7 @@ public class Inventory extends AppCompatActivity implements CsrfTokenProvider {
                     runOnUiThread(() -> loadAssetData(curentLocation));
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when edit quantity asset. Please connect to the support!"));
+                    messageHelper.showError("Error when edit quantity asset. Please connect to the support!");
                 }
             }
         });

@@ -21,7 +21,7 @@
     <input type="hidden" id="curent-dest" value="<%= numBuild %>">
     <input type="hidden" name="isFirstTime" value="false">
     <input type="hidden" id="totalCount" value="<%= totalCount %>">
-    <input type="hidden" id="numBuild" value="">
+    <input type="hidden" id="numBuild" value="<%= numBuild %>">
 
     <!-- Horizontal Navigation Bar -->
     <div class="horizontal-nav">
@@ -162,8 +162,7 @@
                     <label class="virtual-warehouse-label" id="totalOccupiedBeds">Occupied Beds: <%= totalOccupiedBeds
                             %></label>
 
-                    <div <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of soldier'))) { %>
-                        style="cursor: not-allowed" <% } %>>
+                    <div <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of soldier'))) { %> style="cursor: not-allowed" <% } %>>
                             <div class="btn-container w-100 w-md-auto">
                                 <button type="button" id="btnListSoldier"
                                     class="btn-add-soldier <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of soldier'))) { %> disabled-button <% } %>">
@@ -175,8 +174,7 @@
                                 </div>
                             </div>
                     </div>
-                    <div <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Accommodation soldiers'))) { %>
-                        style="cursor: not-allowed" <% } %>>
+                    <div <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Accommodation soldiers'))) { %> style="cursor: not-allowed" <% } %>>
                             <div class="btn-container w-100 w-md-auto">
                                 <button type="button" id="btnAccommSoldier"
                                     class="btn-add-soldier <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Accommodation soldiers'))) { %> disabled-button <% } %>">
@@ -188,8 +186,7 @@
                                 </div>
                             </div>
                     </div>
-                    <div <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Release building'))) { %>
-                        style="cursor: not-allowed" <% } %>>
+                    <div <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Release building'))) { %> style="cursor: not-allowed" <% } %>>
                             <div class="btn-container w-100 w-md-auto">
                                 <button type="button" id="btnFreeAllRoom"
                                     class="btn-free-soldier <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Release building'))) { %> disabled-button <% } %>">
@@ -272,7 +269,6 @@
 
     <input type="hidden" id="typeBuild" value="<%= type %>">
     <input type="hidden" id="previewTypeBuild" value="<%= type %>">
-    <input type="hidden" id="numBuild" value="<%= numBuild %>">
 
     <!-- The Modal for Reports View -->
     <div id="keyModal" class="modal">
@@ -280,8 +276,7 @@
             <span class="close-btn">&times;</span>
 
             <h2>List of Keys
-                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add key'))) { %>
-                    style="cursor: not-allowed" <% } %>>
+                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add key'))) { %> style="cursor: not-allowed" <% } %>>
                         <button type="button"
                             class="btn btn-outline-success btn-sm rounded-circle fw-bold <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add key'))) { %> disabled-button <% } %>"
                             id="addKey"><i class="bi bi-plus"></i></button>
@@ -290,8 +285,7 @@
                             <span class="tooltiptext">Add key</span>
                         </div>
                 </div>
-                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Reload keys'))) { %>
-                    style="cursor: not-allowed" <% } %>>
+                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Reload keys'))) { %> style="cursor: not-allowed" <% } %>>
                         <button type="button"
                             class="btn btn-outline-primary btn-sm rounded-circle fw-bold <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Reload keys'))) { %> disabled-button <% } %>"
                             id="removeKey"><i class="bi bi-arrow-repeat"></i></button>
@@ -300,8 +294,7 @@
                             <span class="tooltiptext">Reload keys</span>
                         </div>
                 </div>
-                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Remove keys'))) { %>
-                    style="cursor: not-allowed" <% } %>>
+                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Remove keys'))) { %> style="cursor: not-allowed" <% } %>>
                         <button type="button"
                             class="btn btn-outline-danger btn-sm rounded-circle fw-bold <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Remove keys'))) { %> disabled-button <% } %>"
                             id="deleteKey"><i class="bi bi-dash"></i></button>
@@ -310,8 +303,7 @@
                             <span class="tooltiptext">Remove keys</span>
                         </div>
                 </div>
-                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Release rooms'))) { %>
-                    style="cursor: not-allowed" <% } %>>
+                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Release rooms'))) { %> style="cursor: not-allowed" <% } %>>
                         <button type="button"
                             class="btn btn-outline-warning btn-sm rounded-circle fw-bold <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Release rooms'))) { %> disabled-button <% } %>"
                             id="releaseRoom"><i class="bi bi-door-open"></i></button>
@@ -347,7 +339,7 @@
         </div>
     </div>
 
-    <form id="form1" action="/saveKey" method="POST">
+    <form id="form1" action="/web/saveKey" method="POST">
 
         <!-- Modal Structure -->
 
@@ -400,8 +392,7 @@
 
                 <input type="hidden" id="isAccommodation" value="false">
 
-                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Save key'))) { %>
-                    style="cursor: not-allowed" <% } %>>
+                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Save key'))) { %> style="cursor: not-allowed" <% } %>>
                         <button type="submit"
                             class="modal-button <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Save key'))) { %> disabled-button <% } %>"
                             id="save-button">
@@ -412,8 +403,7 @@
                             <span class="tooltiptext">Save soldier to the room</span>
                         </div>
                 </div>
-                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Move soldier'))) { %>
-                    style="cursor: not-allowed" <% } %>>
+                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Move soldier'))) { %> style="cursor: not-allowed" <% } %>>
                         <button type="button"
                             class="modal-button <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Move soldier'))) { %> disabled-button <% } %>"
                             id="move-button">
@@ -424,8 +414,7 @@
                             <span class="tooltiptext">Move soldier to another room</span>
                         </div>
                 </div>
-                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add additional item'))) { %>
-                    style="cursor: not-allowed" <% } %>>
+                <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add additional item'))) { %> style="cursor: not-allowed" <% } %>>
                         <button type="button"
                             class="modal-button <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add additional item'))) { %> disabled-button <% } %>"
                             id="addtional-item-button">
@@ -506,7 +495,7 @@
 
     <!-- The Modal for Reports View -->
     <div id="reportViewModal" class="modal">
-        <form class="modal-content-view" action="/accommodation/report" method="POST" id="form2">
+        <form class="modal-content-view" action="/web/accommodation/report" method="POST" id="form2">
             <span class="close-btn">&times;</span>
             <h2>Reports View</h2>
 
@@ -587,7 +576,7 @@
 
     <!-- The Modal for Move -->
     <div id="moveModal" class="modal">
-        <form class="modal-content" action="/accommodation/moveSoldier" method="POST" id="form3">
+        <form class="modal-content" action="/web/accommodation/moveSoldier" method="POST" id="form3">
             <span class="close-btn">&times;</span>
             <h2>Move soldier</h2>
 
@@ -791,7 +780,7 @@
 
     <!-- The Modal for Add Soldier -->
     <div id="editSoldierModal" class="modal">
-        <form class="modal-content" action="/accommodation/editSoldier" method="PUT" id="form11">
+        <form class="modal-content" action="/web/accommodation/editSoldier" method="PUT" id="form11">
             <span class="close-btn">&times;</span>
 
             <h2>Edit soldier</h2>
@@ -920,7 +909,7 @@
 
     <!-- The Modal for Add Soldier -->
     <div id="addSoldierModal" class="modal">
-        <form class="modal-content" action="/accommodation/addSoldier" method="POST" id="form4">
+        <form class="modal-content" action="/web/accommodation/addSoldier" method="POST" id="form4">
             <span class="close-btn">&times;</span>
 
             <h2>Add soldier</h2>
@@ -1034,7 +1023,7 @@
         <div class="modal-content">
             <span class="close-btn">&times;</span>
 
-            <h2>Add multiple soldiers <a href="/accommodation/uploadSoldier/download"><i class="bi bi-download"></i></a>
+            <h2>Add multiple soldiers <a href="/web/accommodation/uploadSoldier/download"><i class="bi bi-download"></i></a>
             </h2>
 
             <div class="mb-3">
@@ -1059,7 +1048,7 @@
         <div class="modal-content">
             <span class="close-btn">&times;</span>
 
-            <h2>Accommodation multiple soldiers <a href="/accommodation/multiSoldier/download"><i
+            <h2>Accommodation multiple soldiers <a href="/web/accommodation/multiSoldier/download"><i
                         class="bi bi-download"></i></a></h2>
 
             <div class="mb-3">
@@ -1081,7 +1070,7 @@
 
     <!-- Modal Structure -->
     <div id="deleteModal" class="modal">
-        <form class="modal-content" action="/accommodation/deleteSoldier" method="POST" id="form5">
+        <form class="modal-content" action="/web/accommodation/deleteSoldier" method="POST" id="form5">
             <span class="close-btn">&times;</span>
 
             <h2>⚠ Release building ⚠</h2>
@@ -1122,7 +1111,7 @@
 
     <!-- Modal Structure -->
     <div id="destinationModal" class="modal">
-        <form class="modal-content" action="/accommodation/addDestination" method="POST" id="form6">
+        <form class="modal-content" action="/web/accommodation/addDestination" method="POST" id="form6">
             <span class="close-btn">&times;</span>
 
             <h2>Add destination</h2>
@@ -1166,7 +1155,7 @@
 
     <!-- Modal Structure -->
     <div id="roomAddModal" class="modal">
-        <form class="modal-content" action="/accommodation/addRoomToDestination" method="POST" id="form7">
+        <form class="modal-content" action="/web/accommodation/addRoomToDestination" method="POST" id="form7">
             <span class="close-btn">&times;</span>
 
             <h2>Add Room</h2>
@@ -1210,7 +1199,7 @@
         <div class="modal-content">
             <span class="close-btn">&times;</span>
 
-            <h2>Add multiple rooms <a id="template-download" href="/accommodation/uploadRooms/download"><i
+            <h2>Add multiple rooms <a id="template-download" href="/web/accommodation/uploadRooms/download"><i
                         class="bi bi-download"></i></a>
             </h2>
 
@@ -1233,7 +1222,7 @@
 
     <!-- Modal Structure -->
     <div id="roomRemoveModal" class="modal">
-        <form class="modal-content" action="/accommodation/removeRoomToDestination" method="DELETE" id="form8">
+        <form class="modal-content" action="/web/accommodation/removeRoomToDestination" method="DELETE" id="form8">
             <span class="close-btn">&times;</span>
 
             <h2>Remove Room</h2>
@@ -1264,7 +1253,7 @@
 
     <!-- Modal Structure -->
     <div id="keyAddModal" class="modal">
-        <form class="modal-content" action="/accommodation/addKeyToRoom" method="POST" id="form9">
+        <form class="modal-content" action="/web/accommodation/addKeyToRoom" method="POST" id="form9">
             <span class="close-btn">&times;</span>
 
             <h2>Add Key</h2>
@@ -1305,7 +1294,7 @@
         <div class="modal-content">
             <span class="close-btn">&times;</span>
 
-            <h2>Add multiple keys <a id="template-download" href="/accommodation/uploadKeys/download"><i
+            <h2>Add multiple keys <a id="template-download" href="/web/accommodation/uploadKeys/download"><i
                         class="bi bi-download"></i></a>
             </h2>
 
@@ -1328,7 +1317,7 @@
 
     <!-- Modal Structure -->
     <div id="keyRemoveModal" class="modal">
-        <form class="modal-content" action="/accommodation/replaceKeyToRoom" method="POST" id="form10">
+        <form class="modal-content" action="/web/accommodation/replaceKeyToRoom" method="POST" id="form10">
             <span class="close-btn">&times;</span>
 
             <h2>Replace Key</h2>
@@ -1378,7 +1367,7 @@
                 <button type="button" id="toggleFormButton" class="modal-button"><i
                         class="bi bi-plus-circle me-1"></i>Add Item</button>
 
-                <form class="form-section" method="POST" action="/accommodation/addAdditionalItems" id="form12">
+                <form class="form-section" method="POST" action="/web/accommodation/addAdditionalItems" id="form12">
                     <div class="mb-3 search-container">
                         <label class="form-label" for="additionalItemSoldierCode">Soldier code <span
                                 class="text-danger">*</span></label>
@@ -1454,7 +1443,7 @@
         <div class="modal-content">
             <span class="close-btn">&times;</span>
 
-            <h2>Release multiple rooms <a href="/accommodation/multiReleaseRooms/download"><i
+            <h2>Release multiple rooms <a href="/web/accommodation/multiReleaseRooms/download"><i
                         class="bi bi-download"></i></a></h2>
 
             <div class="mb-3">

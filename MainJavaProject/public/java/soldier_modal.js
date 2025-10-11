@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const checkForGlobalError = (response, responseBody) => {
         if (response.headers.get('X-Global-Error') === 'true')
-            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+            window.location.href = `/web/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
     };
 
     const formatDate = (date) => {
@@ -257,11 +257,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const response = await fetch(`/specialRooms?numBuild=${numBuild}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const response = await fetch(`/web/specialRooms?numBuild=${numBuild}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -332,11 +329,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const response = await fetch(`/specialKeys?numRoom=${numRoom}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const response = await fetch(`/web/specialKeys?numRoom=${numRoom}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -407,11 +401,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const response = await fetch(`/keys`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const response = await fetch(`/web/keys`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -496,11 +487,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             startLoading();
 
-            const response = await fetch(`/getKeyBuildigType?keyId=${keycode}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const response = await fetch(`/web/getKeyBuildigType?keyId=${keycode}`, {
+                method: 'GET'
             })
                 .then(async response => {
 
@@ -537,11 +525,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const response = await fetch(`/clients`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const response = await fetch(`/web/clients`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -710,11 +695,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const responseBag = await fetch(`/freeBags`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const responseBag = await fetch(`/web/freeBags`, {
+                method: 'GET'
             });
 
             if (!responseBag.ok) {
@@ -741,11 +723,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const responseBag = await fetch(`/bags`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const responseBag = await fetch(`/web/bags`, {
+                method: 'GET'
             });
 
             if (!responseBag.ok) {
@@ -900,11 +879,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const responseBuild = await fetch(`/builds`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const responseBuild = await fetch(`/web/builds`, {
+                method: 'GET'
             });
 
             if (!responseBuild.ok) {
@@ -972,11 +948,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const response = await fetch(`/rooms`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const response = await fetch(`/web/rooms`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -1047,11 +1020,8 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedSoldierMoveId.value = selectedSoldier.getAttribute('data-id');
             soldierSearchMoveDropdown.style.display = 'none';
 
-            const responseSoldier = await fetch(`/move/getSoldier?keyId=${selectedSoldierMoveId.value}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const responseSoldier = await fetch(`/web/move/getSoldier?keyId=${selectedSoldierMoveId.value}`, {
+                method: 'GET'
             })
                 .finally(() => {
                     stopLoading();
@@ -1209,7 +1179,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -1226,12 +1195,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/getRoomKeys?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/getRoomKeys?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -1670,7 +1635,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -1686,12 +1650,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/accommodation/getAllAdditionalItem?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/accommodation/getAllAdditionalItem?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -1769,7 +1729,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 quantity: quantityInput.value
                             };
 
-                            const response = await fetch('/accommodation/returnAddtionalItem', {
+                            const response = await fetch('/web/accommodation/returnAddtionalItem', {
                                 method: 'POST',
                                 credentials: 'include',
                                 headers: {
@@ -2038,7 +1998,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -2054,12 +2013,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/clients?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/clients?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -2371,7 +2326,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -2387,12 +2341,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/getUpcomingAction?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/getUpcomingAction?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -2941,6 +2891,8 @@ document.addEventListener('DOMContentLoaded', function () {
         function clearInput(clearModalInput) {
             const inputs = clearModalInput.querySelectorAll('input, textarea, select');
             inputs.forEach(el => {
+                if (el.type === 'hidden') return;
+                
                 if (el.type === 'checkbox' || el.type === 'radio') {
                     el.checked = false;
                 } else {
@@ -2961,11 +2913,8 @@ document.addEventListener('DOMContentLoaded', function () {
             startLoading();
 
             try {
-                const res = await fetch(`/accommodation?isFirstTime=${isFirstTime.value}`, {
-                    method: 'GET',
-                    headers: {
-                        'X-Is-Fetch': 'true'
-                    }
+                const res = await fetch(`/web/accommodation?isFirstTime=${isFirstTime.value}`, {
+                    method: 'GET'
                 });
 
                 if (!res.ok) {
@@ -3069,7 +3018,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalGlobalMessContent.classList.remove('slide-in');
 
         // Delay hiding the modal to allow the animation to finish
-        setTimeout(function () {
+        setTimeout(async function () {
             modalGlobalMess.classList.remove('show');
             modalGlobalMessContent.classList.remove('show');
 
@@ -3093,65 +3042,65 @@ document.addEventListener('DOMContentLoaded', function () {
                     case 'addAdditionalItems':
                     case 'returnAddtionalItem':
                         clearInput(additionalItemModalContent);
-                        fetchAdditionalItem();
+                        await fetchAdditionalItem();
                         break;
 
                     case 'removeSoldier':
                         allCheckedRow = [];
                         clearInput(modalListSoldierContent);
-                        fetchSoldierList();
+                        await fetchSoldierList();
                         break;
 
                     case 'addSoldier':
                         clearInput(modalAddSoldierContent);
                         clearInput(modalListSoldierContent);
-                        fetchSoldierList();
+                        await fetchSoldierList();
                         break;
 
                     case 'releaseAllSoldier':
                         closeDeleteModal();
                         clearInput(fullContent);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'saveKey':
                         closeModal();
                         clearInput(modalKeyContent);
                         clearInput(fullContent);
-                        fetchListKeys(globalCleanedRoomNumber);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchListKeys(globalCleanedRoomNumber);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'addDestination':
                         clearInput(modalAddDestContent);
                         clearInput(fullContent);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'addRoomToDestination':
                         clearInput(modalRoomAddModalContent);
                         clearInput(fullContent);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'removeRoomToDestination':
                         clearInput(modalRoomRemoveModalContent);
                         clearInput(fullContent);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'addKeyToRoom':
                         clearInput(modalKeyContent);
                         clearInput(fullContent);
                         clearInput(modalKeyAddModalContent);
-                        fetchListKeys(globalCleanedRoomNumber);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchListKeys(globalCleanedRoomNumber);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'replaceKeyToRoom':
@@ -3159,86 +3108,86 @@ document.addEventListener('DOMContentLoaded', function () {
                         clearInput(modalKeyContent);
                         clearInput(fullContent);
                         clearInput(modalKeyRemoveModalContent);
-                        fetchListKeys(globalCleanedRoomNumber);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchListKeys(globalCleanedRoomNumber);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'editSoldier':
                         allCheckedRow = [];
                         closeEditSoldierModal();
                         clearInput(modalListSoldierContent);
-                        fetchSoldierList();
+                        await fetchSoldierList();
                         break;
 
                     case 'moveSoldier':
                         closeMoveModal();
                         clearInput(modalKeyContent);
                         clearInput(fullContent);
-                        fetchListKeys(globalCleanedRoomNumber);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchListKeys(globalCleanedRoomNumber);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'removeDestination':
                         clearInput(fullContent);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'uploadSoldier':
                         clearMultiInput('progress', 'fileInput');
                         clearInput(modalListSoldierContent);
-                        fetchSoldierList();
+                        await fetchSoldierList();
                         break;
 
                     case 'uploadRooms':
                         clearMultiInput('progress-multi-room', 'fileInputRoom');
                         clearInput(fullContent);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'uploadKeys':
                         clearInput(modalKeyContent);
                         clearInput(fullContent);
                         clearMultiInput('progress-multi-key', 'fileInputKey');
-                        fetchListKeys(globalCleanedRoomNumber);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchListKeys(globalCleanedRoomNumber);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'uploadReleaseRooms':
                         clearInput(modalKeyContent);
                         clearInput(fullContent);
                         clearMultiInput('progress-multi-release-rooms', 'fileInputReleaseRooms');
-                        fetchListKeys(globalCleanedRoomNumber);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchListKeys(globalCleanedRoomNumber);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'uploadMultiSoldier':
                         clearInput(fullContent);
                         clearMultiInput('progress-multi-soldier', 'fileInputSoldier');
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
                         break;
 
                     case 'deleteKey':
                         allCheckedRow = [];
                         clearInput(modalKeyContent);
                         clearInput(fullContent);
-                        fetchListKeys(globalCleanedRoomNumber);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
-                        updateLeftNavigation();
+                        await fetchListKeys(globalCleanedRoomNumber);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await updateLeftNavigation();
 
                 }
 
-                fetchItem();
-                fetchBag();
-                fetchFreeBag();
-                fetchAllKey();
-                fetchBuilding();
+                await fetchItem();
+                await fetchBag();
+                await fetchFreeBag();
+                await fetchAllKey();
+                await fetchBuilding();
             }
 
         }, 400); // Match the duration of the animation (0.4s)
@@ -3356,6 +3305,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 mainHeader.textContent = button.textContent;
 
             selectedBuilding = id;
+            document.getElementById('curent-dest').value = id;
             fetchTableData(1, mainSortedPar, selectedBuilding);
         }
     });
@@ -3510,7 +3460,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -3534,12 +3483,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValueDate', filter.value);
             });
 
-            const response = await fetch(`/accommodation/viewReport?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/accommodation/viewReport?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -3789,7 +3734,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 isRemove = true;
 
-                const response = await fetch('/accommodation/removeSoldier', {
+                const response = await fetch('/web/accommodation/removeSoldier', {
                     method: 'DELETE',
                     credentials: 'include',
                     headers: {
@@ -3944,7 +3889,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = "/accommodation/uploadSoldier";
+        const url = "/web/accommodation/uploadSoldier";
         const progressBar = document.getElementById("progress");
 
         const updateProgressBar = (percentage) => {
@@ -4013,7 +3958,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = "/accommodation/uploadRooms";
+        const url = "/web/accommodation/uploadRooms";
         const progressBar = document.getElementById("progress-multi-room");
 
         const updateProgressBar = (percentage) => {
@@ -4082,7 +4027,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = "/accommodation/uploadKeys";
+        const url = "/web/accommodation/uploadKeys";
         const progressBar = document.getElementById("progress-multi-key");
 
         const updateProgressBar = (percentage) => {
@@ -4151,7 +4096,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = "/accommodation/uploadReleaseRooms";
+        const url = "/web/accommodation/uploadReleaseRooms";
         const progressBar = document.getElementById("progress-multi-release-rooms");
 
         const updateProgressBar = (percentage) => {
@@ -4220,7 +4165,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = "/accommodation/uploadMultiSoldier";
+        const url = "/web/accommodation/uploadMultiSoldier";
         const progressBar = document.getElementById("progress-multi-soldier");
 
         const updateProgressBar = (percentage) => {
@@ -4647,7 +4592,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (isSubmit && !hasError) {
                     globalAction = 'saveKey';
-                    showGlobalMess('Info', 'Soldier accommodation successfully');
+                    showGlobalMess('Info', 'Key status successfully changed');
                 } else if (isSubmit) {
                     showGlobalMess('Error', responseData.message || 'An error occurred while accommodation the soldier');
                 }
@@ -5509,7 +5454,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     setTimeout(async () => {
                         moveList.push({ keyId, soldId, keyMoveId, soldMoveId });
                         if (moveList.length > 0) {
-                            const respons = await fetch('/accommodation/moveSoldier', {
+                            const respons = await fetch('/web/accommodation/moveSoldier', {
                                 method: 'POST',
                                 credentials: 'include',
                                 headers: {
@@ -5543,7 +5488,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     setTimeout(async () => {
                         moveList.push({ keyId, soldId, keyMoveId, soldMoveId: '' });
                         if (moveList.length > 0) {
-                            const respons = await fetch('/accommodation/moveSoldier', {
+                            const respons = await fetch('/web/accommodation/moveSoldier', {
                                 method: 'POST',
                                 credentials: 'include',
                                 headers: {
@@ -5619,18 +5564,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
         const query = buildQueryParams(page, mainSortedPar, numBuild);
         try {
-            const res = await fetch(`/accommodation?${query}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const res = await fetch(`/web/accommodation?${query}`, {
+                method: 'GET'
             });
 
             if (!res.ok) {
@@ -5857,7 +5797,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 try {
                     if (document.getElementById('curent-dest').value !== numBuild) {
-                        const response = await fetch(`/accommodation/removeDestination`, {
+                        const response = await fetch(`/web/accommodation/removeDestination`, {
                             method: 'DELETE',
                             credentials: 'include',
                             headers: {
@@ -5948,7 +5888,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 isRemove = true;
 
-                const response = await fetch('/accommodation/deleteKeys', {
+                const response = await fetch('/web/accommodation/deleteKeys', {
                     method: 'DELETE',
                     credentials: 'include',
                     headers: {
@@ -6043,7 +5983,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
 
-            const response = await fetch('/accommodation/downloadUpcomingSoldier', {
+            const response = await fetch('/web/accommodation/downloadUpcomingSoldier', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

@@ -3,17 +3,49 @@ package com.example.nfcreader;
 
 import android.content.Context;
 
+import java.util.UUID;
+
+import okhttp3.Call;
+
 public class GlobalVariable {
-    private static final String KEY_VALIDATION = "validation";
+    private static final String KEY_AUTHENTICATE_TOKEN = "authenticateToken";
+    private static final String KEY_REFRESH_TOKEN = "refreshToken";
     private static final String KEY_CAMP = "camp";
     private static final String KEY_USERNAME = "username";
+    private static final String KEY_DEVICE_ID = "device_id";
+    private static Call refreshCall;
+    private static Call logoutCall;
 
-    public static void saveVariable(Context context, boolean validationData) {
-        SecurePrefs.putBoolean(context, KEY_VALIDATION, validationData);
+    public static void setRefreshCall(Call call) {
+        refreshCall = call;
     }
 
-    public static boolean getVariable(Context context) {
-        return SecurePrefs.getBoolean(context, KEY_VALIDATION, false);
+    public static Call getRefreshCall() {
+        return refreshCall;
+    }
+
+    // Store active logout call
+    public static void setLogoutCall(Call call) {
+        logoutCall = call;
+    }
+
+    public static Call getLogoutCall() {
+        return logoutCall;
+    }
+    public static void saveAuthenticateToken(Context context, String authenticateToken) {
+        SecurePrefs.putString(context, KEY_AUTHENTICATE_TOKEN, authenticateToken);
+    }
+
+    public static String getAuthenticateToken(Context context) {
+        return SecurePrefs.getString(context, KEY_AUTHENTICATE_TOKEN, "");
+    }
+
+    public static void saveRefreshToken(Context context, String refreshToke) {
+        SecurePrefs.putString(context, KEY_REFRESH_TOKEN, refreshToke);
+    }
+
+    public static String getRefreshToken(Context context) {
+        return SecurePrefs.getString(context, KEY_REFRESH_TOKEN, "");
     }
 
     public static void saveCamp(Context context, String campId) {
@@ -30,5 +62,14 @@ public class GlobalVariable {
 
     public static String getUsername(Context context) {
         return SecurePrefs.getString(context, KEY_USERNAME, "");
+    }
+
+    public static String getOrCreateDeviceId(Context context) {
+        String deviceId = SecurePrefs.getString(context, KEY_DEVICE_ID, "");
+        if (deviceId.isEmpty()) {
+            deviceId = UUID.randomUUID().toString();
+            SecurePrefs.putString(context, KEY_DEVICE_ID, deviceId);
+        }
+        return deviceId;
     }
 }

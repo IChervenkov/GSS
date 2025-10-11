@@ -33,7 +33,7 @@
       </div>
 
       <!-- Login form -->
-      <form id="loginForm" action="/login" method="POST">
+      <form id="loginForm" action="/web/login" method="POST">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
         <!-- Username -->
@@ -65,7 +65,7 @@
 
         <!-- Change password link -->
         <div class="text-center">
-          <a class="btn btn-link text-decoration-none" href="/changePassword">
+          <a class="btn btn-link text-decoration-none" href="/web/changePassword">
             <i class="bi bi-shield-lock-fill"></i> Change Password
           </a>
         </div>

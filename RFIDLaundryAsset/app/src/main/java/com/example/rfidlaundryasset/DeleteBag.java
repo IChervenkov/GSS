@@ -1,7 +1,6 @@
 package com.example.rfidlaundryasset;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
@@ -26,8 +25,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.CookieManager;
-import java.net.CookiePolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,31 +34,26 @@ import java.util.concurrent.Executors;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
+public class DeleteBag extends AppCompatActivity {
 
+    private Call currentCall;
     private RFIDWithUHFUART rfidReader;
     private boolean isInventory = false;
-    private boolean isValidCode;
     private String campId;
     private String username;
     private AutoCompleteTextView bagTextList;
     private final Map<String, String> bagInfoMap = new HashMap<>();
     private final Map<String, String> reversBagInfoMap = new HashMap<>();
     private final ArrayList<String> bagList = new ArrayList<>();
-    private final CookieManager cookieManager = new CookieManager();
-    private final OkHttpClient client = new OkHttpClient.Builder()
-            .addInterceptor(new CsrfInterceptor(this))
-            .cookieJar(new JavaNetCookieJar(cookieManager))
-            .build();
-    private String csrfToken = null;
+    private OkHttpClient client;
     private String epc = "";
+    private final DebounceMessageHelper messageHelper = new DebounceMessageHelper(this);
     private final ExecutorService executorService = Executors.newSingleThreadExecutor(); // Adjust pool size as needed
 
     private boolean isNetworkAvailable() {
@@ -79,85 +71,16 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
     }
 
     @Override
-    public synchronized String getCsrfToken() {
-        return csrfToken;
-    }
-
-    @Override
-    public synchronized void refreshCsrfTokenSync() {
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/csrf-token")
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
-            csrfToken = jsonObject.getString("csrfToken");
-        } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
-        }
-    }
-
-    private void fetchCsrfToken(Runnable onSuccess) {
-
-        if (isNetworkAvailable())
-            return;
-
-        Dialog loadingDialog = new Dialog(DeleteBag.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false);
-        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
-
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/csrf-token")
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
-                runOnUiThread(loadingDialog::dismiss);
-            }
-
-            public void onResponse(@NonNull Call call, @NonNull Response response) {
-                try {
-
-                    String responseBody = Objects.requireNonNull(response.body()).string();
-                    JSONObject jsonObject = new JSONObject(responseBody);
-
-                    if (!response.isSuccessful()) {
-                        String serverMessage = jsonObject.optString("message", "Error when fetch token. Please connect to the support.");
-                        runOnUiThread(() -> showPopupWindow(serverMessage));
-                        return;
-                    }
-
-                    csrfToken = jsonObject.getString("csrfToken");
-                    if (onSuccess != null)
-                        runOnUiThread(onSuccess);
-
-                } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
-                } finally {
-                    runOnUiThread(loadingDialog::dismiss);
-                }
-            }
-        });
-    }
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_delete_bag);
 
-        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        client = new OkHttpClient.Builder()
+                .addInterceptor(new JwtInterceptor(this))
+                .build();
 
-        isValidCode = GlobalVariable.getVariable(this);
         campId = GlobalVariable.getCamp(this);
         username = GlobalVariable.getUsername(this);
-
-        fetchCsrfToken(null);
 
         Button submitButton = findViewById(R.id.deleteButton);
         bagTextList = findViewById(R.id.bagTextList);
@@ -172,13 +95,13 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
             rfidReader.init();
 
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Error initializing RFID Reader"));
+            messageHelper.showError("Error initializing RFID Reader");
         }
 
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
             if (epc.isEmpty()) {
-                runOnUiThread(() -> showPopupWindow("No EPC content detected!"));
+                messageHelper.showError("No EPC content detected!");
                 return;
             }
 
@@ -194,12 +117,6 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
                     })
                     .show();
         });
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        fetchCsrfToken(null);
     }
 
     @Override
@@ -220,7 +137,7 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
 
         // Start inventory tag reading
         if (!rfidReader.startInventoryTag()) {
-            runOnUiThread(() -> showPopupWindow("Failed to start scanning. Check if device supports RFID reader"));
+            messageHelper.showError("Failed to start scanning. Check if device supports RFID reader");
             return;
         }
 
@@ -273,17 +190,6 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
         bagTextList.setText(codeBag);
     }
 
-    // Method to show the EPC code in a popup window
-    private void showPopupWindow(String message) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Error");
-        builder.setMessage(message);
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            // Optionally, reset or perform other actions after closing the dialog
-        });
-        builder.show();
-    }
-
     private void fetchAvailableBag() {
 
         if (isNetworkAvailable()) {
@@ -299,13 +205,14 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/bags?isValidCode=" + isValidCode + "&campId=" + campId)
+                .url(baseUrl + "/api/bags?campId=" + campId)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error when fetch bag data. Please connect to the support!"));
+                messageHelper.showError("Error when fetch bag data. Please connect to the support!");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -313,19 +220,19 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
             public void onResponse(@NonNull Call call, @NonNull Response response) {
                 try {
 
-                    final String responseData = response.body().string();
-
                     if (!response.isSuccessful()) {
                         handleError(response);
                         return;
                     }
+
+                    final String responseData = response.body().string();
 
                     JSONObject responseJson = new JSONObject(responseData);
                     JSONArray bags = responseJson.getJSONArray("allBags");
                     runOnUiThread(() -> populateBagAutoComplete(bags));
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when fetch bag data. Please connect to the support!"));
+                    messageHelper.showError("Error when fetch bag data. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -364,7 +271,7 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
             });
 
         } catch (JSONException e) {
-            runOnUiThread(() -> showPopupWindow("Invalid bag data from server!"));
+            messageHelper.showError("Invalid bag data from server!");
         }
     }
 
@@ -372,15 +279,11 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
     private void sendDataToServer(String epc) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
-        if (csrfToken == null || csrfToken.isEmpty()) {
-            fetchCsrfToken(() -> performSendData(epc));
-        } else {
-            performSendData(epc);
-        }
+        performSendData(epc);
     }
 
     private void performSendData(String epc) {
@@ -398,9 +301,9 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
         try {
             payload.put("code", epc);
             payload.put("username", username);
-            payload.put("isValidCode", isValidCode);
+
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Error when parsed data. Please connect to the support!"));
+            messageHelper.showError("Error when parsed data. Please connect to the support!");
             runOnUiThread(loadingDialog::dismiss);
             return;
         }
@@ -409,27 +312,28 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/laundry/deleteBag")
-                .addHeader("X-CSRF-Token", csrfToken)
+                .url(baseUrl + "/api/laundry/deleteBag")
                 .delete(body)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error when send data. Please connect to the support!"));
+                messageHelper.showError("Error when send data. Please connect to the support!");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) {
                 try {
-                    String responseData = Objects.requireNonNull(response.body()).string();
 
                     if (!response.isSuccessful()) {
                         handleError(response);
                         return;
                     }
+
+                    String responseData = Objects.requireNonNull(response.body()).string();
 
                     JSONObject jsonResponse = new JSONObject(responseData);
                     String message = jsonResponse.optString("message", "Bag has been delete successfully.");
@@ -439,7 +343,7 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
                     });
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when send data. Please connect to the support!"));
+                    messageHelper.showError("Error when send data. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -461,19 +365,49 @@ public class DeleteBag extends AppCompatActivity implements CsrfTokenProvider {
             JSONObject errorJson = new JSONObject(responseBody);
             errorMessage = errorJson.optString("message", "Internal server error");
             String finalErrorMessage = errorMessage;
-            runOnUiThread(() -> showPopupWindow(finalErrorMessage));
+            messageHelper.showError(finalErrorMessage);
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Failed to process error response. Please connect to the support!"));
+            messageHelper.showError("Failed to process error response. Please connect to the support!");
         } finally {
             response.body().close(); // Ensure the response body is closed
+        }
+    }
+
+    private void cancelAllCalls() {
+        // Cancel refresh call if active
+        Call refreshCall = GlobalVariable.getRefreshCall();
+        if (refreshCall != null && !refreshCall.isExecuted()) {
+            refreshCall.cancel();
+        }
+
+        // Cancel logout call if active
+        Call logoutCall = GlobalVariable.getLogoutCall();
+        if (logoutCall != null && !logoutCall.isExecuted()) {
+            logoutCall.cancel();
+        }
+
+        // Cancel current API call if active
+        if (currentCall != null && !currentCall.isExecuted()) {
+            currentCall.cancel();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        cancelAllCalls();
+        executorService.shutdown();
+        stopInventoryThread();
+        if (rfidReader != null) {
+            rfidReader.free();
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executorService.shutdown(); // Shutdown executor properly
-
+        cancelAllCalls();
+        executorService.shutdown();
         stopInventoryThread();
         if (rfidReader != null) {
             rfidReader.free();

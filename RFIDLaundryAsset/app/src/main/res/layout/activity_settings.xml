@@ -34,7 +34,7 @@
         android:id="@+id/powerSeekBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:max="20"
+        android:max="30"
         android:min="1"
         android:progressTint="@color/green"
         android:thumbTint="@color/green"/>

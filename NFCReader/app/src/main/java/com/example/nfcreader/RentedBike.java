@@ -35,7 +35,6 @@ import org.json.JSONObject;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -43,8 +42,6 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 import java.io.IOException;
-import java.net.CookieManager;
-import java.net.CookiePolicy;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -58,9 +55,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
+public class RentedBike extends AppCompatActivity {
 
-    private boolean isValidCode;
     private String campId;
     private String username;
     private NfcAdapter nfcAdapter;
@@ -74,14 +70,11 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
     private final Map<BikeInfo, String> clientIdMap = new HashMap<>();
     private final Map<BikeInfo, String> keyIdMap = new HashMap<>();
     private final Map<String, String> keyIdCountMap = new HashMap<>();
-    private final CookieManager cookieManager = new CookieManager();
-    private final OkHttpClient client = new OkHttpClient.Builder()
-            .addInterceptor(new CsrfInterceptor(this))
-            .cookieJar(new JavaNetCookieJar(cookieManager))
-            .build();
-    private String csrfToken = null;
+    private OkHttpClient client;
     private AutoCompleteTextView clientAutoCompleteTextView;
     private final ArrayList<BikeInfo> ownerList = new ArrayList<>();
+    private Call currentCall;
+    private final DebounceMessageHelper messageHelper = new DebounceMessageHelper(this);
 
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -97,70 +90,6 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
                         !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
     }
 
-    @Override
-    public synchronized String getCsrfToken() {
-        return csrfToken;
-    }
-
-    @Override
-    public synchronized void refreshCsrfTokenSync() {
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/csrf-token")
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
-            csrfToken = jsonObject.getString("csrfToken");
-
-        } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
-        }
-    }
-
-    private void fetchCsrfToken(Runnable onSuccess) {
-
-        if (isNetworkAvailable())
-            return;
-
-        Dialog loadingDialog = new Dialog(RentedBike.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false);
-        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
-
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/csrf-token")
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(loadingDialog::dismiss);
-                runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-
-                try {
-                    String responseBody = response.body().string();
-                    JSONObject jsonObject = new JSONObject(responseBody);
-
-                    csrfToken = jsonObject.getString("csrfToken");
-                    if (onSuccess != null)
-                        runOnUiThread(onSuccess);
-
-                } catch (JSONException e) {
-                    runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
-                } finally {
-                    runOnUiThread(loadingDialog::dismiss);
-                }
-            }
-        });
-    }
-
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @SuppressLint("MissingInflatedId")
     @Override
@@ -168,13 +97,12 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_rented_bike);
 
-        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        client = new OkHttpClient.Builder()
+                .addInterceptor(new JwtInterceptor(this))
+                .build();
 
-        isValidCode = GlobalVariable.getVariable(this);
         campId = GlobalVariable.getCamp(this);
         username = GlobalVariable.getUsername(this);
-
-        fetchCsrfToken(null);
 
         clientAutoCompleteTextView = findViewById(R.id.clientAutoCompleteTextView);
         nfcTextView = findViewById(R.id.nfcTextView);
@@ -185,7 +113,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
-            showPopupWindow("NFC is not available on this device.");
+            messageHelper.showError("NFC is not available on this device.");
             finish();
             return;
         }
@@ -211,7 +139,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
         submitButton.setOnClickListener(v -> {
 
             if (nfcContent.isEmpty()) {
-                showPopupWindow("Please scan a NFC tag");
+                messageHelper.showError("Please scan a NFC tag");
                 return;
             }
 
@@ -224,7 +152,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
 
             // Check if date and time are set
             if (day == 0 || month == 0 || year == 0) {
-                showPopupWindow("Please select a valid date!");
+                messageHelper.showError("Please select a valid date!");
                 return;
             }
 
@@ -232,7 +160,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
             String selectedClientName = clientAutoCompleteTextView.getText().toString();
 
             if (selectedClientName.isEmpty()) {
-                showPopupWindow("Please select a soldier!");
+                messageHelper.showError("Please select a soldier!");
                 return;
             }
 
@@ -277,14 +205,15 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/getClient?campId=" + campId + "&isValidCode=" + isValidCode)
+                .url(baseUrl + "/api/getClient?campId=" + campId)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 runOnUiThread(loadingDialog::dismiss);
-                runOnUiThread(() -> showPopupWindow("Failed to fetch soldier. Please connect to the support."));
+                messageHelper.showError("Failed to fetch soldier. Please connect to the support.");
             }
 
             @Override
@@ -296,7 +225,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
                     if (!response.isSuccessful()) {
                         JSONObject jsonResponse = new JSONObject(responseData);
                         String errorMessage = jsonResponse.optString("message", "Server error occurred.");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -304,7 +233,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
                     runOnUiThread(() -> populateBikeAutoComplete(allSoldier));
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Failed to fetch soldier. Please connect to the support."));
+                    messageHelper.showError("Failed to fetch soldier. Please connect to the support.");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -348,7 +277,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
             clientAutoCompleteTextView.setAdapter(adapter);
 
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Failed to parsed soldier. Please connect to the support."));
+            messageHelper.showError("Failed to parsed soldier. Please connect to the support.");
         }
     }
 
@@ -356,17 +285,42 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
     protected void onResume() {
         super.onResume();
 
-        fetchCsrfToken(null);
-
         Intent intent = new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
         IntentFilter[] intentFilters = new IntentFilter[]{};
         nfcAdapter.enableForegroundDispatch(this, pendingIntent, intentFilters, null);
     }
 
+    private void cancelAllCalls() {
+        // Cancel refresh call if active
+        Call refreshCall = GlobalVariable.getRefreshCall();
+        if (refreshCall != null && !refreshCall.isExecuted()) {
+            refreshCall.cancel();
+        }
+
+        // Cancel logout call if active
+        Call logoutCall = GlobalVariable.getLogoutCall();
+        if (logoutCall != null && !logoutCall.isExecuted()) {
+            logoutCall.cancel();
+        }
+
+        // Cancel current API call if active
+        if (currentCall != null && !currentCall.isExecuted()) {
+            currentCall.cancel();
+        }
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
+        cancelAllCalls();
+        nfcAdapter.disableForegroundDispatch(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cancelAllCalls();
         nfcAdapter.disableForegroundDispatch(this);
     }
 
@@ -396,7 +350,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
                 }
 
                 if (selectedClientName == null) {
-                    runOnUiThread(() -> showPopupWindow("Soldier not found!"));
+                    messageHelper.showError("Soldier not found!");
                     scanningIndex++;
                     return;
                 }
@@ -437,7 +391,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
     private void readBikeDataFromServer(String nfcData) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
@@ -449,14 +403,15 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/readBikeNfc?nfcData=" + nfcData + "&isValidCode=" + isValidCode)  // Replace with your server URL
+                .url(baseUrl + "/api/readBikeNfc?nfcData=" + nfcData)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 runOnUiThread(loadingDialog::dismiss);
-                runOnUiThread(() -> showPopupWindow("Failed to read bike data. Please connect to the support!"));
+                messageHelper.showError("Failed to read bike data. Please connect to the support!");
             }
 
             @SuppressLint("SetTextI18n")
@@ -469,7 +424,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
 
                     if (!response.isSuccessful()) {
                         String errorMessage = jsonResponse.optString("message", "Server error occurred.");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -486,7 +441,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
                     }
 
                 } catch (JSONException e) {
-                    runOnUiThread(() -> showPopupWindow("Failed to read bike data. Please connect to the support!"));
+                    messageHelper.showError("Failed to read bike data. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -497,7 +452,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
     private void checkBikeRented(String nfcData, String date, String time, String selectedClientId, String nfcHelmetDate) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
@@ -511,15 +466,16 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
         // Define the request
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/checkBike?bikeId=" + nfcData + "&isValidCode=" + isValidCode)  // Replace with your server URL
+                .url(baseUrl + "/api/checkBike?bikeId=" + nfcData)
                 .build();
 
         // Make the network call asynchronously
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 runOnUiThread(loadingDialog::dismiss);
-                runOnUiThread(() -> showPopupWindow("Failed to read bike data. Please connect to the support!"));
+                messageHelper.showError("Failed to read bike data. Please connect to the support!");
             }
 
             @Override
@@ -531,19 +487,19 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
 
                     if (!response.isSuccessful()) {
                         String errorMessage = jsonResponse.optString("message", "Server error occurred.");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
                     if (isPastDateTime(date, time)) {
-                        runOnUiThread(() -> showPopupWindow("The select date is incorrect!"));
+                        messageHelper.showError("The select date is incorrect!");
                         return;
                     }
 
                     sendDataToServer(nfcContent, date, time, selectedClientId, nfcHelmetDate);
 
                 } catch (JSONException e) {
-                    runOnUiThread(() -> showPopupWindow("Failed to read bike data. Please connect to the support!"));
+                    messageHelper.showError("Failed to read bike data. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -572,15 +528,11 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
     private void sendDataToServer(String nfcData, String date, String time, String selectedClientId, String nfcHelmetDate) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
-        if (csrfToken == null || csrfToken.isEmpty()) {
-            fetchCsrfToken(() -> performSendData(nfcData, date, time, selectedClientId, nfcHelmetDate));
-        } else {
-            performSendData(nfcData, date, time, selectedClientId, nfcHelmetDate);
-        }
+        performSendData(nfcData, date, time, selectedClientId, nfcHelmetDate);
     }
 
     private void performSendData(String nfcData, String date, String time, String selectedClientId, String nfcHelmetDate) {
@@ -595,9 +547,8 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
             jsonData.put("selectClient", selectedClientId);
             jsonData.put("helmetId", nfcHelmetDate);
             jsonData.put("username", username);
-            jsonData.put("isValidCode", isValidCode);
         } catch (JSONException e) {
-            runOnUiThread(() -> showPopupWindow("Error creating request data. Please contact support!"));
+            messageHelper.showError("Error creating request data. Please contact support!");
             return;
         }
 
@@ -605,15 +556,15 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/nfcRent")
-                .addHeader("X-CSRF-Token", csrfToken)
+                .url(baseUrl + "/api/nfcRent")
                 .post(body)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error to sending data. Please connect to the support!"));
+                messageHelper.showError("Error to sending data. Please connect to the support!");
             }
 
             @Override
@@ -625,7 +576,7 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
                     String message = jsonResponse.optString("message", "Server error occurred.");
 
                     if (!response.isSuccessful()) {
-                        runOnUiThread(() -> showPopupWindow(message));
+                        messageHelper.showError(message);
                         return;
                     }
 
@@ -638,19 +589,9 @@ public class RentedBike extends AppCompatActivity implements CsrfTokenProvider {
                     });
 
                 } catch (JSONException e) {
-                    runOnUiThread(() -> showPopupWindow("Error to sending data. Please connect to the support!"));
+                    messageHelper.showError("Error to sending data. Please connect to the support!");
                 }
             }
         });
-    }
-
-    private void showPopupWindow(String message) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Error");
-        builder.setMessage(message);
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            // Reset the flag once the error dialog is clos
-        });
-        builder.show();
     }
 }

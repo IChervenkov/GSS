@@ -13,6 +13,7 @@ const moment = require('moment');
 const csurf = require('csurf');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
+const jwt = require("jsonwebtoken");
 
 // const RedisStore = require('connect-redis').default;
 // const redis = require('redis');
@@ -108,7 +109,14 @@ const shemaChangeCamp = Joi.object({
 });
 
 const schema2FAVerify = Joi.object({
-    code: Joi.string().alphanum().required()
+    code: Joi.string().alphanum().required(),
+    userSecret: Joi.object({
+        base32: Joi.string().alphanum().min(16).required(),
+        otpauth_url: Joi.string().pattern(/^otpauth:\/\/totp\/.*/).required()
+    }).optional(),
+    username: Joi.string().pattern(safeUsernamePattern).optional(),
+    deviceId: Joi.string().pattern(/^[a-fA-F0-9\-]{36}$/).optional(),
+    deviceName: Joi.string().pattern(safeStringPattern).optional()
 });
 
 const schemaAddCamp = Joi.object({
@@ -144,19 +152,16 @@ const schemaEditUser = Joi.object({
 // Define the schema
 const emojiDataSchema = Joi.object({
     emoji: Joi.string().max(10).required(), // emoji should be a string, maximum 10 characters, and is required
-    userId: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().optional()
+    userId: Joi.string().alphanum().required()
 });
 
 const checkAssetSchema = Joi.object({
-    assetId: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().optional()
+    assetId: Joi.string().alphanum().required()
 });
 
 const checkAndChangeAssetSchema = Joi.object({
     code: Joi.string().alphanum().required(),
-    location: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().optional()
+    location: Joi.string().alphanum().required()
 });
 
 const changeAmountSchema = Joi.object({
@@ -179,7 +184,6 @@ const shemaUpdateQuantityAsset = Joi.object({
     id: Joi.string().alphanum().required(),
     newQuantity: Joi.number().integer().required(),
     username: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().required(),
     campId: Joi.string().alphanum().required()
 });
 
@@ -188,7 +192,6 @@ const shemaUpdateLocationAsset = Joi.object({
     locationId: Joi.string().alphanum().required(),
     sublocationId: Joi.string().alphanum().allow('').optional(),
     username: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().required(),
     campId: Joi.string().alphanum().required()
 });
 
@@ -202,8 +205,7 @@ const updateBagsScanerSchema = Joi.object({
     prev_destination: Joi.string()
         .valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to pick up', 'Ready to pick up', 'None')
         .required(),
-    campId: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().optional()
+    campId: Joi.string().alphanum().required()
 });
 
 const exchangeServiceSchema = Joi.object({
@@ -226,8 +228,7 @@ const checkScaningCodeSchema = Joi.object({
     code: Joi.string().alphanum().required(),
     prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to pick up', 'Ready to pick up', 'None').required(),
     destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to pick up', 'Ready to pick up', 'None', 'Linen Exchange service').required(),
-    permCount: Joi.number().required(),
-    isValidCode: Joi.bool().optional()
+    permCount: Joi.number().required()
 });
 
 const schemaAddBag = Joi.object({
@@ -236,8 +237,7 @@ const schemaAddBag = Joi.object({
     type: Joi.string().regex(/^[a-zA-Z0-9\s]+$/).required(),
     maxcount: Joi.number().required(),
     username: Joi.string().alphanum().optional(),
-    campId: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional()
+    campId: Joi.string().alphanum().optional()
 });
 
 const schemaGetBike = Joi.object({
@@ -269,7 +269,6 @@ const schemaGetStatusBike = Joi.object({
 });
 
 const shemaGetBags = Joi.object({
-    isValidCode: Joi.bool().optional(),
     campId: Joi.string().alphanum().optional(),
     page: Joi.number().optional(),
     limit: Joi.number().optional(),
@@ -297,7 +296,6 @@ const schemaUpcomingAction = Joi.object({
 });
 
 const shemaGetLostItem = Joi.object({
-    isValidCode: Joi.bool().optional(),
     campId: Joi.string().alphanum().optional(),
     page: Joi.number().optional(),
     limit: Joi.number().optional(),
@@ -324,15 +322,18 @@ const schemaGetAdditionalItem = Joi.object({
     ).optional(),
 });
 
-const shemaInventory = Joi.object({
+const shemaBuildings = Joi.object({
     page: Joi.number().optional(),
     limit: Joi.number().optional(),
 });
 
+const shemaRooms = Joi.object({
+    buildingId: Joi.string().alphanum().required()
+});
+
 const schemaRemoveBag = Joi.object({
     code: Joi.string().alphanum().required(),
-    username: Joi.string().optional(),
-    isValidCode: Joi.bool().optional()
+    username: Joi.string().optional()
 });
 
 const schemaEditBag = Joi.object({
@@ -348,13 +349,11 @@ const schemaEditPhoneBag = Joi.object({
     type: Joi.string().regex(/^[a-zA-Z0-9 ]+$/).required(),
     maxcount: Joi.number().required(),
     username: Joi.string().alphanum().required(),
-    campId: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().required()
+    campId: Joi.string().alphanum().required()
 });
 
 const clientDataSchema = Joi.object({
     userId: Joi.string().required(), // userId should be a string and is required
-    isValidCode: Joi.bool().optional()
 });
 
 const schemaReleaseAllRoom = Joi.object({
@@ -367,16 +366,14 @@ const schemaNFCRent = Joi.object({
     time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), // time should be in HH:MM format and is required
     selectClient: Joi.string().pattern(/^[a-zA-Z0-9]+$/).required(), // selectClient should be a string and is required
     helmetId: Joi.string().allow('').alphanum().required(),
-    username: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional()
+    username: Joi.string().alphanum().optional()
 });
 
 const schemaNFCReturn = Joi.object({
     nfcData: Joi.string().required(), // nfcData should be a string and is required
     date: Joi.date().iso().required(), // date should be a valid ISO date and is required
     time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(), // time should be in HH:MM format and is required
-    username: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional()
+    username: Joi.string().alphanum().optional()
 });
 
 const schemaBike = Joi.object({
@@ -505,16 +502,14 @@ const schemaAddBike = Joi.object({
     bikeAddId: Joi.string().alphanum().required(),
     bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
     username: Joi.string().alphanum().optional(),
-    campId: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional()
+    campId: Joi.string().alphanum().optional()
 });
 
 const schemaAddHelmet = Joi.object({
     helmetAddId: Joi.string().alphanum().required(),
     helmetName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
     username: Joi.string().alphanum().optional(),
-    campId: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional()
+    campId: Joi.string().alphanum().optional()
 });
 
 const schemaEditParameturBike = Joi.object({
@@ -522,8 +517,7 @@ const schemaEditParameturBike = Joi.object({
     newBikeId: Joi.string().alphanum().required(),
     bikeName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
     username: Joi.string().alphanum().optional(),
-    campId: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().optional()
+    campId: Joi.string().alphanum().required()
 });
 
 const schemaEditParameturHelmet = Joi.object({
@@ -531,8 +525,7 @@ const schemaEditParameturHelmet = Joi.object({
     newHelmetId: Joi.string().alphanum().required(),
     helmetName: Joi.string().pattern(/^[0-9]+\/[A-Za-z\s]+$/).required(),
     username: Joi.string().alphanum().optional(),
-    campId: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().optional()
+    campId: Joi.string().alphanum().required()
 });
 
 const schemaUploadBike = Joi.object({
@@ -547,13 +540,11 @@ const schemaUploadHelmet = Joi.object({
 
 const schemaRemoveBike = Joi.object({
     bikeRemoveId: Joi.string().alphanum().required(),
-    username: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional()
+    username: Joi.string().alphanum().optional()
 });
 
 const schemaCheckBike = Joi.object({
-    bikeId: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().optional()
+    bikeId: Joi.string().alphanum().required()
 });
 
 const schemaEditBike = Joi.object({
@@ -565,8 +556,7 @@ const schemaEditBike = Joi.object({
 });
 
 const schemaSearchBike = Joi.object({
-    id: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().optional()
+    id: Joi.string().alphanum().required()
 });
 
 const schemaGetSoldier = Joi.object({
@@ -667,7 +657,6 @@ const schemaSpecialKey = Joi.object({
 const schemaSpecialAssets = Joi.object({
     numRoom: Joi.string().alphanum().allow('').optional(),
     campId: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional(),
     page: Joi.number().optional(),
     limit: Joi.number().optional(),
     sortedDirection: Joi.string().valid('asc', 'desc').optional(),
@@ -685,8 +674,7 @@ const schemaSpecialAssets = Joi.object({
 const schemaDeleteAsets = Joi.object({
     code: Joi.string().alphanum().required(),
     username: Joi.string().alphanum().optional(),
-    campId: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional()
+    campId: Joi.string().alphanum().optional()
 });
 
 const schemaDeleteUsers = Joi.object({
@@ -745,8 +733,7 @@ const schemaAddAsset = Joi.object({
     assetAddReplacedBy: Joi.string().allow('').pattern(safeStringPattern).required(),
     assetAddRestValue: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
     username: Joi.string().alphanum().optional(),
-    campId: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional()
+    campId: Joi.string().alphanum().optional()
 });
 
 const schemaEditAsset = Joi.object({
@@ -816,8 +803,7 @@ const schemaEditAssetDevice = Joi.object({
     replacedBy: Joi.string().allow('').pattern(safeStringPattern).required(),
     restValue: Joi.string().allow('').pattern(/^[0-9]*$/).required(),
     username: Joi.string().alphanum().optional(),
-    campId: Joi.string().alphanum().required(),
-    isValidCode: Joi.bool().optional()
+    campId: Joi.string().alphanum().required()
 });
 
 const schemaEditMultiAsset = Joi.object({
@@ -957,8 +943,7 @@ const schemaRemoveSoldier = Joi.object({
 
 const schemaRemoveHelmet = Joi.object({
     code: Joi.string().alphanum().required(),
-    username: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional()
+    username: Joi.string().alphanum().optional()
 });
 
 const schemaUploadSoldier = Joi.object({
@@ -992,13 +977,11 @@ const schemaViewKey = Joi.object({
 });
 
 const schemaNFCBikeRead = Joi.object({
-    nfcData: Joi.string().required(),
-    isValidCode: Joi.bool().optional()
+    nfcData: Joi.string().required()
 });
 
 const shemaClientNfc = Joi.object({
     campId: Joi.string().alphanum().optional(),
-    isValidCode: Joi.bool().optional(),
     page: Joi.number().optional(),
     limit: Joi.number().optional(),
     searchColumn: Joi.alternatives().try(
@@ -1012,8 +995,7 @@ const shemaClientNfc = Joi.object({
 });
 
 const shemaHelmetBike = Joi.object({
-    bikeId: Joi.string().allow('').alphanum().required(),
-    isValidCode: Joi.bool().optional()
+    bikeId: Joi.string().allow('').alphanum().required()
 });
 
 const schemaGetBagsByStatus = Joi.object({
@@ -1103,7 +1085,7 @@ const permissionsSchema = Joi.object({
 });
 
 const horizontalNavItems = [
-    { href: '/main_page', name: 'Main Page' },
+    { href: 'main_page', name: 'Main Page' },
     { href: 'assets', name: 'Assets' },
     { href: 'laundry', name: 'Laundry' },
     { href: 'fitness', name: 'Gym' },
@@ -1186,20 +1168,138 @@ class Server {
             }
         }));
 
-        this.app.use(csurf({ cookie: false }));
+        const csrfProtection = csurf({ cookie: false });
 
-        this.app.use((req, res, next) => {
-            res.locals.csrfToken = req.csrfToken();
-            next();
+        this.app.get('/', csrfProtection, (req, res) => {
+            req.session.username = null;
+            res.render('index', {
+                title: "LogIn",
+                csrfToken: req.csrfToken()
+            });
         });
 
-        this.app.get('/csrf-token', (req, res) => {
-            res.json({ csrfToken: req.csrfToken() });
+        this.app.use(
+            "/web",
+            csrfProtection,
+            (req, res, next) => {
+                res.locals.csrfToken = req.csrfToken();
+
+                // Whitelisted routes (no login required)
+                const publicPaths = ["/login", "/changePassword", "/error", '/2fa-verificated', '/verify', '/logout'];
+                const navPath = ["/main_page", "/assets", "/laundry", '/fitness', '/accommodation', '/bicycles', '/logout'];
+
+                if (
+                    (req.session && req.session.username) ||
+                    publicPaths.includes(req.path)
+                ) {
+                    return next();
+                }
+
+                if (navPath.includes(req.path)) {
+                    return res.render('error', {
+                        statusCode: 401,
+                        message: "Security check failed. Please go back to sign in again.",
+                        details: []
+                    });
+                }
+
+                res.setHeader('X-Global-Error', 'true');
+                res.status(401).json({
+                    statusCode: 401,
+                    message: "Security check failed. Please go back to sign in again.",
+                    details: []
+                });
+            }
+        );
+
+        // JWT for all /api routes
+        this.app.use("/api", (req, res, next) => {
+
+            const authHeader = req.headers["authorization"];
+            const token = authHeader && authHeader.split(" ")[1];
+
+            if (!token)
+                return res.sendStatus(401);
+
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err) => {
+                if (err) {
+                    return res.sendStatus(403);
+                }
+                return next();
+            });
+        });
+
+        this.app.post('/token', async (req, res) => {
+
+            const { refreshToken } = req.body;
+
+            if (!refreshToken)
+                return res.sendStatus(401);
+
+            const client = await pool.connect();
+
+            try {
+
+                const tokenHash = this.hashToken(refreshToken);
+
+                jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, user) => {
+
+                    if (err)
+                        return res.sendStatus(403);
+
+                    const sessRes = await client.query(
+                        'SELECT * FROM user_sessions WHERE user_id = $1 AND revoked = FALSE',
+                        [user.userId]
+                    );
+
+                    if (sessRes.rows.length === 0)
+                        return res.sendStatus(403);
+
+                    const matching = sessRes.rows.find(r => r.refresh_token === tokenHash);
+
+                    if (!matching) {
+                        console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                        await client.query('UPDATE user_sessions SET revoked = TRUE WHERE user_id = $1', [user.userId]);
+
+                        console.warn('Refresh token reuse detected for user:', user.userId);
+
+                        return res.sendStatus(403);
+                    }
+
+                    const newAccessToken = jwt.sign(
+                        { userId: user.userId, username: user.username },
+                        process.env.ACCESS_TOKEN_SECRET,
+                        { expiresIn: '15m' }
+                    );
+
+                    const newRefreshToken = jwt.sign(
+                        { userId: user.userId, username: user.username },
+                        process.env.REFRESH_TOKEN_SECRET,
+                        { expiresIn: '14d' }
+                    );
+
+                    const newRefreshHash = this.hashToken(newRefreshToken);
+
+                    await client.query(
+                        "UPDATE user_sessions SET refresh_token = $1, created_at = NOW(), expires_at = NOW() + interval '14 days' WHERE id = $2",
+                        [newRefreshHash, sessRes.rows[0].id]
+                    );
+
+                    res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+                });
+
+            } catch (err) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error("Refresh JWT toke error:", err);
+                res.sendStatus(500);
+            } finally {
+                client.release();
+            }
         });
 
         // Global error handler
 
-        this.app.get('/error', (req, res) => {
+        this.app.get('/web/error', (req, res) => {
             // You need to define statusCode, message, details or pass them via query params
             const statusCode = req.query.statusCode || 500;
             const message = req.query.message || 'An error occurred.';
@@ -1222,7 +1322,7 @@ class Server {
 
             switch (err.code) {
                 case 'EBADCSRFTOKEN':
-                    statusCode = 400;
+                    statusCode = 403;
                     message = 'Security check failed. Please go back to sign in again.';
                     break;
                 case 'VALIDATION_ERROR':
@@ -1252,6 +1352,10 @@ class Server {
         this.defineRoutesFitnes();
         this.defineRoutesLaundry();
         this.defineRoutesAssets();
+    }
+
+    hashToken(token) {
+        return crypto.createHash('sha256').update(token).digest('hex');
     }
 
     giveSpecificPermissionMain(permissions, indexs, res, navItems, isFirstLogin, campId) {
@@ -1348,53 +1452,6 @@ class Server {
 
     }
 
-    // Middleware to check if the user is logged in
-    isLoggedIn(req, res, next) {
-
-        if (req.session && req.session.username && req.session.username !== 'PhoneUser')
-            return next();
-
-        const isValidCode =
-            (req.query && req.query.isValidCode) ||
-            (req.body && req.body.isValidCode);
-
-        if (isValidCode)
-            return next();
-
-        // Detect Android / API requests (JSON) vs. Web (HTML form/EJS)
-        const expectsJSON =
-            req.xhr ||
-            req.is('application/json') ||
-            (req.headers.accept && req.headers.accept.includes('application/json'));
-
-        res.setHeader('X-Global-Error', 'true');
-
-        if (expectsJSON) {
-            // API/Android
-            return res.status(401).json({
-                statusCode: 401,
-                message: "Security verification failed. Please restart the app and try again."
-            });
-        } else {
-            // Web browser
-            if (req.get('X-Is-Fetch') === 'true') {
-                return res.status(400).json({
-                    statusCode: 400,
-                    message: 'Security verification failed. Please refresh the system and try again.',
-                    details: []
-                })
-            }
-
-            const query = new URLSearchParams({
-                statusCode: '400',
-                message: 'Security verification failed. Please refresh the system and try again.',
-                details: JSON.stringify([])
-            }).toString();
-
-            return res.redirect(`/error?${query}`);
-        }
-    }
-
     generateMonthHtml(year, month) {
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
@@ -1445,7 +1502,7 @@ class Server {
     // Method to define routes for main page
     defineRoutesMain() {
 
-        this.app.get('/permissions/data', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/permissions/data', async (req, res) => {
 
             const { error } = schemaPermissions.validate(req.query);
             if (error) {
@@ -1538,7 +1595,7 @@ class Server {
             }
         });
 
-        this.app.post('/permissions/save', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/permissions/save', async (req, res) => {
 
             const { error } = permissionsSchema.validate(req.body);
 
@@ -1608,7 +1665,7 @@ class Server {
             }
         });
 
-        this.app.get('/getUsers', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/getUsers', async (req, res) => {
 
             const { error } = schemaGetListSUsers.validate(req.query);
             if (error) {
@@ -1703,7 +1760,7 @@ class Server {
             }
         });
 
-        this.app.post('/addUser', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/addUser', async (req, res) => {
 
             const { error } = schemaAddUser.validate(req.body);
             if (error) {
@@ -1762,7 +1819,7 @@ class Server {
             }
         });
 
-        this.app.post('/editUser', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/editUser', async (req, res) => {
 
             const { error } = schemaEditUser.validate(req.body);
             if (error) {
@@ -1824,7 +1881,7 @@ class Server {
             }
         });
 
-        this.app.delete('/deleteUser', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/deleteUser', async (req, res) => {
 
             const { error } = schemaDeleteUsers.validate(req.body);
             if (error) {
@@ -1858,6 +1915,7 @@ class Server {
                 }
 
                 await Promise.all([
+                    client.query('DELETE FROM user_sessions WHERE user_id = $1;', [code]),
                     client.query('DELETE FROM user_permission WHERE user_id = $1;', [code]),
                     client.query('DELETE FROM users WHERE id = $1;', [code]),
                     client.query("INSERT INTO usermonitoring (username, location) VALUES ($1, $2)",
@@ -1879,7 +1937,7 @@ class Server {
         });
 
         // GET route for checking server status
-        this.app.get('/main_page', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/main_page', async (req, res) => {
 
             const client = await pool.connect();
 
@@ -1933,13 +1991,13 @@ class Server {
                 await client.query('ROLLBACK');
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
                 console.error('Server error: ', error);
-                res.status(500).json({ message: 'Failed to load camp data.' });
+                res.status(500).json({ message: 'Failed to load main page.' });
             } finally {
                 client.release();
             }
         });
 
-        this.app.get('/getCamp', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/getCamp', async (req, res) => {
 
             const client = await pool.connect();
 
@@ -1978,7 +2036,7 @@ class Server {
             }
         });
 
-        this.app.post('/setCampValue', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/setCampValue', async (req, res) => {
 
             const { error } = shemaChangeCamp.validate(req.body);
 
@@ -1997,7 +2055,7 @@ class Server {
 
         });
 
-        this.app.post('/addCamp', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/addCamp', async (req, res) => {
 
             const { error } = schemaAddCamp.validate(req.body);
             if (error) {
@@ -2057,15 +2115,6 @@ class Server {
     defineRoutesLogin() {
 
         // Section for Login
-
-        this.app.get('/', (req, res) => {
-            req.session.username = null;
-            res.render('index', { title: "LogIn" });
-        });
-
-        this.app.get('/changePassword', (req, res) => {
-            res.render('changePassword', { title: "Change Password" });
-        });
 
         async function sendAdminVerificated(username) {
             return new Promise(async (resolve, reject) => {
@@ -2139,7 +2188,13 @@ class Server {
             return false;
         }
 
-        this.app.post('/changePassword', async (req, res) => {
+        this.app.get('/web/changePassword', (req, res) => {
+            res.render('changePassword', {
+                title: "Change Password"
+            });
+        });
+
+        this.app.post('/web/changePassword', async (req, res) => {
             const { error } = schemaChangePassword.validate(req.body, { allowUnknown: true });
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -2216,7 +2271,7 @@ class Server {
             }
         });
 
-        this.app.post('/admin/verify', async (req, res) => {
+        this.app.post('/web/admin/verify', async (req, res) => {
 
             const { error } = schemaAdminVerify.validate(req.body, { allowUnknown: true });
             if (error) {
@@ -2259,7 +2314,7 @@ class Server {
         });
 
         // POST route for login with brute-force protection
-        this.app.post('/login', async (req, res) => {
+        this.app.post('/web/login', async (req, res) => {
             const { error } = schemaLogIn.validate(req.body, { allowUnknown: true });
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -2306,7 +2361,7 @@ class Server {
                 req.session.pendingUserId = user.id;
 
                 await client.query('COMMIT');
-                return res.status(200).json({ redirectTo: '/2fa-verificated' });
+                return res.status(200).json({ redirectTo: '/web/2fa-verificated' });
 
             } catch (err) {
                 await client.query('ROLLBACK');
@@ -2318,7 +2373,7 @@ class Server {
             }
         });
 
-        this.app.get('/2fa-verificated', async (req, res) => {
+        this.app.get('/web/2fa-verificated', async (req, res) => {
             const client = await pool.connect();
 
             if (req.session.username)
@@ -2353,8 +2408,7 @@ class Server {
                 req.session.qrCodeDataURL = qrCodeDataURL;
 
                 res.render('verifyQRCode', {
-                    qrCodeDataURL,
-                    csrfToken: req.csrfToken()
+                    qrCodeDataURL
                 });
 
             } catch (err) {
@@ -2366,7 +2420,7 @@ class Server {
             }
         });
 
-        this.app.post('/verify', (req, res) => {
+        this.app.post('/web/verify', (req, res) => {
 
             const { error } = schema2FAVerify.validate(req.body, { allowUnknown: true });
             if (error) {
@@ -2401,36 +2455,97 @@ class Server {
             delete req.session.pendingUser;
             delete req.session.pendingUserId;
             req.session.failedLogin = { failedAttempts: 0, blockExpiresAt: null };
-            res.status(200).json({ redirectTo: '/main_page' });
+            res.status(200).json({ redirectTo: '/web/main_page' });
 
         });
 
         // POST route to handle logout
-        this.app.get('/logout', (req, res) => {
-
+        this.app.get('/web/logout', (req, res) => {
             req.session.destroy();
             res.redirect('/'); // Redirect to login page after logout
         });
+
+        this.app.post('/logout', async (req, res) => {
+            const { refreshToken } = req.body;
+            const client = await pool.connect();
+            try {
+                const tokenHash = this.hashToken(refreshToken);
+                await client.query(
+                    "UPDATE user_sessions SET revoked = TRUE WHERE refresh_token = $1",
+                    [tokenHash]
+                );
+                res.sendStatus(200);
+
+            } catch (err) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error("Error when log out:", err);
+                res.sendStatus(500);
+            } finally {
+                client.release();
+            }
+        });
+
     }
 
     defineRoutesRFID() {
 
-        function isBlockedSession(req) {
-            const record = req.session.failedLogin || { failedAttempts: 0, blockExpiresAt: null };
+        async function isBlockedUser(client, username, ip) {
+            const result = await client.query(
+                "SELECT failed_attempts, block_expires_at FROM failed_logins WHERE username = $1 AND ip_address = $2",
+                [username, ip]
+            );
 
-            if (record.failedAttempts >= MAX_FAILED_ATTEMPTS) {
-                if (record.blockExpiresAt > Date.now()) {
-                    return true; // Still blocked
+            if (result.rows.length === 0) return false;
+
+            const record = result.rows[0];
+            if (record.failed_attempts >= MAX_FAILED_ATTEMPTS) {
+                if (record.block_expires_at && record.block_expires_at > Date.now()) {
+                    return true;
                 } else {
-                    // Block expired, reset
-                    req.session.failedLogin = { failedAttempts: 0, blockExpiresAt: null };
+                    await client.query(
+                        "UPDATE failed_logins SET failed_attempts = 0, block_expires_at = NULL WHERE username = $1 AND ip_address = $2",
+                        [username, ip]
+                    );
                 }
             }
-
             return false;
         }
 
-        this.app.get('/getAllCamp', this.isLoggedIn.bind(this), async (req, res) => {
+        async function registerFailedAttempt(client, username, ip) {
+            const result = await client.query(
+                "SELECT failed_attempts, block_expires_at FROM failed_logins WHERE username = $1 AND ip_address = $2",
+                [username, ip]
+            );
+
+            if (result.rows.length === 0) {
+                await client.query(
+                    "INSERT INTO failed_logins (username, ip_address, failed_attempts, block_expires_at) VALUES ($1, $2, $3, $4)",
+                    [username, ip, 1, null]
+                );
+                return;
+            }
+
+            let failedAttempts = result.rows[0].failed_attempts + 1;
+            let blockExpiresAt = null;
+
+            if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
+                blockExpiresAt = Date.now() + BLOCK_TIME;
+            }
+
+            await client.query(
+                "UPDATE failed_logins SET failed_attempts = $3, block_expires_at = $4 WHERE username = $1 AND ip_address = $2",
+                [username, ip, failedAttempts, blockExpiresAt]
+            );
+        }
+
+        async function resetFailedAttempts(client, username, ip) {
+            await client.query(
+                "DELETE FROM failed_logins WHERE username = $1 AND ip_address = $2",
+                [username, ip]
+            );
+        }
+
+        this.app.get('/api/getAllCamp', async (req, res) => {
 
             const client = await pool.connect();
 
@@ -2447,7 +2562,7 @@ class Server {
                 await client.query('ROLLBACK');
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
                 console.error(error);
-                res.status(500);
+                res.status(500).json({ message: 'Failed to load camp data.' });
 
             } finally {
                 client.release();
@@ -2481,31 +2596,19 @@ class Server {
                 const user = result.rows[0];
 
                 // Check if the user is blocked due to failed login attempts
-                if (isBlockedSession(req)) {
+                if (await isBlockedUser(client, username, req.ip)) {
                     await client.query('ROLLBACK');
                     return res.status(400).json({ success: false, message: 'Too many failed attempts. Try again later.' });
                 }
 
                 const passwordMatches = bcrypt.compareSync(password, user.password || '');
                 if (!passwordMatches) {
-
-                    let record = req.session.failedLogin || { failedAttempts: 0, blockExpiresAt: null };
-                    record.failedAttempts += 1;
-
-                    if (record.failedAttempts >= MAX_FAILED_ATTEMPTS) {
-                        record.blockExpiresAt = Date.now() + BLOCK_TIME;
-                    }
-
-                    req.session.failedLogin = record;
-
+                    await registerFailedAttempt(client, username, req.ip);
                     await client.query('COMMIT');
                     return res.status(200).json({ success: false, validUsername: true });
-
                 }
 
-                req.session.failedLogin = { failedAttempts: 0, blockExpiresAt: null };
-                req.session.pendingUserId = user.id;
-                req.session.pendingUser = username;
+                await resetFailedAttempts(client, username, req.ip);
 
                 await client.query('COMMIT');
                 return res.status(200).json({ success: true, validUsername: true });
@@ -2523,10 +2626,11 @@ class Server {
 
         this.app.get('/2fa-verificated-device', async (req, res) => {
 
+            const { username } = req.query;
             const client = await pool.connect();
 
             try {
-                const result = await client.query("SELECT totp_secret FROM users WHERE id = $1", [req.session.pendingUserId]);
+                const result = await client.query("SELECT totp_secret FROM users WHERE username = $1", [username]);
                 let secret;
 
                 if (result.rows.length > 0 && result.rows[0].totp_secret) {
@@ -2540,16 +2644,15 @@ class Server {
                     };
                 } else {
                     secret = speakeasy.generateSecret({ name: process.env.SECRET_NAME });
-                    await client.query("UPDATE users SET totp_secret = $1 WHERE id = $2", [
+                    await client.query("UPDATE users SET totp_secret = $1 WHERE username = $2", [
                         secret.base32,
-                        req.session.pendingUserId
+                        username
                     ]);
                 }
 
-                req.session.secret = secret;
                 const qrCodeDataURL = await qrcode.toDataURL(secret.otpauth_url);
 
-                res.json({ qrCodeDataURL });
+                res.json({ qrCodeDataURL, secret });
 
             } catch (err) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -2561,7 +2664,7 @@ class Server {
             }
         });
 
-        this.app.post('/verify-device', (req, res) => {
+        this.app.post('/verify-device', async (req, res) => {
 
             const { error } = schema2FAVerify.validate(req.body, { allowUnknown: true });
             if (error) {
@@ -2570,27 +2673,61 @@ class Server {
                 return res.status(400).json({ message: 'Invalid input' });
             }
 
-            const { code } = req.body;
-            const userSecret = req.session.secret;
+            const { code, userSecret, username, deviceId, deviceName } = req.body;
+            const client = await pool.connect();
 
-            if (!userSecret) {
-                return res.status(400).json({ message: 'Invalid user credentials' });
-            }
+            try {
+                if (!userSecret) {
+                    return res.status(400).json({ message: 'Invalid user credentials' });
+                }
 
-            const verified = speakeasy.totp.verify({
-                secret: userSecret.base32,
-                encoding: 'base32',
-                token: code,
-                window: 0
-            });
+                const verified = speakeasy.totp.verify({
+                    secret: userSecret.base32,
+                    encoding: 'base32',
+                    token: code,
+                    window: 0
+                });
 
-            if (verified) {
-                delete req.session.secret;
-                delete req.session.pendingUser;
-                delete req.session.pendingUserId;
-                return res.status(200).json({ message: 'Success' });
-            } else {
-                return res.status(400).json({ message: 'Invalid code. Try again.' });
+                if (!verified)
+                    return res.status(400).json({ message: 'Invalid code. Try again.' });
+
+                const user = await client.query("SELECT id FROM users WHERE username = $1", [username]);
+
+                const accessToken = jwt.sign({ userId: user.rows[0].id, username }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+                const refreshToken = jwt.sign({ userId: user.rows[0].id, username }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '14d' });
+                const tokenHash = this.hashToken(refreshToken);
+
+                const ip = req.ip;
+
+                const existing = await client.query(
+                    "SELECT id FROM user_sessions WHERE user_id = $1 AND device_id = $2",
+                    [user.rows[0].id, deviceId]
+                );
+
+                if (existing.rows.length > 0) {
+                    await client.query(
+                        `UPDATE user_sessions 
+                            SET refresh_token = $1, ip_address = $2, revoked = FALSE, created_at = NOW(), expires_at = NOW() + interval '14 days'
+                            WHERE id = $3`,
+                        [tokenHash, ip, existing.rows[0].id]
+                    );
+                } else {
+                    const uniqueId = crypto.randomBytes(16).toString('hex');
+                    await client.query(
+                        `INSERT INTO user_sessions (id, user_id, refresh_token, device_id, device_name, ip_address, expires_at) 
+                            VALUES ($1, $2, $3, $4, $5, $6, NOW() + interval '14 days')`,
+                        [uniqueId, user.rows[0].id, tokenHash, deviceId, deviceName, ip]
+                    );
+                }
+
+                return res.status(200).json({ accessToken, refreshToken });
+
+            } catch (err) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('2FA Verification Error:', err);
+                return res.status(500).json({ message: 'An error occurred during verification' });
+            } finally {
+                client.release();
             }
         });
     }
@@ -2598,7 +2735,7 @@ class Server {
     defineRoutesNFC() {
         // Section NFC App
 
-        this.app.get('/readBikeNfc', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/readBikeNfc', async (req, res) => {
 
             const { error } = schemaNFCBikeRead.validate(req.query);
             if (error) {
@@ -2639,11 +2776,11 @@ class Server {
 
                 await client.query('COMMIT');
                 res.status(200).json({
-                    namebike: result.rows.length > 0 ? result.rows[0].namebike : '',
-                    fullBikeName: result.rows.length > 0 ? result.rows[0].full_name : '',
-                    code: resultHelmet.rows.length > 0 ? resultHelmet.rows[0].code : '',
-                    fullHelmetName: resultHelmet.rows.length > 0 ? resultHelmet.rows[0].full_name : '',
-                    getBikeHelmet: getBikeHelmet.rows.length > 0 ? getBikeHelmet.rows[0].code : ''
+                    namebike: result.rows.length > 0 ? result.rows[0].namebike : 'None',
+                    fullBikeName: result.rows.length > 0 ? result.rows[0].full_name : 'None',
+                    code: resultHelmet.rows.length > 0 ? resultHelmet.rows[0].code : 'None',
+                    fullHelmetName: resultHelmet.rows.length > 0 ? resultHelmet.rows[0].full_name : 'None',
+                    getBikeHelmet: getBikeHelmet.rows.length > 0 ? getBikeHelmet.rows[0].code : 'None'
                 });
 
             } catch (err) {
@@ -2657,7 +2794,7 @@ class Server {
         });
 
         // Endpoint to get all available bikes
-        this.app.get('/getClient', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/getClient', async (req, res) => {
 
             const { error } = shemaClientNfc.validate(req.query);
             if (error) {
@@ -2694,7 +2831,7 @@ class Server {
             }
         });
 
-        this.app.post('/nfcRent', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/nfcRent', async (req, res) => {
 
             const { error } = schemaNFCRent.validate(req.body);
             if (error) {
@@ -2703,13 +2840,12 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            const { nfcData, date, time, selectClient, helmetId } = req.body;
+            const { nfcData, date, time, selectClient, helmetId, username } = req.body;
 
             const dateText = `${date} ${time}`;
             const recDate = new Date(dateText);
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
 
             try {
 
@@ -2819,7 +2955,7 @@ class Server {
             }
         });
 
-        this.app.post('/nfcReturn', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/nfcReturn', async (req, res) => {
 
             const { error } = schemaNFCReturn.validate(req.body);
             if (error) {
@@ -2828,13 +2964,12 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            const { nfcData, date, time } = req.body;
+            const { nfcData, date, time, username } = req.body;
 
             const dateText = `${date} ${time}`;
             const recDate = new Date(dateText);
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
 
             try {
 
@@ -2889,7 +3024,7 @@ class Server {
             }
         });
 
-        this.app.patch('/editParameturBike', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.patch('/api/editParameturBike', async (req, res) => {
 
             const { error } = schemaEditParameturBike.validate(req.body);
             if (error) {
@@ -2898,10 +3033,9 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            const { oldBikeId, newBikeId, bikeName, campId } = req.body;
+            const { oldBikeId, newBikeId, bikeName, campId, username } = req.body;
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
 
             try {
 
@@ -2945,7 +3079,7 @@ class Server {
                         ),
                         client.query(
                             `INSERT INTO usermonitoring (username, location) VALUES ($1, $2)`,
-                            [req.body.username, `Edit Bike name with code ${oldBikeId}`]
+                            [username, `Edit Bike name with code ${oldBikeId}`]
                         )
                     ]);
 
@@ -2983,7 +3117,7 @@ class Server {
             }
         });
 
-        this.app.patch('/editParameturHelmet', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.patch('/api/editParameturHelmet', async (req, res) => {
 
             const { error } = schemaEditParameturHelmet.validate(req.body);
             if (error) {
@@ -2992,10 +3126,9 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            const { oldHelmetId, newHelmetId, helmetName, campId } = req.body;
+            const { oldHelmetId, newHelmetId, helmetName, campId, username } = req.body;
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
 
             try {
 
@@ -3039,7 +3172,7 @@ class Server {
                         ),
                         client.query(
                             `INSERT INTO usermonitoring (username, location) VALUES ($1, $2)`,
-                            [req.body.username, `Edit Helmet name with code ${oldHelmetId}`]
+                            [username, `Edit Helmet name with code ${oldHelmetId}`]
                         )
                     ]);
 
@@ -3065,7 +3198,7 @@ class Server {
                 }
 
                 await client.query('COMMIT');
-                res.status(200).json({ message: 'Bike edit successfully.' });
+                res.status(200).json({ message: 'Helmet edit successfully.' });
 
             } catch (error) {
                 await client.query('ROLLBACK');
@@ -3081,10 +3214,11 @@ class Server {
     defineRoutesBicycles() {
 
         // Serve APK file from local directory
-        this.app.get('/download-apk-bike', this.isLoggedIn.bind(this), async (req, res) => {
+
+        this.app.get('/web/download-apk-bike', async (req, res) => {
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
+            const username = req.session.username;
 
             try {
                 const checkPermission = await client.query(`
@@ -3124,13 +3258,56 @@ class Server {
             });
         });
 
-        this.app.get('/apk-bike-version', this.isLoggedIn.bind(this), (req, res) => {
-            res.json({ version: "1.4.1", apkUrl: "/download-apk-bike" });
+        this.app.get('/api/download-apk-bike', async (req, res) => {
+
+            const client = await pool.connect();
+            const username = req.query.username;
+
+            try {
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'Download bicycle app')`, [username]);
+
+                if (checkPermission.rows.length === 0)
+                    return res.status(400).json({ message: "You don't have permission to download app for bicycle!" });
+
+            } catch (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error downloading the file:', err);
+                return res.status(500).json({ message: 'Error downloading the file' });
+
+            } finally {
+                client.release();
+            }
+
+            const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.4.1-release.apk');
+
+            // Check APK file existence and legality
+            if (!this.checkApkFileLegality(apkFilePath, res)) {
+                return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
+            }
+
+            // Serve the APK with proper headers
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+            res.setHeader('Content-Disposition', 'attachment; filename="NFCReader-1.4.1-release.apk"');
+            res.download(apkFilePath, (err) => {
+                if (err) {
+                    console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                    console.error('Error during APK download:', err);
+                    res.status(500).json({ message: 'Error downloading the file' });
+                }
+            });
+        });
+
+        this.app.get('/api/apk-bike-version', (req, res) => {
+            res.json({ version: "1.4.1", apkUrl: "/api/download-apk-bike" });
         });
 
         // Section bicycles
 
-        this.app.get('/bicycles', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/bicycles', async (req, res) => {
 
             var data = [];
             var optionHour = [];
@@ -3423,7 +3600,7 @@ class Server {
             }
         });
 
-        this.app.get('/bicycles/getStatusData', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/bicycles/getStatusData', async (req, res) => {
 
             const { error } = schemaGetStatusBike.validate(req.query);
             if (error) {
@@ -3544,7 +3721,7 @@ class Server {
 
         });
 
-        this.app.post("/bikeAction", this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post("/web/bikeAction", async (req, res) => {
 
             const { error } = schemaBike.validate(req.body);
             if (error) {
@@ -3711,7 +3888,7 @@ class Server {
             }
         });
 
-        this.app.post("/bicycles/report", this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post("/web/bicycles/report", async (req, res) => {
 
             const { error } = schemaReportBike.validate(req.body);
             if (error) {
@@ -3951,7 +4128,7 @@ class Server {
 
         });
 
-        this.app.get('/bikes', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/bikes', async (req, res) => {
 
             const { error, value } = shemaClientNfc.validate(req.query);
             if (error) {
@@ -3964,7 +4141,7 @@ class Server {
 
             const client = await pool.connect();
 
-            const campId = req.session.username ? req.session.camp : value.campId;
+            const campId = value.campId;
 
             try {
                 await client.query('BEGIN');
@@ -3989,9 +4166,47 @@ class Server {
 
         });
 
-        this.app.get('/helmets', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/bikes', async (req, res) => {
 
-            const { error, value } = shemaClientNfc.validate(req.query);
+            const { error } = shemaClientNfc.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message)
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            var optionBike = [];
+
+            const client = await pool.connect();
+
+            const campId = req.session.camp;
+
+            try {
+                await client.query('BEGIN');
+                const result_bike = await client.query(`SELECT id, namebike, status FROM bicycles WHERE camp_id = $1;`, [campId]);
+
+                result_bike.rows.forEach(element => {
+                    optionBike.push({ id: element.id, name: element.namebike, status: element.status });
+                });
+
+                await client.query('COMMIT');
+                res.status(200).json(optionBike);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to get bike:', error);
+                res.status(500).json({ message: 'An error occurred' });
+
+            } finally {
+                client.release();
+            }
+
+        });
+
+        this.app.get('/api/helmets', async (req, res) => {
+
+            const { error } = shemaClientNfc.validate(req.query);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
                 console.error(error.details[0].message);
@@ -4002,14 +4217,62 @@ class Server {
 
             const client = await pool.connect();
 
-            const campId = req.session.username ? req.session.camp : value.campId;
+            let { campId } = req.query;
+
+            try {
+                await client.query('BEGIN');
+
+                const result_bike = await client.query(`
+                    SELECT h.id, 
+                        CASE 
+                            WHEN bs.helmet_id IS NOT NULL AND bs.dateto IS NULL THEN CONCAT(h.code, ' (Rented)') 
+                            ELSE CONCAT(h.code, ' (Available)') 
+                        END AS code_status,
+                        h.code
+                    FROM helmets h
+                    LEFT JOIN bikesoldier bs ON h.id = bs.helmet_id AND bs.dateto IS NULL
+                    WHERE h.camp_id = $1;`, [campId]);
+
+                result_bike.rows.forEach(element => {
+                    optionsHelmets.push({ id: element.id, name: element.code, code: element.code_status });
+                });
+
+                await client.query('COMMIT');
+                return res.status(200).json(optionsHelmets);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error get helmet data:', error);
+                res.status(500).json({ message: 'An error occurred' });
+
+            } finally {
+                client.release();
+            }
+
+        });
+
+        this.app.get('/web/helmets', async (req, res) => {
+
+            const { error } = shemaClientNfc.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            var optionsHelmets = [];
+
+            const client = await pool.connect();
+
+            const campId = req.session.camp;
 
             let { page, limit, searchColumn, searchValue } = req.query;
 
             try {
                 await client.query('BEGIN');
 
-                if (value.isValidCode || Object.keys(req.query).length === 0) {
+                if (Object.keys(req.query).length === 0) {
                     const result_bike = await client.query(`
                     SELECT h.id, 
                         CASE 
@@ -4113,7 +4376,7 @@ class Server {
 
         });
 
-        this.app.get('/getHelmetByBike', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/getHelmetByBike', async (req, res) => {
 
             const { error, value } = shemaHelmetBike.validate(req.query);
             if (error) {
@@ -4150,7 +4413,7 @@ class Server {
 
         });
 
-        this.app.get('/bicycles/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/bicycles/viewReport', async (req, res) => {
 
             const { error } = schemaReport.validate(req.query);
             if (error) {
@@ -4375,7 +4638,7 @@ class Server {
             }
         });
 
-        this.app.post('/bicycles/addBike', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/bicycles/addBike', async (req, res) => {
 
             const { error } = schemaAddBike.validate(req.body);
             if (error) {
@@ -4384,10 +4647,7 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            let { bikeAddId, bikeName } = req.body;
-
-            const campId = req.session.username ? req.session.camp : req.body.campId;
-            const username = req.session.username ? req.session.username : req.body.username;
+            let { bikeAddId, bikeName, campId, username } = req.body;
 
             const client = await pool.connect();
 
@@ -4443,7 +4703,75 @@ class Server {
             }
         });
 
-        this.app.post('/bicycles/addHelmet', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/bicycles/addBike', async (req, res) => {
+
+            const { error } = schemaAddBike.validate(req.body);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            let { bikeAddId, bikeName } = req.body;
+
+            const campId = req.session.camp;
+            const username = req.session.username;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'Add bike')`, [username])
+
+                if (checkPermission.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "You don't have permission to add bicycles!" });
+                }
+
+                // Check if bikeAddId already exists
+                const result = await client.query(`SELECT * FROM bicycles WHERE id = $1`, [bikeAddId]);
+                const resultName = await client.query(`SELECT * FROM bicycles WHERE namebike = $1 AND camp_id = $2;`, [bikeName, campId]);
+
+                if (result.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This bike number already exists.' });
+                }
+
+                if (resultName.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This bike name already exists.' });
+                }
+
+                // Insert new bike if bikeAddId doesn't exist
+                await client.query(`INSERT INTO bicycles VALUES ($1, $2, 'Available', $3);`, [bikeAddId, bikeName, campId]);
+
+                // Query the database for the user
+                await client.query(
+                    `INSERT INTO usermonitoring (username, location) VALUES ($1, $2)`,
+                    [username, `Add Bike with name ${bikeName}`]
+                );
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'Bike added successfully.' });
+
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to add bike:', err);
+                res.status(500).json({ message: 'Internal server error.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/api/bicycles/addHelmet', async (req, res) => {
 
             const { error } = schemaAddHelmet.validate(req.body);
             if (error) {
@@ -4452,14 +4780,7 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            if (!req.session.camp && !req.body.campId) {
-                return res.status(400).json({ message: "You not select camp. First select camp then add lost item?!" });
-            }
-
-            let { helmetAddId, helmetName } = req.body;
-
-            const campId = req.session.username ? req.session.camp : req.body.campId;
-            const username = req.session.username ? req.session.username : req.body.username;
+            let { helmetAddId, helmetName, username, campId } = req.body;
 
             const client = await pool.connect();
 
@@ -4515,17 +4836,23 @@ class Server {
             }
         });
 
-        this.app.delete('/bicycles/removeHelmet', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/bicycles/addHelmet', async (req, res) => {
 
-            const { error } = schemaRemoveHelmet.validate(req.body);
+            const { error } = schemaAddHelmet.validate(req.body);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
                 console.error(error.details[0].message);
-                return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
+                return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            const { code } = req.body;
-            const username = req.session.username ? req.session.username : req.body.username;
+            let { helmetAddId, helmetName } = req.body;
+
+            const campId = req.session.camp;
+            const username = req.session.username;
+
+            if (!campId) {
+                return res.status(400).json({ message: "You not select camp. First select camp then add lost item?!" });
+            }
 
             const client = await pool.connect();
 
@@ -4535,7 +4862,72 @@ class Server {
 
                 const checkPermission = await client.query(`
                         SELECT * FROM user_permission 
-                        WWHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'Add helmet')`, [username])
+
+                if (checkPermission.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "You don't have permission to add helmet!" });
+                }
+
+                // Check if bikeAddId already exists
+                const result = await client.query(`SELECT * FROM helmets WHERE id = $1;`, [helmetAddId]);
+                const resultName = await client.query(`SELECT * FROM helmets WHERE code = $1 AND camp_id = $2;`, [helmetName, campId]);
+
+                if (result.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This helmet number already exists.' });
+                }
+
+                if (resultName.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This helmet name already exists.' });
+                }
+
+                // Insert new bike if bikeAddId doesn't exist
+                await client.query(`INSERT INTO helmets VALUES ($1, $2, $3);`, [helmetAddId, helmetName, campId]);
+
+                // Query the database for the user
+                await client.query(
+                    `INSERT INTO usermonitoring (username, location) VALUES ($1, $2)`,
+                    [username, `Add Helmet with name ${helmetName}`]
+                );
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'Helmet added successfully.' });
+
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to add helmet:', err);
+                res.status(500).json({ message: 'Internal server error.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.delete('/api/bicycles/removeHelmet', async (req, res) => {
+
+            const { error } = schemaRemoveHelmet.validate(req.body);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
+            }
+
+            const { code, username } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
                         AND perm_id IN (SELECT id FROM permission 
                             WHERE permission_name = 'Full permission' OR permission_name = 'List of helmet')`, [username])
 
@@ -4558,7 +4950,7 @@ class Server {
                 }
 
                 await Promise.all([
-                    client.query(`DELETE FROM bikesoldier WHERE helmet_id = $1;`, [code]),
+                    client.query(`UPDATE bikesoldier SET helmet_id = NULL WHERE helmet_id = $1;`, [code]),
                     client.query(`DELETE FROM helmets WHERE id = $1`, [code])
                 ]);
 
@@ -4579,7 +4971,71 @@ class Server {
             }
         });
 
-        this.app.delete('/bicycles/removeBike', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/bicycles/removeHelmet', async (req, res) => {
+
+            const { error } = schemaRemoveHelmet.validate(req.body);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: "Invalid syntax. The value must contain only the letter and number character" });
+            }
+
+            const { code } = req.body;
+            const username = req.session.username;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'List of helmet')`, [username])
+
+                if (checkPermission.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "You don't have permission to remove helmet!" });
+                }
+
+                const checkHelmet = await client.query(`SELECT id FROM helmets WHERE id = $1`, [code]);
+                const check_give_helmet = await client.query(`SELECT helmet_id FROM bikesoldier WHERE helmet_id = $1 AND dateto IS NULL`, [code]);
+
+                if (checkHelmet.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Helmet not found.' });
+                }
+
+                if (check_give_helmet.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This helmet is currently in use and cannot be removed.' });
+                }
+
+                await Promise.all([
+                    client.query(`UPDATE bikesoldier SET helmet_id = NULL WHERE helmet_id = $1;`, [code]),
+                    client.query(`DELETE FROM helmets WHERE id = $1`, [code])
+                ]);
+
+                await client.query("INSERT INTO usermonitoring (username, location) VALUES ($1, $2)",
+                    [username, `Remove helmet ${code}`]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'Helmet removed successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to remove helmet:', error);
+                res.status(500).json({ message: 'An error occurred' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.delete('/api/bicycles/removeBike', async (req, res) => {
 
             const { error } = schemaRemoveBike.validate(req.body);
             if (error) {
@@ -4588,8 +5044,7 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            let { bikeRemoveId } = req.body;
-            const username = req.session.username ? req.session.username : req.body.username;
+            let { bikeRemoveId, username } = req.body;
 
             const client = await pool.connect();
 
@@ -4626,6 +5081,7 @@ class Server {
                         `INSERT INTO usermonitoring (username, location) VALUES ($1, $2)`,
                         [username, `Remove Bike with number ${bikeResult.rows[0].namebike}`]
                     ),
+                    client.query(`DELETE FROM bikesoldier WHERE bikeid = $1;`, [bikeRemoveId]),
                     client.query(`DELETE FROM bicycles WHERE id = $1;`, [bikeRemoveId])
                 ]);
 
@@ -4643,7 +5099,72 @@ class Server {
             }
         });
 
-        this.app.get('/bicycles/multiBike/download', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/bicycles/removeBike', async (req, res) => {
+
+            const { error } = schemaRemoveBike.validate(req.body);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            let { bikeRemoveId } = req.body;
+            const username = req.session.username;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'Remove bike')`, [username])
+
+                if (checkPermission.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "You don't have permission to remove bicycles!" });
+                }
+
+                const bikeResult = await client.query(`SELECT namebike FROM bicycles WHERE id = $1`, [bikeRemoveId]);
+                const checkBike = await client.query(`SELECT bikeid FROM bikesoldier WHERE bikeid = $1 AND dateto IS NULL`, [bikeRemoveId]);
+
+                if (bikeResult.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Bike not found.' });
+                }
+
+                if (checkBike.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This bike is currently in use and cannot be removed.' });
+                }
+
+                await Promise.all([
+                    client.query(
+                        `INSERT INTO usermonitoring (username, location) VALUES ($1, $2)`,
+                        [username, `Remove Bike with number ${bikeResult.rows[0].namebike}`]
+                    ),
+                    client.query(`DELETE FROM bikesoldier WHERE bikeid = $1;`, [bikeRemoveId]),
+                    client.query(`DELETE FROM bicycles WHERE id = $1;`, [bikeRemoveId])
+                ]);
+
+                await client.query('COMMIT');
+                return res.status(200).json({ message: 'Bike remove successfully.' });
+
+            } catch (err) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to remove bike:', err);
+                res.status(500).json({ message: 'Internal server error.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/web/bicycles/multiBike/download', async (req, res) => {
 
             // Create a new Excel workbook
             const workbook = new excelJS.Workbook();
@@ -4676,7 +5197,7 @@ class Server {
 
         });
 
-        this.app.get('/bicycles/multiHelmet/download', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/bicycles/multiHelmet/download', async (req, res) => {
 
             // Create a new Excel workbook
             const workbook = new excelJS.Workbook();
@@ -4709,7 +5230,7 @@ class Server {
 
         });
 
-        this.app.post('/bicycles/uploadMultiBike', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+        this.app.post('/web/bicycles/uploadMultiBike', upload.single('file'), async (req, res) => {
 
             const client = await pool.connect();
             const errors = [];
@@ -4840,7 +5361,7 @@ class Server {
             }
         });
 
-        this.app.post('/bicycles/uploadMultiHelmet', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+        this.app.post('/web/bicycles/uploadMultiHelmet', upload.single('file'), async (req, res) => {
 
             const client = await pool.connect();
             const errors = [];
@@ -4972,7 +5493,7 @@ class Server {
             }
         });
 
-        this.app.get('/checkBike', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/checkBike', async (req, res) => {
 
             const { error, value } = schemaCheckBike.validate(req.query);
             if (error) {
@@ -5023,7 +5544,58 @@ class Server {
             }
         });
 
-        this.app.get('/clients', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/checkBike', async (req, res) => {
+
+            const { error, value } = schemaCheckBike.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const bikeId = value.bikeId;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const checkBikeId = await client.query('SELECT * FROM bicycles WHERE id = $1;', [bikeId]);
+
+                if (checkBikeId.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "This bike does not exist. It has probably been modified." });
+                }
+
+                const result_bike = await client.query(`
+                        SELECT status, datefrom FROM bicycles b
+                        LEFT JOIN bikesoldier bs ON bs.bikeid = b.id
+                        WHERE b.id = $1 and b.status <> 'Available' AND dateto IS NULL;`, [bikeId]);
+
+                await client.query('COMMIT');
+
+                if (result_bike.rows.length > 0) {
+                    const statusRes = result_bike.rows[0].status ? result_bike.rows[0].status : 'Available';
+                    const datefromRes = result_bike.rows[0].datefrom ? result_bike.rows[0].datefrom : 'None';
+
+                    res.status(200).json({ status: statusRes, datefrom: datefromRes });
+                } else {
+                    res.status(200).json({ status: 'Available', datefrom: 'None' });
+                }
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to check bike:', error);
+                res.status(500).json({ message: 'An error occurred while processing.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/web/clients', async (req, res) => {
 
             const { error } = schemaGetListSoldier.validate(req.query);
             if (error) {
@@ -5179,7 +5751,7 @@ class Server {
             }
         });
 
-        this.app.patch('/bicycles/editBike', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.patch('/web/bicycles/editBike', async (req, res) => {
 
             const { error } = schemaEditBike.validate(req.body);
             if (error) {
@@ -5254,7 +5826,7 @@ class Server {
     // Section Accommodation
     defineRoutesAccommodation() {
 
-        this.app.get('/getUpcomingAction', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/getUpcomingAction', async (req, res) => {
 
             const { error } = schemaUpcomingAction.validate(req.query);
             if (error) {
@@ -5385,7 +5957,7 @@ class Server {
             }
         });
 
-        this.app.get('/checkUpcomingDate', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/checkUpcomingDate', async (req, res) => {
 
             const client = await pool.connect();
 
@@ -5394,15 +5966,23 @@ class Server {
 
                 const query = `
                     SELECT *
-                        FROM soldier
-                        WHERE camp_id = $1
-                        AND NOT (date_accommodation IS NOT NULL AND date_free IS NULL)
-                        AND (
-                            (upcoming_accommodation IS NOT NULL AND CURRENT_DATE BETWEEN upcoming_accommodation - INTERVAL '1 day' AND upcoming_accommodation)
-                            OR
-                            (upcoming_release IS NOT NULL AND CURRENT_DATE BETWEEN upcoming_release - INTERVAL '1 day' AND upcoming_release)
-                        );
-                    `;
+                    FROM soldier
+                    WHERE camp_id = $1
+                    AND (
+                        (
+                            upcoming_accommodation IS NOT NULL
+                            AND NOT (date_accommodation IS NOT NULL AND date_free IS NULL)
+                            AND CURRENT_DATE BETWEEN upcoming_accommodation - INTERVAL '1 day' AND upcoming_accommodation
+                        )
+                        OR
+                        (
+                            upcoming_release IS NOT NULL
+                            AND date_accommodation IS NOT NULL
+                            AND date_free IS NULL
+                            AND CURRENT_DATE BETWEEN upcoming_release - INTERVAL '1 day' AND upcoming_release
+                        )
+                    );
+                `;
 
                 const result = await client.query(query, [req.session.camp]);
                 await client.query('COMMIT');
@@ -5468,7 +6048,7 @@ class Server {
             }
         });
 
-        this.app.get('/rooms', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/rooms', async (req, res) => {
 
             var optionRoom = [];
 
@@ -5503,7 +6083,48 @@ class Server {
             }
         });
 
-        this.app.get('/bags', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/bags', async (req, res) => {
+
+            const { error } = shemaGetBags.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            let optionAllBag = [];
+
+            let { campId } = req.query;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result_all_bags = await client.query(`SELECT * FROM laundrybags WHERE camp_id = $1;`, [campId]);
+
+                result_all_bags.rows.forEach(element => {
+                    optionAllBag.push({ id: element.id, name: element.code, status: element.status, maxcountlandry: element.maxcountlandry, type: element.type });
+                });
+
+                await client.query('COMMIT');
+                res.status(200).json({
+                    allBags: optionAllBag
+                });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error fetch list bags:', error);
+                res.status(500).json({ message: 'An error occurred while processing the file.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/web/bags', async (req, res) => {
 
             const { error } = shemaGetBags.validate(req.query);
             if (error) {
@@ -5515,7 +6136,7 @@ class Server {
             let optionAllBag = [];
             let optionFilterAllBag = [];
 
-            const campId = req.session?.username ? req.session.camp : req.query.campId;
+            const campId = req.session.camp;
             let { page = 1, limit = 10, searchColumn, searchValue } = req.query;
 
             const client = await pool.connect();
@@ -5608,7 +6229,7 @@ class Server {
             }
         });
 
-        this.app.get('/freeBags', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/freeBags', async (req, res) => {
 
             var optionAllBag = [];
 
@@ -5651,7 +6272,7 @@ class Server {
             }
         });
 
-        this.app.get('/builds', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/builds', async (req, res) => {
 
             var builds = [];
 
@@ -5681,7 +6302,7 @@ class Server {
             }
         });
 
-        this.app.get('/move/getSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/move/getSoldier', async (req, res) => {
 
             const { error } = schemaGetSoldier.validate(req.query);
             if (error) {
@@ -5726,7 +6347,7 @@ class Server {
             }
         });
 
-        this.app.get('/searchBikes', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/searchBikes', async (req, res) => {
 
             const { error, value } = schemaSearchBike.validate(req.query);
             if (error) {
@@ -5751,17 +6372,17 @@ class Server {
                 }
 
                 const result_client = await client.query(`
-                SELECT DISTINCT
-                namesoldier,
-                TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
-                datefrom,
-                TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
-                FROM bikesoldier bs
-                LEFT JOIN soldier s ON s.id = bs.soldierid
-                LEFT JOIN bicycles b ON b.id = bs.bikeid
-                WHERE bikeid = $1
-                ORDER BY datefrom DESC
-                LIMIT 2;`, [selectBike]);
+                    SELECT DISTINCT
+                    namesoldier,
+                    TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
+                    datefrom,
+                    TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
+                    FROM bikesoldier bs
+                    LEFT JOIN soldier s ON s.id = bs.soldierid
+                    LEFT JOIN bicycles b ON b.id = bs.bikeid
+                    WHERE bikeid = $1
+                    ORDER BY datefrom DESC
+                    LIMIT 2;`, [selectBike]);
 
                 result_client.rows.forEach(element => {
                     allBikeInfo.push({ namesoldier: element.namesoldier, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
@@ -5781,7 +6402,62 @@ class Server {
             }
         });
 
-        this.app.get('/searchClient', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/searchBikes', async (req, res) => {
+
+            const { error, value } = schemaSearchBike.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const selectBike = value.id;
+            var allBikeInfo = [];
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const check_exist_bike = await client.query(`SELECT * FROM bicycles WHERE id = $1;`, [selectBike]);
+                if (check_exist_bike.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This bike is not exist. It has probably been modified.' });
+                }
+
+                const result_client = await client.query(`
+                    SELECT DISTINCT
+                    namesoldier,
+                    TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
+                    datefrom,
+                    TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
+                    FROM bikesoldier bs
+                    LEFT JOIN soldier s ON s.id = bs.soldierid
+                    LEFT JOIN bicycles b ON b.id = bs.bikeid
+                    WHERE bikeid = $1
+                    ORDER BY datefrom DESC
+                    LIMIT 2;`, [selectBike]);
+
+                result_client.rows.forEach(element => {
+                    allBikeInfo.push({ namesoldier: element.namesoldier, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
+                });
+
+                await client.query('COMMIT');
+                res.json(allBikeInfo);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to search bike:', error);
+                res.status(500).json({ message: 'An error occurred while processing.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/api/searchClient', async (req, res) => {
 
             const { error, value } = schemaSearchBike.validate(req.query);
             if (error) {
@@ -5806,17 +6482,36 @@ class Server {
                 }
 
                 const result_client = await client.query(`
-                SELECT DISTINCT
-                namebike,
-                TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
-                datefrom,
-                TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
-                FROM bikesoldier bs
-                LEFT JOIN soldier s ON s.id = bs.soldierid
-                LEFT JOIN bicycles b ON b.id = bs.bikeid
-                WHERE soldierid = $1
-                ORDER BY datefrom DESC
-				LIMIT 2;`, [selectClient]);
+                    SELECT DISTINCT *
+                        FROM (
+                            (
+                                SELECT
+                                namebike,
+                                TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
+                                datefrom,
+                                TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
+                                FROM bikesoldier bs
+                                LEFT JOIN soldier s ON s.id = bs.soldierid
+                                LEFT JOIN bicycles b ON b.id = bs.bikeid
+                                WHERE soldierid = $1 
+                                AND dateto IS NULL
+                            )
+                            UNION ALL
+                            (
+                                SELECT
+                                namebike,
+                                TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
+                                datefrom,
+                                TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
+                                FROM bikesoldier bs
+                                LEFT JOIN soldier s ON s.id = bs.soldierid
+                                LEFT JOIN bicycles b ON b.id = bs.bikeid
+                                WHERE soldierid = $1
+                                ORDER BY datefrom DESC
+                                LIMIT 2
+                            )
+                        ) t
+                        ORDER BY datefrom DESC;`, [selectClient]);
 
                 result_client.rows.forEach(element => {
                     allClientInfo.push({ namebike: element.namebike, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
@@ -5836,7 +6531,81 @@ class Server {
             }
         });
 
-        this.app.get('/searchHelmet', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/searchClient', async (req, res) => {
+
+            const { error, value } = schemaSearchBike.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const selectClient = value.id;
+            var allClientInfo = [];
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const check_exist_soldier = await client.query(`SELECT * FROM soldier WHERE id = $1;`, [selectClient]);
+                if (check_exist_soldier.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This soldier is not exist. It has probably been modified.' });
+                }
+
+                const result_client = await client.query(`
+                    SELECT DISTINCT *
+                        FROM (
+                            (
+                                SELECT
+                                namebike,
+                                TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
+                                datefrom,
+                                TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
+                                FROM bikesoldier bs
+                                LEFT JOIN soldier s ON s.id = bs.soldierid
+                                LEFT JOIN bicycles b ON b.id = bs.bikeid
+                                WHERE soldierid = $1 
+                                AND dateto IS NULL
+                            )
+                            UNION ALL
+                            (
+                                SELECT
+                                namebike,
+                                TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
+                                datefrom,
+                                TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
+                                FROM bikesoldier bs
+                                LEFT JOIN soldier s ON s.id = bs.soldierid
+                                LEFT JOIN bicycles b ON b.id = bs.bikeid
+                                WHERE soldierid = $1
+                                ORDER BY datefrom DESC
+                                LIMIT 2
+                            )
+                        ) t
+                        ORDER BY datefrom DESC;`, [selectClient]);
+
+                result_client.rows.forEach(element => {
+                    allClientInfo.push({ namebike: element.namebike, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
+                });
+
+                await client.query('COMMIT');
+                res.json(allClientInfo);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to search soldier:', error);
+                res.status(500).json({ message: 'An error occurred while processing.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/api/searchHelmet', async (req, res) => {
 
             const { error, value } = schemaSearchBike.validate(req.query);
             if (error) {
@@ -5861,17 +6630,17 @@ class Server {
                 }
 
                 const result_helmet = await client.query(`
-                SELECT DISTINCT
-                namesoldier,
-                TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
-                datefrom,
-                TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
-                FROM bikesoldier bs
-                LEFT JOIN soldier s ON s.id = bs.soldierid
-                LEFT JOIN helmets h ON h.id = bs.helmet_id
-                WHERE helmet_id = $1
-                ORDER BY datefrom DESC
-                LIMIT 2;`, [id]);
+                    SELECT DISTINCT
+                    namesoldier,
+                    TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
+                    datefrom,
+                    TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
+                    FROM bikesoldier bs
+                    LEFT JOIN soldier s ON s.id = bs.soldierid
+                    LEFT JOIN helmets h ON h.id = bs.helmet_id
+                    WHERE helmet_id = $1
+                    ORDER BY datefrom DESC
+                    LIMIT 2;`, [id]);
 
                 result_helmet.rows.forEach(element => {
                     allHelmetInfo.push({ namesoldier: element.namesoldier, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
@@ -5891,7 +6660,62 @@ class Server {
             }
         });
 
-        this.app.get('/accommodation', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/searchHelmet', async (req, res) => {
+
+            const { error, value } = schemaSearchBike.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const id = value.id;
+            var allHelmetInfo = [];
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const check_exist_helmet = await client.query(`SELECT * FROM helmets WHERE id = $1;`, [id]);
+                if (check_exist_helmet.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This helmet not exist. It has probably been modified.' });
+                }
+
+                const result_helmet = await client.query(`
+                    SELECT DISTINCT
+                    namesoldier,
+                    TO_CHAR(datefrom, 'YYYY-MM-DD HH24:MI') AS formatted_date_from,
+                    datefrom,
+                    TO_CHAR(dateto, 'YYYY-MM-DD HH24:MI') AS formatted_date_to
+                    FROM bikesoldier bs
+                    LEFT JOIN soldier s ON s.id = bs.soldierid
+                    LEFT JOIN helmets h ON h.id = bs.helmet_id
+                    WHERE helmet_id = $1
+                    ORDER BY datefrom DESC
+                    LIMIT 2;`, [id]);
+
+                result_helmet.rows.forEach(element => {
+                    allHelmetInfo.push({ namesoldier: element.namesoldier, datefrom: element.formatted_date_from, dateto: element.formatted_date_to });
+                });
+
+                await client.query('COMMIT');
+                res.status(200).json(allHelmetInfo);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error search helmet:', error);
+                res.status(500).json({ message: 'An error occurred while processing.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/web/accommodation', async (req, res) => {
             const { error } = schemaAccommodation.validate(req.query);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -6189,7 +7013,8 @@ class Server {
                         headerTable,
                         nameroomSetCount,
                         countResult.rows[0].totalcount,
-                        numBuild
+                        numBuild,
+                        req
                     );
                 }
             } catch (error) {
@@ -6202,8 +7027,7 @@ class Server {
             }
         });
 
-
-        this.app.get('/getKeyBuildigType', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/getKeyBuildigType', async (req, res) => {
 
             const { error } = schemaRemoveKey.validate(req.query);
 
@@ -6256,7 +7080,7 @@ class Server {
             }
         });
 
-        this.app.get('/getRoomKeys', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/getRoomKeys', async (req, res) => {
 
             const { error } = schemaViewKey.validate(req.query);
 
@@ -6366,7 +7190,7 @@ class Server {
             }
         });
 
-        this.app.post('/saveKey', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/saveKey', async (req, res) => {
 
             const { error } = schemaSaveSoldier.validate(req.body);
             if (error) {
@@ -6502,7 +7326,7 @@ class Server {
                         [keyCodeId]
                     );
 
-                    if(res_query.rows.length === 0 || res_query.rows[0].soldierid === null) {
+                    if (res_query.rows.length === 0 || res_query.rows[0].soldierid === null) {
                         await client.query('ROLLBACK');
                         return res.status(400).json({ message: 'This key is not assigned to any soldier.' });
                     }
@@ -6554,7 +7378,7 @@ class Server {
                         [keyCodeId]
                     );
 
-                    if(res_query.rows.length === 0 || res_query.rows[0].soldierid === null) {
+                    if (res_query.rows.length === 0 || res_query.rows[0].soldierid === null) {
                         await client.query('ROLLBACK');
                         return res.status(400).json({ message: 'This key is not assigned to any soldier.' });
                     }
@@ -6583,7 +7407,7 @@ class Server {
             }
         });
 
-        this.app.get('/accommodation/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/accommodation/viewReport', async (req, res) => {
 
             const { error } = schemaReport.validate(req.query);
             if (error) {
@@ -6775,7 +7599,7 @@ class Server {
             }
         });
 
-        this.app.post("/accommodation/report", this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post("/web/accommodation/report", async (req, res) => {
 
             const { error } = schemaAccommodationReport.validate(req.body);
             if (error) {
@@ -7063,7 +7887,7 @@ class Server {
 
         });
 
-        this.app.post("/accommodation/moveSoldier", this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post("/web/accommodation/moveSoldier", async (req, res) => {
 
             const { moves } = req.body;
 
@@ -7162,7 +7986,7 @@ class Server {
 
         });
 
-        this.app.post('/accommodation/addSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/accommodation/addSoldier', async (req, res) => {
 
             const { error } = schemaAddSoldier.validate(req.body);
             if (error) {
@@ -7202,7 +8026,7 @@ class Server {
                 const checkKeyExist = await client.query(`SELECT * FROM key WHERE id = $1`, [upcomingKey]);
                 const checkBagExist = await client.query(`SELECT * FROM laundrybags WHERE id = $1`, [soldierBag]);
 
-                if (checkKeyExist.rows.length === 0) {
+                if (upcomingKey && checkKeyExist.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.status(400).json({ message: `The selected key is not exist. It has probably been modified.` });
                 }
@@ -7247,7 +8071,7 @@ class Server {
             }
         });
 
-        this.app.delete('/accommodation/removeSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/accommodation/removeSoldier', async (req, res) => {
 
             const { error } = schemaRemoveSoldier.validate(req.body);
             if (error) {
@@ -7316,7 +8140,7 @@ class Server {
             }
         });
 
-        this.app.put('/accommodation/editSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.put('/web/accommodation/editSoldier', async (req, res) => {
 
             const { error } = schemaEditSoldier.validate(req.body);
             if (error) {
@@ -7421,7 +8245,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/uploadSoldier', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+        this.app.post('/web/accommodation/uploadSoldier', upload.single('file'), async (req, res) => {
             const client = await pool.connect();
             const errors = [];
             const bagSet = [];
@@ -7605,7 +8429,7 @@ class Server {
             }
         });
 
-        this.app.get('/accommodation/uploadSoldier/download', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/accommodation/uploadSoldier/download', async (req, res) => {
 
             // Create a new Excel workbook
             const workbook = new excelJS.Workbook();
@@ -7651,7 +8475,7 @@ class Server {
 
         });
 
-        this.app.get('/accommodation/multiSoldier/download', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/accommodation/multiSoldier/download', async (req, res) => {
 
             // Connect to PostgreSQL
             const client = await pool.connect();
@@ -7718,7 +8542,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/uploadMultiSoldier', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+        this.app.post('/web/accommodation/uploadMultiSoldier', upload.single('file'), async (req, res) => {
 
             const client = await pool.connect();
             const errors = [];
@@ -7910,7 +8734,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/deleteSoldier', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/accommodation/deleteSoldier', async (req, res) => {
             const { error } = schemaReleaseAllRoom.validate(req.body);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -8014,7 +8838,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/addDestination', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/accommodation/addDestination', async (req, res) => {
 
             const { error } = schemaAddDestination.validate(req.body);
             if (error) {
@@ -8035,7 +8859,7 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const checkPermission = client.query(`
+                const checkPermission = await client.query(`
                         SELECT * FROM user_permission 
                         WHERE user_id = $1
                         AND perm_id IN (SELECT id FROM permission 
@@ -8081,7 +8905,7 @@ class Server {
             }
         });
 
-        this.app.delete('/accommodation/removeDestination', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/accommodation/removeDestination', async (req, res) => {
 
             const { error } = schemaRemoveDestination.validate(req.body);
             if (error) {
@@ -8098,7 +8922,7 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const checkPermission = client.query(`
+                const checkPermission = await client.query(`
                         SELECT * FROM user_permission 
                         WHERE user_id = $1
                         AND perm_id IN (SELECT id FROM permission 
@@ -8135,7 +8959,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/addRoomToDestination', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/accommodation/addRoomToDestination', async (req, res) => {
 
             const { error } = schemaRoomToDestination.validate(req.body);
 
@@ -8157,7 +8981,7 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const checkPermission = client.query(`
+                const checkPermission = await client.query(`
                         SELECT * FROM user_permission 
                         WHERE user_id = $1
                         AND perm_id IN (SELECT id FROM permission 
@@ -8222,7 +9046,7 @@ class Server {
             }
         });
 
-        this.app.get('/specialRooms', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/specialRooms', async (req, res) => {
 
             const { error } = schemaSpecialRoom.validate(req.query);
             if (error) {
@@ -8286,7 +9110,7 @@ class Server {
             }
         });
 
-        this.app.get('/specialKeys', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/specialKeys', async (req, res) => {
 
             const { error } = schemaSpecialKey.validate(req.query);
             if (error) {
@@ -8333,7 +9157,7 @@ class Server {
             }
         });
 
-        this.app.get('/keys', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/keys', async (req, res) => {
 
             const client = await pool.connect();
 
@@ -8411,7 +9235,7 @@ class Server {
             }
         });
 
-        this.app.delete('/accommodation/removeRoomToDestination', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/accommodation/removeRoomToDestination', async (req, res) => {
 
             const { error } = schemaRemoveRoom.validate(req.body);
             if (error) {
@@ -8428,7 +9252,7 @@ class Server {
 
                 await client.query('BEGIN');
 
-                const checkPermission = client.query(`
+                const checkPermission = await client.query(`
                         SELECT * FROM user_permission 
                         WHERE user_id = $1
                         AND perm_id IN (SELECT id FROM permission 
@@ -8473,7 +9297,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/addKeyToRoom', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/accommodation/addKeyToRoom', async (req, res) => {
 
             const { error } = schemaKeyToRoom.validate(req.body);
             if (error) {
@@ -8554,7 +9378,7 @@ class Server {
             }
         });
 
-        this.app.delete('/accommodation/deleteKeys', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/accommodation/deleteKeys', async (req, res) => {
 
             const { error } = schemaRemoveSoldier.validate(req.body);
             if (error) {
@@ -8626,7 +9450,7 @@ class Server {
             }
         });
 
-        this.app.get('/accommodation/uploadKeys/download', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/accommodation/uploadKeys/download', async (req, res) => {
 
             // Create a new Excel workbook
             const workbook = new excelJS.Workbook();
@@ -8666,7 +9490,7 @@ class Server {
 
         });
 
-        this.app.post('/accommodation/uploadKeys', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+        this.app.post('/web/accommodation/uploadKeys', upload.single('file'), async (req, res) => {
             const client = await pool.connect();
             const errors = [];
 
@@ -8799,7 +9623,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/replaceKeyToRoom', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/accommodation/replaceKeyToRoom', async (req, res) => {
             const { error } = schemaRenameKey.validate(req.body);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -8886,7 +9710,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/addAdditionalItems', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/accommodation/addAdditionalItems', async (req, res) => {
 
             const { error } = schemaAddAdditionalItem.validate(req.body);
 
@@ -8963,7 +9787,7 @@ class Server {
             }
         });
 
-        this.app.get('/accommodation/getAllAdditionalItem', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/accommodation/getAllAdditionalItem', async (req, res) => {
 
             const { error } = schemaGetAdditionalItem.validate(req.query);
             if (error) {
@@ -9073,7 +9897,7 @@ class Server {
             }
         });
 
-        this.app.post('/accommodation/returnAddtionalItem', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/accommodation/returnAddtionalItem', async (req, res) => {
 
             const { error } = schemaReturnAdditionalItem.validate(req.body);
             if (error) {
@@ -9148,7 +9972,7 @@ class Server {
             }
         });
 
-        this.app.get('/accommodation/uploadRooms/download', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/accommodation/uploadRooms/download', async (req, res) => {
 
             // Create a new Excel workbook
             const workbook = new excelJS.Workbook();
@@ -9188,14 +10012,14 @@ class Server {
 
         });
 
-        this.app.post('/accommodation/uploadRooms', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+        this.app.post('/web/accommodation/uploadRooms', upload.single('file'), async (req, res) => {
             const client = await pool.connect();
             const errors = [];
 
             try {
                 await client.query('BEGIN');
 
-                const checkPermission = client.query(`
+                const checkPermission = await client.query(`
                         SELECT * FROM user_permission 
                         WHERE user_id = $1
                         AND perm_id IN (SELECT id FROM permission 
@@ -9318,7 +10142,7 @@ class Server {
             }
         });
 
-        this.app.get('/accommodation/multiReleaseRooms/download', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/accommodation/multiReleaseRooms/download', async (req, res) => {
 
             // Create a new Excel workbook
             const workbook = new excelJS.Workbook();
@@ -9357,7 +10181,7 @@ class Server {
 
         });
 
-        this.app.post('/accommodation/uploadReleaseRooms', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+        this.app.post('/web/accommodation/uploadReleaseRooms', upload.single('file'), async (req, res) => {
             const client = await pool.connect();
             const errors = [];
 
@@ -9530,7 +10354,7 @@ class Server {
             }
         });
 
-        this.app.post("/accommodation/downloadUpcomingSoldier", this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post("/web/accommodation/downloadUpcomingSoldier", async (req, res) => {
 
             const { error } = schemaUpcomingSoldierAction.validate(req.body);
             if (error) {
@@ -9671,10 +10495,11 @@ class Server {
     defineRoutesFitnes() {
 
         // Serve APK file from local directory
-        this.app.get('/download-apk-gym', this.isLoggedIn.bind(this), async (req, res) => {
+
+        this.app.get('/web/download-apk-gym', async (req, res) => {
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
+            const username = req.session.username;
 
             try {
                 const checkPermission = await client.query(`
@@ -9717,11 +10542,57 @@ class Server {
             });
         });
 
-        this.app.get('/apk-fitness-version', this.isLoggedIn.bind(this), (req, res) => {
-            res.json({ version: "1.0", apkUrl: "/download-apk-gym" });
+        this.app.get('/api/download-apk-gym', async (req, res) => {
+
+            const client = await pool.connect();
+            const username = req.query.username;
+
+            try {
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'Download fitness app')`, [username]);
+
+                if (checkPermission.rows.length === 0)
+                    return res.status(400).json({ message: "You don't have permission to download app for gym!" });
+
+            } catch (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error downloading the file:', err);
+                return res.status(500).json({ message: 'Error downloading the file' });
+
+            } finally {
+                client.release();
+            }
+
+            // Path to your APK file
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RateFitnesCleaning-1.0-release.apk');
+
+            // Check legality and existence of the APK file
+            if (!this.checkApkFileLegality(apkFilePath, res)) {
+                return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
+            }
+
+            // Set proper headers for an APK file
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
+            res.setHeader('Content-Disposition', 'attachment; filename="RateFitnesCleaning-1.0-release.apk"'); // Force download with custom filename
+
+            // Use res.download() to send the file to the client
+            res.download(apkFilePath, (err) => {
+                if (err) {
+                    console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                    console.error('Error downloading the file:', err);
+                    res.status(500).json({ message: 'Error downloading the file' });
+                }
+            });
         });
 
-        this.app.post('/sendClientData', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/apk-fitness-version', (req, res) => {
+            res.json({ version: "1.0", apkUrl: "/api/download-apk-gym" });
+        });
+
+        this.app.post('/api/sendClientData', async (req, res) => {
             const { error } = clientDataSchema.validate(req.body);
 
             if (error) {
@@ -9767,7 +10638,7 @@ class Server {
             }
         });
 
-        this.app.post('/sendEmojiData', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/sendEmojiData', async (req, res) => {
             const { error } = emojiDataSchema.validate(req.body);
 
             if (error) {
@@ -9815,7 +10686,7 @@ class Server {
             }
         });
 
-        this.app.get('/fitness', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/fitness', async (req, res) => {
 
             const { error } = schemaFitness.validate(req.query);
 
@@ -10030,7 +10901,7 @@ class Server {
             }
         });
 
-        this.app.post('/fitness/report', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/fitness/report', async (req, res) => {
 
             const { error } = schemaFitnessReport.validate(req.body);
             if (error) {
@@ -10215,10 +11086,10 @@ class Server {
         }
 
         // Serve APK file from local directory
-        this.app.get('/download-apk-laundry', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/download-apk-laundry', async (req, res) => {
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
+            const username = req.session.username;
 
             try {
 
@@ -10261,11 +11132,57 @@ class Server {
             });
         });
 
-        this.app.get('/apk-laundry-version', this.isLoggedIn.bind(this), (req, res) => {
-            res.json({ version: "1.4.1", apkUrl: "/download-apk-laundry" });
+        this.app.get('/api/download-apk-laundry', async (req, res) => {
+
+            const client = await pool.connect();
+            const username = req.query.username;
+
+            try {
+
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'Download laundry app')`, [username])
+
+                if (checkPermission.rows.length === 0)
+                    return res.status(400).json({ message: "You don't have permission to download app for laundry!" });
+
+            } catch (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error downloading the file:', err);
+                res.status(500).json({ message: 'Error downloading the file' });
+            } finally {
+                client.release();
+            }
+
+            // Path to your APK file
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.4.1-release.apk');
+
+            // Check legality and existence of the APK file
+            if (!this.checkApkFileLegality(apkFilePath, res)) {
+                return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
+            }
+
+            // Set proper headers for an APK file
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.4.1-release.apk"'); // Force download with custom filename
+
+            // Use res.download() to send the file to the client
+            res.download(apkFilePath, (err) => {
+                if (err) {
+                    console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                    console.error('Error downloading the file:', err);
+                    res.status(500).json({ message: 'Error downloading the file' });
+                }
+            });
         });
 
-        this.app.get('/laundry', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/apk-laundry-version', (req, res) => {
+            res.json({ version: "1.4.1", apkUrl: "/api/download-apk-laundry" });
+        });
+
+        this.app.get('/web/laundry', async (req, res) => {
 
             const { error } = schemaLaundry.validate(req.query);
             if (error) {
@@ -10404,7 +11321,7 @@ class Server {
             }
         });
 
-        this.app.post('/changeStatusBulk', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/changeStatusBags', async (req, res) => {
 
             const { error } = updateBagsScanerSchema.validate(req.body);
             if (error) {
@@ -10539,7 +11456,7 @@ class Server {
             }
         });
 
-        this.app.post('/changeEndToEndStatus', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/changeEndToEndStatus', async (req, res) => {
 
             const { error } = updateBagsScanerSchema.validate(req.body);
             if (error) {
@@ -10588,7 +11505,7 @@ class Server {
             }
         });
 
-        this.app.post('/changeEndToEndStatusConsole', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/changeEndToEndStatusConsole', async (req, res) => {
 
             const { error } = exchangeServiceSchema.validate(req.body);
             if (error) {
@@ -10646,7 +11563,7 @@ class Server {
             }
         });
 
-        this.app.post('/checkScaningCode', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/checkScaningCode', async (req, res) => {
 
             const { error } = checkScaningCodeSchema.validate(req.body);
             if (error) {
@@ -10687,7 +11604,7 @@ class Server {
 
                 if (result.rows.length === 0) {
                     await client.query('ROLLBACK');
-                    return res.status(400).json({ message: "This laundry bag was not given to the soldier." });
+                    return res.status(400).json({ message: `The laundry bag with code ${resultCheckExist.rows[0].code} was not given to the soldier.` });
                 }
 
                 const bag = result.rows[0];
@@ -10705,10 +11622,10 @@ class Server {
                     return res.status(400).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${status}, not ${prev_stat}.` });
                 }
 
-                if (destination === 'Linen Exchange service' && parseInt(resultCount.rows[0].count) > 0) {
-                    await client.query('ROLLBACK');
-                    return res.status(400).json({ message: `The bag with number ${code} is already scanned with use Linen Exchange service` });
-                }
+                // if (destination === 'Linen Exchange service' && parseInt(resultCount.rows[0].count) > 0) {
+                //     await client.query('ROLLBACK');
+                //     return res.status(400).json({ message: `The bag with number ${code} is already scanned with use Linen Exchange service` });
+                // }
 
                 await client.query('COMMIT');
                 res.status(200).json({ code: bag.code, soldierId: bag.namesoldier });
@@ -10724,7 +11641,7 @@ class Server {
             }
         });
 
-        this.app.post('/changeStatusConsole', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/changeStatusConsole', async (req, res) => {
             const { error } = updateBagsSchema.validate(req.body);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -10863,7 +11780,7 @@ class Server {
             }
         });
 
-        this.app.get('/checkLateBags', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/checkLateBags', async (req, res) => {
 
             const client = await pool.connect();
 
@@ -10896,7 +11813,7 @@ class Server {
             }
         });
 
-        this.app.get('/getBagsByStatus', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/getBagsByStatus', async (req, res) => {
 
             const { error } = schemaGetBagsByStatus.validate(req.query);
             if (error) {
@@ -11076,7 +11993,7 @@ class Server {
             }
         });
 
-        this.app.get('/laundry/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/laundry/viewReport', async (req, res) => {
 
             const { error } = schemaReport.validate(req.query);
             if (error) {
@@ -11201,7 +12118,8 @@ class Server {
                                     SELECT 1
                                     FROM laundryreport lr2
                                     JOIN laundrybags l2 ON l2.id = lr2.bag_id
-                                    WHERE l2.code = l.code
+                                    WHERE (lr.date_ready_to_pick_up IS NOT NULL AND status <> 'None') 
+                                        AND l2.code = l.code
                                         AND lr2.date_drop_off > lr.date_drop_off
                                     ) THEN 'Picked up'
 
@@ -11259,7 +12177,8 @@ class Server {
                                     SELECT 1
                                     FROM laundryreport lr2
                                     JOIN laundrybags l2 ON l2.id = lr2.bag_id
-                                    WHERE l2.code = l.code
+                                    WHERE (lr.date_ready_to_pick_up IS NOT NULL AND status <> 'None') 
+                                        AND l2.code = l.code
                                         AND lr2.date_drop_off > lr.date_drop_off
                                     ) THEN 'Picked up'
                                 WHEN l.status = 'None' THEN 'Picked up'
@@ -11323,7 +12242,7 @@ class Server {
             }
         });
 
-        this.app.post('/laundry/report', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/laundry/report', async (req, res) => {
 
             const { error } = schemaLaundryReport.validate(req.body);
             if (error) {
@@ -11411,7 +12330,8 @@ class Server {
                                 SELECT 1
                                 FROM laundryreport lr2
                                 JOIN laundrybags l2 ON l2.id = lr2.bag_id
-                                WHERE l2.code = l.code
+                                WHERE (lr.date_ready_to_pick_up IS NOT NULL AND status <> 'None')  
+                                    AND l2.code = l.code
                                     AND lr2.date_drop_off > lr.date_drop_off
                                 ) THEN 'Picked up'
 
@@ -11532,7 +12452,7 @@ class Server {
             }
         });
 
-        this.app.post('/laundry/addBag', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/laundry/addBag', async (req, res) => {
 
             const { error } = schemaAddBag.validate(req.body);
             if (error) {
@@ -11541,12 +12461,7 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            if (!req.session.camp && !req.body.campId)
-                return res.status(400).json({ message: "You not select camp. First select camp then add clean item?!" });
-
-            const { epc, code, type, maxcount } = req.body;
-            const campId = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
-            const username = req.session.username ? req.session.username : req.body.username;
+            const { epc, code, type, maxcount, campId, username } = req.body;
 
             const client = await pool.connect();
 
@@ -11597,7 +12512,73 @@ class Server {
             }
         });
 
-        this.app.delete('/laundry/deleteBag', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/laundry/addBag', async (req, res) => {
+
+            const { error } = schemaAddBag.validate(req.body);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const campId = req.session.camp;
+            const username = req.session.username;
+
+            if (!campId)
+                return res.status(400).json({ message: "You not select camp. First select camp then add clean item?!" });
+
+            const { epc, code, type, maxcount } = req.body;
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'List of bags')`, [username])
+
+                if (checkPermission.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "You don't have permission to operated with bags data!" });
+                }
+
+                const check_exist_epc = await client.query(`SELECT * FROM laundrybags WHERE id = $1;`, [epc]);
+                const check_exist_code = await client.query(`SELECT * FROM laundrybags WHERE code = $1 AND camp_id = $2;`, [code, campId]);
+
+                if (check_exist_epc.rows.length > 0 || check_exist_code.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This bag already exists!' });
+                }
+
+                await client.query(`INSERT INTO laundrybags(id, code, type, status, timein, timeout, maxcountlandry, soldier_id, camp_id) VALUES ($1, $2, $3, 'None', NULL, NULL, $4, NULL, $5);`,
+                    [epc, code, type, maxcount, campId]
+                );
+
+                // Query the database for the user
+                await Promise.all([
+                    client.query("INSERT INTO usermonitoring (username, location) VALUES ($1, $2)",
+                        [username, `Add bag with code ${code}`])
+                ]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'Bag added successfully' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error add bag', error);
+                res.status(500).json({ message: 'Failed to add bag.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.delete('/api/laundry/deleteBag', async (req, res) => {
 
             const { error } = schemaRemoveBag.validate(req.body);
             if (error) {
@@ -11606,10 +12587,9 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            const { code } = req.body;
+            const { code, username } = req.body;
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
 
             try {
 
@@ -11667,7 +12647,77 @@ class Server {
             }
         });
 
-        this.app.put('/laundry/editBag', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/laundry/deleteBag', async (req, res) => {
+
+            const { error } = schemaRemoveBag.validate(req.body);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const { code } = req.body;
+
+            const client = await pool.connect();
+            const username = req.session.username;
+
+            try {
+
+                await client.query('BEGIN');
+
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'List of bags')`, [username])
+
+                if (checkPermission.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "You don't have permission to operated with bags data!" });
+                }
+
+                const result = await client.query(`SELECT code FROM laundrybags WHERE id = $1;`, [code]);
+                if (result.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "This bag does not exist. It has probably been modified." });
+                }
+
+                const bagCode = result.rows[0].code;
+
+                const check_exist = await client.query(`
+                    SELECT s.* FROM soldier s
+					LEFT JOIN additionalitem ai ON ai.soldier_id = s.id
+                    LEFT JOIN laundrybags l ON l.id = s.laundry_bag_id OR ai.bag_id = l.id
+                    WHERE (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND date_free IS NULL)) AND l.id = $1`, [code]);
+
+                if (check_exist.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This bag is set to the soldier!' });
+                }
+
+                await Promise.all([
+                    client.query(`UPDATE soldier SET laundry_bag_id = NULL WHERE laundry_bag_id = $1;`, [code]),
+                    client.query(`DELETE FROM laundryreport WHERE bag_id = $1`, [code]),
+                    client.query(`DELETE FROM laundrybags WHERE id = $1`, [code]),
+                    client.query("INSERT INTO usermonitoring (username, location) VALUES ($1, $2)",
+                        [username, `Remove bag with code ${bagCode}`])
+                ]);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The bag was successfully removed' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error delete bag', error);
+                res.status(500).json({ message: 'Failed to delete bag' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.put('/web/laundry/editBag', async (req, res) => {
 
             const { error } = schemaEditBag.validate(req.body);
             if (error) {
@@ -11723,7 +12773,7 @@ class Server {
             }
         });
 
-        this.app.put('/laundry/editPhoneBag', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.put('/api/laundry/editPhoneBag', async (req, res) => {
 
             const { error } = schemaEditPhoneBag.validate(req.body);
             if (error) {
@@ -11732,10 +12782,9 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            const { oldCode, newCode, code, type, maxcount, campId } = req.body;
+            const { oldCode, newCode, code, type, maxcount, campId, username } = req.body;
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
 
             try {
 
@@ -11792,8 +12841,8 @@ class Server {
                         response.avg_transportation_drop_off_duration || 0,
                         response.laundrycount || 0,
                         maxcount,
-                        response.soldier_id || null,
-                        response.camp_id]);
+                        response.camp_id,
+                        response.soldier_id || null]);
 
                     await Promise.all([
                         client.query(`UPDATE additionalItem SET bag_id = $1 WHERE bag_id = $2`, [newCode, oldCode]),
@@ -11825,10 +12874,10 @@ class Server {
     defineRoutesAssets() {
 
         // Serve APK file from local directory
-        this.app.get('/download-apk-asset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/download-apk-asset', async (req, res) => {
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
+            const username = req.session.username;
 
             try {
                 const checkPermission = await client.query(`
@@ -11871,11 +12920,57 @@ class Server {
             });
         });
 
-        this.app.get('/apk-asset-version', this.isLoggedIn.bind(this), (req, res) => {
-            res.json({ version: "1.4.1", apkUrl: "/download-apk-asset" });
+        this.app.get('/api/download-apk-asset', async (req, res) => {
+
+            const client = await pool.connect();
+            const username = req.query.username;
+
+            try {
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'Download asset app')`, [username]);
+
+                if (checkPermission.rows.length === 0)
+                    return res.status(400).json({ message: "You don't have permission to download app for assets!" });
+
+            } catch (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error downloading the file:', err);
+                return res.status(500).json({ message: 'Error downloading the file' });
+
+            } finally {
+                client.release();
+            }
+
+            // Path to your APK file
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.4.1-release.apk');
+
+            // Check legality and existence of the APK file
+            if (!this.checkApkFileLegality(apkFilePath, res)) {
+                return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
+            }
+
+            // Set proper headers for an APK file
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryAsset-1.4.1-release.apk"'); // Force download with custom filename
+
+            // Use res.download() to send the file to the client
+            res.download(apkFilePath, (err) => {
+                if (err) {
+                    console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                    console.error('Error downloading the file:', err);
+                    res.status(500).json({ message: 'Error downloading the file' });
+                }
+            });
         });
 
-        this.app.get('/allAssets', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/apk-asset-version', (req, res) => {
+            res.json({ version: "1.4.1", apkUrl: "/api/download-apk-asset" });
+        });
+
+        this.app.get('/api/allAssets', async (req, res) => {
             const { error, value } = shemaGetLostItem.validate(req.query);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -11885,34 +12980,58 @@ class Server {
 
             const client = await pool.connect();
 
-            const camp_id = req.session?.username ? req.session.camp : value.campId;
+            let { campId } = value;
+
+            try {
+
+                await client.query('BEGIN');
+
+                const resultAllAssets = await client.query('SELECT * FROM assets WHERE camp_id = $1', [campId]);
+
+                const allAssets = resultAllAssets.rows.map(row => ({
+                    id: row.id, code: row.code, name_assets: row.name_assets, type_id: row.type_id,
+                    location_id: row.location_room, sub_location_id: row.location_key, categorie: row.categorie, quantity: row.quantity,
+                    mrah: row.mrah, owner: row.asset_owner, status: row.status, expandable: row.expandable,
+                    description: row.description, service: row.service, m2_inside: row.m2_inside, is_fixed: row.is_fixed,
+                    date_purchase: row.date_purchase, date_written_off: row.date_written_off, purchase_price: row.purchase_price, comments: row.comments,
+                    replaced_off: row.replaced_off, year_of_life_cycle: row.year_of_life_cycle, rest_of_life_cycle: row.rest_of_life_cycle, replaced_by: row.replaced_by,
+                    rest_value: row.rest_value
+                }));
+
+                await client.query('COMMIT');
+
+                return res.status(200).json({
+                    allAssets
+                });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error fetching assets:', error);
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/web/allAssets', async (req, res) => {
+            const { error, value } = shemaGetLostItem.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const client = await pool.connect();
+
+            const camp_id = req.session.camp;
 
             let { page, limit, searchColumn, searchValue } = value;
 
             try {
 
                 await client.query('BEGIN');
-
-                if (value.isValidCode) {
-
-                    const resultAllAssets = await client.query('SELECT * FROM assets WHERE camp_id = $1', [camp_id]);
-
-                    const allAssets = resultAllAssets.rows.map(row => ({
-                        id: row.id, code: row.code, name_assets: row.name_assets, type_id: row.type_id,
-                        location_id: row.location_room, sub_location_id: row.location_key, categorie: row.categorie, quantity: row.quantity,
-                        mrah: row.mrah, owner: row.asset_owner, status: row.status, expandable: row.expandable,
-                        description: row.description, service: row.service, m2_inside: row.m2_inside, is_fixed: row.is_fixed,
-                        date_purchase: row.date_purchase, date_written_off: row.date_written_off, purchase_price: row.purchase_price, comments: row.comments,
-                        replaced_off: row.replaced_off, year_of_life_cycle: row.year_of_life_cycle, rest_of_life_cycle: row.rest_of_life_cycle, replaced_by: row.replaced_by,
-                        rest_value: row.rest_value
-                    }));
-
-                    await client.query('COMMIT');
-
-                    return res.status(200).json({
-                        allAssets
-                    });
-                }
 
                 const offset = (page - 1) * limit;
                 let whereClause = 'WHERE l.camp_id = $1';
@@ -12010,7 +13129,7 @@ class Server {
             }
         });
 
-        this.app.get('/getAllAssets', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/getAllAssets', async (req, res) => {
 
             const client = await pool.connect();
 
@@ -12030,9 +13149,9 @@ class Server {
             }
         });
 
-        this.app.get('/asset/keys', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/asset/keys', async (req, res) => {
 
-            const { error, value } = shemaGetBags.validate(req.query);
+            const { error } = shemaGetBags.validate(req.query);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
                 console.error(error.details[0].message);
@@ -12044,7 +13163,7 @@ class Server {
             try {
 
                 await client.query('BEGIN');
-                const camp_id = req.session.username ? req.session.camp : value.campId;
+                const camp_id = req.query.campId;
 
                 const result = await client.query(`
                         SELECT k.id, k.namekey, r.nameroom, r.id AS roomid, camp_id
@@ -12085,7 +13204,62 @@ class Server {
             }
         });
 
-        this.app.get('/allKeys', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/asset/keys', async (req, res) => {
+
+            const { error } = shemaGetBags.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const client = await pool.connect();
+
+            try {
+
+                await client.query('BEGIN');
+                const camp_id = req.session.camp;
+
+                const result = await client.query(`
+                        SELECT k.id, k.namekey, r.nameroom, r.id AS roomid, camp_id
+                        FROM rooms r
+                        LEFT JOIN roomskey rk ON rk.roomid = r.id
+                        LEFT JOIN key k ON rk.keyid = k.id
+						LEFT JOIN buildroom br ON br.roomid = r.id
+						LEFT JOIN buildings b ON b.id = br.buildid
+						WHERE b.camp_id = $1;`, [camp_id]);
+
+                const result_key_data = result.rows;
+                let total_res = [];
+
+                await Promise.all(result_key_data.map(async (row) => {
+                    total_res.push({
+                        id: row.id,
+                        name: row.namekey,
+                        soldierName: row.namesoldier ? row.namesoldier : 'Free',
+                        country: row.country ? row.country : 'Undefined',
+                        maleCard: row.meal_card ? row.meal_card : 'Undefined',
+                        laundryBag: row.code ? row.code : 'Undefined',
+                        roomid: row.roomid,
+                        nameroom: row.nameroom
+                    });
+                }));
+
+                await client.query('COMMIT');
+                return res.status(200).json(total_res);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error get asset key:', error);
+                res.status(500).json({ message: 'An error occurred while processing the data.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/web/allKeys', async (req, res) => {
 
             const client = await pool.connect();
 
@@ -12132,7 +13306,7 @@ class Server {
             }
         });
 
-        this.app.get('/assets', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/assets', async (req, res) => {
 
             const { error } = schemaAssets.validate(req.query);
             if (error) {
@@ -12298,7 +13472,66 @@ class Server {
 
         });
 
-        this.app.get('/assets/getSortedAssets', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/assets/getSortedAssets', async (req, res) => {
+
+            const { error } = schemaSpecialAssets.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            let { numRoom, campId } = req.query;
+
+            const client = await pool.connect();
+
+            let nameAssetSetCount = [];
+
+            try {
+
+                await client.query('BEGIN');
+
+                const result_data = await client.query(`
+                            SELECT a.id, code, name_assets, t.type_name, 
+                                r.nameroom, k.id AS keyid, k.namekey, categorie, 
+                                quantity, mrah, asset_owner, status, 
+                                expandable, description, a.inventory_status, a.service, 
+                                a.m2_inside, a.is_fixed, a.date_purchase, a.date_written_off, 
+                                a.purchase_price, a.comments, a.replaced_off, a.year_of_life_cycle,
+                                a.rest_of_life_cycle, a.replaced_by, a.rest_value
+                            FROM assets a
+                            LEFT JOIN assetstype t ON t.id = a.type_id
+                            LEFT JOIN rooms r ON r.id = a.location_room
+                            LEFT JOIN key k ON k.id = a.location_key
+                            WHERE location_room = $1 AND camp_id = $2;`, [numRoom, campId]);
+
+                result_data.rows.forEach(row => {
+                    nameAssetSetCount.push({
+                        id: row.id, code: row.code, name_assets: row.name_assets, type_name: row.type_name,
+                        nameroom: row.nameroom, keyid: row.keyid, namekey: row.namekey ? row.namekey : 'There is no associated key', categorie: row.categorie,
+                        quantity: row.quantity, mrah: row.mrah, owner: row.asset_owner, service: row.service,
+                        status: row.status, expandable: row.expandable, description: row.description, inventory_status: row.inventory_status,
+                        m2_inside: row.m2_inside, is_fixed: row.is_fixed, date_purchase: row.date_purchase, date_written_off: row.date_written_off,
+                        purchase_price: row.purchase_price, comments: row.comments, replaced_off: row.replaced_off, year_of_life_cycle: row.year_of_life_cycle,
+                        rest_of_life_cycle: row.rest_of_life_cycle, replaced_by: row.replaced_by, rest_value: row.rest_value
+                    });
+                });
+
+                await client.query('COMMIT');
+                res.status(200).json(nameAssetSetCount);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to get sorted asset:', error);
+                res.status(500).json({ message: 'Failed to get sorted asset.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.get('/web/assets/getSortedAssets', async (req, res) => {
 
             const { error, value } = schemaSpecialAssets.validate(req.query);
             if (error) {
@@ -12310,7 +13543,7 @@ class Server {
             let { numRoom, page = 1, limit = 10, sortedDirection, sortedColumn, searchColumn, searchValue } = req.query;
 
             const client = await pool.connect();
-            const campId = req.session?.username ? req.session.camp : value.campId;
+            const campId = req.session.camp;
 
             let nameAssetSetCount = [];
 
@@ -12436,9 +13669,8 @@ class Server {
                     const totalPages = Math.ceil(totalData / limit) || 1;
 
                     await client.query('COMMIT');
-                    value.isValidCode ?
-                        res.status(200).json(nameAssetSetCount) :
-                        res.status(200).json({ data: nameAssetSetCount, filterData, totalPages });
+                    res.status(200).json({ data: nameAssetSetCount, filterData, totalPages });
+
                 } else {
                     const result_get_room = await client.query(`
                         SELECT a.id, code, name_assets, t.type_name, 
@@ -12481,7 +13713,7 @@ class Server {
             }
         });
 
-        this.app.get('/getInventoryLocation', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/getInventoryLocation', async (req, res) => {
             const { error, value } = shemaGetBags.validate(req.query);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -12538,7 +13770,7 @@ class Server {
             }
         });
 
-        this.app.get('/assets/getAllType', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/assets/getAllType', async (req, res) => {
 
             const { error } = shemaGetBags.validate(req.query);
             if (error) {
@@ -12572,7 +13804,41 @@ class Server {
             }
         });
 
-        this.app.patch('/assets/editAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/assets/getAllType', async (req, res) => {
+
+            const { error } = shemaGetBags.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const client = await pool.connect();
+
+            try {
+                await client.query('BEGIN');
+
+                const [result] = await Promise.all([
+                    client.query('SELECT id, type_name AS name FROM assetstype;')
+                ]);
+
+                const assetType = result.rows;
+
+                await client.query('COMMIT');
+                res.status(200).json(assetType);
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to get all asset type:', error);
+                res.status(500).json({ message: 'Failed to get types.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.patch('/web/assets/editAsset', async (req, res) => {
 
             const { error } = schemaEditAsset.validate(req.body);
             if (error) {
@@ -12764,7 +14030,7 @@ class Server {
             }
         });
 
-        this.app.post('/assets/editAssetDevice', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/assets/editAssetDevice', async (req, res) => {
 
             const { error } = schemaEditAssetDevice.validate(req.body);
             if (error) {
@@ -12780,10 +14046,9 @@ class Server {
                 expandable, service, description, m2Inside,
                 isFixed, datePurchase, dateWrittenOff, purchasePrice,
                 comments, replacedOff, yearOfLifeCycle, restOfLifeCycle,
-                replacedBy, restValue, campId } = req.body;
+                replacedBy, restValue, campId, username } = req.body;
 
             const client = await pool.connect();
-            const username = req.session.username ? req.session.username : req.body.username;
 
             try {
                 await client.query('BEGIN');
@@ -12999,7 +14264,7 @@ class Server {
             }
         });
 
-        this.app.post('/assets/addAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/assets/addAsset', async (req, res) => {
 
             const { error } = schemaAddAsset.validate(req.body);
             if (error) {
@@ -13015,12 +14280,10 @@ class Server {
                 assetAddService, assetAddDescription, assetAddM2Inside, assetAddIsFixed,
                 assetAddDatePurchase, assetAddDateWrittenOff, assetAddPurchasePrice, assetAddComments,
                 assetAddReplacedOff, assetAddYearOfLifeCycle, assetAddRestOfLifeCycle, assetAddReplacedBy,
-                assetAddRestValue
+                assetAddRestValue, campId, username
             } = req.body;
 
             const client = await pool.connect();
-            const campId = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
-            const username = req.session.username ? req.session.username : req.body.username;
 
             try {
                 await client.query('BEGIN');
@@ -13119,7 +14382,127 @@ class Server {
             }
         });
 
-        this.app.delete('/assets/deleteAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/assets/addAsset', async (req, res) => {
+
+            const { error } = schemaAddAsset.validate(req.body);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const {
+                assetEps, assetCodeSearch, assetAddName, selectedAddTypeId,
+                selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie, assetQuantity,
+                assetAddMrah, assetAddOwner, assetStatus, assetAddExpandable,
+                assetAddService, assetAddDescription, assetAddM2Inside, assetAddIsFixed,
+                assetAddDatePurchase, assetAddDateWrittenOff, assetAddPurchasePrice, assetAddComments,
+                assetAddReplacedOff, assetAddYearOfLifeCycle, assetAddRestOfLifeCycle, assetAddReplacedBy,
+                assetAddRestValue
+            } = req.body;
+
+            const client = await pool.connect();
+            const campId = req.session.camp;
+            const username = req.session.username;
+
+            try {
+                await client.query('BEGIN');
+
+                const [check_exist_epc, check_exist_code, check_exist_room, checkPermission] = await Promise.all([
+                    client.query(`SELECT * FROM assets WHERE id = $1;`, [assetEps]),
+                    client.query(`SELECT * FROM assets WHERE code = $1 AND camp_id = $2;`, [assetCodeSearch, campId]),
+                    client.query(`SELECT * FROM rooms WHERE id = $1;`, [selectedAddLocationId]),
+                    client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'Add asset')`, [username])
+                ]);
+
+                if (checkPermission.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "You don't have permission to add asset!" });
+                }
+
+                if (check_exist_epc.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This asset already exists with this epc code!' });
+                }
+
+                if (check_exist_code.rows.length > 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'This asset already exists with this code!' });
+                }
+
+                if (check_exist_room.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: `The room does not exist. It has probably been modified.` });
+                }
+
+                const queries = [];
+
+                if (selectedAddSubLocationId !== '') {
+
+                    const check_exist_key = await client.query(`SELECT * FROM key WHERE id = $1;`, [selectedAddSubLocationId])
+                    if (check_exist_key.rows.length === 0) {
+                        await client.query('ROLLBACK');
+                        return res.status(400).json({ message: `The key does not exist. It has probably been modified.` });
+                    }
+
+                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'undiscovered', CURRENT_TIMESTAMP, NULL, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26);`,
+                        [
+                            assetEps, assetCodeSearch, assetAddName, selectedAddTypeId,
+                            selectedAddLocationId, selectedAddSubLocationId, assetAddCategorie || null, assetQuantity || null,
+                            assetAddMrah || null, assetAddOwner || null, assetStatus || null, assetAddExpandable || null,
+                            assetAddDescription || null, campId, assetAddService || null, assetAddM2Inside || null,
+                            assetAddIsFixed, assetAddDatePurchase || null, assetAddDateWrittenOff || null, assetAddPurchasePrice || null,
+                            assetAddComments || null, assetAddReplacedOff || null, assetAddYearOfLifeCycle || null, assetAddRestOfLifeCycle || null,
+                            assetAddReplacedBy || null, assetAddRestValue || null
+                        ]
+                    ));
+
+                } else {
+                    queries.push(client.query(`INSERT INTO assets VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11, $12, $13, 'undiscovered', CURRENT_TIMESTAMP, NULL, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25);`,
+                        [
+                            assetEps, assetCodeSearch, assetAddName, selectedAddTypeId,
+                            selectedAddLocationId, assetAddCategorie || null, assetQuantity || null, assetAddMrah || null,
+                            assetAddOwner || null, assetStatus || null, assetAddExpandable || null, assetAddDescription || null,
+                            campId, assetAddService || null, assetAddM2Inside || null, assetAddIsFixed,
+                            assetAddDatePurchase || null, assetAddDateWrittenOff || null, assetAddPurchasePrice || null, assetAddComments || null,
+                            assetAddReplacedOff || null, assetAddYearOfLifeCycle || null, assetAddRestOfLifeCycle || null, assetAddReplacedBy || null,
+                            assetAddRestValue || null
+                        ]
+                    ));
+                }
+
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [campId]);
+                if (result_exist_date.rows.length > 0) {
+                    queries.push(client.query(`UPDATE asset_actions SET change_asset_quantity = change_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [assetQuantity, campId]));
+
+                } else {
+                    queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [assetQuantity, campId]));
+                }
+
+                queries.push(client.query("INSERT INTO usermonitoring (username, location) VALUES ($1, $2)",
+                    [username, `Add asset with code ${assetEps} and name ${assetAddName}`]));
+
+                await Promise.all(queries);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The asset was successfully added' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to add asset: ', error);
+                res.status(500).json({ message: 'Failed to add asset.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.delete('/api/assets/deleteAsset', async (req, res) => {
 
             const { error } = schemaDeleteAsets.validate(req.body);
             if (error) {
@@ -13128,11 +14511,9 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            const { code } = req.body;
+            const { code, campId, username } = req.body;
 
             const client = await pool.connect();
-            const campId = !req.body.isValidCode && req.session.username ? req.session.camp : req.body.campId;
-            const username = req.session.username ? req.session.username : req.body.username;
 
             try {
                 await client.query('BEGIN');
@@ -13187,7 +14568,75 @@ class Server {
             }
         });
 
-        this.app.post('/assets/checkDeleteAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/assets/deleteAsset', async (req, res) => {
+
+            const { error } = schemaDeleteAsets.validate(req.body);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const { code } = req.body;
+
+            const client = await pool.connect();
+            const campId = req.session.camp;
+            const username = req.session.username;
+
+            try {
+                await client.query('BEGIN');
+
+                const checkPermission = await client.query(`
+                        SELECT * FROM user_permission 
+                        WHERE user_id = (SELECT id FROM users WHERE username = $1)
+                        AND perm_id IN (SELECT id FROM permission 
+                            WHERE permission_name = 'Full permission' OR permission_name = 'Remove asset')`, [username])
+
+                if (checkPermission.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: "You don't have permission to delete assets!" });
+                }
+
+                const checkCodeExist = await client.query(`SELECT * FROM assets WHERE id = $1`, [code]);
+                if (checkCodeExist.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: `The asset does not exist. It has probably been modified.` });
+                }
+
+                const result_quantity = await client.query(`SELECT quantity FROM assets WHERE id = $1`, [code]);
+                const asset_quantity = result_quantity.rows[0].quantity;
+
+                const result_exist_date = await client.query(`SELECT * FROM asset_actions WHERE date_change = CURRENT_DATE AND camp_id = $1`, [campId]);
+                const queries = [];
+
+                if (result_exist_date.rows.length > 0) {
+                    queries.push(client.query(`UPDATE asset_actions SET change_remove_asset_quantity = change_remove_asset_quantity::NUMERIC + $1 WHERE date_change = CURRENT_DATE AND camp_id = $2;`, [asset_quantity, campId]));
+                } else {
+                    queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, $1, 0, 0, $2);`, [asset_quantity, campId]));
+                }
+
+                queries.push(client.query(`DELETE FROM assets WHERE id = $1`, [code]));
+
+                queries.push(client.query("INSERT INTO usermonitoring (username, location) VALUES ($1, $2)",
+                    [username, `Remove asset with code ${code}`]));
+
+                await Promise.all(queries);
+
+                await client.query('COMMIT');
+                res.status(200).json({ message: 'The asset was successfully removed' });
+
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error to remove asset: ', error);
+                res.status(500).json({ message: 'Failed to remove asset.' });
+
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/web/assets/checkDeleteAsset', async (req, res) => {
 
             const { error } = schemaDeleteAsets.validate(req.body);
             if (error) {
@@ -13228,7 +14677,7 @@ class Server {
             }
         });
 
-        this.app.post('/assets/addTypeAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/assets/addTypeAsset', async (req, res) => {
 
             const { error } = schemaAddAsetsType.validate(req.body);
             if (error) {
@@ -13285,7 +14734,7 @@ class Server {
             }
         });
 
-        this.app.delete('/assets/removeTypeAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/assets/removeTypeAsset', async (req, res) => {
 
             const { error } = schemaRemoveAsetsType.validate(req.body);
             if (error) {
@@ -13341,7 +14790,7 @@ class Server {
             }
         });
 
-        this.app.post('/assets/lostItem', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/assets/lostItem', async (req, res) => {
 
             const { error } = schemaLostItems.validate(req.body);
             if (error) {
@@ -13443,7 +14892,7 @@ class Server {
 
         });
 
-        this.app.post('/assets/restorLostAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/assets/restorLostAsset', async (req, res) => {
             const { error } = schemaRestorItems.validate(req.body);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -13518,7 +14967,7 @@ class Server {
             }
         });
 
-        this.app.get('/assets/viewReport', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/assets/viewReport', async (req, res) => {
             const { error } = schemaReport.validate(req.query);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -13832,7 +15281,7 @@ class Server {
             }
         });
 
-        this.app.post('/assets/report', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/assets/report', async (req, res) => {
 
             const { error } = schemaAssetReport.validate(req.body);
             if (error) {
@@ -14348,7 +15797,7 @@ class Server {
             }
         });
 
-        this.app.get('/cleanItem', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/cleanItem', async (req, res) => {
 
             const { error } = schemaCleanItems.validate(req.query);
             if (error) {
@@ -14503,7 +15952,7 @@ class Server {
             }
         });
 
-        this.app.post('/addCleanItem', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/addCleanItem', async (req, res) => {
 
             const { error } = schemaAddCleanItem.validate(req.body);
             if (error) {
@@ -14560,7 +16009,7 @@ class Server {
             }
         });
 
-        this.app.get('/uploadCleanItem/download', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/uploadCleanItem/download', async (req, res) => {
 
             // Create a new Excel workbook
             const workbook = new excelJS.Workbook();
@@ -14600,7 +16049,7 @@ class Server {
 
         });
 
-        this.app.post('/uploadCleanItems', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+        this.app.post('/web/uploadCleanItems', upload.single('file'), async (req, res) => {
             const client = await pool.connect();
             const errors = [];
 
@@ -14704,7 +16153,7 @@ class Server {
             }
         });
 
-        this.app.delete('/removeCleanItem', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.delete('/web/removeCleanItem', async (req, res) => {
 
             const { error } = schemaRemoveCleanItem.validate(req.body);
             if (error) {
@@ -14755,7 +16204,7 @@ class Server {
 
         });
 
-        this.app.post('/changeAmountLargeToSmall', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/changeAmountLargeToSmall', async (req, res) => {
 
             const { error } = changeAmountSchema.validate(req.body);
             if (error) {
@@ -14815,7 +16264,7 @@ class Server {
             }
         });
 
-        this.app.post('/changeAmountSmallToLarge', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/web/changeAmountSmallToLarge', async (req, res) => {
 
             const { error } = changeAmountSchema.validate(req.body);
             if (error) {
@@ -14875,7 +16324,7 @@ class Server {
             }
         });
 
-        this.app.patch('/editCleanItem', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.patch('/web/editCleanItem', async (req, res) => {
 
             const { error } = editCleanItemSchema.validate(req.body);
             if (error) {
@@ -14930,7 +16379,7 @@ class Server {
             }
         });
 
-        this.app.get('/getItemTraceability', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/getItemTraceability', async (req, res) => {
 
             const { error } = schemaTraceability.validate(req.query);
             if (error) {
@@ -15015,8 +16464,10 @@ class Server {
             }
         });
 
-        this.app.get('/getInventoryData', this.isLoggedIn.bind(this), async (req, res) => {
-            const { error } = shemaInventory.validate(req.query);
+        // Inventory routes
+
+        this.app.get('/web/getBuildings', async (req, res) => {
+            const { error } = shemaBuildings.validate(req.query);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
                 console.error(error.details[0].message);
@@ -15028,9 +16479,11 @@ class Server {
             const offset = (page - 1) * limit;
 
             const client = await pool.connect();
+            const campId = req.session.camp;
 
             try {
-                const campId = req.session.camp;
+
+                await client.query('BEGIN');
 
                 const [buildingRes, buildingCountRes] = await Promise.all([
                     client.query(`
@@ -15081,50 +16534,13 @@ class Server {
                 const totalPages = Math.ceil(totalBuildings / limit) || 1;
 
                 if (buildings.length === 0) {
-                    return res.status(200).json({
-                        allBuilding: [],
-                        allRooms: [],
-                        allAssets: [],
-                        totalPages
-                    });
+                    await client.query('RALLBACK');
+                    return res.status(400).json({ message: 'No buildings found for the selected camp.' });
                 }
 
-                const buildingIds = buildings.map(b => b.id);
-                const roomRes = await client.query(`
-                    SELECT r.id, r.nameroom, br.buildid,
-                        CASE
-                            WHEN NOT EXISTS (
-                                SELECT 1 FROM assets a WHERE a.location_room = r.id AND a.inventory_status NOT IN ('discovered','edited')
-                            ) THEN 'finished'
-                            WHEN EXISTS (
-                                SELECT 1 FROM assets a WHERE a.location_room = r.id AND a.inventory_status != 'undiscovered'
-                            ) THEN 'actions'
-                            ELSE 'unfinished'
-                        END AS inventory_status
-                    FROM rooms r
-                    JOIN buildroom br ON br.roomid = r.id
-                    WHERE br.buildid = ANY($1::text[])
-                    ORDER BY r.nameroom
-                `, [buildingIds]);
-
-                const rooms = roomRes.rows;
-
-                const roomIds = rooms.map(r => r.id);
-                let assets = [];
-                if (roomIds.length > 0) {
-                    const assetRes = await client.query(`
-                        SELECT a.id, a.code, a.name_assets, a.location_room, a.inventory_status
-                        FROM assets a
-                        WHERE a.location_room = ANY($1::text[]) AND a.camp_id = $2
-                        ORDER BY a.code
-                    `, [roomIds, campId]);
-                    assets = assetRes.rows;
-                }
-
+                await client.query('COMMIT');
                 res.status(200).json({
-                    allBuilding: buildings,
-                    allRooms: rooms,
-                    allAssets: assets,
+                    buildings,
                     totalPages
                 });
 
@@ -15137,7 +16553,55 @@ class Server {
             }
         });
 
-        this.app.post('/restorInventory', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/getRooms', async (req, res) => {
+            const { error } = shemaRooms.validate(req.query);
+            if (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error(error.details[0].message);
+                return res.status(400).json({ message: 'Invalid syntax' });
+            }
+
+            const client = await pool.connect();
+            const buildingIds = req.query.buildingId;
+
+            try {
+
+                await client.query('BEGIN');
+
+                const roomsRes = await client.query(`
+                    SELECT r.id, r.nameroom, br.buildid,
+                        CASE
+                            WHEN NOT EXISTS (
+                                SELECT 1 FROM assets a WHERE a.location_room = r.id AND a.inventory_status NOT IN ('discovered','edited')
+                            ) THEN 'finished'
+                            WHEN EXISTS (
+                                SELECT 1 FROM assets a WHERE a.location_room = r.id AND a.inventory_status != 'undiscovered'
+                            ) THEN 'actions'
+                            ELSE 'unfinished'
+                        END AS inventory_status
+                    FROM rooms r
+                    JOIN buildroom br ON br.roomid = r.id
+                    WHERE br.buildid = $1
+                    ORDER BY r.nameroom
+                `, [buildingIds]);
+
+                const rooms = roomsRes.rows;
+
+                await client.query('COMMIT');
+                res.status(200).json({
+                    rooms
+                });
+
+            } catch (error) {
+                console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
+                console.error('Error get inventory data:', error);
+                res.status(500).json({ message: 'Failed to get inventory data' });
+            } finally {
+                client.release();
+            }
+        });
+
+        this.app.post('/web/restorInventory', async (req, res) => {
 
             const client = await pool.connect();
 
@@ -15175,7 +16639,7 @@ class Server {
             }
         });
 
-        this.app.post('/updateAssetQuantity', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/updateAssetQuantity', async (req, res) => {
             const { error } = shemaUpdateQuantityAsset.validate(req.body);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -15313,7 +16777,7 @@ class Server {
             }
         });
 
-        this.app.post('/checkAndChangeScanningAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/checkAndChangeScanningAsset', async (req, res) => {
             const { error } = checkAndChangeAssetSchema.validate(req.body);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -15370,7 +16834,7 @@ class Server {
 
         });
 
-        this.app.get('/getDataForAdditionalAsset', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/api/getDataForAdditionalAsset', async (req, res) => {
 
             const { error, value } = checkAssetSchema.validate(req.query);
             if (error) {
@@ -15411,7 +16875,7 @@ class Server {
 
         });
 
-        this.app.post('/updateAssetLocation', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.post('/api/updateAssetLocation', async (req, res) => {
             const { error } = shemaUpdateLocationAsset.validate(req.body);
             if (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
@@ -15419,7 +16883,7 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            const { id, locationId, sublocationId, campId } = req.body;
+            const { id, locationId, sublocationId, campId, username } = req.body;
 
             const client = await pool.connect();
 
@@ -15445,7 +16909,7 @@ class Server {
                 }
 
                 const checkKeyExist = await client.query(`SELECT * FROM key WHERE id = $1`, [sublocationId]);
-                if (checkKeyExist.rows.length === 0) {
+                if (sublocationId && checkKeyExist.rows.length === 0) {
                     await client.query('ROLLBACK');
                     return res.status(400).json({ message: `The key does not exist. It has probably been modified.` });
                 }
@@ -15475,7 +16939,7 @@ class Server {
                         : queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, $1, 0, 0, 0, $2);`, [lost_quantity, campId]))
 
                     queries.push(client.query("INSERT INTO usermonitoring (username, location) VALUES ($1, $2)",
-                        [req.body.username, `Restor lost asset with epc: ${id} in new location with id: ${locationId} in inventory`]));
+                        [username, `Restor lost asset with epc: ${id} in new location with id: ${locationId} in inventory`]));
                 } else {
 
                     if (result_exist_date.rows.length > 0) {
@@ -15484,10 +16948,10 @@ class Server {
                         queries.push(client.query(`INSERT INTO asset_actions VALUES (CURRENT_DATE, 0, 0, 0, 1, $2);`, [campId]));
                     }
 
-                    queries.push(client.query(`UPDATE assets SET location_room = $1, location_key = $3 inventory_status = 'edited' WHERE id = $2`, [locationId, id, sublocationId || null]));
+                    queries.push(client.query(`UPDATE assets SET location_room = $1, location_key = $3, inventory_status = 'edited' WHERE id = $2`, [locationId, id, sublocationId || null]));
 
                     queries.push(client.query("INSERT INTO usermonitoring (username, location) VALUES ($1, $2)",
-                        [req.body.username, `Change asset location with epc: ${id} and new location with id: ${locationId} in inventory`]));
+                        [username, `Change asset location with epc: ${id} and new location with id: ${locationId} in inventory`]));
                 }
 
                 await Promise.all(queries);
@@ -15505,7 +16969,7 @@ class Server {
             }
         });
 
-        this.app.get('/assets/editMultiAsset/download', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/assets/editMultiAsset/download', async (req, res) => {
 
             // Create a new Excel workbook
             const workbook = new excelJS.Workbook();
@@ -15626,7 +17090,7 @@ class Server {
 
         });
 
-        this.app.post('/assets/editMultiAsset', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+        this.app.post('/web/assets/editMultiAsset', upload.single('file'), async (req, res) => {
             const client = await pool.connect();
             const errors = [];
 
@@ -15987,7 +17451,7 @@ class Server {
             }
         });
 
-        this.app.get('/assets/addMultiAsset/download', this.isLoggedIn.bind(this), async (req, res) => {
+        this.app.get('/web/assets/addMultiAsset/download', async (req, res) => {
 
             // Create a new Excel workbook
             const workbook = new excelJS.Workbook();
@@ -16054,7 +17518,7 @@ class Server {
 
         });
 
-        this.app.post('/assets/addMultiAsset', this.isLoggedIn.bind(this), upload.single('file'), async (req, res) => {
+        this.app.post('/web/assets/addMultiAsset', upload.single('file'), async (req, res) => {
             const client = await pool.connect();
             const errors = [];
 

@@ -86,13 +86,4 @@ public class SecurePrefs {
             return defValue; // if decryption fails
         }
     }
-
-    public static void putBoolean(Context context, String key, boolean value) {
-        putString(context, key, value ? "1" : "0");
-    }
-
-    public static boolean getBoolean(Context context, String key, boolean defValue) {
-        String str = getString(context, key, defValue ? "1" : "0");
-        return "1".equals(str);
-    }
 }

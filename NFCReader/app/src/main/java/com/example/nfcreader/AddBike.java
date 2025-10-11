@@ -1,7 +1,6 @@
 package com.example.nfcreader;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -23,38 +22,30 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.CookieManager;
-import java.net.CookiePolicy;
 import java.util.Objects;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
+public class AddBike extends AppCompatActivity {
 
-    private boolean isValidCode;
     private String campId;
     private String username;
     private NfcAdapter nfcAdapter;
     private String nfcContent = "";
     private TextView nfcTextView;
     private EditText bikeNameText;
-    private final CookieManager cookieManager = new CookieManager();
-    private final OkHttpClient client = new OkHttpClient.Builder()
-            .addInterceptor(new CsrfInterceptor(this))
-            .cookieJar(new JavaNetCookieJar(cookieManager))
-            .build();
-    private String csrfToken = null;
+    private OkHttpClient client;
+    private Call currentCall;
+    private final DebounceMessageHelper messageHelper = new DebounceMessageHelper(this);
 
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -70,78 +61,16 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
                         !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
     }
 
-    @Override
-    public synchronized String getCsrfToken() {
-        return csrfToken;
-    }
-
-    @Override
-    public synchronized void refreshCsrfTokenSync() {
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/csrf-token")
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
-            csrfToken = jsonObject.getString("csrfToken");
-        } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
-        }
-    }
-
-    private void fetchCsrfToken(Runnable onSuccess) {
-
-        if (isNetworkAvailable())
-            return;
-
-        Dialog loadingDialog = new Dialog(AddBike.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false);
-        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
-
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/csrf-token")
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(loadingDialog::dismiss);
-                runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-
-                try {
-                    String responseBody = response.body().string();
-                    JSONObject jsonObject = new JSONObject(responseBody);
-
-                    csrfToken = jsonObject.getString("csrfToken");
-                    if (onSuccess != null)
-                        runOnUiThread(onSuccess);
-
-                } catch (JSONException e) {
-                    runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
-                } finally {
-                    runOnUiThread(loadingDialog::dismiss);
-                }
-            }
-        });
-    }
-
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_bike);
 
-        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        client = new OkHttpClient.Builder()
+                .addInterceptor(new JwtInterceptor(this))
+                .build();
 
-        isValidCode = GlobalVariable.getVariable(this);
         campId = GlobalVariable.getCamp(this);
         username = GlobalVariable.getUsername(this);
 
@@ -154,12 +83,10 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
-            showPopupWindow("NFC is not available on this device.");
+            messageHelper.showError("NFC is not available on this device.");
             finish();
             return;
         }
-
-        fetchCsrfToken(null);
 
         // Handle NFC intents
         handleIntent(getIntent());
@@ -167,20 +94,20 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
         // Handle the submit button click
         submitButton.setOnClickListener(v -> {
             if (nfcContent.isEmpty()) {
-                showPopupWindow("Please scans a NFC tag");
+                messageHelper.showError("Please scans a NFC tag");
                 return;
             }
 
             String bikeName = bikeNameText.getText().toString().trim();
 
             if (bikeName.isEmpty()) {
-                showPopupWindow("Please enter a bike name!");
+                messageHelper.showError("Please enter a bike name!");
                 return;
             }
 
             // Check if bikeName matches the required format
             if (!bikeName.matches("^[0-9]{5}/[A-Za-z\\s]+$")) {
-                showPopupWindow("Please enter a valid bike name (e.g., '12345/Bike Name')!");
+                messageHelper.showError("Please enter a valid bike name (e.g., '12345/Bike Name')!");
                 return;
             }
 
@@ -189,7 +116,7 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
                     .setTitle("Attention")
                     .setMessage("Are you sure you want to add this bike?")
                     .setPositiveButton("Yes", (dialog, which) ->
-                            sendDataToServer(nfcContent, bikeName))
+                            sendDataToServer(nfcContent, bikeName, "bikeAddId", "bikeName", "/api/bicycles/addBike"))
                     .setNegativeButton("No", (dialog, which) -> {
                         // Do nothing, just dismiss the dialog
                         dialog.dismiss();
@@ -199,20 +126,20 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
 
         submitHelmetButton.setOnClickListener(v -> {
             if (nfcContent.isEmpty()) {
-                showPopupWindow("Please scans a NFC tag");
+                messageHelper.showError("Please scans a NFC tag");
                 return;
             }
 
             String helmetName = bikeNameText.getText().toString().trim();
 
             if (helmetName.isEmpty()) {
-                showPopupWindow("Please enter a helmet name!");
+                messageHelper.showError("Please enter a helmet name!");
                 return;
             }
 
             // Check if bikeName matches the required format
             if (!helmetName.matches("^[0-9]+/[A-Za-z\\s]+$")) {
-                showPopupWindow("Please enter a valid helmet name (e.g., '123/Helmet Name')!");
+                messageHelper.showError("Please enter a valid helmet name (e.g., '123/Helmet Name')!");
                 return;
             }
 
@@ -220,7 +147,7 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
                     .setTitle("Attention")
                     .setMessage("Are you sure you want to add this helmet?")
                     .setPositiveButton("Yes", (dialog, which) ->
-                            sendHelmetDataToServer(nfcContent, helmetName))
+                            sendDataToServer(nfcContent, helmetName, "helmetAddId", "helmetName", "/api/bicycles/addHelmet"))
                     .setNegativeButton("No", (dialog, which) -> {
                         // Do nothing, just dismiss the dialog
                         dialog.dismiss();
@@ -229,21 +156,17 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
         });
     }
 
-    private void sendDataToServer(String nfcContent, String bikeName) {
+    private void sendDataToServer(String nfcContent, String bikeName, String idEndPoint, String nameEndPoint, String urlEndPoint) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
-        if (csrfToken == null || csrfToken.isEmpty()) {
-            fetchCsrfToken(() -> performSendData(nfcContent, bikeName));
-        } else {
-            performSendData(nfcContent, bikeName);
-        }
+        performSendData(nfcContent, bikeName, idEndPoint, nameEndPoint, urlEndPoint);
     }
 
-    private void performSendData(String nfcContent, String bikeName) {
+    private void performSendData(String nfcContent, String bikeName, String idEndPoint, String nameEndPoint, String urlEndPoint) {
 
         // Create and show the loading dialog
         Dialog loadingDialog = new Dialog(AddBike.this);
@@ -256,14 +179,13 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
         JSONObject jsonData = new JSONObject();
 
         try {
-            jsonData.put("bikeAddId", nfcContent);
-            jsonData.put("bikeName", bikeName);
+            jsonData.put(idEndPoint, nfcContent);
+            jsonData.put(nameEndPoint, bikeName);
             jsonData.put("username", username);
             jsonData.put("campId", campId);
-            jsonData.put("isValidCode", isValidCode);
 
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("There is a problem with send data to the server. Please contact to the support!"));
+            messageHelper.showError("There is a problem with send data to the server. Please contact to the support!");
             runOnUiThread(loadingDialog::dismiss); // Dismiss loading dialog on exception
             return;
         }
@@ -271,16 +193,16 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
         RequestBody body = RequestBody.create(jsonData.toString(), JSON);
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/bicycles/addBike")
-                .addHeader("X-CSRF-Token", csrfToken)
+                .url(baseUrl + urlEndPoint)
                 .post(body)
                 .build();
 
         // Use enqueue for asynchronous request
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("There is a problem with send data to the server. Please contact to the support!"));
+                messageHelper.showError("There is a problem with send data to the server. Please contact to the support!");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -293,11 +215,11 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
 
                     if (!response.isSuccessful()) {
                         String errorMessage = jsonResponse.optString("message", "Server error occurred.");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
-                    String message = jsonResponse.optString("message", "Bike added successfully.");
+                    String message = jsonResponse.getString("message");
 
                     runOnUiThread(() -> {
                         Toast.makeText(AddBike.this, message, Toast.LENGTH_SHORT).show();
@@ -308,7 +230,7 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
                     });
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error parsing response. Please connect to the support!"));
+                    messageHelper.showError("Error parsing response. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -316,97 +238,28 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
         });
     }
 
-    private void sendHelmetDataToServer(String nfcContent, String helmetName) {
-
-        if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
-            return;
+    private void cancelAllCalls() {
+        // Cancel refresh call if active
+        Call refreshCall = GlobalVariable.getRefreshCall();
+        if (refreshCall != null && !refreshCall.isExecuted()) {
+            refreshCall.cancel();
         }
 
-        if (csrfToken == null || csrfToken.isEmpty()) {
-            fetchCsrfToken(() -> performSendHelmetData(nfcContent, helmetName));
-        } else {
-            performSendHelmetData(nfcContent, helmetName);
-        }
-    }
-
-    private void performSendHelmetData(String nfcContent, String helmetName) {
-
-        // Create and show the loading dialog
-        Dialog loadingDialog = new Dialog(AddBike.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false); // Prevent dismissal
-        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
-
-        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-        JSONObject jsonData = new JSONObject();
-
-        try {
-            jsonData.put("helmetAddId", nfcContent);
-            jsonData.put("helmetName", helmetName);
-            jsonData.put("username", username);
-            jsonData.put("campId", campId);
-            jsonData.put("isValidCode", isValidCode);
-
-        } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("There is a problem with send data to the server. Please contact to the support!"));
-            runOnUiThread(loadingDialog::dismiss);
-            return;
+        // Cancel logout call if active
+        Call logoutCall = GlobalVariable.getLogoutCall();
+        if (logoutCall != null && !logoutCall.isExecuted()) {
+            logoutCall.cancel();
         }
 
-        RequestBody body = RequestBody.create(jsonData.toString(), JSON);
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/bicycles/addHelmet")
-                .addHeader("X-CSRF-Token", csrfToken)
-                .post(body)
-                .build();
-
-        // Use enqueue for asynchronous request
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("There is a problem with send data to the server. Please contact to the support!"));
-                runOnUiThread(loadingDialog::dismiss);
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) {
-
-                try {
-                    String responseData = response.body().string();
-                    JSONObject jsonResponse = new JSONObject(responseData);
-                    String message = jsonResponse.optString("message", "Helmet added successfully.");
-
-                    if (!response.isSuccessful()) {
-                        String errorMessage = jsonResponse.optString("message", "Server error occurred.");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
-                        return;
-                    }
-
-                    runOnUiThread(() -> {
-                        Toast.makeText(AddBike.this, message, Toast.LENGTH_SHORT).show();
-                        Intent intent = new Intent(AddBike.this, MainActivity.class);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
-                        finish();
-                    });
-
-                } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error parsing response. Please connect to the support!"));
-                } finally {
-                    runOnUiThread(loadingDialog::dismiss);
-                }
-            }
-        });
+        // Cancel current API call if active
+        if (currentCall != null && !currentCall.isExecuted()) {
+            currentCall.cancel();
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
-        fetchCsrfToken(null);
 
         Intent intent = new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
@@ -417,6 +270,14 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
     @Override
     protected void onPause() {
         super.onPause();
+        cancelAllCalls();
+        nfcAdapter.disableForegroundDispatch(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cancelAllCalls();
         nfcAdapter.disableForegroundDispatch(this);
     }
 
@@ -447,15 +308,5 @@ public class AddBike extends AppCompatActivity implements CsrfTokenProvider {
             sb.append(String.format("%02X", b));
         }
         return sb.toString();
-    }
-
-    private void showPopupWindow(String message) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Error");
-        builder.setMessage(message);
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            // Reset the flag once the error dialog is clos
-        });
-        builder.show();
     }
 }

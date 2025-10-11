@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const checkForGlobalError = (response, responseBody) => {
         if (response.headers.get('X-Global-Error') === 'true')
-            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+            window.location.href = `/web/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
     };
 
     document.querySelectorAll('#epc-bag, #code-bag, #type-bag, #max-count-wash-bag').forEach((input) => {
@@ -192,11 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (bags.length > 0)
                 bags = [];
 
-            const response = await fetch(`/getBagsByStatus?status=${status}`, {
+            const response = await fetch(`/web/getBagsByStatus?status=${status}`, {
                 method: 'GET',
                 headers: {
-                    'X-Is-Search': 'true',
-                    'X-Is-Fetch': 'true'
+                    'X-Is-Search': 'true'
                 }
             });
 
@@ -208,6 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const { fullData } = await response.json();
+            console.log(fullData);
             bags = fullData;
 
         } catch (error) {
@@ -319,6 +319,8 @@ document.addEventListener('DOMContentLoaded', () => {
         function clearInput(clearModalInput) {
             const inputs = clearModalInput.querySelectorAll('input, textarea, select');
             inputs.forEach(el => {
+                if (el.type === 'hidden') return;
+                
                 if (el.type === 'checkbox' || el.type === 'radio') {
                     el.checked = false;
                 } else {
@@ -345,11 +347,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
 
-                const response = await fetch(`/laundry?isFirstTime=false`, {
-                    method: 'GET',
-                    headers: {
-                        'X-Is-Fetch': 'true'
-                    }
+                const response = await fetch(`/web/laundry?isFirstTime=false`, {
+                    method: 'GET'
                 });
 
                 if (!response.ok) {
@@ -390,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalMessContent.classList.remove('slide-in');
 
         // Delay hiding the modal to allow the animation to finish
-        setTimeout(function () {
+        setTimeout(async function () {
             modalMess.classList.remove('show');
             modalMessContent.classList.remove('show');
 
@@ -407,15 +406,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         prevDestinationByBtn.value = document.getElementById('addBag').getAttribute('data-preview');
 
                         clearInput(addBagModalContent);
-                        fetchBags();
+                        await fetchBags();
 
-                        updateMainView('bags-drop-off', 'all-type-drop-off', 'drop off');
-                        updateMainView('bags-transportation-to-laundry-facility',
+                        await updateMainView('bags-drop-off', 'all-type-drop-off', 'drop off');
+                        await updateMainView('bags-transportation-to-laundry-facility',
                             'all-type-transportation-to-laundry-facility', 'transportation to laundry facility');
-                        updateMainView('bags-laundry-facility', 'all-type-laundry-facility', 'laundry facility');
-                        updateMainView('bags-transportation-to-drop-off', 'all-type-transportation-to-drop-off',
+                        await updateMainView('bags-laundry-facility', 'all-type-laundry-facility', 'laundry facility');
+                        await updateMainView('bags-transportation-to-drop-off', 'all-type-transportation-to-drop-off',
                             'transportation to pick up');
-                        updateMainView('bags-ready-to-pick-up', 'all-type-ready-to-pick-up', 'ready to pick up');
+                        await updateMainView('bags-ready-to-pick-up', 'all-type-ready-to-pick-up', 'ready to pick up');
 
                         switch (globalClickStatus) {
                             case 'Drop off':
@@ -439,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 break;
                         }
 
-                        fetchBagStatus(globalClickStatus, globalNextDestination, globalTableContent, globalNavigationPart);
+                        await fetchBagStatus(globalClickStatus, globalNextDestination, globalTableContent, globalNavigationPart);
                         break;
 
                     case 'removeBag':
@@ -447,13 +446,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         allCheckedRow = [];
 
-                        updateMainView('bags-drop-off', 'all-type-drop-off', 'drop off');
-                        updateMainView('bags-transportation-to-laundry-facility',
+                        await updateMainView('bags-drop-off', 'all-type-drop-off', 'drop off');
+                        await updateMainView('bags-transportation-to-laundry-facility',
                             'all-type-transportation-to-laundry-facility', 'transportation to laundry facility');
-                        updateMainView('bags-laundry-facility', 'all-type-laundry-facility', 'laundry facility');
-                        updateMainView('bags-transportation-to-drop-off', 'all-type-transportation-to-drop-off',
+                        await updateMainView('bags-laundry-facility', 'all-type-laundry-facility', 'laundry facility');
+                        await updateMainView('bags-transportation-to-drop-off', 'all-type-transportation-to-drop-off',
                             'transportation to pick up');
-                        updateMainView('bags-ready-to-pick-up', 'all-type-ready-to-pick-up', 'ready to pick up');
+                        await updateMainView('bags-ready-to-pick-up', 'all-type-ready-to-pick-up', 'ready to pick up');
 
                         switch (globalClickStatus) {
                             case 'Drop off':
@@ -477,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 break;
                         }
 
-                        fetchBagStatus(globalClickStatus, globalNextDestination, globalTableContent, globalNavigationPart);
+                        await fetchBagStatus(globalClickStatus, globalNextDestination, globalTableContent, globalNavigationPart);
                         break;
 
                     case 'linenExchangeBag':
@@ -486,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         prevDestinationByBtn.value = document.getElementById('addBag').getAttribute('data-preview');
 
                         clearInput(linenExchangeBagModalContent);
-                        fetchBags('');
+                        await fetchBags('');
 
                         switch (globalClickStatus) {
                             case 'Drop off':
@@ -510,25 +509,25 @@ document.addEventListener('DOMContentLoaded', () => {
                                 break;
                         }
 
-                        fetchBagStatus(globalClickStatus, globalNextDestination, globalTableContent, globalNavigationPart);
+                        await fetchBagStatus(globalClickStatus, globalNextDestination, globalTableContent, globalNavigationPart);
                         break;
 
                     case 'insertBag':
                         clearInput(insertBagModalContent);
                         clearInput(listBagModalContent);
-                        fetchListBags();
+                        await fetchListBags();
                         break;
 
                     case 'editBag':
                         clearInput(editBagModalContent);
                         clearInput(listBagModalContent);
-                        fetchListBags();
+                        await fetchListBags();
                         break;
 
                     case 'deleteBag':
                         allCheckedListBagsRow = [];
                         clearInput(listBagModalContent);
-                        fetchListBags();
+                        await fetchListBags();
                         break;
                 }
             }
@@ -1145,7 +1144,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -1161,12 +1159,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/bags?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/bags?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -1539,7 +1533,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -1556,12 +1549,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/getBagsByStatus?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/getBagsByStatus?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -1849,7 +1838,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 isRemove = true;
 
-                const response = await fetch('/laundry/deleteBag', {
+                const response = await fetch('/web/laundry/deleteBag', {
                     method: 'DELETE',
                     credentials: 'include',
                     headers: {
@@ -1928,7 +1917,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 for (const data of allCheckedRow) {
 
-                    const response = await fetch('/changeStatusConsole', {
+                    const response = await fetch('/web/changeStatusConsole', {
                         method: 'POST',
                         credentials: 'include',
                         headers: {
@@ -2004,7 +1993,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     isRemove = true;
                     data.destination = 'None';
 
-                    const response = await fetch('/changeStatusConsole', {
+                    const response = await fetch('/web/changeStatusConsole', {
                         method: 'POST',
                         credentials: 'include',
                         headers: {
@@ -2108,7 +2097,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -2132,12 +2120,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchParams.append('searchValueDate', filter.value);
             });
 
-            const response = await fetch(`/laundry/viewReport?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/laundry/viewReport?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {

@@ -46,15 +46,16 @@ import okhttp3.Response;
 
 public class SearchClient extends AppCompatActivity {
 
-    private boolean isValidCode;
     private String campId;
-    private final OkHttpClient client = new OkHttpClient();
+    private OkHttpClient client;
     private final ArrayList<BikeInfo> ownerList = new ArrayList<>();
     private final Map<BikeInfo, String> clientIdMap = new HashMap<>();
     private final Map<BikeInfo, String> keyIdMap = new HashMap<>();
     private final Map<String, String> keyIdCountMap = new HashMap<>();
     private AutoCompleteTextView clientAutoCompleteTextView;
     private NfcAdapter nfcAdapter;
+    private Call currentCall;
+    private final DebounceMessageHelper messageHelper = new DebounceMessageHelper(this);
 
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -76,14 +77,17 @@ public class SearchClient extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_client);
 
+        client = new OkHttpClient.Builder()
+                .addInterceptor(new JwtInterceptor(this))
+                .build();
+
         campId = GlobalVariable.getCamp(this);
-        isValidCode = GlobalVariable.getVariable(this);
 
         clientAutoCompleteTextView = findViewById(R.id.clientAutoCompleteTextView);
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
-            showPopupWindow("NFC is not available on this device.");
+            messageHelper.showError("NFC is not available on this device.");
             finish();
             return;
         }
@@ -122,7 +126,7 @@ public class SearchClient extends AppCompatActivity {
     private void fetchAvailableBikes() {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
@@ -135,14 +139,15 @@ public class SearchClient extends AppCompatActivity {
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/getClient?campId=" + campId + "&isValidCode=" + isValidCode)
+                .url(baseUrl + "/api/getClient?campId=" + campId)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 runOnUiThread(loadingDialog::dismiss);
-                runOnUiThread(() -> showPopupWindow("Error when fetching soldier. Please connect to the support!"));
+                messageHelper.showError("Error when fetching soldier. Please connect to the support!");
             }
 
             @Override
@@ -154,7 +159,7 @@ public class SearchClient extends AppCompatActivity {
                     if (!response.isSuccessful()) {
                         JSONObject jsonResponse = new JSONObject(responseData);
                         String errorMessage = jsonResponse.optString("message", "Server error occurred.");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -162,7 +167,7 @@ public class SearchClient extends AppCompatActivity {
                     runOnUiThread(() -> populateBikeAutoComplete(allSoldier));
 
                 } catch (JSONException e) {
-                    runOnUiThread(() -> showPopupWindow("Error when fetching soldier. Please connect to the support!"));
+                    messageHelper.showError("Error when fetching soldier. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -206,7 +211,7 @@ public class SearchClient extends AppCompatActivity {
             clientAutoCompleteTextView.setAdapter(adapter);
 
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Failed to fetch soldier. Please connect to the support."));
+            messageHelper.showError("Failed to fetch soldier. Please connect to the support.");
         }
     }
 
@@ -227,14 +232,15 @@ public class SearchClient extends AppCompatActivity {
         // Make network request to your server endpoint
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/searchClient?id=" + bikeId + "&isValidCode=" + isValidCode)
+                .url(baseUrl + "/api/searchClient?id=" + bikeId)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 runOnUiThread(loadingDialog::dismiss);
-                runOnUiThread(() -> showPopupWindow("Error fetching data from server. Please connect to the support!"));
+                messageHelper.showError("Error fetching data from server. Please connect to the support!");
             }
 
             @Override
@@ -246,7 +252,7 @@ public class SearchClient extends AppCompatActivity {
                     if (!response.isSuccessful()) {
                         JSONObject jsonResponse = new JSONObject(responseData);
                         String errorMessage = jsonResponse.optString("message", "Server error occurred.");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -254,7 +260,7 @@ public class SearchClient extends AppCompatActivity {
                     runOnUiThread(() -> updateTableLayout(bikesArray));
 
                 } catch (JSONException e) {
-                    runOnUiThread(() -> showPopupWindow("Error fetching data from server. Please connect to the support!"));
+                    messageHelper.showError("Error fetching data from server. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -276,6 +282,9 @@ public class SearchClient extends AppCompatActivity {
                 String dateFrom = bike.getString("datefrom");
                 String dateTo = bike.getString("dateto");
 
+                if(dateTo == "null" || dateTo.isEmpty())
+                    dateTo = "None";
+
                 tableLayout.addView(createSpacer()); // Add empty row for spacing
 
                 // Create rows for each bike's details
@@ -286,7 +295,7 @@ public class SearchClient extends AppCompatActivity {
 
             }
         } catch (JSONException e) {
-            runOnUiThread(() -> showPopupWindow("Error when updating UI. Please connect ot the support!"));
+            messageHelper.showError("Error when updating UI. Please connect ot the support!");
         }
     }
 
@@ -328,9 +337,36 @@ public class SearchClient extends AppCompatActivity {
         nfcAdapter.enableForegroundDispatch(this, pendingIntent, intentFilters, null);
     }
 
+    private void cancelAllCalls() {
+        // Cancel refresh call if active
+        Call refreshCall = GlobalVariable.getRefreshCall();
+        if (refreshCall != null && !refreshCall.isExecuted()) {
+            refreshCall.cancel();
+        }
+
+        // Cancel logout call if active
+        Call logoutCall = GlobalVariable.getLogoutCall();
+        if (logoutCall != null && !logoutCall.isExecuted()) {
+            logoutCall.cancel();
+        }
+
+        // Cancel current API call if active
+        if (currentCall != null && !currentCall.isExecuted()) {
+            currentCall.cancel();
+        }
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
+        cancelAllCalls();
+        nfcAdapter.disableForegroundDispatch(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cancelAllCalls();
         nfcAdapter.disableForegroundDispatch(this);
     }
 
@@ -361,7 +397,7 @@ public class SearchClient extends AppCompatActivity {
             }
 
             if (selectedClientName == null) {
-                showPopupWindow("Soldier not found!");
+                messageHelper.showError("Soldier not found!");
                 return;
             }
 
@@ -386,15 +422,5 @@ public class SearchClient extends AppCompatActivity {
             sb.append(String.format("%02X", b));
         }
         return sb.toString();
-    }
-
-    private void showPopupWindow(String message) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Error");
-        builder.setMessage(message);
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            // Reset the flag once the error dialog is clos
-        });
-        builder.show();
     }
 }

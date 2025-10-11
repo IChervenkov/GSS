@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const checkForGlobalError = (response, responseBody) => {
         if (response.headers.get('X-Global-Error') === 'true')
-            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+            window.location.href = `/web/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
     };
 
     function buildQueryParams(page) {
@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function fetchTableData(page) {
-        
+
         const query = buildQueryParams(page);
 
         if (currentFetchController) {
@@ -213,17 +213,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
         try {
-            const res = await fetch(`/bicycles?${query}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const res = await fetch(`/web/bicycles?${query}`, {
+                method: 'GET'
             });
 
             if (!res.ok) {
@@ -596,7 +591,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -613,12 +607,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/bicycles/getStatusData?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/bicycles/getStatusData?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -683,7 +673,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -699,12 +688,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/helmets?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/helmets?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -1524,6 +1509,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const inputs = clearModalInput.querySelectorAll('input, textarea, select');
             inputs.forEach(el => {
+                if (el.type === 'hidden') return;
+                
                 if (el.type === 'checkbox' || el.type === 'radio') {
                     el.checked = false;
                 } else {
@@ -1540,7 +1527,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Delay hiding the modal to allow the animation to finish
-        setTimeout(function () {
+        setTimeout(async function () {
             modalMessRep.classList.remove('show');
             modalMessRepContent.classList.remove('show');
 
@@ -1555,49 +1542,49 @@ document.addEventListener('DOMContentLoaded', function () {
                         closeModal();
                         clearInput(fullContent);
                         clearInput(leftNav);
-                        fetchTableData(1);
+                        await fetchTableData(1);
                         break;
 
                     case 'removeHelmet':
                         allCheckedRow = [];
                         clearInput(modalListHelmetsContent);
-                        fetchHelmet();
+                        await fetchHelmet();
                         break;
 
                     case 'addBike':
                         clearInput(modalAddBikeContent);
                         clearInput(fullContent);
-                        fetchTableData(1);
+                        await fetchTableData(1);
                         break;
 
                     case 'editBike':
                         closeEditModal();
                         clearInput(fullContent);
-                        fetchTableData(1);
+                        await fetchTableData(1);
                         break;
 
                     case 'addHelmet':
                         clearInput(modalAddHelmetContent);
                         clearInput(modalListHelmetsContent);
-                        fetchHelmet();
+                        await fetchHelmet();
                         break;
 
                     case 'removeBike':
                         clearInput(modalRemoveBikeContent);
                         clearInput(fullContent);
-                        fetchTableData(1);
+                        await fetchTableData(1);
                         break;
 
                     case 'uploadMultiBike':
                         clearMultiInput('progress-multi-bike', 'fileInputBike');
                         clearInput(fullContent);
-                        fetchTableData(1);
+                        await fetchTableData(1);
                         break;
 
                     case 'uploadMultiHelmet':
                         clearMultiInput('progress-multi-helmet', 'fileInputHelmet');
                         clearInput(modalListHelmetsContent);
-                        fetchHelmet();
+                        await fetchHelmet();
                         break;
 
                 }
@@ -1717,11 +1704,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const responseBike = await fetch(`/bikes`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const responseBike = await fetch(`/web/bikes`, {
+                method: 'GET'
             });
 
             if (!responseBike.ok) {
@@ -1732,11 +1716,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             bikes = await responseBike.json(); // Store fetched bikes in the global variable
 
-            const responseHelmets = await fetch(`/helmets`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const responseHelmets = await fetch(`/web/helmets`, {
+                method: 'GET'
             });
 
             if (!responseHelmets.ok) {
@@ -1747,11 +1728,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             helmets = await responseHelmets.json(); // Store fetched bikes in the global variable
 
-            const responseClient = await fetch(`/clients`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const responseClient = await fetch(`/web/clients`, {
+                method: 'GET'
             });
 
             if (!responseClient.ok) {
@@ -1775,11 +1753,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const responseBike = await fetch(`/getHelmetByBike?bikeId=${bikeId}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const responseBike = await fetch(`/web/getHelmetByBike?bikeId=${bikeId}`, {
+                method: 'GET'
             });
 
             if (!responseBike.ok) {
@@ -1823,7 +1798,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function filterEditSoldiers(query) {
         editSoldierSearchDropdown.innerHTML = '';
         const filteredSoldiers = clients.filter(client => (
-            (client.date_accommodation === '' || (client.date_accommodation !== '' && client.date_free === '')) &&
             client.name.toLowerCase().includes(query.toLowerCase()) ||
             client.namekey.toLowerCase().includes(query.toLowerCase())
         ));
@@ -1884,7 +1858,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function filterClient(query) {
         clientSearchDropdown.innerHTML = '';
         const filteredClients = clients.filter(client => (
-            (client.date_accommodation === '' || (client.date_accommodation !== '' && client.date_free === '')) &&
             client.name.toLowerCase().includes(query.toLowerCase()) ||
             client.namekey.toLowerCase().includes(query.toLowerCase())
         ));
@@ -2429,6 +2402,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById("searchButtonBike").addEventListener("click", function () {
 
+        const bikeId = selectedBikeId.value;
+        const bikeContent = bikeSearchInput.value;
+
+        if (bikeId.length === 0 || bikeContent.length === 0) {
+            showMess('Error', 'You have not selected a bike.');
+            closeSearchBikeModal();
+            return;
+        }
+
         openSearchBikeModal();
 
         // Clear existing rows from the table
@@ -2437,78 +2419,78 @@ document.addEventListener('DOMContentLoaded', function () {
             existingTableBody.remove();
         }
 
-        const bikeId = selectedBikeId.value;
-        const bikeContent = bikeSearchInput.value;
+        startLoading();
 
-        if (bikeContent.length != 0) {
+        // Fetch bike data from server
+        fetch(`/web/searchBikes?id=${bikeId}`, {
+            method: 'GET'
+        })
+            .then(async response => {
 
-            startLoading();
-
-            // Fetch bike data from server
-            fetch(`/searchBikes?id=${bikeId}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    checkForGlobalError(response, errorData);
+                    showMess('Error', errorData.message);
+                    return;
                 }
+                return response.json();
             })
-                .then(async response => {
+            .then(data => {
+                const tableBody = document.querySelector("#searchBikeModal table tbody");
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        checkForGlobalError(response, errorData);
-                        showMess('Error', errorData.message);
-                        return;
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    const tableBody = document.querySelector("#searchBikeModal table tbody");
+                // Clear existing rows if needed
+                if (tableBody) {
+                    tableBody.remove();
+                }
 
-                    // Clear existing rows if needed
-                    if (tableBody) {
-                        tableBody.remove();
-                    }
+                // Create new table body
+                const newTableBody = document.createElement("tbody");
 
-                    // Create new table body
-                    const newTableBody = document.createElement("tbody");
+                data.forEach(bike => {
+                    const row = document.createElement("tr");
 
-                    data.forEach(bike => {
-                        const row = document.createElement("tr");
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = bike.namesoldier;
+                    nameCell.classList.add("text-wrap");
+                    nameCell.style = "max-width: 200px;";
+                    row.appendChild(nameCell);
 
-                        const nameCell = document.createElement("td");
-                        nameCell.textContent = bike.namesoldier;
-                        nameCell.classList.add("text-wrap");
-                        nameCell.style = "max-width: 200px;";
-                        row.appendChild(nameCell);
+                    const dateFromCell = document.createElement("td");
+                    dateFromCell.textContent = bike.datefrom ? formateDate(bike.datefrom) : "None";
+                    dateFromCell.classList.add("text-wrap");
+                    dateFromCell.style = "max-width: 200px;";
+                    row.appendChild(dateFromCell);
 
-                        const dateFromCell = document.createElement("td");
-                        dateFromCell.textContent = bike.datefrom ? formateDate(bike.datefrom) : "None";
-                        dateFromCell.classList.add("text-wrap");
-                        dateFromCell.style = "max-width: 200px;";
-                        row.appendChild(dateFromCell);
+                    const dateToCell = document.createElement("td");
+                    dateToCell.textContent = bike.dateto ? formateDate(bike.dateto) : "Still in use";
+                    dateToCell.classList.add("text-wrap");
+                    dateToCell.style = "max-width: 200px;";
+                    row.appendChild(dateToCell);
 
-                        const dateToCell = document.createElement("td");
-                        dateToCell.textContent = bike.dateto ? formateDate(bike.dateto) : "Still in use";
-                        dateToCell.classList.add("text-wrap");
-                        dateToCell.style = "max-width: 200px;";
-                        row.appendChild(dateToCell);
-
-                        newTableBody.appendChild(row);
-                    });
-
-                    // Append new table body to table
-                    document.querySelector("#searchBikeModal table").appendChild(newTableBody);
-                })
-                .catch(error => {
-                    showMess('Error', error.message);
-                })
-                .finally(() => {
-                    stopLoading();
+                    newTableBody.appendChild(row);
                 });
-        }
+
+                // Append new table body to table
+                document.querySelector("#searchBikeModal table").appendChild(newTableBody);
+            })
+            .catch(error => {
+                showMess('Error', error.message);
+            })
+            .finally(() => {
+                stopLoading();
+            });
     });
 
     document.getElementById("searchButtonClient").addEventListener("click", function () {
+
+        const clientId = selectedClientId.value;
+        const clientContent = clientSearchInput.value;
+
+        if (clientId.length === 0 || clientContent.length === 0) {
+            showMess('Error', 'You have not selected a soldier.');
+            closeSearchClientModal();
+            return;
+        }
 
         openSearchClientModal();
 
@@ -2518,78 +2500,78 @@ document.addEventListener('DOMContentLoaded', function () {
             existingTableBody.remove();
         }
 
-        const clientId = selectedClientId.value;
-        const clientContent = clientSearchInput.value;
+        startLoading();
 
-        if (clientContent.length != 0) {
+        // Fetch bike data from server
+        fetch(`/web/searchClient?id=${clientId}`, {
+            method: 'GET'
+        })
+            .then(async response => {
 
-            startLoading();
-
-            // Fetch bike data from server
-            fetch(`/searchClient?id=${clientId}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    checkForGlobalError(response, errorData);
+                    showMess('Error', errorData.message);
+                    return;
                 }
+                return response.json();
             })
-                .then(async response => {
+            .then(data => {
+                const tableBody = document.querySelector("#searchClientModal table tbody");
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        checkForGlobalError(response, errorData);
-                        showMess('Error', errorData.message);
-                        return;
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    const tableBody = document.querySelector("#searchClientModal table tbody");
+                // Clear existing rows if needed
+                if (tableBody) {
+                    tableBody.remove();
+                }
 
-                    // Clear existing rows if needed
-                    if (tableBody) {
-                        tableBody.remove();
-                    }
+                // Create new table body
+                const newTableBody = document.createElement("tbody");
 
-                    // Create new table body
-                    const newTableBody = document.createElement("tbody");
+                data.forEach(client => {
+                    const row = document.createElement("tr");
 
-                    data.forEach(client => {
-                        const row = document.createElement("tr");
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = client.namebike;
+                    nameCell.classList.add("text-wrap");
+                    nameCell.style = "max-width: 200px;";
+                    row.appendChild(nameCell);
 
-                        const nameCell = document.createElement("td");
-                        nameCell.textContent = client.namebike;
-                        nameCell.classList.add("text-wrap");
-                        nameCell.style = "max-width: 200px;";
-                        row.appendChild(nameCell);
+                    const dateFromCell = document.createElement("td");
+                    dateFromCell.textContent = client.datefrom ? formateDate(client.datefrom) : "None";
+                    dateFromCell.classList.add("text-wrap");
+                    dateFromCell.style = "max-width: 200px;";
+                    row.appendChild(dateFromCell);
 
-                        const dateFromCell = document.createElement("td");
-                        dateFromCell.textContent = client.datefrom ? formateDate(client.datefrom) : "None";
-                        dateFromCell.classList.add("text-wrap");
-                        dateFromCell.style = "max-width: 200px;";
-                        row.appendChild(dateFromCell);
+                    const dateToCell = document.createElement("td");
+                    dateToCell.textContent = client.dateto ? formateDate(client.dateto) : "Still in use";
+                    dateToCell.classList.add("text-wrap");
+                    dateToCell.style = "max-width: 200px;";
+                    row.appendChild(dateToCell);
 
-                        const dateToCell = document.createElement("td");
-                        dateToCell.textContent = client.dateto ? formateDate(client.dateto) : "Still in use";
-                        dateToCell.classList.add("text-wrap");
-                        dateToCell.style = "max-width: 200px;";
-                        row.appendChild(dateToCell);
-
-                        newTableBody.appendChild(row);
-                    });
-
-                    // Append new table body to table
-                    document.querySelector("#searchClientModal table").appendChild(newTableBody);
-                })
-                .catch(error => {
-                    showMess('Error', error.message);
-                })
-                .finally(() => {
-                    stopLoading();
+                    newTableBody.appendChild(row);
                 });
-        }
+
+                // Append new table body to table
+                document.querySelector("#searchClientModal table").appendChild(newTableBody);
+            })
+            .catch(error => {
+                showMess('Error', error.message);
+            })
+            .finally(() => {
+                stopLoading();
+            });
     });
 
     document.getElementById("searchButtonHelmet").addEventListener("click", function () {
+
+        const helmetId = selectedHelmetId.value;
+        const helmetContent = helmetSearchInput.value;
+
+        if (helmetId.length === 0 || helmetContent.length === 0) {
+            showMess('Error', 'You have not selected a helmet.');
+            closeSearchHelmetModal();
+            return;
+        }
 
         openSearchHelmetModal();
 
@@ -2599,75 +2581,66 @@ document.addEventListener('DOMContentLoaded', function () {
             existingTableBody.remove();
         }
 
-        const helmetId = selectedHelmetId.value;
-        const helmetContent = helmetSearchInput.value;
+        startLoading();
 
-        if (helmetContent.length != 0) {
+        // Fetch bike data from server
+        fetch(`/web/searchHelmet?id=${helmetId}`, {
+            method: 'GET'
+        })
+            .then(async response => {
 
-            startLoading();
-
-            // Fetch bike data from server
-            fetch(`/searchHelmet?id=${helmetId}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    checkForGlobalError(response, errorData);
+                    showMess('Error', errorData.message);
+                    return;
                 }
+                return response.json();
             })
-                .then(async response => {
+            .then(data => {
+                const tableBody = document.querySelector("#searchHelmetModal table tbody");
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        checkForGlobalError(response, errorData);
-                        showMess('Error', errorData.message);
-                        return;
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    const tableBody = document.querySelector("#searchHelmetModal table tbody");
+                // Clear existing rows if needed
+                if (tableBody) {
+                    tableBody.remove();
+                }
 
-                    // Clear existing rows if needed
-                    if (tableBody) {
-                        tableBody.remove();
-                    }
+                // Create new table body
+                const newTableBody = document.createElement("tbody");
 
-                    // Create new table body
-                    const newTableBody = document.createElement("tbody");
+                data.forEach(bike => {
+                    const row = document.createElement("tr");
 
-                    data.forEach(bike => {
-                        const row = document.createElement("tr");
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = bike.namesoldier;
+                    nameCell.classList.add("text-wrap");
+                    nameCell.style = "max-width: 200px;";
+                    row.appendChild(nameCell);
 
-                        const nameCell = document.createElement("td");
-                        nameCell.textContent = bike.namesoldier;
-                        nameCell.classList.add("text-wrap");
-                        nameCell.style = "max-width: 200px;";
-                        row.appendChild(nameCell);
+                    const dateFromCell = document.createElement("td");
+                    dateFromCell.textContent = bike.datefrom ? formateDate(bike.datefrom) : "None";
+                    dateFromCell.classList.add("text-wrap");
+                    dateFromCell.style = "max-width: 200px;";
+                    row.appendChild(dateFromCell);
 
-                        const dateFromCell = document.createElement("td");
-                        dateFromCell.textContent = bike.datefrom ? formateDate(bike.datefrom) : "None";
-                        dateFromCell.classList.add("text-wrap");
-                        dateFromCell.style = "max-width: 200px;";
-                        row.appendChild(dateFromCell);
+                    const dateToCell = document.createElement("td");
+                    dateToCell.textContent = bike.dateto ? formateDate(bike.dateto) : "Still in use";
+                    dateToCell.classList.add("text-wrap");
+                    dateToCell.style = "max-width: 200px;";
+                    row.appendChild(dateToCell);
 
-                        const dateToCell = document.createElement("td");
-                        dateToCell.textContent = bike.dateto ? formateDate(bike.dateto) : "Still in use";
-                        dateToCell.classList.add("text-wrap");
-                        dateToCell.style = "max-width: 200px;";
-                        row.appendChild(dateToCell);
-
-                        newTableBody.appendChild(row);
-                    });
-
-                    // Append new table body to table
-                    document.querySelector("#searchHelmetModal table").appendChild(newTableBody);
-                })
-                .catch(error => {
-                    showMess('Error', error.message);
-                })
-                .finally(() => {
-                    stopLoading();
+                    newTableBody.appendChild(row);
                 });
-        }
+
+                // Append new table body to table
+                document.querySelector("#searchHelmetModal table").appendChild(newTableBody);
+            })
+            .catch(error => {
+                showMess('Error', error.message);
+            })
+            .finally(() => {
+                stopLoading();
+            });
     });
 
     document.getElementById("removeHelmet").addEventListener("click", function () {
@@ -2692,7 +2665,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 isRemove = true;
 
-                const response = await fetch('/bicycles/removeHelmet', {
+                const response = await fetch('/web/bicycles/removeHelmet', {
                     method: 'DELETE',
                     credentials: 'include',
                     headers: {
@@ -2757,7 +2730,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -2781,12 +2753,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValueDate', filter.value);
             });
 
-            const response = await fetch(`/bicycles/viewReport?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/bicycles/viewReport?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -2858,8 +2826,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         async function checkBike(action, setDate, selectHour, selectMinute) {
 
-            startLoading();
-
             const isInvalidInput = (action === "Rent" && (
                 modalText.textContent === "None" ||
                 bikeLabel.textContent === "None" ||
@@ -2878,13 +2844,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 return false;
             }
 
+            startLoading();
+
             try {
 
-                const response = await fetch(`/checkBike?bikeId=${selectedBikeId.value}`, {
-                    method: 'GET',
-                    headers: {
-                        'X-Is-Fetch': 'true'
-                    }
+                const response = await fetch(`/web/checkBike?bikeId=${selectedBikeId.value}`, {
+                    method: 'GET'
                 });
 
                 if (!response.ok) {
@@ -2919,7 +2884,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 return true;
-                
+
             } catch (error) {
                 showMess('Error', 'Error check status bike');
             } finally {
@@ -3635,7 +3600,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = "/bicycles/uploadMultiBike";
+        const url = "/web/bicycles/uploadMultiBike";
         const progressBar = document.getElementById("progress-multi-bike");
 
         const updateProgressBar = (percentage) => {
@@ -3716,7 +3681,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = "/bicycles/uploadMultiHelmet";
+        const url = "/web/bicycles/uploadMultiHelmet";
         const progressBar = document.getElementById("progress-multi-helmet");
 
         const updateProgressBar = (percentage) => {

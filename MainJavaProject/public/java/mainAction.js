@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const checkForGlobalError = (response, responseBody) => {
         if (response.headers.get('X-Global-Error') === 'true')
-            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+            window.location.href = `/web/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
     };
 
     function firstUpdateTable(rows, currentIndex, rowsPerPage, pageNumberId) {
@@ -243,6 +243,8 @@ document.addEventListener('DOMContentLoaded', function () {
         function clearInput(clearModalInput) {
             const inputs = clearModalInput.querySelectorAll('input, textarea, select');
             inputs.forEach(el => {
+                if (el.type === 'hidden') return;
+                
                 if (el.type === 'radio') {
                     el.checked = false;
                 } else {
@@ -259,11 +261,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
 
-                const res = await fetch('/getCamp', {
-                    method: 'GET',
-                    headers: {
-                        'X-Is-Fetch': 'true'
-                    }
+                const res = await fetch('/web/getCamp', {
+                    method: 'GET'
                 });
 
                 if (!res.ok) {
@@ -287,8 +286,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 titleContainer.innerHTML = `
                     <div class="btn-container" style="width: 100%;">
                         <button id="addCampButton"
-                            class="sticky-button ${isAllowed ? '' : 'disabled-button'}"
-                            ${!isAllowed ? 'disabled' : ''}>
+                            class="sticky-button ${isAllowed ? 'disabled-button' : ''}">
                             <i class="bi bi-plus-circle"></i> Add camp
                         </button>
                         <div class="tooltip-custom">
@@ -323,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         startLoading();
 
                         try {
-                            const response = await fetch('/setCampValue', {
+                            const response = await fetch('/web/setCampValue', {
                                 method: 'POST',
                                 credentials: 'include',
                                 headers: {
@@ -368,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalMessContent.classList.remove('slide-in');
 
         // Delay hiding the modal to allow the animation to finish
-        setTimeout(function () {
+        setTimeout(async function () {
             modalMess.classList.remove('show');
             modalMessContent.classList.remove('show');
 
@@ -376,40 +374,37 @@ document.addEventListener('DOMContentLoaded', function () {
                 switch (action) {
                     case 'addCamp':
                         clearInput(addCampModalContent);
-                        updateLeftNavigation();
+                        await updateLeftNavigation();
                         break;
 
                     case 'setPermissions':
                         checkPermissions = [];
                         clearInput(setPermissionModalContent);
-                        loadPermissionsData();
+                        await loadPermissionsData();
                         break;
 
                     case 'addUser':
                         clearInput(setPermissionModalContent);
                         clearInput(listUsersModalContent);
                         clearInput(addUsersModalContent);
-                        loadPermissionsHeaders();
-                        loadPermissionsData();
-                        fetchUsersList();
+                        await loadPermissionsData();
+                        await fetchUsersList();
                         break;
 
                     case 'editUser':
                         clearInput(setPermissionModalContent);
                         clearInput(listUsersModalContent);
                         closeEditUserModal();
-                        loadPermissionsHeaders();
-                        loadPermissionsData();
-                        fetchUsersList();
+                        await loadPermissionsData();
+                        await fetchUsersList();
                         break;
 
                     case 'deleteUser':
                         allCheckedRow = [];
                         clearInput(setPermissionModalContent);
                         clearInput(listUsersModalContent);
-                        loadPermissionsHeaders();
-                        loadPermissionsData();
-                        fetchUsersList();
+                        await loadPermissionsData();
+                        await fetchUsersList();
                         break;
                 }
 
@@ -560,7 +555,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         currentPage = 1;
 
-        loadPermissionsHeaders();
         loadPermissionsData();
 
         // Ensure that any 'slide-out' class is removed if it was previously added
@@ -616,7 +610,7 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
 
                 for (const data of allCheckedRow) {
-                    const deleteResponse = await fetch('/deleteUser', {
+                    const deleteResponse = await fetch('/web/deleteUser', {
                         method: 'DELETE',
                         credentials: 'include',
                         headers: {
@@ -689,7 +683,7 @@ document.addEventListener('DOMContentLoaded', function () {
             startLoading();
 
             try {
-                const response = await fetch('/setCampValue', {
+                const response = await fetch('/web/setCampValue', {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -717,17 +711,25 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    async function loadPermissionsHeaders() {
+    async function loadPermissionsData(page = 1, limit = 10, searchFilters = []) {
+        if (currentFetchController) {
+            currentFetchController.abort();
+        }
+
+        currentFetchController = new AbortController();
 
         startLoading();
 
         try {
+            const searchParams = new URLSearchParams({ page, limit });
 
-            const response = await fetch(`/permissions/data`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            searchFilters.forEach(filter => {
+                searchParams.append('searchColumn', filter.column);
+                searchParams.append('searchValue', filter.value);
+            });
+
+            const response = await fetch(`/web/permissions/data?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -738,8 +740,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const data = await response.json();
-
-            const { users } = data;
+            const { users, permissions, user_permissions, totalPages } = data;
 
             const table = document.getElementById('permissionsTable');
 
@@ -757,16 +758,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             thPerm.appendChild(inputSearch);
             thPerm.appendChild(document.createTextNode('Permission'));
-
             headerRow.appendChild(thPerm);
 
             users.forEach(user => {
-
-                if (user.username === 'admin' || user.username === 'PhoneUser')
-                    return;
+                if (user.username === 'admin' || user.username === 'PhoneUser') return;
 
                 let th = document.createElement('th');
-                th.style = "cursor: not-allowed"
+                th.style = "cursor: not-allowed";
 
                 const inputSearch = document.createElement('input');
                 inputSearch.type = 'text';
@@ -775,68 +773,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 th.appendChild(inputSearch);
                 th.appendChild(document.createTextNode(user.username));
-
                 headerRow.appendChild(th);
             });
 
             thead.appendChild(headerRow);
 
-            const headerDate = {
-                'Permission': 'permission_name'
-            };
-
+            // Enable search again
+            const headerDate = { 'Permission': 'permission_name' };
             rewriteTableSearch('.search-input-permission', 'permissionsTable', headerDate);
-
-        } catch (error) {
-            showMess('Error', 'Failed to load permissions. Please connect to the support.');
-        } finally {
-            stopLoading();
-        }
-    }
-
-    async function loadPermissionsData(page = 1, limit = 10, searchFilters = []) {
-
-        if (currentFetchController) {
-            currentFetchController.abort();
-        }
-
-        currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
-
-        startLoading();
-
-        try {
-
-            const searchParams = new URLSearchParams({
-                page,
-                limit
-            });
-
-            searchFilters.forEach(filter => {
-                searchParams.append('searchColumn', filter.column);
-                searchParams.append('searchValue', filter.value);
-            });
-
-            const response = await fetch(`/permissions/data?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                checkForGlobalError(response, error);
-                showMess('Error', 'Failed to fetch permissions data');
-                return;
-            }
-
-            const data = await response.json();
-
-            const { users, permissions, user_permissions, totalPages } = data;
-
-            const table = document.getElementById('permissionsTable');
 
             // --- Body ---
             let tbody = table.querySelector('tbody');
@@ -850,9 +794,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 row.appendChild(tdPerm);
 
                 users.forEach(user => {
-
-                    if (user.username === 'admin' || user.username === 'PhoneUser')
-                        return;
+                    if (user.username === 'admin' || user.username === 'PhoneUser') return;
 
                     let td = document.createElement('td');
                     let input = document.createElement('input');
@@ -860,17 +802,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     input.name = `permissions[${user.id}][]`;
                     input.value = perm.id;
 
-                    if (user_permissions.some(up => up.user_id === user.id && up.perm_id === perm.id)
-                        || checkPermissions.some(cp => cp.userId === user.id && cp.permId === perm.id && cp.isCheck)) {
+                    if (
+                        user_permissions.some(up => up.user_id === user.id && up.perm_id === perm.id) ||
+                        checkPermissions.some(cp => cp.userId === user.id && cp.permId === perm.id && cp.isCheck)
+                    ) {
                         input.checked = true;
                     }
 
                     input.addEventListener('change', () => {
-                        const entry = {
-                            userId: user.id,
-                            permId: perm.id,
-                            isCheck: input.checked
-                        };
+                        const entry = { userId: user.id, permId: perm.id, isCheck: input.checked };
 
                         // Remove any existing entry for this user+perm
                         checkPermissions = checkPermissions.filter(
@@ -883,7 +823,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     td.classList.add("text-wrap");
                     td.style = "max-width: 200px;";
-
                     td.appendChild(input);
                     row.appendChild(td);
                 });
@@ -914,7 +853,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -925,10 +863,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/getUsers?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: { 'X-Is-Fetch': 'true' },
-                signal
+            const response = await fetch(`/web/getUsers?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -1033,14 +969,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     approveBtn.className = "btn btn-success btn-sm me-1";
                     approveBtn.addEventListener("click", async () => {
                         await verifyUserRequest(item.id, "approved");
-                        fetchUsersList(page, limit, searchFilters);
+                        await fetchUsersList(page, limit, searchFilters);
                     });
 
                     denyBtn.textContent = "Deny";
                     denyBtn.className = "btn btn-danger btn-sm";
                     denyBtn.addEventListener("click", async () => {
                         await verifyUserRequest(item.id, "denied");
-                        fetchUsersList(page, limit, searchFilters);
+                        await fetchUsersList(page, limit, searchFilters);
                     });
 
                     actionCell.appendChild(approveBtn);
@@ -1073,13 +1009,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // helper to call /admin/verify
+    // helper to call /web/admin/verify
     async function verifyUserRequest(userId, decision) {
 
         startLoading();
-                        
+
         try {
-            const response = await fetch('/admin/verify', {
+            const response = await fetch('/web/admin/verify', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

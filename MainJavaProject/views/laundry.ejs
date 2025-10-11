@@ -251,8 +251,7 @@
                         <i class="bi bi-download"></i> Download App
                     </button>
                 </div>
-                <div class="w-100" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of bags'))) { %> style="cursor:
-                    not-allowed" <% } %>>
+                <div class="w-100" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of bags'))) { %> style="cursor: not-allowed" <% } %>>
                         <div class="btn-container w-100 w-md-auto">
                             <button id="listOfBagsButton"
                                 class="report-button <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'List of bags'))) { %> disabled-button <% } %> w-100 w-md-auto">
@@ -288,7 +287,7 @@
                         headerTable, destination: 'None' , previewDestination: 'Ready to pick up' }) %>
 
                         <div id="reportViewModal" class="modal">
-                            <form class="modal-content-report" action="/laundry/report" method="POST" id="form1">
+                            <form class="modal-content-report" action="/web/laundry/report" method="POST" id="form1">
                                 <span class="close-btn">&times;</span>
                                 <h2>Reports View</h2>
 
@@ -361,26 +360,26 @@
                         </div>
 
                         <%- include('partials/modal_laundry_action', { id: 'addBag' ,
-                            destination: '/changeStatusConsole' , formId: 'form2' , title: 'Add bag' ,
+                            destination: '/web/changeStatusConsole' , formId: 'form2' , title: 'Add bag' ,
                             searchId: 'search-bags' , inputSearchId: 'search-add-input-bags' , labelSearch: 'Bag Number'
                             , dropDownSearchId: 'addBagDropDown' , selectSearchId: 'addBagSelectId' ,
                             buttonId: 'add-btn' , buttonText: 'Add bag' }) %>
 
                             <%- include('partials/modal_laundry_action', { id: 'moveBag' ,
-                                destination: '/changeStatusConsole' , formId: 'form3' , title: 'Move bag' ,
+                                destination: '/web/changeStatusConsole' , formId: 'form3' , title: 'Move bag' ,
                                 searchId: 'search-bags' , inputSearchId: 'search-move-input-bags' ,
                                 labelSearch: 'Bag Number' , dropDownSearchId: 'moveBagDropDown' ,
                                 selectSearchId: 'moveBagSelectId' , buttonId: 'move-btn' , buttonText: 'Move bag' }) %>
 
                                 <%- include('partials/modal_laundry_action', { id: 'removeBag' ,
-                                    destination: '/changeStatusConsole' , formId: 'form4' , title: 'Remove bag' ,
+                                    destination: '/web/changeStatusConsole' , formId: 'form4' , title: 'Remove bag' ,
                                     searchId: 'search-bags' , inputSearchId: 'search-remove-input-bags' ,
                                     labelSearch: 'Bag Number' , dropDownSearchId: 'removeBagDropDown' ,
                                     selectSearchId: 'removeBagSelectId' , buttonId: 'remove-btn' ,
                                     buttonText: 'Remove bag' }) %>
 
                                     <%- include('partials/modal_laundry_action', { id: 'linenExchangeBag' ,
-                                        destination: '/changeEndToEndStatusConsole' , formId: 'form5' ,
+                                        destination: '/web/changeEndToEndStatusConsole' , formId: 'form5' ,
                                         title: 'Linen Exchange service' , searchId: 'search-bags' ,
                                         inputSearchId: 'search-exchange-input-bags' , labelSearch: 'Bag Number' ,
                                         dropDownSearchId: 'exchangeBagDropDown' , selectSearchId: 'exchangeBagSelectId'
@@ -449,7 +448,7 @@
                                         </div>
 
                                         <div id="insertBagModal" class="modal">
-                                            <form class="modal-content" action="/laundry/addBag" method="POST"
+                                            <form class="modal-content" action="/web/laundry/addBag" method="POST"
                                                 id="form6">
                                                 <span class="close-btn">&times;</span>
                                                 <h2>Add bag</h2>
@@ -512,7 +511,7 @@
                                         </div>
 
                                         <div id="editBagModal" class="modal">
-                                            <form class="modal-content" action="/laundry/editBag" method="PUT"
+                                            <form class="modal-content" action="/web/laundry/editBag" method="PUT"
                                                 id="form7">
                                                 <span class="close-btn">&times;</span>
 

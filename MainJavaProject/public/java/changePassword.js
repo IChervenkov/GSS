@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const checkForGlobalError = (response, responseBody) => {
         if (response.headers.get('X-Global-Error') === 'true') {
-            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+            window.location.href = `/web/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
         }
     };
 

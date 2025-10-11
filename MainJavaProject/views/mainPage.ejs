@@ -67,14 +67,10 @@
         <% if(navItems) { %>
             <div class="left-nav">
 
-                <div class="title-container mb-2 sticky-top w-100 bg-light" <% if (permissions && !(permissions.some(p=>
-                    p.permission_name === 'Full permission' || p.permission_name === 'Add camp'))) { %>
-                    style="cursor: not-allowed"
-                    <% } %>>
+                <div class="title-container mb-2 sticky-top w-100 bg-light" <% if (permissions && !(permissions.some(p=>p.permission_name === 'Full permission' || p.permission_name === 'Add camp'))) { %> style="cursor: not-allowed" <% } %>>
                         <div class="btn-container" style="width: 100%;">
                             <button id="addCampButton"
-                                class="sticky-button <% if (permissions && !(permissions.some(p=>
-                                    p.permission_name === 'Full permission' || p.permission_name === 'Add camp'))) { %> disabled-button <% } %>"
+                                class="sticky-button <% if (permissions && !(permissions.some(p=>p.permission_name === 'Full permission' || p.permission_name === 'Add camp'))) { %> disabled-button <% } %>"
                                 aria-label="Perform Action">
                                 <i class="bi bi-plus-circle"></i> Add camp
                             </button>
@@ -1004,7 +1000,7 @@
     </div>
 
     <div id="addCampModal" class="modal">
-        <form class="modal-content" method="POST" , action="/addCamp" id="form1">
+        <form class="modal-content" method="POST" , action="/web/addCamp" id="form1">
             <span class="close-btn">&times;</span>
 
             <h2 class="mb-4">Add camp</h2>
@@ -1046,7 +1042,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="form2" method="POST" action="/permissions/save">
+                <form id="form2" method="POST" action="/web/permissions/save">
                     <div class="table-container">
                         <table id="permissionsTable" class="table table-bordered text-center align-middle">
                             <thead class="table-dark"></thead>
@@ -1113,7 +1109,7 @@
 
     <div id="addUserModal" class="modal">
 
-        <form class="modal-content" method="POST" , action="/addUser" id="form3">
+        <form class="modal-content" method="POST" , action="/web/addUser" id="form3">
             <span class="close-btn">&times;</span>
 
             <h2 class="mb-4">Add user</h2>
@@ -1134,7 +1130,7 @@
 
     <div id="editUserModal" class="modal">
 
-        <form class="modal-content" method="POST" , action="/editUser" id="form4">
+        <form class="modal-content" method="POST" , action="/web/editUser" id="form4">
             <span class="close-btn">&times;</span>
 
             <h2 class="mb-4">Edit user</h2>

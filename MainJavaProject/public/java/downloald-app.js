@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const checkForGlobalError = (response, responseBody) => {
         if (response.headers.get('X-Global-Error') === 'true')
-            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+            window.location.href = `/web/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
     };
 
     function startLoading() {
@@ -41,28 +41,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 let url, appName;
                 switch (buttonId) {
                     case 'downloadBtn':
-                        url = '/download-apk-bike';
+                        url = '/web/download-apk-bike';
                         appName = 'NFCReader-1.4.1-release.apk';
                         break;
                     case 'downloadRFIDAppBtn':
-                        url = '/download-apk-laundry';
+                        url = '/web/download-apk-laundry';
                         appName = 'RFIDLaundryReader-1.4.1-release.apk';
                         break;
                     case 'downloadRFIDAppBtnAsset':
-                        url = '/download-apk-asset';
+                        url = '/web/download-apk-asset';
                         appName = 'RFIDLaundryAsset-1.4.1-release.apk';
                         break;
                     case 'downloadTabletAppBtn':
-                        url = '/download-apk-gym';
+                        url = '/web/download-apk-gym';
                         appName = 'RateFitnesCleaning-1.0-release.apk';
                         break;
                 }
 
                 fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'X-Is-Fetch': 'true'
-                    }
+                    method: 'GET'
                 })
                     .then(async response => {
                         if (!response.ok) {

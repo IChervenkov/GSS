@@ -1,7 +1,6 @@
 package com.example.nfcreader;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -41,10 +40,11 @@ import okhttp3.Response;
 
 public class SearchHelmet extends AppCompatActivity {
 
-    private boolean isValidCode;
     private NfcAdapter nfcAdapter;
     private TextView nfcTextView;
-    private final OkHttpClient client = new OkHttpClient();
+    private OkHttpClient client;
+    private Call currentCall;
+    private final DebounceMessageHelper messageHelper = new DebounceMessageHelper(this);
 
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -66,7 +66,9 @@ public class SearchHelmet extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_helmet);
 
-        isValidCode = GlobalVariable.getVariable(this);
+        client = new OkHttpClient.Builder()
+                .addInterceptor(new JwtInterceptor(this))
+                .build();
 
         nfcTextView = findViewById(R.id.helmet_info);
 
@@ -74,7 +76,7 @@ public class SearchHelmet extends AppCompatActivity {
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if (nfcAdapter == null) {
-            showPopupWindow("NFC is not available on this device.");
+            messageHelper.showError("NFC is not available on this device.");
             finish();
             return;
         }
@@ -93,9 +95,36 @@ public class SearchHelmet extends AppCompatActivity {
         nfcAdapter.enableForegroundDispatch(this, pendingIntent, intentFilters, null);
     }
 
+    private void cancelAllCalls() {
+        // Cancel refresh call if active
+        Call refreshCall = GlobalVariable.getRefreshCall();
+        if (refreshCall != null && !refreshCall.isExecuted()) {
+            refreshCall.cancel();
+        }
+
+        // Cancel logout call if active
+        Call logoutCall = GlobalVariable.getLogoutCall();
+        if (logoutCall != null && !logoutCall.isExecuted()) {
+            logoutCall.cancel();
+        }
+
+        // Cancel current API call if active
+        if (currentCall != null && !currentCall.isExecuted()) {
+            currentCall.cancel();
+        }
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
+        cancelAllCalls();
+        nfcAdapter.disableForegroundDispatch(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cancelAllCalls();
         nfcAdapter.disableForegroundDispatch(this);
     }
 
@@ -116,8 +145,6 @@ public class SearchHelmet extends AppCompatActivity {
 
             // Call the server with the NFC data
             readHelmetDataFromServer(nfcId);
-
-            loadHelmetData(nfcId);
         }
     }
 
@@ -132,7 +159,7 @@ public class SearchHelmet extends AppCompatActivity {
     private void readHelmetDataFromServer(String nfcData) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
@@ -146,15 +173,16 @@ public class SearchHelmet extends AppCompatActivity {
         // Define the request
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/readBikeNfc?nfcData=" + nfcData + "&isValidCode=" + isValidCode)
+                .url(baseUrl + "/api/readBikeNfc?nfcData=" + nfcData)
                 .build();
 
         // Make the network call asynchronously
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 runOnUiThread(loadingDialog::dismiss);
-                runOnUiThread(() -> showPopupWindow("Failed to read helmet data. Please connect to the support!"));
+                messageHelper.showError("Failed to read helmet data. Please connect to the support!");
             }
 
             @SuppressLint("SetTextI18n")
@@ -168,7 +196,7 @@ public class SearchHelmet extends AppCompatActivity {
 
                     if (!response.isSuccessful()) {
                         String errorMessage = jsonResponse.optString("message", "Server error occurred.");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -176,9 +204,10 @@ public class SearchHelmet extends AppCompatActivity {
 
                     // Update the UI with the bike name
                     runOnUiThread(() -> nfcTextView.setText("Helmet code: " + helmetName));
+                    runOnUiThread(() -> loadHelmetData(nfcData));
 
                 } catch (JSONException e) {
-                    runOnUiThread(() -> showPopupWindow("Failed to read helmet data. Please connect to the support!"));
+                    messageHelper.showError("Failed to read helmet data. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -192,24 +221,17 @@ public class SearchHelmet extends AppCompatActivity {
             return;
         }
 
-        // Create and show the loading dialog
-        Dialog loadingDialog = new Dialog(SearchHelmet.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false); // Prevent dismissal
-        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
-
         // Make network request to your server endpoint
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/searchHelmet?id=" + bikeId + "&isValidCode=" + isValidCode)
+                .url(baseUrl + "/api/searchHelmet?id=" + bikeId)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(loadingDialog::dismiss);
-                runOnUiThread(() -> showPopupWindow("Error fetching data from server. Please connect to the support!"));
+                messageHelper.showError("Error fetching data from server. Please connect to the support!");
             }
 
             @Override
@@ -221,7 +243,7 @@ public class SearchHelmet extends AppCompatActivity {
                     if (!response.isSuccessful()) {
                         JSONObject jsonResponse = new JSONObject(responseData);
                         String errorMessage = jsonResponse.optString("message", "Server error occurred.");
-                        runOnUiThread(() -> showPopupWindow(errorMessage));
+                        messageHelper.showError(errorMessage);
                         return;
                     }
 
@@ -229,9 +251,7 @@ public class SearchHelmet extends AppCompatActivity {
                     runOnUiThread(() -> updateTableLayout(helmetsArray));
 
                 } catch (JSONException e) {
-                    runOnUiThread(() -> showPopupWindow("Error fetching data from server. Please connect to the support!"));
-                } finally {
-                    runOnUiThread(loadingDialog::dismiss);
+                    messageHelper.showError("Error fetching data from server. Please connect to the support!");
                 }
             }
         });
@@ -259,7 +279,7 @@ public class SearchHelmet extends AppCompatActivity {
 
             }
         } catch (JSONException e) {
-            runOnUiThread(() -> showPopupWindow("Error updating UI. Please connect to the support!"));
+            messageHelper.showError("Error updating UI. Please connect to the support!");
         }
     }
 
@@ -288,15 +308,5 @@ public class SearchHelmet extends AppCompatActivity {
         TableRow.LayoutParams params = new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, 100); // Height of the spacer
         spacer.setLayoutParams(params);
         return spacer;
-    }
-
-    private void showPopupWindow(String message) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Error");
-        builder.setMessage(message);
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            // Reset the flag once the error dialog is clos
-        });
-        builder.show();
     }
 }

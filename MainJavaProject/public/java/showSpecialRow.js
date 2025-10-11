@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const checkForGlobalError = (response, responseBody) => {
         if (response.headers.get('X-Global-Error') === 'true')
-            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+            window.location.href = `/web/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
     };
 
     function buildQueryParams(page, date1 = "", date2 = "") {
@@ -99,18 +99,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
         const query = buildQueryParams(page, formattedDate1, formattedDate2);
         try {
-            const res = await fetch(`/fitness?${query}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const res = await fetch(`/web/fitness?${query}`, {
+                method: 'GET'
             });
             
             if (!res.ok) {
@@ -349,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const formattedDate1 = date1 ? formatDate(date1) : '';
             const formattedDate2 = date2 ? formatDate(date2) : '';
 
-            const response = await fetch(`/fitness/report`, {
+            const response = await fetch(`/web/fitness/report`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

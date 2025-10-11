@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const checkForGlobalError = (response, responseBody) => {
         if (response.headers.get('X-Global-Error') === 'true')
-            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+            window.location.href = `/web/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
     };
 
     const csrfToken = document.getElementsByName('_csrf')[0].value;
@@ -275,11 +275,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function fetchTypeData() {
         startLoading();
 
-        fetch(`/assets/getAllType`, {
-            method: 'GET',
-            headers: {
-                'X-Is-Fetch': 'true'
-            }
+        fetch(`/web/assets/getAllType`, {
+            method: 'GET'
         })
             .then(async response => {
 
@@ -306,11 +303,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     startLoading();
 
-    fetch(`/allKeys`, {
-        method: 'GET',
-        headers: {
-            'X-Is-Fetch': 'true'
-        }
+    fetch(`/web/allKeys`, {
+        method: 'GET'
     })
         .then(async response => {
 
@@ -329,11 +323,8 @@ document.addEventListener('DOMContentLoaded', function () {
             showMess('Error', error.message);
         });
 
-    fetch(`/asset/keys`, {
-        method: 'GET',
-        headers: {
-            'X-Is-Fetch': 'true'
-        }
+    fetch(`/web/asset/keys`, {
+        method: 'GET'
     })
         .then(async response => {
 
@@ -396,15 +387,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         try {
-            const res = await fetch(`/assets?${query}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }, 
-                signal
+            const res = await fetch(`/web/assets?${query}`, {
+                method: 'GET'
             });
 
             if (!res.ok) {
@@ -809,11 +795,8 @@ document.addEventListener('DOMContentLoaded', function () {
         startLoading();
 
         try {
-            const responseAsset = await fetch(`/getAllAssets`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const responseAsset = await fetch(`/web/getAllAssets`, {
+                method: 'GET'
             });
 
             if (!responseAsset.ok) {
@@ -921,11 +904,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             startLoading();
 
-            fetch(`/assets/getSortedAssets`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            fetch(`/web/assets/getSortedAssets`, {
+                method: 'GET'
             })
                 .then(async response => {
 
@@ -1584,6 +1564,8 @@ document.addEventListener('DOMContentLoaded', function () {
         function clearInput(clearModalInput) {
             const inputs = clearModalInput.querySelectorAll('input, textarea, select');
             inputs.forEach(el => {
+                if (el.type === 'hidden') return;
+                
                 if (el.type === 'checkbox' || el.type === 'radio') {
                     el.checked = false;
                 } else {
@@ -1604,7 +1586,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalMessContent.classList.remove('slide-in');
 
         // Delay hiding the modal to allow the animation to finish
-        setTimeout(function () {
+        setTimeout(async function () {
             modalMess.classList.remove('show');
             modalMessContent.classList.remove('show');
 
@@ -1629,7 +1611,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     case 'addLostItem':
                     case 'restoreLostAsset':
                         clearInput(lostAssetsModalContent);
-                        fetchLostAssets();
+                        await fetchLostAssets();
                         break;
 
                     case 'changeAmountLargeToSmall':
@@ -1637,7 +1619,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         allCheckedLargeRow = [];
                         allCheckedSmallRow = [];
                         clearInput(cleanItemModalContent);
-                        fetchCleanItems();
+                        await fetchCleanItems();
                         break;
 
                     case 'removeCleanItem':
@@ -1645,13 +1627,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         allCheckedSmallRow = [];
                         clearInput(removeCleanItemModalContent);
                         clearInput(cleanItemModalContent);
-                        fetchCleanItems();
+                        await fetchCleanItems();
                         break;
 
                     case 'addCleanItem':
                         clearInput(addCleanItemModalContent);
                         clearInput(cleanItemModalContent);
-                        fetchCleanItems();
+                        await fetchCleanItems();
                         break;
 
                     case 'editCleanItem':
@@ -1659,57 +1641,57 @@ document.addEventListener('DOMContentLoaded', function () {
                         allCheckedSmallRow = [];
                         clearInput(editCleanItemModalContent);
                         clearInput(cleanItemModalContent);
-                        fetchCleanItems();
+                        await fetchCleanItems();
                         break;
 
                     case 'addMultiCleanItem':
                         clearMultiInput('progress', 'fileInput');
                         clearInput(cleanItemModalContent);
-                        fetchCleanItems();
+                        await fetchCleanItems();
                         break;
 
                     case 'restorInventory':
-                        fetchInventory();
+                        await fetchBuildings();
                         break;
 
                     case 'deleteAsset':
                         allCheckedRow = [];
                         clearInput(fullContent);
                         clearInput(assetsModalContent);
-                        fetchSortedAsset(globalRowId);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await fetchSortedAsset(globalRowId);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
                         break;
 
                     case 'editAsset':
                         clearInput(fullContent);
                         clearInput(assetsModalContent);
                         clearInput(assetsEditModalContent);
-                        fetchSortedAsset(globalRowId);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await fetchSortedAsset(globalRowId);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
                         break;
 
                     case 'editMultiAssets':
                         clearInput(fullContent);
                         clearInput(assetsModalContent);
                         clearMultiInput('editMultiAssetsProgress', 'fileEditMultiAssetsInput');
-                        fetchSortedAsset(globalRowId);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await fetchSortedAsset(globalRowId);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
                         break;
 
                     case 'addAsset':
                         clearInput(fullContent);
                         clearInput(assetsModalContent);
                         clearInput(assetsAddModalContent);
-                        fetchSortedAsset(globalRowId);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await fetchSortedAsset(globalRowId);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
                         break;
 
                     case 'addMultiAssets':
                         clearInput(fullContent);
                         clearInput(assetsModalContent);
                         clearMultiInput('addMultiAssetsProgress', 'fileAddMultiAssetsInput');
-                        fetchSortedAsset(globalRowId);
-                        fetchTableData(1, mainSortedPar, selectedBuilding);
+                        await fetchSortedAsset(globalRowId);
+                        await fetchTableData(1, mainSortedPar, selectedBuilding);
                         break;
                 }
 
@@ -1832,7 +1814,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -1848,12 +1829,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/allAssets?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/allAssets?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -1927,7 +1904,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 lost_quantity: quantityInput.value
                             };
 
-                            const response = await fetch('/assets/restorLostAsset', {
+                            const response = await fetch('/web/assets/restorLostAsset', {
                                 method: 'POST',
                                 credentials: 'include',
                                 headers: {
@@ -2209,14 +2186,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById(`${prevBtnId}`).onclick = () => {
                     if (currentPage > 1) {
                         currentPage--;
-                        fetchInventory(currentPage, rowsPerPage);
+                        fetchBuildings(currentPage, rowsPerPage);
                     }
                 }
 
                 document.getElementById(`${nextBtnId}`).onclick = () => {
                     if (currentPage < totalPages) {
                         currentPage++;
-                        fetchInventory(currentPage, rowsPerPage);
+                        fetchBuildings(currentPage, rowsPerPage);
                     }
                 };
                 break;
@@ -2433,7 +2410,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -2559,12 +2535,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValueSmall', filter.value);
             });
 
-            const response = await fetch(`/cleanItem?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/cleanItem?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -2915,7 +2887,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -2931,12 +2902,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/getItemTraceability?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/getItemTraceability?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -3038,49 +3005,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 400); // Match the duration of the animation (0.4s)
     }
 
-    async function fetchInventory(page = 1, limit = 5) {
-
+    async function fetchBuildings(page = 1, limit = 5) {
         const mainAccordion = document.getElementById('mainAccordion');
         mainAccordion.innerHTML = '';
-
         startLoading();
 
         try {
-
-            const param = new URLSearchParams({
-                page,
-                limit
-            });
-
-            const response = await fetch(`/getInventoryData?${param.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const param = new URLSearchParams({ page, limit });
+            const response = await fetch(`/web/getBuildings?${param.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
                 const error = await response.json();
-                checkForGlobalError(response, error);
                 showMess('Error', error.message);
                 return;
             }
 
-            const { allBuilding, allRooms, allAssets, totalPages } = await response.json();
+            const { buildings, totalPages } = await response.json();
 
-            const roomMap = new Map();
-            allRooms.forEach(room => {
-                if (!roomMap.has(room.buildid)) roomMap.set(room.buildid, []);
-                roomMap.get(room.buildid).push(room);
-            });
-
-            const assetMap = new Map();
-            allAssets.forEach(asset => {
-                if (!assetMap.has(asset.location_room)) assetMap.set(asset.location_room, []);
-                assetMap.get(asset.location_room).push(asset);
-            });
-
-            allBuilding.forEach(build => {
+            buildings.forEach(build => {
                 const accordionItem = document.createElement('div');
                 accordionItem.className = 'accordion-item accordion-main-item';
 
@@ -3088,62 +3032,155 @@ document.addEventListener('DOMContentLoaded', function () {
                     build.inventory_status === 'actions' ? '⏳' : '✅';
 
                 accordionItem.innerHTML = `
-                    <button class="accordion-header">
-                        <span>${statusIcon} ${build.namebuilding}</span>
-                        <span class="arrow">&#9656;</span>
-                    </button>
-                    <div class="accordion-body"></div>
-                `;
-
-                const accordionBody = accordionItem.querySelector('.accordion-body');
-
-                (roomMap.get(build.id) || []).forEach(room => {
-                    const roomStatus = room.inventory_status === 'unfinished' ? '❌' :
-                        room.inventory_status === 'actions' ? '⏳' : '✅';
-
-                    const subAccordion = document.createElement('div');
-                    subAccordion.className = 'accordion sub-accordion';
-                    subAccordion.innerHTML = `
-                        <div class="accordion-item">
-                            <button class="sub-accordion-header">
-                                <span>${roomStatus} ${room.nameroom}</span>
-                                <span class="arrow">&#9656;</span>
-                            </button>
-                            <div class="accordion-body">
-                                <ul class="list-group"></ul>
-                            </div>
-                        </div>
-                    `;
-
-                    const assetList = subAccordion.querySelector('.list-group');
-
-                    (assetMap.get(room.id) || []).forEach(asset => {
-                        const icon = asset.inventory_status === 'undiscovered' ? '❌' :
-                            asset.inventory_status === 'edited' ? '✏️' : '✅';
-                        const li = document.createElement('li');
-                        li.className = 'list-group-item';
-                        li.textContent = `${icon} ${asset.code} (${asset.name_assets})`;
-                        assetList.appendChild(li);
-                    });
-
-                    accordionBody.appendChild(subAccordion);
-                });
+                <button class="accordion-header" data-building-id="${build.id}">
+                    <span>${statusIcon} ${build.namebuilding}</span>
+                    <span class="arrow">&#9656;</span>
+                </button>
+                <div class="accordion-body"></div>
+            `;
 
                 mainAccordion.appendChild(accordionItem);
             });
 
-            setupAccordion(mainAccordion);
+            setupBuildingAccordion(mainAccordion);
 
+            // pagination (same as before)
             const accordeonRows = mainAccordion.querySelectorAll(".accordion-main-item");
             firstUpdateTable(accordeonRows, 0, limit, 'pageNumberSeventh');
-
             setupTableNavigation("mainAccordion", "prevBtnSeventh", "nextBtnSeventh", "pageNumberSeventh", limit, totalPages, page);
 
-        } catch (error) {
-            showMess('Error', 'An error occurred while fetching inventory. Please try again later.');
+        } catch (err) {
+            showMess('Error', 'Failed to fetch buildings.');
         } finally {
             stopLoading();
-        };
+        }
+    }
+
+    function setupBuildingAccordion(scope) {
+        const headers = scope.querySelectorAll('.accordion-header');
+
+        headers.forEach(header => {
+            header.addEventListener('click', async () => {
+                const body = header.nextElementSibling;
+                const isOpen = body.classList.contains('open');
+
+                if (isOpen) {
+                    header.classList.remove('active');
+                    body.classList.remove('open');
+                    body.style.maxHeight = null;
+                    return;
+                }
+
+                // close others
+                headers.forEach(h => {
+                    if (h !== header) {
+                        h.classList.remove('active');
+                        const b = h.nextElementSibling;
+                        b.classList.remove('open');
+                        b.style.maxHeight = null;
+                    }
+                });
+
+                // open this
+                header.classList.add('active');
+                body.classList.add('open');
+
+                // If body is empty → fetch rooms
+                if (!body.hasChildNodes()) {
+                    const buildingId = header.dataset.buildingId;
+                    await fetchRooms(buildingId, body);
+                }
+
+                body.style.maxHeight = body.scrollHeight + 'px';
+            });
+        });
+    }
+
+    async function fetchRooms(buildingId, container) {
+        try {
+            const response = await fetch(`/web/getRooms?buildingId=${buildingId}`);
+            if (!response.ok) return;
+
+            const { rooms } = await response.json();
+            rooms.forEach(room => {
+                const statusIcon = room.inventory_status === 'unfinished' ? '❌' :
+                    room.inventory_status === 'actions' ? '⏳' : '✅';
+
+                const subAccordion = document.createElement('div');
+                subAccordion.className = 'accordion sub-accordion';
+                subAccordion.innerHTML = `
+                <div class="accordion-item">
+                    <button class="sub-accordion-header" data-room-id="${room.id}">
+                        <span>${statusIcon} ${room.nameroom}</span>
+                        <span class="arrow">&#9656;</span>
+                    </button>
+                    <div class="accordion-body"><ul class="list-group"></ul></div>
+                </div>
+            `;
+
+                container.appendChild(subAccordion);
+            });
+
+            setupRoomAccordion(container);
+        } catch (err) {
+            showMess('Error', 'Failed to fetch rooms.');
+        }
+    }
+
+    function setupRoomAccordion(scope) {
+        const subHeaders = scope.querySelectorAll('.sub-accordion-header');
+        subHeaders.forEach(subHeader => {
+            subHeader.addEventListener('click', async () => {
+                const subBody = subHeader.nextElementSibling;
+                const isOpen = subBody.classList.contains('open');
+
+                if (isOpen) {
+                    subHeader.classList.remove('active');
+                    subBody.classList.remove('open');
+                    subBody.style.maxHeight = null;
+                    return;
+                }
+
+                // open this
+                subHeader.classList.add('active');
+                subBody.classList.add('open');
+
+                // If asset list is empty → fetch assets
+                const ul = subBody.querySelector('.list-group');
+                if (!ul.hasChildNodes()) {
+                    const roomId = subHeader.dataset.roomId;
+                    await fetchAssets(roomId, ul);
+                }
+
+                subBody.style.maxHeight = subBody.scrollHeight + 'px';
+
+                const mainBody = subHeader.closest('.accordion-body');
+                if (mainBody) {
+                    const mainMax = parseInt(mainBody.style.maxHeight, 10) || 0;
+                    mainBody.style.maxHeight = (mainMax + subBody.scrollHeight) + 'px';
+                }
+            });
+        });
+    }
+
+    async function fetchAssets(roomId, container) {
+        try {
+            const response = await fetch(`/web/assets/getSortedAssets?numRoom=${roomId}`);
+            if (!response.ok) return;
+
+            const { data } = await response.json();
+            data.forEach(asset => {
+                const icon = asset.inventory_status === 'undiscovered' ? '❌' :
+                    asset.inventory_status === 'edited' ? '✏️' : '✅';
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = `${icon} ${asset.code} (${asset.name_assets})`;
+                container.appendChild(li);
+            });
+
+        } catch (err) {
+            showMess('Error', 'Failed to fetch assets.');
+        }
     }
 
     function openInventoryModal() {
@@ -3155,7 +3192,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         currentPage = 1;
 
-        fetchInventory();
+        fetchBuildings();
 
         // Ensure that any 'slide-out' class is removed if it was previously added
         inventoryModalContent.classList.remove('slide-out');
@@ -3416,7 +3453,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -3438,12 +3474,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValue', filter.value);
             });
 
-            const response = await fetch(`/assets/getSortedAssets?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/assets/getSortedAssets?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -3893,7 +3925,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = "/uploadCleanItems";
+        const url = "/web/uploadCleanItems";
         const progressBar = document.getElementById("progress");
 
         const updateProgressBar = (percentage) => {
@@ -3962,7 +3994,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = "/assets/editMultiAsset";
+        const url = "/web/assets/editMultiAsset";
         const progressBar = document.getElementById("editMultiAssetsProgress");
 
         const updateProgressBar = (percentage) => {
@@ -4031,7 +4063,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const url = "/assets/addMultiAsset";
+        const url = "/web/assets/addMultiAsset";
         const progressBar = document.getElementById("addMultiAssetsProgress");
 
         const updateProgressBar = (percentage) => {
@@ -4136,7 +4168,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     moveAmount: quantityInput.value
                 };
 
-                const response = await fetch('/changeAmountLargeToSmall', {
+                const response = await fetch('/web/changeAmountLargeToSmall', {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -4255,7 +4287,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     moveAmount: quantityInput.value
                 };
 
-                const response = await fetch('/changeAmountSmallToLarge', {
+                const response = await fetch('/web/changeAmountSmallToLarge', {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -4347,7 +4379,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
 
-                const response = await fetch('/restorInventory', {
+                const response = await fetch('/web/restorInventory', {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -4434,7 +4466,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         currentFetchController = new AbortController();
-        const { signal } = currentFetchController;
 
         startLoading();
 
@@ -4458,12 +4489,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchParams.append('searchValueDate', filter.value);
             });
 
-            const response = await fetch(`/assets/viewReport?${searchParams.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                },
-                signal
+            const response = await fetch(`/web/assets/viewReport?${searchParams.toString()}`, {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -4859,7 +4886,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 for (const data of allCheckedRow) {
-                    const checkResponse = await fetch('/assets/checkDeleteAsset', {
+                    const checkResponse = await fetch('/web/assets/checkDeleteAsset', {
                         method: 'POST',
                         credentials: 'include',
                         headers: {
@@ -4879,7 +4906,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (!hasError) {
                     for (const data of allCheckedRow) {
-                        const deleteResponse = await fetch('/assets/deleteAsset', {
+                        const deleteResponse = await fetch('/web/assets/deleteAsset', {
                             method: 'DELETE',
                             credentials: 'include',
                             headers: {
@@ -6056,79 +6083,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
-
-    function setupAccordion(scope = document) {
-        const headers = scope.querySelectorAll('.accordion-header');
-        const subHeaders = scope.querySelectorAll('.sub-accordion-header');
-
-        function resizeMainBody(mainBody) {
-            // Set maxHeight to scrollHeight to fit all open content inside
-            mainBody.style.maxHeight = 10 * Number(mainBody.scrollHeight) + 'px';
-        }
-
-        headers.forEach(header => {
-            header.addEventListener('click', () => {
-                const body = header.nextElementSibling;
-                const isOpen = body.classList.contains('open');
-
-                // Close other accordions within the same accordion container
-                headers.forEach(h => {
-                    const b = h.nextElementSibling;
-                    if (h !== header && h.closest('.accordion') === header.closest('.accordion')) {
-                        h.classList.remove('active');
-                        b.classList.remove('open');
-                        b.style.maxHeight = null;
-
-                        // Also close sub-accordions inside the closed main accordion
-                        const openSubs = b.querySelectorAll('.sub-accordion-header.active');
-                        openSubs.forEach(subH => {
-                            subH.classList.remove('active');
-                            const subBody = subH.nextElementSibling;
-                            if (subBody) {
-                                subBody.classList.remove('open');
-                                subBody.style.maxHeight = null;
-                            }
-                        });
-                    }
-                });
-
-                if (isOpen) {
-                    header.classList.remove('active');
-                    body.classList.remove('open');
-                    body.style.maxHeight = null;
-                } else {
-                    header.classList.add('active');
-                    body.classList.add('open');
-                    body.style.maxHeight = body.scrollHeight + 'px';
-                }
-            });
-        });
-
-        // Sub accordion logic:
-        subHeaders.forEach(subHeader => {
-            subHeader.addEventListener('click', () => {
-                const subBody = subHeader.nextElementSibling;
-                const isSubOpen = subBody.classList.contains('open');
-
-                if (isSubOpen) {
-                    subHeader.classList.remove('active');
-                    subBody.classList.remove('open');
-                    subBody.style.maxHeight = null;
-                } else {
-                    subHeader.classList.add('active');
-                    subBody.classList.add('open');
-                    subBody.style.maxHeight = subBody.scrollHeight + 'px';
-                }
-
-                // After toggling sub-accordion, resize the main accordion body
-                // Find the main accordion body (parent of this subHeader)
-                const mainBody = subHeader.closest('.accordion-body'); // assuming this class on main accordion content
-                if (mainBody) {
-                    resizeMainBody(mainBody);
-                }
-            });
-        });
-    }
 
     document.getElementById("toggleFormButton").addEventListener("click", function () {
         let form = document.getElementById("form5");

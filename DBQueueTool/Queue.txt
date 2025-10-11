@@ -13,6 +13,26 @@ CREATE TABLE users (
 	status TEXT
 );
 
+CREATE TABLE failed_logins (
+    username TEXT,
+    ip_address TEXT,
+    failed_attempts INT NOT NULL DEFAULT 0,
+    block_expires_at BIGINT,
+    PRIMARY KEY (username, ip_address)
+);
+
+CREATE TABLE user_sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    refresh_token TEXT UNIQUE NOT NULL,
+    device_id TEXT NOT NULL,
+    device_name TEXT,          
+    ip_address TEXT,           
+    created_at TIMESTAMP DEFAULT NOW(),
+    expires_at TIMESTAMP NOT NULL,
+    revoked BOOLEAN DEFAULT FALSE
+);
+
 CREATE TABLE Soldier (
 	id TEXT NOT NULL PRIMARY KEY,
 	namesoldier TEXT,

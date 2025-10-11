@@ -45,22 +45,25 @@ import java.util.Objects;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class SettingsActivity extends AppCompatActivity {
 
-    private boolean isValidCode;
+    private Call currentCall;
     private String username;
     private String campId;
     private Spinner campSpinner;
     private SeekBar powerSeekBar;
     private TextView powerValueText;
     private RFIDWithUHFUART rfidReader;
-    private final OkHttpClient client = new OkHttpClient();
+    private OkHttpClient client;
     private final Map<String, String> campMap = new HashMap<>();
     private String selectedCampId;
+    private final DebounceMessageHelper messageHelper = new DebounceMessageHelper(this);
 
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -89,13 +92,14 @@ public class SettingsActivity extends AppCompatActivity {
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/getAllCamp?isValidCode=" + isValidCode)
+                .url(baseUrl + "/api/getAllCamp")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error when fetch camp data. Please connect to the support!"));
+                messageHelper.showError("Error when fetch camp data. Please connect to the support!");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -107,7 +111,7 @@ public class SettingsActivity extends AppCompatActivity {
                     if (!response.isSuccessful()) {
                         JSONObject jsonResponse = new JSONObject(responseData);
                         String serverMessage = jsonResponse.optString("message", "Error when fetch camps. Please connect to the support.");
-                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        messageHelper.showError(serverMessage);
                         return;
                     }
 
@@ -115,7 +119,7 @@ public class SettingsActivity extends AppCompatActivity {
                     runOnUiThread(() -> populateCamp(allCamp));
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when fetch camp data. Please connect to the support!"));
+                    messageHelper.showError("Error when fetch camp data. Please connect to the support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -162,14 +166,14 @@ public class SettingsActivity extends AppCompatActivity {
             });
 
         } catch (JSONException e) {
-            runOnUiThread(() -> showPopupWindow("Parsing camps error!"));
+            messageHelper.showError("Parsing camps error!");
         }
     }
 
     private void checkForUpdate() {
 
         if(isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
@@ -181,14 +185,15 @@ public class SettingsActivity extends AppCompatActivity {
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/apk-asset-version?isValidCode=" + isValidCode)
+                .url(baseUrl + "/api/apk-asset-version")
                 .build();
 
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("There is a problem with app update. Please connect to the support."));
+                messageHelper.showError("There is a problem with app update. Please connect to the support.");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -202,7 +207,7 @@ public class SettingsActivity extends AppCompatActivity {
 
                     if (!response.isSuccessful()) {
                         String serverMessage = json.optString("message", "There is a problem with app update. Please connect to the support.");
-                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        messageHelper.showError(serverMessage);
                         return;
                     }
 
@@ -218,7 +223,7 @@ public class SettingsActivity extends AppCompatActivity {
                         runOnUiThread(() -> Toast.makeText(SettingsActivity.this, "App is up to date", Toast.LENGTH_SHORT).show());
                     }
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("There is a problem with app update. Please connect to the support."));
+                    messageHelper.showError("There is a problem with app update. Please connect to the support.");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -240,7 +245,7 @@ public class SettingsActivity extends AppCompatActivity {
     private void downloadAndInstall(String apkUrl) {
 
         if(isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
@@ -251,7 +256,7 @@ public class SettingsActivity extends AppCompatActivity {
         if (file.exists()) file.delete();
 
         String baseUrl = getString(R.string.base_url);
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(baseUrl + apkUrl + "?isValidCode=" + isValidCode + "&username=" + username));
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(baseUrl + apkUrl + "?username=" + username));
         request.setTitle("Downloading update...");
         request.setDescription("Please wait");
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
@@ -296,7 +301,10 @@ public class SettingsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
-        isValidCode = GlobalVariable.getVariable(this);
+        client = new OkHttpClient.Builder()
+                .addInterceptor(new JwtInterceptor(this))
+                .build();
+
         username = GlobalVariable.getUsername(this);
         campId = GlobalVariable.getCamp(this);
 
@@ -312,7 +320,7 @@ public class SettingsActivity extends AppCompatActivity {
             rfidReader.init();
 
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Error initializing RFID Reader"));
+            messageHelper.showError("Error initializing RFID Reader");
         }
 
         campSpinner = findViewById(R.id.campSpinner);
@@ -323,9 +331,47 @@ public class SettingsActivity extends AppCompatActivity {
         Button logOut = findViewById(R.id.btnLogOut);
 
         logOut.setOnClickListener(v -> {
-            GlobalVariable.saveVariable(this, false);
-            GlobalVariable.saveUsername(this, "");
+            String refreshToken = GlobalVariable.getRefreshToken(this);
+            if (refreshToken != null && !refreshToken.isEmpty()) {
+                OkHttpClient client = new OkHttpClient();
+                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
+                JSONObject payload = new JSONObject();
+                try {
+                    payload.put("refreshToken", refreshToken);
+                } catch (JSONException e) {
+                    messageHelper.showError("Error when logout. Please connect to the support.");
+                    return;
+                }
+
+                RequestBody body = RequestBody.create(payload.toString(), JSON);
+                String baseUrl = getString(R.string.base_url);
+                Request request = new Request.Builder()
+                        .url(baseUrl + "/logout")
+                        .post(body)
+                        .build();
+
+                // Fire and forget (async)
+                currentCall = client.newCall(request);
+                currentCall.enqueue(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        messageHelper.showError("Error when logout. Please connect to the support.");
+                    }
+
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response) {
+                        response.close();
+                    }
+                });
+            }
+
+            // Now clear local storage
+            GlobalVariable.saveAuthenticateToken(this, "");
+            GlobalVariable.saveUsername(this, "");
+            GlobalVariable.saveRefreshToken(this, "");
+
+            // Redirect
             Intent intent = new Intent(SettingsActivity.this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
@@ -358,12 +404,12 @@ public class SettingsActivity extends AppCompatActivity {
         saveButton.setOnClickListener(v -> {
 
             if(isNetworkAvailable()) {
-                runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+                messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
                 return;
             }
 
             if (selectedCampId.isEmpty()) {
-                runOnUiThread(() -> showPopupWindow("You not set camp. Please select an camp"));
+                messageHelper.showError("You not set camp. Please select an camp");
                 return;
             }
 
@@ -380,13 +426,40 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
-    private void showPopupWindow(String message) {
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("Error");
-        builder.setMessage(message);
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            // Reset the flag once the error dialog is clos
-        });
-        builder.show();
+    private void cancelAllCalls() {
+        // Cancel refresh call if active
+        Call refreshCall = GlobalVariable.getRefreshCall();
+        if (refreshCall != null && !refreshCall.isExecuted()) {
+            refreshCall.cancel();
+        }
+
+        // Cancel logout call if active
+        Call logoutCall = GlobalVariable.getLogoutCall();
+        if (logoutCall != null && !logoutCall.isExecuted()) {
+            logoutCall.cancel();
+        }
+
+        // Cancel current API call if active
+        if (currentCall != null && !currentCall.isExecuted()) {
+            currentCall.cancel();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        cancelAllCalls();
+        if (rfidReader != null) {
+            rfidReader.free();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cancelAllCalls();
+        if (rfidReader != null) {
+            rfidReader.free();
+        }
     }
 }

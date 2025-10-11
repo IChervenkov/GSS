@@ -6,7 +6,8 @@
         android:name="android.permission.INTERNET"
         tools:ignore="ManifestOrder" />
 
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"
+        tools:ignore="RequestInstallPackagesPolicy" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application

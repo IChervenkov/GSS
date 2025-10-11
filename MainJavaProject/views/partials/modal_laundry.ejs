@@ -6,8 +6,7 @@
                 <div class="group-button d-flex align-items-center">
 
                     <!-- Add Bag -->
-                    <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add status bag'))) { %>
-                        style="cursor: not-allowed"
+                    <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Add status bag'))) { %> style="cursor: not-allowed"
                         <% } %>>
                             <button type="button"
                                 class="btn btn-outline-success btn-sm rounded-circle fw-bold ms-3 <% if (permissions && !(permissions.some(p => p.permission_name === 'Full permission' || p.permission_name === 'Add status bag'))) { %> disabled-button <% } %>"
@@ -23,10 +22,7 @@
 
                     <!-- Move Bag -->
                     <% if (id !='readyToPickUp' ) { %>
-                        <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name ===
-                            'Full permission' || p.permission_name === 'Move status bag'))) { %>
-                            style="cursor: not-allowed"
-                            <% } %>>
+                        <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Move status bag'))) { %> style="cursor: not-allowed" <% } %>>
                                 <button type="button"
                                     class="btn btn-outline-primary btn-sm rounded-circle fw-bold mx-2 <% if (permissions && !(permissions.some(p => p.permission_name === 'Full permission' || p.permission_name === 'Move status bag'))) { %> disabled-button <% } %>"
                                     id="moveBag" data-destination="<%= destination %>"
@@ -41,10 +37,7 @@
                         <% } %>
 
                             <!-- Remove Bag -->
-                            <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name
-                                === 'Full permission' || p.permission_name === 'Remove status bag'))) { %>
-                                style="cursor: not-allowed"
-                                <% } %>>
+                            <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Remove status bag'))) { %> style="cursor: not-allowed" <% } %>>
                                     <button type="button"
                                         class="btn btn-outline-danger btn-sm rounded-circle fw-bold <% if(id == 'readyToPickUp') { %> mx-2 <% } %> <% if (permissions && !(permissions.some(p => p.permission_name === 'Full permission' || p.permission_name === 'Remove status bag'))) { %> disabled-button <% } %>"
                                         id="removeBag" data-destination="<%= destination %>"
@@ -58,10 +51,7 @@
                             </div>
 
                             <!-- Linen Exchange -->
-                            <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name
-                                === 'Full permission' || p.permission_name === 'Linen exchange'))) { %>
-                                style="cursor: not-allowed"
-                                <% } %>>
+                            <div class="btn-container" <% if (permissions && !(permissions.some(p=> p.permission_name === 'Full permission' || p.permission_name === 'Linen exchange'))) { %> style="cursor: not-allowed" <% } %>>
                                     <button type="button"
                                         class="btn btn-outline-warning btn-sm rounded-circle fw-bold <% if(id != 'readyToPickUp') { %> mx-2 <% } %> <% if (permissions && !(permissions.some(p => p.permission_name === 'Full permission' || p.permission_name === 'Linen exchange'))) { %> disabled-button <% } %>"
                                         id="linenExchange" data-destination="<%= destination %>"

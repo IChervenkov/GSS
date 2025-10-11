@@ -40,7 +40,6 @@ import android.widget.Toast;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.JavaNetCookieJar;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -48,32 +47,26 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.CookieManager;
-import java.net.CookiePolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class MainActivity extends AppCompatActivity implements CsrfTokenProvider {
+public class MainActivity extends AppCompatActivity {
 
+    private String jwtToken;
+    private Call currentCall;
     private String clientId = null;
     private String globalUsername;
-    private boolean isValidCode;
     private String campId;
-    private final CookieManager cookieManager = new CookieManager();
-    private final OkHttpClient client = new OkHttpClient.Builder()
-            .addInterceptor(new CsrfInterceptor(this))
-            .cookieJar(new JavaNetCookieJar(cookieManager))
-            .build();
-    private String csrfToken = null;
+    private OkHttpClient client;
     private final ArrayList<String> ownerList = new ArrayList<>();
     private final Map<String, String> clientIdMap = new HashMap<>();
     private AutoCompleteTextView clientAutoCompleteTextView;
+    private final DebounceMessageHelper messageHelper = new DebounceMessageHelper(this);
 
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -89,69 +82,6 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
                         !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
     }
 
-    @Override
-    public synchronized String getCsrfToken() {
-        return csrfToken;
-    }
-
-    @Override
-    public synchronized void refreshCsrfTokenSync() {
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/csrf-token")
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            JSONObject jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
-            csrfToken = jsonObject.getString("csrfToken");
-        } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Token error. Please restart the app and try again."));
-        }
-    }
-
-    private void fetchCsrfToken(Runnable onSuccess) {
-
-        if (isNetworkAvailable())
-            return;
-
-        Dialog loadingDialog = new Dialog(MainActivity.this);
-        loadingDialog.setContentView(R.layout.progress_dialog);
-        loadingDialog.setCancelable(false);
-        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
-        loadingDialog.show();
-
-        String baseUrl = getString(R.string.base_url);
-        Request request = new Request.Builder()
-                .url(baseUrl + "/csrf-token")
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
-                runOnUiThread(loadingDialog::dismiss);
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) {
-                try {
-
-                    String responseBody = Objects.requireNonNull(response.body()).string();
-                    JSONObject jsonObject = new JSONObject(responseBody);
-
-                    csrfToken = jsonObject.getString("csrfToken");
-                    if (onSuccess != null)
-                        runOnUiThread(onSuccess);
-
-                } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Token error. Please connect to the support."));
-                } finally {
-                    runOnUiThread(loadingDialog::dismiss);
-                }
-            }
-        });
-    }
-
     private void checkForUpdate() {
 
         if (isNetworkAvailable())
@@ -165,13 +95,14 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/apk-fitness-version?isValidCode=" + isValidCode)
+                .url(baseUrl + "/api/apk-fitness-version")
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("There is a problem with app update. Please connect to the support."));
+                messageHelper.showError("There is a problem with app update. Please connect to the support.");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -186,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
 
                     if (!response.isSuccessful()) {
                         String serverMessage = json.optString("message", "There is a problem with app update. Please connect to the support.");
-                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        messageHelper.showError(serverMessage);
                         return;
                     }
 
@@ -200,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
                         runOnUiThread(() -> sendUpdateNotification(apkUrl));
                     }
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("There is a problem with app update. Please connect to the support."));
+                    messageHelper.showError("There is a problem with app update. Please connect to the support.");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -239,16 +170,16 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        client = new OkHttpClient.Builder()
+                .addInterceptor(new JwtInterceptor(this))
+                .build();
 
         clientAutoCompleteTextView = findViewById(R.id.clientAutoCompleteTextView);
 
-        fetchCsrfToken(null);
-
-        isValidCode = GlobalVariable.getValidationData(this);
+        jwtToken = GlobalVariable.getAuthenticateToken(this);
         campId = GlobalVariable.getCamp(this);
 
-        if (!isValidCode) {
+        if (jwtToken == null || jwtToken.isEmpty()) {
             showLoginDialog();
             return;
         }
@@ -342,7 +273,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
         }));
 
         dialog.setOnDismissListener(dialogInterface -> {
-            if (!isValidCode) {
+            if (jwtToken == null || jwtToken.isEmpty()) {
                 finish(); // Close the app if login fails or is canceled
             }
         });
@@ -353,15 +284,11 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
     private void checkLoginToServer(EditText usernameInput, EditText passwordInput, String username, String password) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
-        if (csrfToken == null || csrfToken.isEmpty()) {
-            fetchCsrfToken(() -> performLogin(usernameInput, passwordInput, username, password));
-        } else {
-            performLogin(usernameInput, passwordInput, username, password);
-        }
+        performLogin(usernameInput, passwordInput, username, password);
     }
 
     private void performLogin(EditText usernameInput, EditText passwordInput, String username, String password) {
@@ -380,7 +307,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
             payload.put("password", password);
 
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Error when parse data. Please connect to the support."));
+            messageHelper.showError("Error when parse data. Please connect to the support.");
             runOnUiThread(loadingDialog::dismiss);
             return;
         }
@@ -389,14 +316,14 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
                 .url(baseUrl + "/checkLogInApp")
-                .addHeader("X-CSRF-Token", csrfToken)
                 .post(body)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
 
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error when login. Please connect to the support."));
+                messageHelper.showError("Error when login. Please connect to the support.");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -407,7 +334,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
 
                     if (!response.isSuccessful()) {
                         String serverMessage = jsonResponse.optString("message", "Error when login. Please connect to the support.");
-                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        messageHelper.showError(serverMessage);
                         return;
                     }
 
@@ -424,7 +351,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
                     }
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when login. Please connect to the support."));
+                    messageHelper.showError("Error when login. Please connect to the support.");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -435,19 +362,20 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
     private void fetchQRCodeFor2FA() {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
+        String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(getString(R.string.base_url) + "/2fa-verificated-device")
-                .get()
+                .url(baseUrl + "/2fa-verificated-device?username=" + globalUsername)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Failed to load QR code, Please connect to support!"));
+                messageHelper.showError("Failed to load QR code, Please connect to support!");
             }
 
             @Override
@@ -458,25 +386,26 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
 
                     if (!response.isSuccessful()) {
                         String serverMessage = obj.optString("message", "Failed to load QR code, Please connect to support!");
-                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        messageHelper.showError(serverMessage);
                         return;
                     }
 
-                    String qrBase64 = obj.getString("qrCodeDataURL").split(",")[1]; // remove data:image/png;base64,
+                    String qrBase64 = obj.getString("qrCodeDataURL").split(",")[1];
+                    JSONObject secret = obj.getJSONObject("secret");
 
                     byte[] decodedBytes = Base64.decode(qrBase64, Base64.DEFAULT);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
 
-                    runOnUiThread(() -> showQRCodeDialog(bitmap));
+                    runOnUiThread(() -> showQRCodeDialog(bitmap, secret));
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Failed to load QR code, Please connect to support!"));
+                    messageHelper.showError("Failed to load QR code, Please connect to support!");
                 }
             }
         });
     }
 
-    private void showQRCodeDialog(Bitmap qrBitmap) {
+    private void showQRCodeDialog(Bitmap qrBitmap, JSONObject secret) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Scan QR Code with Authenticator");
 
@@ -546,7 +475,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
                         if (d.getText().toString().isEmpty()) return;
                         code.append(d.getText().toString());
                     }
-                    verifyTOTPCode(code.toString());
+                    verifyTOTPCode(code.toString(), secret);
                     dialog.dismiss(); // now dialog is accessible
                 }
             });
@@ -558,50 +487,52 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
         dialog.show();
     }
 
-    private void verifyTOTPCode(String code) {
+    private void verifyTOTPCode(String code, JSONObject secret) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
-        if (csrfToken == null || csrfToken.isEmpty()) {
-            fetchCsrfToken(() -> performTOTPVerify(code));
-        } else {
-            performTOTPVerify(code);
-        }
+        performTOTPVerify(code, secret);
     }
 
-    private void performTOTPVerify(String code) {
+    private void performTOTPVerify(String code, JSONObject secret) {
         Dialog loadingDialog = new Dialog(MainActivity.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
         Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
+        String deviceId = GlobalVariable.getOrCreateDeviceId(this);
         JSONObject payload = new JSONObject();
-        RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
 
         try {
             payload.put("code", code);
+            payload.put("userSecret", secret);
+            payload.put("username", globalUsername);
+            payload.put("deviceId", deviceId);
+            payload.put("deviceName", Build.MANUFACTURER + " " + Build.MODEL);
 
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Error verifying 2FA. Please connect to support!"));
+            messageHelper.showError("Error verifying 2FA. Please connect to support!");
             runOnUiThread(loadingDialog::dismiss);
             return;
         }
 
+        RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+
+        String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(getString(R.string.base_url) + "/verify-device")
-                .addHeader("X-CSRF-Token", csrfToken)
+                .url(baseUrl + "/verify-device")
                 .post(body)
                 .build();
 
-
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error verifying 2FA. Please connect to support!"));
+                messageHelper.showError("Error verifying 2FA. Please connect to support!");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -613,11 +544,15 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
 
                     if (!response.isSuccessful()) {
                         String serverMessage = jsonResponse.optString("message", "Error verifying 2FA. Please connect to support!");
-                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        messageHelper.showError(serverMessage);
                         return;
                     }
 
-                    GlobalVariable.saveValidationData(MainActivity.this, true);
+                    String accessToken = jsonResponse.optString("accessToken", "");
+                    String refreshToken = jsonResponse.optString("refreshToken", "");
+
+                    GlobalVariable.saveAuthenticateToken(MainActivity.this, accessToken);
+                    GlobalVariable.saveRefreshToken(MainActivity.this, refreshToken);
                     GlobalVariable.saveUsername(MainActivity.this, globalUsername);
 
                     Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
@@ -626,7 +561,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
                     runOnUiThread(() -> Toast.makeText(MainActivity.this, "No set camp. Set a camp to continue.", Toast.LENGTH_SHORT).show());
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error verifying 2FA. Please connect to support!"));
+                    messageHelper.showError("Error verifying 2FA. Please connect to support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -638,7 +573,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
 
         if (clientId == null || clientId.isEmpty()) {
             // User ID is not entered
-            runOnUiThread(() -> showPopupWindow("Please enter your ID first"));
+            messageHelper.showError("Please enter your ID first");
             return;
         }
 
@@ -649,15 +584,11 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
     private void sendClientData(String userId) {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
-        if (csrfToken == null || csrfToken.isEmpty()) {
-            fetchCsrfToken(() -> performSendClient(userId));
-        } else {
-            performSendClient(userId);
-        }
+        performSendClient(userId);
     }
 
     // Modify the sendEmojiData method to include modal and clear old data
@@ -670,31 +601,31 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
         loadingDialog.show();
 
         JSONObject payload = new JSONObject();
-        RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
 
         try {
             // Prepare the request body
             payload.put("userId", userId);
-            payload.put("isValidCode", String.valueOf(isValidCode));
 
         } catch (Exception e) {
-            runOnUiThread(() -> showPopupWindow("Error when send your data. Please contact with support!"));
+            messageHelper.showError("Error when send your data. Please contact with support!");
             runOnUiThread(loadingDialog::dismiss);
             return;
         }
 
+        RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+
         // Make the request to the server
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/sendClientData") // Replace with your endpoint
-                .addHeader("X-CSRF-Token", csrfToken)
+                .url(baseUrl + "/api/sendClientData") // Replace with your endpoint
                 .post(body)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error when send your data. Please contact with support!"));
+                messageHelper.showError("Error when send your data. Please contact with support!");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -707,7 +638,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
 
                     if (!response.isSuccessful()) {
                         String serverMessage = jsonResponse.optString("message", "Error when send your data. Please connect to the support.");
-                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        messageHelper.showError(serverMessage);
                         return;
                     }
 
@@ -723,7 +654,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
                     });
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when send your data. Please contact with support!"));
+                    messageHelper.showError("Error when send your data. Please contact with support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -734,7 +665,7 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
     private void fetchAvailableBikes() {
 
         if (isNetworkAvailable()) {
-            runOnUiThread(() -> showPopupWindow("You are offline and cannot continue with this process. Please check your internet connection."));
+            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
@@ -746,13 +677,14 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
 
         String baseUrl = getString(R.string.base_url);
         Request request = new Request.Builder()
-                .url(baseUrl + "/getClient?campId=" + campId + "&isValidCode=" + isValidCode)
+                .url(baseUrl + "/api/getClient?campId=" + campId)
                 .build();
 
-        client.newCall(request).enqueue(new Callback() {
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> showPopupWindow("Error when fetch data. Please connect to the support."));
+                messageHelper.showError("Error when fetch data. Please connect to the support.");
                 runOnUiThread(loadingDialog::dismiss);
             }
 
@@ -765,22 +697,16 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
                     if (!response.isSuccessful()) {
                         JSONObject jsonResponse = new JSONObject(responseData);
                         String serverMessage = jsonResponse.optString("message", "Error when fetch data. Please connect to the support.");
-                        runOnUiThread(() -> showPopupWindow(serverMessage));
+                        messageHelper.showError(serverMessage);
                         return;
                     }
 
                     JSONArray data = new JSONArray(responseData);
 
-                    runOnUiThread(() -> {
-                        try {
-                            populateBikeAutoComplete(data);
-                        } catch (JSONException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
+                    runOnUiThread(() -> populateBikeAutoComplete(data));
 
                 } catch (Exception e) {
-                    runOnUiThread(() -> showPopupWindow("Error when fetch data. Please connect to the support."));
+                    messageHelper.showError("Error when fetch data. Please connect to the support.");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -788,42 +714,62 @@ public class MainActivity extends AppCompatActivity implements CsrfTokenProvider
         });
     }
 
-    private void populateBikeAutoComplete(JSONArray bikes) throws JSONException {
+    private void populateBikeAutoComplete(JSONArray bikes) {
 
-        ownerList.clear();
-        clientIdMap.clear();
+        try {
 
-        for (int i = 0; i < bikes.length(); i++) {
-            JSONObject bike = bikes.getJSONObject(i);
-            String bikeId = bike.getString("id");
-            String bikeName = bike.getString("namesoldier");
+            ownerList.clear();
+            clientIdMap.clear();
 
-            ownerList.add(bikeName);
-            clientIdMap.put(bikeName, bikeId);
+            for (int i = 0; i < bikes.length(); i++) {
+                JSONObject bike = bikes.getJSONObject(i);
+                String bikeId = bike.getString("id");
+                String bikeName = bike.getString("namesoldier");
+
+                ownerList.add(bikeName);
+                clientIdMap.put(bikeName, bikeId);
+            }
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
+            clientAutoCompleteTextView.setAdapter(adapter);
+        } catch (Exception e) {
+            messageHelper.showError("Error when parsing data. Please connect to the support.");
+        }
+    }
+
+    private void cancelAllCalls() {
+        // Cancel refresh call if active
+        Call refreshCall = GlobalVariable.getRefreshCall();
+        if (refreshCall != null && !refreshCall.isExecuted()) {
+            refreshCall.cancel();
         }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, ownerList);
-        clientAutoCompleteTextView.setAdapter(adapter);
+        // Cancel logout call if active
+        Call logoutCall = GlobalVariable.getLogoutCall();
+        if (logoutCall != null && !logoutCall.isExecuted()) {
+            logoutCall.cancel();
+        }
+
+        // Cancel current API call if active
+        if (currentCall != null && !currentCall.isExecuted()) {
+            currentCall.cancel();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cancelAllCalls();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        cancelAllCalls();
     }
 
     // Clear old data (clientId and selectedEmoji)
     private void clearOldData() {
         clientId = null;
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        fetchCsrfToken(null);
-    }
-
-    private void showPopupWindow(String message) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Error");
-        builder.setMessage(message);
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            // Reset the flag once the error dialog is clos
-        });
-        builder.show();
     }
 }

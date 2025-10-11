@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const checkForGlobalError = (response, responseBody) => {
         if (response.headers.get('X-Global-Error') === 'true')
-            window.location.href = `/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
+            window.location.href = `/web/error?statusCode=${responseBody.statusCode}&message=${responseBody.message}&details=${responseBody.details}`;
     };
 
     function showToastModal(title, soldierList) {
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toastElement.addEventListener('click', () => {
         if (currentToastType === 'accommodation' && currentToastNames.length > 0) {
             hideToast();
-            showToastModal("Soldiers with upcoming accommodation or release", currentToastNames);
+            showToastModal("Soldiers with upcoming accommodation", currentToastNames);
         } else if (currentToastType === 'release' && currentToastNames.length > 0) {
             hideToast();
             showToastModal("Soldiers with upcoming release", currentToastNames);
@@ -129,11 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setTimeout(async () => {
         try {
-            const response = await fetch('/checkLateBags', {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const response = await fetch('/web/checkLateBags', {
+                method: 'GET'
             });
 
             if (!response.ok) {
@@ -148,11 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setTimeout(async () => {
         try {
-            const response = await fetch('/checkUpcomingDate', {
-                method: 'GET',
-                headers: {
-                    'X-Is-Fetch': 'true'
-                }
+            const response = await fetch('/web/checkUpcomingDate', {
+                method: 'GET'
             });
 
             const data = await response.json();

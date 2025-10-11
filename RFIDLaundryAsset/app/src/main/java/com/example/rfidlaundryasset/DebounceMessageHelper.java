@@ -1,4 +1,4 @@
-package com.example.rfidlaundryreader;
+package com.example.rfidlaundryasset;
 
 import android.app.Activity;
 import android.app.AlertDialog;
