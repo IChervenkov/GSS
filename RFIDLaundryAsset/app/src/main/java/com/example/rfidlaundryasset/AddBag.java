@@ -333,11 +333,7 @@ public class AddBag extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         cancelAllCalls();
-        executorService.shutdown();
         stopInventoryThread();
-        if (rfidReader != null) {
-            rfidReader.free();
-        }
     }
 
     @Override

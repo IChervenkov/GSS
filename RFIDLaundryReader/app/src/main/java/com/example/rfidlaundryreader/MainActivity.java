@@ -13,6 +13,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -26,8 +27,11 @@ import android.util.Base64;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -53,15 +57,22 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -75,20 +86,26 @@ public class MainActivity extends AppCompatActivity {
 
     private RFIDWithUHFUART rfidReader;
     private Call currentCall;
-    private final AtomicBoolean shouldStopScanning = new AtomicBoolean(false);
     private final AtomicBoolean isInventory = new AtomicBoolean(false);
+    private final AtomicBoolean shouldStopScanning = new AtomicBoolean(false);
+    private final AtomicBoolean isSuccesful = new AtomicBoolean(false);
+    private final List<String> errorMessages = new CopyOnWriteArrayList<>();
+    private final AtomicInteger pendingRequests = new AtomicInteger(0);
     private String destination;
     private String prev_destination;
     private String campId;
     private TextView title;
-    private Boolean isSuccesful;
     private final Set<String> uniqueEpcSet = ConcurrentHashMap.newKeySet();
     private TableLayout tableLayout;
-    private OkHttpClient client;
     private String globalUsername;
     private String jwtToken;
     private final DebounceMessageHelper messageHelper = new DebounceMessageHelper(this);
-    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private final Set<String> processingEpcSet = ConcurrentHashMap.newKeySet(); // prevent duplicates while processing
+    private final Set<Call> activeCalls = Collections.synchronizedSet(new HashSet<>());
+    private final LinkedBlockingQueue<String> epcQueue = new LinkedBlockingQueue<>(5000); // capacity to avoid unlimited memory growth
+    private final int CONSUMER_COUNT = 5;   // number of concurrent network workers (tune as needed)
+    private OkHttpClient client;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(CONSUMER_COUNT + 2);
 
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -154,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                 } catch (Exception e) {
-                    messageHelper.showError( "There is a problem with the app update process. Please connect to the support.");
+                    messageHelper.showError("There is a problem with the app update process. Please connect to the support.");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                 }
@@ -233,9 +250,14 @@ public class MainActivity extends AppCompatActivity {
             finish();
         }
 
-        title.setText(destination);
+        title.setText(destination.equals("None") ? "Picked up" : destination);
 
-        isSuccesful = false;
+        // Load persisted EPCs so we don't re-send already processed codes after crash/restart
+        Set<String> persisted = GlobalVariable.getStringSet(this);
+        if (persisted != null) {
+            uniqueEpcSet.addAll(persisted);
+            processingEpcSet.addAll(persisted); // treat persisted as already processed
+        }
 
         // Find the menu button
         ImageButton menuButton = findViewById(R.id.menuButton);
@@ -243,16 +265,6 @@ public class MainActivity extends AppCompatActivity {
         // Set an OnClickListener to show the PopupMenu
         menuButton.setOnClickListener(this::showPopupMenu);
         tableLayout = findViewById(R.id.tableLayout);
-
-        // Initialize RFID reader
-        try {
-            rfidReader = RFIDWithUHFUART.getInstance();
-            rfidReader.free();
-            rfidReader.init();
-
-        } catch (Exception e) {
-            messageHelper.showError("Error initializing RFID Reader");
-        }
     }
 
     private void showLoginDialog() {
@@ -613,11 +625,12 @@ public class MainActivity extends AppCompatActivity {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == 293) {
             if (isInventory.get()) {
-                isSuccesful = true;
+                isSuccesful.set(true);
                 stopInventoryThread();
             } else if (destination.equals("No set mode")) {
                 messageHelper.showError("First you need to select a destination in the upper right corner");
             } else {
+                isSuccesful.set(false);
                 startInventoryThread();
             }
             return true;
@@ -631,18 +644,24 @@ public class MainActivity extends AppCompatActivity {
 
     // Method to start inventory (scanning)
     private void startInventoryThread() {
-        title.setText(destination.equals("None") ? "Picked up" : destination);
-        resetData(); // Clear data before starting a new scan
-
+        // Check network correctly
         if (isNetworkAvailable()) {
             messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
             return;
         }
 
-        performStartScanning();
-    }
+        title.setText(destination.equals("None") ? "Picked up" : destination);
+        resetData(); // clear in-memory UI/state
 
-    private void performStartScanning() {
+        if (rfidReader == null) {
+            try {
+                rfidReader = RFIDWithUHFUART.getInstance();
+                rfidReader.init();
+            } catch (Exception e) {
+                messageHelper.showError("Error initializing RFID Reader");
+                return;
+            }
+        }
 
         if (!rfidReader.startInventoryTag()) {
             messageHelper.showError("Failed to start scanning. Check if device supports RFID reader");
@@ -650,136 +669,226 @@ public class MainActivity extends AppCompatActivity {
         }
 
         shouldStopScanning.set(false);
+        isInventory.set(true);
         runOnUiThread(() -> Toast.makeText(this, "Start scanning", Toast.LENGTH_SHORT).show());
 
-        isInventory.set(true);
-
-        Set<String> processingEpcSet = ConcurrentHashMap.newKeySet();
-
+        // Producer thread: reads RFID tags and pushes to queue
         executorService.execute(() -> {
-            while (isInventory.get() && !shouldStopScanning.get() && !Thread.currentThread().isInterrupted()) {
-                UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
-
-                if (uhftagInfo == null) {
-                    try {
-                        Thread.sleep(50); // reduce CPU usage
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                    continue;
-                }
-
-                String epc = uhftagInfo.getEPC();
-                if (epc == null || epc.isEmpty() || !processingEpcSet.add(epc)) {
-                    continue; // skip duplicates
-                }
-
-                // Send to server asynchronously
-                MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-                JSONObject jsonPayload = new JSONObject();
-
-                try {
-                    jsonPayload.put("code", epc);
-                    jsonPayload.put("prev_destination", prev_destination);
-                    jsonPayload.put("destination", destination);
-                    jsonPayload.put("permCount", 1);
-
-                } catch (Exception e) {
-                    messageHelper.showError("Error preparing request. Please connect to support!");
-                    stopInventoryThread();
-                    return;
-                }
-
-                String jsonData = jsonPayload.toString();
-                RequestBody body = RequestBody.create(jsonData, JSON);
-
-                String baseUrl = getString(R.string.base_url);
-                Request request = new Request.Builder()
-                        .url(baseUrl + "/api/checkScaningCode")
-                        .post(body)
-                        .build();
-
-                // Use enqueue (async) instead of execute (blocking)
-                currentCall = client.newCall(request);
-                currentCall.enqueue(new Callback() {
-                    @Override
-                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        messageHelper.showError("Network error. Please connect to support!");
-                        stopInventoryThread();
-                    }
-
-                    @Override
-                    public void onResponse(@NonNull Call call, @NonNull Response response) {
+            try {
+                while (isInventory.get() && !shouldStopScanning.get() && !Thread.currentThread().isInterrupted()) {
+                    UHFTAGInfo uhftagInfo = rfidReader.readTagFromBuffer();
+                    if (uhftagInfo == null) {
                         try {
-
-                            String responseBody = response.body().string();
-
-                            if (!response.isSuccessful()) {
-                                // Handle server error
-                                String errorMessage = "Internal server error";
-
-                                JSONObject errorJson = new JSONObject(responseBody);
-                                errorMessage = errorJson.optString("message", errorMessage);
-
-                                String globalErrorHeader = response.header("X-Global-Error");
-                                if ("true".equalsIgnoreCase(globalErrorHeader)) {
-                                    shouldStopScanning.set(true);
-                                }
-
-                                messageHelper.showError(errorMessage);
-
-                                if (shouldStopScanning.get()) {
-                                    stopInventoryThread();
-                                }
-
-                                return;
-                            }
-
-                            JSONObject jsonResponse = new JSONObject(responseBody);
-                            String code = jsonResponse.getString("code");
-                            String soldierId = jsonResponse.getString("soldierId");
-
-                            if (uniqueEpcSet.add(epc)) {
-                                runOnUiThread(() -> addRowToTable(code, soldierId));
-                            }
-
-                        } catch (Exception e) {
-                            messageHelper.showError("Error processing server response.");
-                            stopInventoryThread();
+                            Thread.sleep(50); // reduce CPU usage
+                        } catch (InterruptedException ex) {
+                            Thread.currentThread().interrupt();
+                            break;
                         }
+                        continue;
                     }
-                });
+
+                    String epc = uhftagInfo.getEPC();
+                    if (epc == null || epc.isEmpty()) continue;
+
+                    // Avoid re-processing duplicates in memory
+                    if (!processingEpcSet.add(epc)) continue;
+
+                    // Offer to queue with a short timeout to avoid blocking forever
+                    boolean offered = epcQueue.offer(epc, 200, TimeUnit.MILLISECONDS);
+                    if (!offered) {
+                        // Queue full: drop epc and remove from processing set so it may be rescan later
+                        processingEpcSet.remove(epc);
+                    }
+                }
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
             }
         });
+
+        // Start consumer workers that send to server (bounded concurrency)
+        for (int i = 0; i < CONSUMER_COUNT; i++) {
+            executorService.execute(this::processEpcQueue);
+        }
     }
 
-    // Method to stop the background thread for reading tags
-    private void stopInventoryThread() {
-        if (isInventory.get()) {
-            runOnUiThread(() -> Toast.makeText(this, "Stop scanning", Toast.LENGTH_SHORT).show());
-            shouldStopScanning.set(true);
-            isInventory.set(false);
+    private void processEpcQueue() {
+        while (isInventory.get() && !shouldStopScanning.get() && !Thread.currentThread().isInterrupted()) {
+            try {
+                String epc = epcQueue.poll(200, TimeUnit.MILLISECONDS);
+                if (epc == null) continue;
 
-            if (rfidReader != null) {
-                rfidReader.stopInventory();
-            }
+                sendCheckEpc(epc);
 
-            if (isSuccesful) {
-                sendAllEpcsToServer(uniqueEpcSet, () -> {
-
-                    if(!uniqueEpcSet.isEmpty())
-                        messageHelper.showMessage("Scan Summary", "Total bags codes found: " + uniqueEpcSet.size());
-
-                    isSuccesful = false;
-                });
+                // small throttle between network requests to avoid overwhelming the server
+                try {
+                    Thread.sleep(20); // tune this as needed
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            } catch (Exception ignored) {
             }
         }
     }
 
+    private void sendCheckEpc(String epc) {
+        // Build JSON
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject jsonPayload = new JSONObject();
+        try {
+            JSONArray codesArray = new JSONArray();
+            codesArray.put(epc);
+
+            jsonPayload.put("codes", codesArray);
+            jsonPayload.put("prev_destination", prev_destination);
+            jsonPayload.put("destination", destination);
+            jsonPayload.put("permCount", 1);
+        } catch (Exception e) {
+            return;
+        }
+
+        String jsonData = jsonPayload.toString();
+        RequestBody body = RequestBody.create(jsonData, JSON);
+
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + "/api/checkScaningCode")
+                .post(body)
+                .build();
+
+        Call call = client.newCall(request);
+        activeCalls.add(call); // track active calls so we can cancel them later
+        pendingRequests.incrementAndGet();
+
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                activeCalls.remove(call);
+                pendingRequests.decrementAndGet();
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                activeCalls.remove(call);
+                try {
+                    String responseBody = response.body().string();
+
+                    if (!response.isSuccessful()) {
+                        // parse server message if possible
+                        JSONObject errorJson = new JSONObject(responseBody);
+                        String errorMessage = errorJson.optString("message", "Internal server error");
+
+                        String globalErrorHeader = response.header("X-Global-Error");
+                        if ("true".equalsIgnoreCase(globalErrorHeader)) {
+                            runOnUiThread(() -> messageHelper.showError(errorMessage));
+                            stopInventoryThread();
+                            return;
+                        }
+
+                        errorMessages.add(errorMessage);
+                    }
+
+                    JSONObject jsonResponse = new JSONObject(responseBody);
+                    String responseCodes = jsonResponse.optString("validCodes", epc);
+                    JSONArray codes = new JSONArray(responseCodes);
+
+                    // Mark as successfully processed and add to UI only once
+                    if (uniqueEpcSet.add(epc)) {
+                        persistEpcs();
+                        for (int i = 0; i < codes.length(); i++) {
+                            JSONObject row = codes.getJSONObject(i);
+
+                            String code = row.optString("code", "");
+                            String soldierId = row.optString("soldierId", "");
+
+                            runOnUiThread(() -> addRowToTable(code, soldierId));
+                        }
+                    }
+
+                } catch (Exception e) {
+                    processingEpcSet.remove(epc);
+                } finally {
+                    pendingRequests.decrementAndGet();
+                }
+            }
+        });
+    }
+
+    private synchronized void persistEpcs() {
+        try {
+            // SharedPreferences.putStringSet is fine for small sets; convert to new HashSet to avoid mutability issues
+            Set<String> toPersist = new HashSet<>(uniqueEpcSet);
+            GlobalVariable.setStringSet(this, toPersist);
+        } catch (Exception ignored) {
+        }
+    }
+
+    // Method to stop the background thread for reading tags
+    private void stopInventoryThread() {
+        if (!isInventory.get()) return;
+
+        runOnUiThread(() -> Toast.makeText(this, "Stop scanning", Toast.LENGTH_SHORT).show());
+
+        shouldStopScanning.set(true);
+        isInventory.set(false);
+
+        // Stop RFID reader
+        if (rfidReader != null) {
+            try {
+                rfidReader.stopInventory();
+            } catch (Exception ignored) {
+            }
+            rfidReader = null;
+        }
+
+        // Cancel active network calls
+        synchronized (activeCalls) {
+            for (Call c : activeCalls) {
+                try {
+                    if (!c.isCanceled()) c.cancel();
+                } catch (Exception ignored) {
+                }
+            }
+            activeCalls.clear();
+        }
+
+        // Clear queue and processing set *if* you want to discard items — otherwise keep them to retry
+        epcQueue.clear();
+        processingEpcSet.clear();
+
+        // Save final persisted set (already updated during successful responses)
+        persistEpcs();
+
+        if(!isSuccesful.get())
+            return;
+
+        // After finishing scanning, if you want to do a final server verification/batch send:
+        executorService.execute(() -> {
+            long waitStart = System.currentTimeMillis();
+            long timeoutMs = 3000; // wait up to 3s for pending calls to finish
+            while (pendingRequests.get() > 0 && System.currentTimeMillis() - waitStart < timeoutMs) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+
+            // After waiting, perform final send of session EPCs (if any) — use a copy
+            Set<String> toSend = new HashSet<>(uniqueEpcSet);
+            if (!toSend.isEmpty()) {
+                runOnUiThread(() -> sendAllEpcsToServer(toSend, () -> runOnUiThread(this::showScrollableErrorDialog)));
+            } else {
+                // No EPCs to send, just show summary immediately
+                runOnUiThread(this::showScrollableErrorDialog);
+            }
+        });
+    }
+
     // Method to reset the table and EPC set before starting a new scan
     private void resetData() {
-        uniqueEpcSet.clear(); // Clear unique EPC codes
+        uniqueEpcSet.clear();
         tableLayout.removeAllViews(); // Remove all rows, including the header
     }
 
@@ -856,10 +965,10 @@ public class MainActivity extends AppCompatActivity {
                         if (selectedBagCode != null) {
                             String selectedBagId = bagIdMap.get(selectedBagCode);
                             uniqueEpcSet.add(selectedBagId);
-                            sendAllEpcsToServer(uniqueEpcSet, () -> {
+                            runOnUiThread(() -> sendAllEpcsToServer(uniqueEpcSet, () -> {
                                 destination = previousDestination;
                                 messageHelper.showMessage("Information", "Operation completed successfully");
-                            });
+                            }));
                             dialog.dismiss();
                         }
                     } else {
@@ -907,131 +1016,190 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void cancelAllCalls() {
-        // Cancel refresh call if active
+
         Call refreshCall = GlobalVariable.getRefreshCall();
-        if (refreshCall != null && !refreshCall.isExecuted()) {
+        if (refreshCall != null && !refreshCall.isCanceled()) {
             refreshCall.cancel();
         }
 
-        // Cancel logout call if active
         Call logoutCall = GlobalVariable.getLogoutCall();
-        if (logoutCall != null && !logoutCall.isExecuted()) {
+        if (logoutCall != null && !logoutCall.isCanceled()) {
             logoutCall.cancel();
         }
 
-        // Cancel current API call if active
-        if (currentCall != null && !currentCall.isExecuted()) {
+        if (currentCall != null && !currentCall.isCanceled()) {
             currentCall.cancel();
+        }
+
+        // Cancel tracked active calls
+        synchronized (activeCalls) {
+            for (Call c : activeCalls) {
+                try {
+                    if (!c.isCanceled()) c.cancel();
+                } catch (Exception ignored) {
+                }
+            }
+            activeCalls.clear();
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        cancelAllCalls();
-        executorService.shutdown();
+        // Stop scanning when pausing to avoid background scanning and UI race conditions
         stopInventoryThread();
-        if (rfidReader != null) {
-            rfidReader.free();
-        }
+        cancelAllCalls();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        cancelAllCalls();
-        executorService.shutdown();
         stopInventoryThread();
-        if (rfidReader != null) {
-            rfidReader.free();
+        cancelAllCalls();
+
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdownNow();
         }
+
+        if (rfidReader != null) {
+            try {
+                rfidReader.free();
+            } catch (Exception ignored) {
+            }
+            rfidReader = null;
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private void showScrollableErrorDialog() {
+        if (errorMessages == null || errorMessages.isEmpty()) {
+            messageHelper.showMessage("Scan Summary", "No errors detected. All bags processed successfully.");
+            return;
+        }
+
+        // Inflate your custom dialog layout
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View dialogView = inflater.inflate(R.layout.dialog_error_list, null);
+
+        dialogView.findViewById(R.id.errorTitle);
+        LinearLayout errorListContainer = dialogView.findViewById(R.id.errorListContainer);
+        Button btnClose = dialogView.findViewById(R.id.btnCloseErrorDialog);
+
+        // Make errors unique and show a limited number if too many
+        Set<String> uniqueErrors = new LinkedHashSet<>(errorMessages);
+        int maxToShow = 100; // to prevent UI lag on huge lists
+        int shown = 0;
+
+        for (String err : uniqueErrors) {
+            if (shown++ >= maxToShow) {
+                TextView extra = new TextView(this);
+                extra.setText("... and " + (uniqueErrors.size() - maxToShow) + " more");
+                extra.setTextColor(Color.GRAY);
+                extra.setTextSize(14);
+                extra.setPadding(10, 5, 10, 5);
+                errorListContainer.addView(extra);
+                break;
+            }
+
+            TextView tv = new TextView(this);
+            tv.setText("- " + err);
+            tv.setTextColor(Color.BLACK);
+            tv.setTextSize(15);
+            tv.setPadding(10, 5, 10, 5);
+            errorListContainer.addView(tv);
+        }
+
+        // Build the dialog
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(dialogView);
+
+        AlertDialog dialog = builder.create();
+        dialog.setCancelable(false);
+        dialog.show();
+
+        // Optional: size dialog dynamically
+        if (dialog.getWindow() != null) {
+            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.9);
+            dialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        // Close button action
+        btnClose.setOnClickListener(v -> {
+            dialog.dismiss();
+            errorMessages.clear(); // reset for next scan
+        });
     }
 
     // Method to send EPC to the server using the persistent OkHttpClient connection
     private void sendAllEpcsToServer(Set<String> epcs, Runnable onComplete) {
-
         if (isNetworkAvailable()) {
             messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
+            if (onComplete != null) onComplete.run();
             return;
         }
 
-        performSendEpc(epcs, onComplete);
-    }
-
-    private void performSendEpc(Set<String> epcs, Runnable onComplete) {
         Dialog loadingDialog = new Dialog(MainActivity.this);
         loadingDialog.setContentView(R.layout.progress_dialog);
         loadingDialog.setCancelable(false);
-        Objects.requireNonNull(loadingDialog.getWindow()).setBackgroundDrawableResource(android.R.color.transparent);
+        Objects.requireNonNull(loadingDialog.getWindow())
+                .setBackgroundDrawableResource(android.R.color.transparent);
         loadingDialog.show();
 
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
-        // Create a JSON array for the EPCs
         JSONArray epcArray = new JSONArray();
         for (String epc : epcs) {
             epcArray.put(epc);
         }
 
         JSONObject payload = new JSONObject();
-
         try {
-            payload.put("codes", epcArray); // Send the EPC array to the server
+            payload.put("codes", epcArray);
             payload.put("destination", destination);
             payload.put("prev_destination", prev_destination);
             payload.put("campId", campId);
-
         } catch (Exception e) {
-            messageHelper.showError("Error to parsed data. Please connect to the support!");
             runOnUiThread(loadingDialog::dismiss);
+            messageHelper.showError("Error preparing data. Please contact support.");
             if (onComplete != null) onComplete.run();
             return;
         }
 
-        String url;
         String baseUrl = getString(R.string.base_url);
-
-        if ("Linen Exchange service".equals(destination)) {
-            url = baseUrl + "/api/changeEndToEndStatus";
-        } else {
-            url = baseUrl + "/api/changeStatusBags";
-        }
+        String url = "Linen Exchange service".equals(destination)
+                ? baseUrl + "/api/changeEndToEndStatus"
+                : baseUrl + "/api/changeStatusBags";
 
         RequestBody body = RequestBody.create(payload.toString(), JSON);
+        Request request = new Request.Builder().url(url).post(body).build();
 
-        Request request = new Request.Builder()
-                .url(url)
-                .post(body)
-                .build();
+        Call call = client.newCall(request);
+        activeCalls.add(call);
 
-        currentCall = client.newCall(request);
-        currentCall.enqueue(new Callback() {
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                messageHelper.showError("Error when send data. Please connect to the support!");
+                activeCalls.remove(call);
                 runOnUiThread(loadingDialog::dismiss);
+                messageHelper.showError("Error sending data. Please contact support!");
                 if (onComplete != null) onComplete.run();
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) {
+                activeCalls.remove(call);
                 try {
-
                     if (!response.isSuccessful()) {
-                        String errorMessage;
+                        String errorMessage = "Internal server error";
                         String responseBody = response.body().string();
                         JSONObject errorJson = new JSONObject(responseBody);
-                        errorMessage = errorJson.optString("message", "Internal server error");
-
-                        String finalErrorMessage = errorMessage;
-                        messageHelper.showError(finalErrorMessage);
-                        return;
+                        errorMessage = errorJson.optString("message", errorMessage);
+                        messageHelper.showError(errorMessage);
+                    } else {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "All bags have been moved successfully.", Toast.LENGTH_SHORT).show());
                     }
-
-                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "All bags have been moved successfully.", Toast.LENGTH_SHORT).show());
-
                 } catch (Exception e) {
-                    messageHelper.showError("Error when send data. Please connect to the support!");
+                    messageHelper.showError("Error processing response. Please contact support!");
                 } finally {
                     runOnUiThread(loadingDialog::dismiss);
                     if (onComplete != null) onComplete.run();
@@ -1140,5 +1308,4 @@ public class MainActivity extends AppCompatActivity {
 
         GlobalVariable.saveVariable(this, destination);
     }
-
 }

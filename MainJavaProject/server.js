@@ -225,7 +225,9 @@ const updateBagsSchema = Joi.object({
 });
 
 const checkScaningCodeSchema = Joi.object({
-    code: Joi.string().alphanum().required(),
+    codes: Joi.array()
+        .items(Joi.string().alphanum())
+        .required(),
     prev_destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to pick up', 'Ready to pick up', 'None').required(),
     destination: Joi.string().valid('Drop off', 'Transportation to laundry facility', 'Laundry facility', 'Transportation to pick up', 'Ready to pick up', 'None', 'Linen Exchange service').required(),
     permCount: Joi.number().required()
@@ -1282,7 +1284,7 @@ class Server {
 
                     await client.query(
                         "UPDATE user_sessions SET refresh_token = $1, created_at = NOW(), expires_at = NOW() + interval '14 days' WHERE id = $2",
-                        [newRefreshHash, sessRes.rows[0].id]
+                        [newRefreshHash, matching.id]
                     );
 
                     res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
@@ -1477,7 +1479,7 @@ class Server {
         return html;
     }
 
-    checkApkFileLegality(apkFilePath, res) {
+    checkApkFileLegality(apkFilePath, req) {
         // Optionally, verify the file hash (integrity check)
         const apkHash = crypto.createHash('sha256');
         const apkFileBuffer = fs.readFileSync(apkFilePath);
@@ -1492,7 +1494,6 @@ class Server {
         if (hashDigest !== expectedHashBike && hashDigest !== expectedHashLaundry && hashDigest !== expectedHashAsset && hashDigest !== expectedHashGym) {
             console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
             console.error('APK file hash does not match expected value');
-            res.status(400).json({ message: 'File integrity check failed' }); // Send JSON response
             return false;
         }
 
@@ -3232,7 +3233,7 @@ class Server {
 
             } catch (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
-                console.error('Error downloading the file:', err);
+                console.error('Error downloading the file:', error);
                 return res.status(500).json({ message: 'Error downloading the file' });
 
             } finally {
@@ -3242,7 +3243,7 @@ class Server {
             const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.4.1-release.apk');
 
             // Check APK file existence and legality
-            if (!this.checkApkFileLegality(apkFilePath, res)) {
+            if (!this.checkApkFileLegality(apkFilePath, req)) {
                 return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
             }
 
@@ -3275,7 +3276,7 @@ class Server {
 
             } catch (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
-                console.error('Error downloading the file:', err);
+                console.error('Error downloading the file:', error);
                 return res.status(500).json({ message: 'Error downloading the file' });
 
             } finally {
@@ -3285,7 +3286,7 @@ class Server {
             const apkFilePath = path.join(__dirname, 'androidApp', 'NFCReader-1.4.1-release.apk');
 
             // Check APK file existence and legality
-            if (!this.checkApkFileLegality(apkFilePath, res)) {
+            if (!this.checkApkFileLegality(apkFilePath, req)) {
                 return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
             }
 
@@ -10513,7 +10514,7 @@ class Server {
 
             } catch (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
-                console.error('Error downloading the file:', err);
+                console.error('Error downloading the file:', error);
                 return res.status(500).json({ message: 'Error downloading the file' });
 
             } finally {
@@ -10524,7 +10525,7 @@ class Server {
             const apkFilePath = path.join(__dirname, 'androidApp', 'RateFitnesCleaning-1.0-release.apk');
 
             // Check legality and existence of the APK file
-            if (!this.checkApkFileLegality(apkFilePath, res)) {
+            if (!this.checkApkFileLegality(apkFilePath, req)) {
                 return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
             }
 
@@ -10559,7 +10560,7 @@ class Server {
 
             } catch (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
-                console.error('Error downloading the file:', err);
+                console.error('Error downloading the file:', error);
                 return res.status(500).json({ message: 'Error downloading the file' });
 
             } finally {
@@ -10570,7 +10571,7 @@ class Server {
             const apkFilePath = path.join(__dirname, 'androidApp', 'RateFitnesCleaning-1.0-release.apk');
 
             // Check legality and existence of the APK file
-            if (!this.checkApkFileLegality(apkFilePath, res)) {
+            if (!this.checkApkFileLegality(apkFilePath, req)) {
                 return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
             }
 
@@ -11104,23 +11105,23 @@ class Server {
 
             } catch (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
-                console.error('Error downloading the file:', err);
+                console.error('Error downloading the file:', error);
                 res.status(500).json({ message: 'Error downloading the file' });
             } finally {
                 client.release();
             }
 
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.4.1-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.4.2-release.apk');
 
             // Check legality and existence of the APK file
-            if (!this.checkApkFileLegality(apkFilePath, res)) {
+            if (!this.checkApkFileLegality(apkFilePath, req)) {
                 return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
             }
 
             // Set proper headers for an APK file
             res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
-            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.4.1-release.apk"'); // Force download with custom filename
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.4.2-release.apk"'); // Force download with custom filename
 
             // Use res.download() to send the file to the client
             res.download(apkFilePath, (err) => {
@@ -11150,23 +11151,23 @@ class Server {
 
             } catch (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
-                console.error('Error downloading the file:', err);
+                console.error('Error downloading the file:', error);
                 res.status(500).json({ message: 'Error downloading the file' });
             } finally {
                 client.release();
             }
 
             // Path to your APK file
-            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.4.1-release.apk');
+            const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryReader-1.4.2-release.apk');
 
             // Check legality and existence of the APK file
-            if (!this.checkApkFileLegality(apkFilePath, res)) {
+            if (!this.checkApkFileLegality(apkFilePath, req)) {
                 return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
             }
 
             // Set proper headers for an APK file
             res.setHeader('Content-Type', 'application/vnd.android.package-archive'); // Correct MIME type for APK
-            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.4.1-release.apk"'); // Force download with custom filename
+            res.setHeader('Content-Disposition', 'attachment; filename="RFIDLaundryReader-1.4.2-release.apk"'); // Force download with custom filename
 
             // Use res.download() to send the file to the client
             res.download(apkFilePath, (err) => {
@@ -11179,7 +11180,7 @@ class Server {
         });
 
         this.app.get('/api/apk-laundry-version', (req, res) => {
-            res.json({ version: "1.4.1", apkUrl: "/api/download-apk-laundry" });
+            res.json({ version: "1.4.2", apkUrl: "/api/download-apk-laundry" });
         });
 
         this.app.get('/web/laundry', async (req, res) => {
@@ -11572,63 +11573,83 @@ class Server {
                 return res.status(400).json({ message: 'Invalid syntax' });
             }
 
-            const { code, prev_destination, destination, permCount } = req.body;
+            let { codes, prev_destination, destination, permCount } = req.body;
+
+            if (typeof codes === 'string') {
+                try {
+                    codes = JSON.parse(codes);
+                } catch (err) {
+                    return res.status(400).json({ message: 'Invalid codes format (not a valid JSON array)' });
+                }
+            }
+
+            if (!Array.isArray(codes)) {
+                return res.status(400).json({ message: 'codes must be an array' });
+            }
+
+            if (codes.length === 0) {
+                return res.status(400).json({ message: 'No codes provided' });
+            }
+
             const client = await pool.connect();
+            const errors = [];
+            const validCodes = [];
 
             try {
-
                 await client.query('BEGIN');
 
-                const [result, resultCount, resultCheckExist] = await Promise.all([
-                    client.query(`
-                        SELECT l.code, s.namesoldier, l.status, l.laundrycount
+                for (const code of codes) {
+                    const [result, resultCount, resultCheckExist] = await Promise.all([
+                        client.query(`
+                            SELECT l.code, s.namesoldier, l.status, l.laundrycount
                             FROM laundrybags l
                             LEFT JOIN additionalitem ai ON ai.bag_id = l.id
                             LEFT JOIN soldier s ON s.laundry_bag_id = l.id OR ai.soldier_id = s.id
-                            WHERE l.id = $1 AND
-                            s.id IS NOT NULL
-                            AND (
-                                s.date_accommodation IS NULL 
-                                OR (s.date_accommodation IS NOT NULL AND s.date_free IS NULL));`, [code]),
-                    client.query(`
-                        SELECT COUNT(*) AS count
-                        FROM laundryreport
-                        WHERE bag_id = $1 AND date_drop_off > NOW() - INTERVAL '30 minutes';`, [code]),
-                    client.query('SELECT * FROM laundrybags WHERE id = $1', [code])
-                ]);
+                            WHERE l.id = $1
+                            AND s.id IS NOT NULL
+                            AND (s.date_accommodation IS NULL OR (s.date_accommodation IS NOT NULL AND s.date_free IS NULL));
+                        `, [code]),
+                        client.query(`
+                            SELECT COUNT(*) AS count
+                            FROM laundryreport
+                            WHERE bag_id = $1 AND date_drop_off > NOW() - INTERVAL '30 minutes';
+                        `, [code]),
+                        client.query('SELECT * FROM laundrybags WHERE id = $1', [code])
+                    ]);
 
-                if (resultCheckExist.rows.length === 0) {
-                    await client.query('ROLLBACK');
-                    return res.status(400).json({ message: `This laundry bag is not exit!` });
+                    if (resultCheckExist.rows.length === 0) {
+                        errors.push(`Bag ID ${code} does not exist.`);
+                        continue;
+                    }
+
+                    if (result.rows.length === 0) {
+                        errors.push(`Bag ${resultCheckExist.rows[0].code} was not given to a soldier.`);
+                        continue;
+                    }
+
+                    const bag = result.rows[0];
+                    const status = bag.status !== 'None' ? bag.status : 'Picked up';
+                    const prev_stat = prev_destination !== 'None' ? prev_destination : 'Picked up';
+
+                    if (bag.status !== prev_destination) {
+                        errors.push(`Status mismatch: Bag ${bag.code} is at ${status}, not ${prev_stat}.`);
+                        continue;
+                    }
+
+                    // Optionally check permCount or other rules
+
+                    validCodes.push({ code: bag.code, soldierId: bag.namesoldier });
                 }
-
-                if (result.rows.length === 0) {
-                    await client.query('ROLLBACK');
-                    return res.status(400).json({ message: `The laundry bag with code ${resultCheckExist.rows[0].code} was not given to the soldier.` });
-                }
-
-                const bag = result.rows[0];
-
-                // if (bag.laundrycount >= permCount) {
-                //     await client.query('ROLLBACK');
-                //     return res.status(400).json({ message: `Bag number ${bag.code} has already been laundered. The maximum laundry limit per month for one bag is ${permCount}` });
-                // }
-
-                const status = bag.status !== 'None' ? bag.status : 'Picked up';
-                const prev_stat = prev_destination !== 'None' ? prev_destination : 'Picked up';
-
-                if (bag.status !== prev_destination) {
-                    await client.query('ROLLBACK');
-                    return res.status(400).json({ message: `Status mismatch. Bag ${bag.code} is currently at ${status}, not ${prev_stat}.` });
-                }
-
-                // if (destination === 'Linen Exchange service' && parseInt(resultCount.rows[0].count) > 0) {
-                //     await client.query('ROLLBACK');
-                //     return res.status(400).json({ message: `The bag with number ${code} is already scanned with use Linen Exchange service` });
-                // }
 
                 await client.query('COMMIT');
-                res.status(200).json({ code: bag.code, soldierId: bag.namesoldier });
+
+                if (errors.length > 0) {
+                    return res.status(400).json({
+                        message: errors.join('\n'),
+                    });
+                }
+
+                return res.status(200).json({ validCodes });
 
             } catch (err) {
                 await client.query('ROLLBACK');
@@ -12891,7 +12912,7 @@ class Server {
 
             } catch (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
-                console.error('Error downloading the file:', err);
+                console.error('Error downloading the file:', error);
                 return res.status(500).json({ message: 'Error downloading the file' });
 
             } finally {
@@ -12902,7 +12923,7 @@ class Server {
             const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.4.1-release.apk');
 
             // Check legality and existence of the APK file
-            if (!this.checkApkFileLegality(apkFilePath, res)) {
+            if (!this.checkApkFileLegality(apkFilePath, req)) {
                 return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
             }
 
@@ -12937,7 +12958,7 @@ class Server {
 
             } catch (error) {
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
-                console.error('Error downloading the file:', err);
+                console.error('Error downloading the file:', error);
                 return res.status(500).json({ message: 'Error downloading the file' });
 
             } finally {
@@ -12948,7 +12969,7 @@ class Server {
             const apkFilePath = path.join(__dirname, 'androidApp', 'RFIDLaundryAsset-1.4.1-release.apk');
 
             // Check legality and existence of the APK file
-            if (!this.checkApkFileLegality(apkFilePath, res)) {
+            if (!this.checkApkFileLegality(apkFilePath, req)) {
                 return res.status(400).json({ message: 'There is a problem with existence and legality of APK file' });
             }
 
@@ -16825,7 +16846,7 @@ class Server {
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
-                console.error(err);
+                console.error(error);
                 res.status(500).json({ message: "Internal server error" });
 
             } finally {
@@ -16866,7 +16887,7 @@ class Server {
             } catch (error) {
                 await client.query('ROLLBACK');
                 console.error(`[${new Date().toLocaleString('sv-SE', { hour12: false }).replace('T', ' ')}] ${req.method} ${req.originalUrl}`);
-                console.error(err);
+                console.error(error);
                 res.status(500).json({ message: "Internal server error" });
 
             } finally {

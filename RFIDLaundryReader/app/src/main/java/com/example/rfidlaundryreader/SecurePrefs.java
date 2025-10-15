@@ -4,9 +4,14 @@ import android.content.Context;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.Base64;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -86,4 +91,41 @@ public class SecurePrefs {
             return defValue; // if decryption fails
         }
     }
+    public static void putStringSet(Context context, String key, Set<String> values) {
+        if (values == null) {
+            context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .remove(key)
+                    .apply();
+            return;
+        }
+
+        try {
+            JSONArray jsonArray = new JSONArray();
+            for (String v : values) {
+                jsonArray.put(v);
+            }
+            // Reuse putString to handle encryption
+            putString(context, key, jsonArray.toString());
+        } catch (Exception e) {
+            throw new RuntimeException("Encryption failed for StringSet", e);
+        }
+    }
+
+    public static Set<String> getStringSet(Context context, String key, Set<String> defValues) {
+        String json = getString(context, key, null);
+        if (json == null) return defValues;
+
+        try {
+            JSONArray jsonArray = new JSONArray(json);
+            Set<String> result = new HashSet<>();
+            for (int i = 0; i < jsonArray.length(); i++) {
+                result.add(jsonArray.getString(i));
+            }
+            return result;
+        } catch (JSONException e) {
+            return defValues;
+        }
+    }
+
 }

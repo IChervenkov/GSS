@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         break;
                     case 'downloadRFIDAppBtn':
                         url = '/web/download-apk-laundry';
-                        appName = 'RFIDLaundryReader-1.4.1-release.apk';
+                        appName = 'RFIDLaundryReader-1.4.2-release.apk';
                         break;
                     case 'downloadRFIDAppBtnAsset':
                         url = '/web/download-apk-asset';

@@ -449,9 +449,6 @@ public class SettingsActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         cancelAllCalls();
-        if (rfidReader != null) {
-            rfidReader.free();
-        }
     }
 
     @Override

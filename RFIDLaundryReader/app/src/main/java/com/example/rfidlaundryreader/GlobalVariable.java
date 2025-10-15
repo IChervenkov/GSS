@@ -2,6 +2,7 @@ package com.example.rfidlaundryreader;
 
 import android.content.Context;
 
+import java.util.Set;
 import java.util.UUID;
 
 import okhttp3.Call;
@@ -15,9 +16,17 @@ public class GlobalVariable {
     private static final String KEY_AUTHENTICATE_TOKEN = "authenticateToken";
     private static final String KEY_REFRESH_TOKEN = "refreshToken";
     private static final String KEY_DEVICE_ID = "device_id";
+    private static final String PREF_KEY_PERSISTED_EPCS = "persisted_epcs";
     private static Call refreshCall;
     private static Call logoutCall;
 
+    public static void setStringSet(Context context, Set<String> value) {
+        SecurePrefs.putStringSet(context, PREF_KEY_PERSISTED_EPCS, value);
+    }
+
+    public static Set<String> getStringSet(Context context) {
+        return SecurePrefs.getStringSet(context, PREF_KEY_PERSISTED_EPCS, null);
+    }
     public static void setRefreshCall(Call call) {
         refreshCall = call;
     }

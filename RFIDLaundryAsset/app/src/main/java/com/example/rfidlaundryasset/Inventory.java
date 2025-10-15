@@ -169,11 +169,7 @@ public class Inventory extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         cancelAllCalls();
-        executorService.shutdown();
         stopScanningThread();
-        if (rfidReader != null) {
-            rfidReader.free();
-        }
     }
 
     @Override

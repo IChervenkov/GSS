@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">RFIDLaundryReader</string>
     <string name="base_url">https://bunker.bg</string>
+    <string name="scan_errors">Scan Errors</string>
+    <string name="close">Close</string>
 </resources>

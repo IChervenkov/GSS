@@ -1,11 +1,8 @@
 package com.example.rfidlaundryreader;
 
 import android.app.Dialog;
-import android.app.DownloadManager;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -36,7 +33,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -245,55 +244,69 @@ public class SettingsActivity extends AppCompatActivity {
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     private void downloadAndInstall(String apkUrl) {
 
-        if(isNetworkAvailable()) {
-            messageHelper.showError("You are offline and cannot continue with this process. Please check your internet connection.");
+        String baseUrl = getString(R.string.base_url);
+        Request request = new Request.Builder()
+                .url(baseUrl + apkUrl + "?username=" + username)
+                .build();
+
+        File file = new File(getExternalFilesDir(null), "update.apk");
+        if (file.exists()) file.delete();
+
+        currentCall = client.newCall(request);
+        currentCall.enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                messageHelper.showError("Error downloading update. Please connect to the support!");
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+
+                    if (!response.isSuccessful()) {
+                        final String responseData = Objects.requireNonNull(response.body()).string();
+                        JSONObject jsonResponse = new JSONObject(responseData);
+                        String serverMessage = jsonResponse.optString("message", "Error when fetch camps. Please connect to the support.");
+                        messageHelper.showError(serverMessage);
+                        return;
+                    }
+
+                    try (InputStream in = response.body().byteStream();
+                         FileOutputStream out = new FileOutputStream(file)) {
+                        byte[] buffer = new byte[8192];
+                        int len;
+                        while ((len = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, len);
+                        }
+                    }
+
+                    installApk(file);
+
+                } catch (Exception e) {
+                    messageHelper.showError("Error downloading update. Please connect to the support!");
+                }
+            }
+        });
+    }
+
+    private void installApk(File file) {
+        if (!getPackageManager().canRequestPackageInstalls()) {
+            Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                    .setData(Uri.parse("package:" + getPackageName()));
+            startActivity(settingsIntent);
             return;
         }
 
-        String fileName = "update.apk";
-        File file = new File(getExternalFilesDir(null), fileName);
+        Uri apkUri = FileProvider.getUriForFile(
+                this,
+                getPackageName() + ".provider",
+                file
+        );
 
-        // Delete previous download if exists
-        if (file.exists()) file.delete();
-
-        String baseUrl = getString(R.string.base_url);
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(baseUrl + apkUrl + "?username=" + username));
-        request.setTitle("Downloading update...");
-        request.setDescription("Please wait");
-        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-        request.setDestinationUri(Uri.fromFile(file));
-
-        DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-        long downloadId = manager.enqueue(request);
-
-        BroadcastReceiver onComplete = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                // Only proceed if this is our download
-                long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-                if (id != downloadId) return;
-
-                if (!getPackageManager().canRequestPackageInstalls()) {
-                    Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
-                            .setData(Uri.parse("package:" + getPackageName()));
-                    startActivity(settingsIntent);
-                    return;
-                }
-
-                Uri apkUri = FileProvider.getUriForFile(
-                        context,
-                        context.getPackageName() + ".provider",
-                        file
-                );
-
-                Intent install = new Intent(Intent.ACTION_VIEW);
-                install.setDataAndType(apkUri, "application/vnd.android.package-archive");
-                install.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                startActivity(install);
-                unregisterReceiver(this);
-            }
-        };
-        registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED);
+        Intent install = new Intent(Intent.ACTION_VIEW);
+        install.setDataAndType(apkUri, "application/vnd.android.package-archive");
+        install.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(install);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
@@ -456,5 +469,9 @@ public class SettingsActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         cancelAllCalls();
+        if (rfidReader != null) {
+            rfidReader.free();
+            rfidReader = null;
+        }
     }
 }
