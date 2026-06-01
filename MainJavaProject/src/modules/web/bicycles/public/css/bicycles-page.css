@@ -1,0 +1,710 @@
+.main-workspace[data-page='bicycles-page'] .summary-grid {
+  align-items: stretch;
+}
+
+.main-workspace[data-page='bicycles-page'] .summary-card {
+  min-height: 100%;
+}
+
+.main-workspace[data-page='bicycles-page'] .tab-bar {
+  scroll-padding-inline: 1rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .overview-grid {
+  grid-template-columns: 1fr;
+}
+
+.main-workspace[data-page='bicycles-page'] .guide-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .guide-card {
+  display: grid;
+  gap: 0.55rem;
+  min-height: 100%;
+  padding: 1rem;
+  border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
+  border-radius: var(--radius-md, 0.75rem);
+  background: var(--surface-soft, rgba(15, 23, 42, 0.035));
+}
+
+.main-workspace[data-page='bicycles-page'] .guide-card__title,
+.main-workspace[data-page='bicycles-page'] .guide-card p {
+  margin: 0;
+}
+
+.main-workspace[data-page='bicycles-page'] .guide-card__title {
+  color: var(--text, #0f172a);
+  font-size: 1rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .guide-card p {
+  color: var(--muted, rgba(15, 23, 42, 0.62));
+  line-height: 1.55;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycles-metric {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.65rem;
+  font-weight: 800;
+}
+
+.main-workspace[data-page='bicycles-page'] .data-table code {
+  font-size: 0.875rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .data-table {
+  min-width: 1360px;
+}
+
+.main-workspace[data-page='bicycles-page'] .data-table--compact {
+  min-width: 360px;
+}
+
+.main-workspace[data-page='bicycles-page'] .data-table--report {
+  min-width: 1240px;
+}
+
+.main-workspace[data-page='bicycles-page'] .data-table--soldier-report {
+  min-width: 820px;
+}
+
+.main-workspace[data-page='bicycles-page'] .report-filter-bar {
+  display: grid;
+  gap: 0.875rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .report-filter-bar .field {
+  margin: 0;
+}
+
+.main-workspace[data-page='bicycles-page'] .report-filter-bar .btn {
+  min-height: 46px;
+}
+
+.main-workspace[data-page='bicycles-page'] .report-metric-grid {
+  grid-template-columns: 1fr;
+}
+
+.main-workspace[data-page='bicycles-page'] .report-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .report-tools-grid {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .report-section {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.main-workspace[data-page='bicycles-page'] .report-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .report-section__title {
+  margin: 0;
+  color: var(--text, #0f172a);
+  font-size: 1rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .segmented-control {
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
+  border-radius: 0.5rem;
+  background: var(--surface-soft, rgba(15, 23, 42, 0.035));
+}
+
+.main-workspace[data-page='bicycles-page'] .segmented-control__item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.8rem;
+  min-height: 2rem;
+  padding: 0 0.65rem;
+  border-radius: 0.375rem;
+  color: var(--muted, rgba(15, 23, 42, 0.62));
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.main-workspace[data-page='bicycles-page'] .segmented-control__item input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.main-workspace[data-page='bicycles-page'] .segmented-control__item:has(input:disabled),
+.main-workspace[data-page='bicycles-page'] .segmented-control__item input:disabled {
+  cursor: not-allowed;
+}
+
+.main-workspace[data-page='bicycles-page'] .segmented-control__item:has(input:checked) {
+  background: var(--surface-strong, #fff);
+  color: var(--text, #0f172a);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.main-workspace[data-page='bicycles-page'] #download-bicycle-report-button[aria-disabled='true'] {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.main-workspace[data-page='bicycles-page'] .table-header-stack {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .table-header-stack .search-field {
+  min-width: 12rem;
+  margin-bottom: 0;
+}
+
+.main-workspace[data-page='bicycles-page'] .sort-header-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.main-workspace[data-page='bicycles-page'] .sort-header-button:hover,
+.main-workspace[data-page='bicycles-page'] .sort-header-button:focus-visible {
+  color: var(--primary, #2563eb);
+  outline: none;
+}
+
+.main-workspace[data-page='bicycles-page'] .sort-header-button__indicator {
+  min-width: 1.25rem;
+  color: var(--muted, rgba(15, 23, 42, 0.56));
+}
+
+.main-workspace[data-page='bicycles-page'] .status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 6rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text, #0f172a);
+}
+
+.main-workspace[data-page='bicycles-page'] .status-pill--available {
+  background: rgba(22, 163, 74, 0.12);
+  color: #166534;
+}
+
+.main-workspace[data-page='bicycles-page'] .status-pill--rented,
+.main-workspace[data-page='bicycles-page'] .status-pill--long_term {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.main-workspace[data-page='bicycles-page'] .status-pill--repair,
+.main-workspace[data-page='bicycles-page'] .status-pill--late {
+  background: rgba(217, 119, 6, 0.14);
+  color: #92400e;
+}
+
+.main-workspace[data-page='bicycles-page'] .check-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+}
+
+.main-workspace[data-page='bicycles-page'] .check-field input {
+  width: 1rem;
+  height: 1rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .assignment-edit-fields {
+  display: grid;
+  gap: 1rem;
+  padding-top: 0.25rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .assignment-edit-fields[hidden] {
+  display: none;
+}
+
+.main-workspace[data-page='bicycles-page'] .input-icon-field {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 46px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--border, rgba(133, 154, 190, 0.24));
+  border-radius: 14px;
+  background: var(--surface-soft, #f6f9ff);
+  color: var(--text, #162033);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.main-workspace[data-page='bicycles-page'] .input-icon-field:focus-within {
+  border-color: color-mix(in srgb, var(--primary, #1d4ed8) 42%, var(--border));
+  background: var(--surface-strong, #fff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #1d4ed8) 12%, transparent);
+}
+
+.main-workspace[data-page='bicycles-page'] .input-icon-field .icon {
+  color: var(--muted, #60718f);
+}
+
+.main-workspace[data-page='bicycles-page'] .field .input-icon-field input,
+.main-workspace[data-page='bicycles-page'] .field .input-icon-field select,
+.main-workspace[data-page='bicycles-page'] .bicycle-import-field .input-icon-field input {
+  min-height: 44px;
+  padding: 0.7rem 0;
+  border: 0;
+  background: transparent;
+}
+
+.main-workspace[data-page='bicycles-page'] .field .input-icon-field select {
+  width: 100%;
+  color: inherit;
+}
+
+.main-workspace[data-page='bicycles-page'] .field .input-icon-field input[type='datetime-local'] {
+  min-width: 0;
+}
+
+.main-workspace[data-page='bicycles-page']
+  .bicycle-import-field
+  .input-icon-field
+  input[type='file'] {
+  padding-block: 0.6rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-field {
+  position: relative;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-combobox {
+  position: relative;
+  min-width: 0;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-combobox__control {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 46px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--border, rgba(133, 154, 190, 0.24));
+  border-radius: 14px;
+  background: var(--surface-soft, #f6f9ff);
+  color: var(--text, #162033);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-combobox__control:focus-within,
+.main-workspace[data-page='bicycles-page'] .lookup-combobox.is-open .lookup-combobox__control {
+  border-color: color-mix(in srgb, var(--primary, #1d4ed8) 42%, var(--border));
+  background: var(--surface-strong, #fff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #1d4ed8) 12%, transparent);
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-combobox__control .icon {
+  color: var(--muted, #60718f);
+}
+
+.main-workspace[data-page='bicycles-page'] input[type='text']:disabled,
+.main-workspace[data-page='bicycles-page'] input[type='date']:disabled,
+.main-workspace[data-page='bicycles-page'] .lookup-combobox.is-disabled,
+.main-workspace[data-page='bicycles-page'] .lookup-combobox.is-disabled .lookup-combobox__control,
+.main-workspace[data-page='bicycles-page'] .input-icon-field:has(input:disabled) {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.main-workspace[data-page='bicycles-page'] .field .lookup-combobox__control input {
+  min-height: 44px;
+  padding: 0.7rem 0;
+  border: 0;
+  background: transparent;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-combobox--status input {
+  cursor: inherit;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-combobox__chevron {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: var(--muted, #60718f);
+  transform: translateY(-0.1rem) rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-combobox.is-open .lookup-combobox__chevron {
+  transform: translateY(0.1rem) rotate(225deg);
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-menu {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 0.45rem);
+  z-index: 8;
+  display: grid;
+  gap: 0.25rem;
+  max-height: min(260px, 42vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.45rem;
+  border: 1px solid
+    color-mix(in srgb, var(--border, rgba(133, 154, 190, 0.24)) 85%, var(--primary, #1d4ed8));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-strong, #fff) 96%, transparent);
+  box-shadow: 0 20px 42px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(14px);
+  scrollbar-width: thin;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-menu[hidden] {
+  display: none;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-menu::-webkit-scrollbar {
+  width: 9px;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-menu::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted, #60718f) 42%, transparent);
+  background-clip: content-box;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-option {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+  padding: 0.72rem 0.78rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text, #162033);
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-option[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-option:hover,
+.main-workspace[data-page='bicycles-page'] .lookup-option.is-active {
+  border-color: color-mix(in srgb, var(--primary, #1d4ed8) 22%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--primary-soft, rgba(29, 78, 216, 0.1)) 78%,
+    var(--surface-strong, #fff)
+  );
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-option--status {
+  cursor: default;
+  color: var(--muted, #60718f);
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-option--status:hover,
+.main-workspace[data-page='bicycles-page'] .lookup-option--status.is-active {
+  border-color: transparent;
+  background: transparent;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-option__title,
+.main-workspace[data-page='bicycles-page'] .lookup-option__meta {
+  overflow-wrap: anywhere;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-option__title {
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.main-workspace[data-page='bicycles-page'] .lookup-option__meta {
+  color: var(--muted, #60718f);
+  font-size: 0.8125rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .rental-detail-panel {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
+  border-radius: var(--radius-md, 0.75rem);
+  background: rgba(15, 23, 42, 0.035);
+}
+
+.main-workspace[data-page='bicycles-page'] .rental-detail-panel div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .rental-detail-panel span {
+  color: var(--muted, rgba(15, 23, 42, 0.56));
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.main-workspace[data-page='bicycles-page'] .rental-detail-panel strong {
+  color: var(--text, #0f172a);
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-card {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1.125rem;
+  border: 1px solid var(--border, rgba(15, 23, 42, 0.08));
+  border-radius: var(--radius-lg, 1rem);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(15, 23, 42, 0.02)), var(--surface, #fff);
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-card__title,
+.main-workspace[data-page='bicycles-page'] .bicycle-import-card__text,
+.main-workspace[data-page='bicycles-page'] .bicycle-import-status {
+  margin: 0;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-form {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-field__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-field input[type='file'] {
+  width: 100%;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-meta {
+  min-height: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--text, rgba(15, 23, 42, 0.72));
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-progress {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-progress[hidden] {
+  display: none;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-progress__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.main-workspace[data-page='bicycles-page'] .progress-track {
+  position: relative;
+  height: 0.75rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.main-workspace[data-page='bicycles-page'] .progress-track__bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  overflow: hidden;
+}
+
+.main-workspace[data-page='bicycles-page'] .progress-track__bar::-webkit-progress-bar {
+  background: transparent;
+}
+
+.main-workspace[data-page='bicycles-page'] .progress-track__bar::-webkit-progress-value {
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0f766e, #14b8a6);
+  transition: width 180ms ease;
+}
+
+.main-workspace[data-page='bicycles-page'] .progress-track__bar::-moz-progress-bar {
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0f766e, #14b8a6);
+  transition: width 180ms ease;
+}
+
+.main-workspace[data-page='bicycles-page'] .progress-track__bar--accent::-webkit-progress-value {
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+}
+
+.main-workspace[data-page='bicycles-page'] .progress-track__bar--accent::-moz-progress-bar {
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-summary-item {
+  padding: 0.75rem;
+  border-radius: var(--radius-md, 0.75rem);
+  background: var(--surface-strong, rgba(255, 255, 255, 0.7));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-summary-item span {
+  color: var(--muted, rgba(15, 23, 42, 0.56));
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-errors {
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md, 0.75rem);
+  border: 1px solid rgba(220, 38, 38, 0.16);
+  background: rgba(254, 242, 242, 0.9);
+  color: #991b1b;
+  font-size: 0.875rem;
+}
+
+.main-workspace[data-page='bicycles-page'] .bicycle-import-errors[hidden] {
+  display: none;
+}
+
+.workspace-modal__dialog--wide {
+  width: min(1040px, calc(100vw - 32px));
+}
+
+.main-workspace[data-page='bicycles-page'] .hero-card__meta > * {
+  flex: 1 1 220px;
+}
+
+.hero-card__actions--mobile-download {
+  display: none;
+}
+
+.hero-card__mobile-download-button {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (min-width: 1080px) {
+  .main-workspace[data-page='bicycles-page'] .overview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .main-workspace[data-page='bicycles-page'] .report-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .main-workspace[data-page='bicycles-page'] .guide-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .main-workspace[data-page='bicycles-page'] .report-filter-bar {
+    grid-template-columns: repeat(2, minmax(12rem, 1fr)) auto;
+  }
+
+  .main-workspace[data-page='bicycles-page'] .report-grid {
+    grid-template-columns: minmax(280px, 0.36fr) minmax(0, 1fr);
+  }
+
+  .main-workspace[data-page='bicycles-page'] .report-tools-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .main-workspace[data-page='bicycles-page'] .bicycle-import-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .main-workspace[data-page='bicycles-page'] .rental-detail-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .main-workspace[data-page='bicycles-page'] .bicycle-import-card__header {
+    flex-direction: column;
+  }
+
+  .main-workspace[data-page='bicycles-page'] .bicycle-import-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .main-workspace[data-page='bicycles-page'] .report-section__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hero-card__actions--mobile-download {
+    display: flex;
+    margin-top: 1rem;
+  }
+}

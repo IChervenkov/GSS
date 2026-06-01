@@ -1,0 +1,42 @@
+<section class="saas-auth__left" aria-label="<%= panelAriaLabel || 'Authentication overview' %>">
+  <div class="saas-brand">
+    <img class="saas-brand__logo" src="/assets/shared/icon/logo-page.png" alt="Global Support System logo" />
+    <div class="saas-brand__name">Global Support System</div>
+  </div>
+
+  <h2 class="saas-auth__headline"><%= headline %></h2>
+  <p class="saas-auth__sub"><%= subtext %></p>
+
+  <div class="saas-auth__badges">
+    <% (badges || []).forEach((badge) => { %><span class="badge"><%= badge %></span><% }) %>
+  </div>
+
+  <div class="<%= panelClass || 'product-panel' %>" aria-label="<%= panelTitle %>">
+    <span class="product-panel__eyebrow"><%= panelEyebrow %></span>
+    <h3 class="product-panel__title"><%= panelTitle %></h3>
+    <p class="product-panel__text"><%= panelText %></p>
+
+    <% if (Array.isArray(featureCards) && featureCards.length) { %>
+    <div class="product-grid">
+      <% featureCards.forEach((card) => { %>
+      <article class="product-feature-card">
+        <span class="product-feature-card__icon" aria-hidden="true"><%= card.icon %></span>
+        <strong><%= card.title %></strong>
+        <p><%= card.text %></p>
+      </article>
+      <% }) %>
+    </div>
+    <% } %>
+
+    <% if (Array.isArray(featureList) && featureList.length) { %>
+    <ul class="security-list">
+      <% featureList.forEach((item) => { %>
+      <li>
+        <strong><%= item.title %></strong>
+        <small><%= item.text %></small>
+      </li>
+      <% }) %>
+    </ul>
+    <% } %>
+  </div>
+</section>

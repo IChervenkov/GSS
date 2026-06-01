@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="en">
+<%- await include('../../../../shared/views/partials/workspace/head', {
+  title,
+  pageStyles: ['/assets/assets/css/assets-page.css']
+}) %>
+
+<%
+  const viewData = typeof locals !== 'undefined' ? locals : {};
+  const resolvedHighlights = Array.isArray(viewData.highlights) ? viewData.highlights : [];
+  const resolvedAllAssets = Array.isArray(viewData.allAssets) ? viewData.allAssets : [];
+  const resolvedInventoryStatusRows = Array.isArray(viewData.inventoryStatusRows) ? viewData.inventoryStatusRows : [];
+  const resolvedInventoryEvents = Array.isArray(viewData.inventoryEvents) ? viewData.inventoryEvents : [];
+  const resolvedAssetTypes = Array.isArray(viewData.assetTypes) ? viewData.assetTypes : [];
+  const resolvedCleanItems = Array.isArray(viewData.cleanItems) ? viewData.cleanItems : [];
+  const visibleCleanItems = resolvedCleanItems.filter((item) => item.warehouse === 'large');
+  const cleanItemSummary = viewData.cleanItemSummary && typeof viewData.cleanItemSummary === 'object' ? viewData.cleanItemSummary : {};
+  const resolvedCanDownloadAssetsMobileApp = Boolean(viewData.canDownloadAssetsMobileApp);
+  const resolvedAssetsMobileAppDownloadUrl = viewData.assetsMobileAppDownloadUrl || '/web/assets/mobile-app';
+  const resolvedPermissionNames = new Set((Array.isArray(viewData.permissionNames) ? viewData.permissionNames : []).map((name) => String(name || '').trim()).filter(Boolean));
+  const hasAssetsPermission = (...names) => resolvedPermissionNames.has('Full permission') || names.some((name) => resolvedPermissionNames.has(name));
+  const canAddAsset = hasAssetsPermission('Add asset');
+  const canEditAsset = hasAssetsPermission('Edit asset');
+  const canDeleteAsset = hasAssetsPermission('Remove asset');
+  const canBulkAssets = canAddAsset || canEditAsset;
+  const canSaveInventory = hasAssetsPermission('Save inventory');
+  const canAddAssetType = hasAssetsPermission('Add asset type');
+  const canEditAssetType = hasAssetsPermission('Edit asset type');
+  const canDeleteAssetType = hasAssetsPermission('Remove asset type');
+  const canBulkAssetTypes = canAddAssetType || canEditAssetType;
+  const canAddCleanItem = hasAssetsPermission('Add clean item');
+  const canEditCleanItem = hasAssetsPermission('Edit clean item');
+  const canMoveCleanItem = hasAssetsPermission('Move clean item');
+  const canDeleteCleanItem = hasAssetsPermission('Remove clean item');
+  const canBulkCleanItems = canAddCleanItem || canEditCleanItem;
+  const assetTemplateDownloadAttrs = canBulkAssets ? '' : 'aria-disabled="true" tabindex="-1"';
+  const assetTemplateInputAttrs = canBulkAssets ? '' : 'disabled';
+  const assetTypeTemplateDownloadAttrs = canBulkAssetTypes ? '' : 'aria-disabled="true" tabindex="-1"';
+  const assetTypeTemplateInputAttrs = canBulkAssetTypes ? '' : 'disabled';
+  const cleanItemTemplateDownloadAttrs = canBulkCleanItems ? '' : 'aria-disabled="true" tabindex="-1"';
+  const cleanItemTemplateInputAttrs = canBulkCleanItems ? '' : 'disabled';
+  const tableMeta = viewData.tables && typeof viewData.tables === 'object' ? viewData.tables : {};
+  const allAssetColumns = [
+    { key: 'id', label: 'Identifier', search: 'Search identifier' },
+    { key: 'code', label: 'Code', search: 'Search code' },
+    { key: 'rfidCode', label: 'RFID code', search: 'Search RFID' },
+    { key: 'name', label: 'Name', search: 'Search name' },
+    { key: 'typeName', label: 'Type', search: 'Search type' },
+    { key: 'location', label: 'Location', search: 'Search location' },
+    { key: 'status', label: 'Status', search: 'Search status' },
+    { key: 'inventoryStatus', label: 'Inventory', search: 'Search inventory' },
+    { key: 'lastInventoryDate', label: 'Last inventory', search: 'Search date' },
+    { key: 'owner', label: 'Owner', search: 'Search owner' },
+    { key: 'category', label: 'Category', search: 'Search category' },
+    { key: 'service', label: 'Service', search: 'Search service' },
+    { key: 'expandable', label: 'Expandable', search: 'Search expandable' },
+    { key: 'isFixedLabel', label: 'Fixed', search: 'Search fixed' },
+    { key: 'isQuantitativeLabel', label: 'Quantitative', search: 'Search quantitative' },
+    { key: 'description', label: 'Description', search: 'Search description' },
+    { key: 'mrah', label: 'MRAH', search: 'Search MRAH' },
+    { key: 'comments', label: 'Comments', search: 'Search comments' },
+    { key: 'replacedOff', label: 'Replaced off', search: 'Search replaced off' },
+    { key: 'replacedBy', label: 'Replaced by', search: 'Search replaced by' },
+    { key: 'purchaseDate', label: 'Purchase date', search: 'Search purchase date' },
+    { key: 'writtenOffDate', label: 'Written off', search: 'Search written off date' },
+    { key: 'createdAt', label: 'Created', search: 'Search created date' },
+    { key: 'updatedAt', label: 'Updated', search: 'Search updated date' },
+    { key: 'm2Inside', label: 'M2 inside', searchable: false },
+    { key: 'yearOfLifeCycle', label: 'Lifecycle year', searchable: false },
+    { key: 'restOfLifeCycle', label: 'Lifecycle rest', searchable: false },
+    { key: 'restValue', label: 'Rest value', searchable: false },
+    { key: 'purchasePrice', label: 'Purchase price', searchable: false },
+    { key: 'quantity', label: 'Quantity', searchable: false },
+    { key: 'actions', label: 'Actions', searchable: false, sortable: false }
+  ];
+  const statusColumns = [
+    { key: 'status', label: 'Status', search: 'Search status' },
+    { key: 'lastInventoryDate', label: 'Last inventory', search: 'Search date' },
+    { key: 'assetCount', label: 'Assets', searchable: false },
+    { key: 'quantity', label: 'Quantity', searchable: false }
+  ];
+  const eventColumns = [
+    { key: 'changedAt', label: 'Date', search: 'Search date' },
+    { key: 'addedQuantity', label: 'Added', searchable: false },
+    { key: 'removedQuantity', label: 'Removed', searchable: false },
+    { key: 'lostQuantity', label: 'Lost', searchable: false },
+    { key: 'modifiedQuantity', label: 'Updated', searchable: false }
+  ];
+  const typeColumns = [
+    { key: 'id', label: 'Identifier', search: 'Search identifier' },
+    { key: 'name', label: 'Type', search: 'Search type' },
+    { key: 'assetCount', label: 'Assets', searchable: false },
+    { key: 'notFoundCount', label: 'Not found', searchable: false },
+    { key: 'completedCount', label: 'Completed', searchable: false },
+    { key: 'actions', label: 'Actions', searchable: false, sortable: false }
+  ];
+  const cleanItemColumns = [
+    { key: 'id', label: 'Identifier', search: 'Search identifier' },
+    { key: 'itemName', label: 'Item', search: 'Search item' },
+    { key: 'totalAmount', label: 'Total', searchable: false },
+    { key: 'countGetItem', label: 'Checked out', searchable: false },
+    { key: 'availableAmount', label: 'Available', searchable: false },
+    { key: 'actions', label: 'Actions', searchable: false, sortable: false }
+  ];
+  const pageLabel = (meta) => {
+    const total = Number(meta && meta.total) || 0;
+    const page = Number(meta && meta.page) || 1;
+    const totalPages = Number(meta && meta.totalPages) || 1;
+    return total > 0 ? `Page ${page} of ${totalPages}` : 'Page 1 of 1';
+  };
+%>
+
+<body class="main-workspace" data-page="<%= pageKey %>" data-current-camp-id="<%= campId || '' %>" data-can-download-assets-mobile-app="<%= resolvedCanDownloadAssetsMobileApp ? 'true' : 'false' %>">
+  <%- await include('../../../../shared/views/partials/common/a11y-primitives') %>
+  <%- await include('../../../../shared/views/partials/workspace/icons') %>
+  <%- await include('../../../../shared/views/partials/common/page-data', { pageData: { pageKey, campId: campId || '', currentNav, permissionNames: Array.from(resolvedPermissionNames) } }) %>
+
+  <input type="hidden" id="csrf-token" value="<%= csrfToken %>" />
+
+  <%- await include('../../../../shared/views/partials/workspace/topbar', {
+    navItems: horizontalNavItems,
+    currentNav,
+    csrfToken
+  }) %>
+
+  <main class="workspace-shell assets-page" id="main-content">
+    <section class="hero-card">
+      <div class="hero-card__content">
+        <span class="hero-card__eyebrow"><%= eyebrow %></span>
+        <h1 class="hero-card__title"><%= title %></h1>
+        <p class="hero-card__text"><%= intro %></p>
+        <div class="hero-card__meta">
+          <% resolvedHighlights.forEach((item) => { %>
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-box"></use>
+            </svg><span><%= item %></span></span>
+          <% }) %>
+        </div>
+        <div class="hero-card__actions hero-card__actions--mobile-download">
+          <button class="btn btn-primary hero-card__mobile-download-button" id="download-assets-mobile-app-button" type="button" data-download-url="<%= resolvedAssetsMobileAppDownloadUrl %>" <%= resolvedCanDownloadAssetsMobileApp ? '' : 'disabled' %> title="<%= resolvedCanDownloadAssetsMobileApp ? 'Download the assets mobile app.' : 'You do not have permission to download the assets mobile app.' %>">
+            <svg class="icon" aria-hidden="true">
+              <use href="#icon-download"></use>
+            </svg>
+            <span>Download assets mobile app</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <% if (Boolean(viewData.campRequired)) { %>
+    <section class="inline-banner" role="status">
+      Select an active camp from the main page to load assets, inventory tracking, and type totals.
+    </section>
+    <% } %>
+
+    <section class="summary-grid" aria-label="Asset summary">
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Assets</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-box"></use>
+          </svg></div>
+        <div class="summary-card__value" id="assets-summary-total"><%= viewData.totalAssets || 0 %></div>
+        <p class="summary-card__text">Asset records in the selected camp.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Quantity</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-inbox"></use>
+          </svg></div>
+        <div class="summary-card__value" id="assets-summary-quantity"><%= viewData.totalQuantity || '0' %></div>
+        <p class="summary-card__text">Total quantity across tracked assets.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Not found</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-search"></use>
+          </svg></div>
+        <div class="summary-card__value" id="assets-summary-not-found"><%= viewData.notFoundAssets || 0 %></div>
+        <p class="summary-card__text">Assets still marked as undiscovered.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Completed</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-check-circle"></use>
+          </svg></div>
+        <div class="summary-card__value" id="assets-summary-completed"><%= viewData.completedAssets || 0 %></div>
+        <p class="summary-card__text">Assets confirmed during inventory.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Types</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-filter"></use>
+          </svg></div>
+        <div class="summary-card__value" id="assets-summary-types"><%= viewData.typeCount || 0 %></div>
+        <p class="summary-card__text">Asset types available in the system.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Clean items</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-inbox"></use>
+          </svg></div>
+        <div class="summary-card__value" id="assets-summary-clean-items"><%= cleanItemSummary.totalItems || 0 %></div>
+        <p class="summary-card__text">Items stored across large and small warehouses.</p>
+      </article>
+    </section>
+
+    <section class="workspace-panels" aria-label="Asset information">
+      <div class="tab-bar" role="tablist" aria-label="Asset sections">
+        <button class="tab-pill is-active" type="button" role="tab" data-tab-trigger="overview" aria-selected="true">Overview</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="all-assets" aria-selected="false">All assets</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="inventory-tracking" aria-selected="false">Inventory tracking</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="asset-types" aria-selected="false">Asset types</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="clean-items" aria-selected="false">Clean items</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="guide" aria-selected="false">Guide</button>
+      </div>
+
+      <section class="tab-panel is-active" id="tab-overview" data-tab-panel="overview" role="tabpanel">
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Operational overview</span>
+              <h2 class="panel-card__title">Inventory coverage and asset pressure</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-secondary" type="button" data-refresh-assets>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="overview-grid">
+            <article class="mini-card">
+              <h3 class="mini-card__title">Completion share</h3>
+              <p class="assets-metric" id="assets-completion-share">0%</p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Not found share</h3>
+              <p class="assets-metric" id="assets-not-found-share">0%</p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Average quantity</h3>
+              <p class="assets-metric" id="assets-average-quantity">0</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-all-assets" data-tab-panel="all-assets" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">All assets</span>
+              <h2 class="panel-card__title">Every asset in the selected camp</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-asset-modal" <%= canAddAsset ? '' : 'disabled' %>>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add asset</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-asset-bulk-modal" <%= canBulkAssets ? '' : 'disabled' %>>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" data-refresh-assets>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="table-shell">
+            <table class="data-table assets-table">
+              <thead>
+                <tr>
+                  <% allAssetColumns.forEach((column) => { %>
+                  <% if (column.key === 'actions') { %>
+                  <th class="table-action-col">Action</th>
+                  <% } else { %>
+                  <th id="assets-all-assets-<%= column.key %>-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <% if (column.searchable !== false) { %>
+                      <label class="search-field" for="assets-all-assets-search-<%= column.key %>-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="assets-all-assets-search-<%= column.key %>-input" type="search" placeholder="<%= column.search %>" autocomplete="off" data-assets-filter-table="allAssets" data-assets-filter-column="<%= column.key %>" value="<%= (tableMeta.allAssets && tableMeta.allAssets.filters && tableMeta.allAssets.filters[column.key]) || '' %>" /></label>
+                      <% } %>
+                      <% if (column.sortable !== false) { %>
+                      <button class="sort-header-button" type="button" data-assets-sort-table="allAssets" data-assets-sort-column="<%= column.key %>" aria-label="Sort by <%= column.label %>"><span><%= column.label %></span><span class="sort-header-button__indicator" data-assets-sort-indicator="allAssets:<%= column.key %>" aria-hidden="true">-</span></button>
+                      <% } else { %>
+                      <span class="sort-header-button sort-header-button--static"><%= column.label %></span>
+                      <% } %>
+                    </div>
+                  </th>
+                  <% } %>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody data-assets-table-body="allAssets">
+                <% if (resolvedAllAssets.length) { %>
+                <% resolvedAllAssets.forEach((asset) => { %>
+                <tr>
+                  <td><code><%= asset.id %></code></td>
+                  <td><code><%= asset.code %></code></td>
+                  <td><code><%= asset.rfidCode %></code></td>
+                  <td><%= asset.name %></td>
+                  <td><%= asset.typeName %></td>
+                  <td><%= asset.location %></td>
+                  <td><%= asset.status %></td>
+                  <td><span class="table-badge" data-assets-status="<%= asset.inventoryStatus %>"><%= asset.inventoryStatusLabel %></span></td>
+                  <td><%= asset.lastInventoryDate %></td>
+                  <td><%= asset.owner %></td>
+                  <td><%= asset.category %></td>
+                  <td><%= asset.service %></td>
+                  <td><%= asset.expandable %></td>
+                  <td><%= asset.isFixedLabel %></td>
+                  <td><%= asset.isQuantitativeLabel %></td>
+                  <td><%= asset.description %></td>
+                  <td><%= asset.mrah %></td>
+                  <td><%= asset.comments %></td>
+                  <td><%= asset.replacedOff %></td>
+                  <td><%= asset.replacedBy %></td>
+                  <td><%= asset.purchaseDate %></td>
+                  <td><%= asset.writtenOffDate %></td>
+                  <td><%= asset.createdAt %></td>
+                  <td><%= asset.updatedAt %></td>
+                  <td><%= asset.m2Inside %></td>
+                  <td><%= asset.yearOfLifeCycle %></td>
+                  <td><%= asset.restOfLifeCycle %></td>
+                  <td><%= asset.restValue %></td>
+                  <td><%= asset.purchasePrice %></td>
+                  <td><%= asset.quantity %></td>
+                  <td>
+                    <div class="table-action-group">
+                      <button class="btn btn-primary js-edit-asset" type="button" data-asset-id="<%= asset.id %>" <%= canEditAsset ? '' : 'disabled' %>>
+                        <svg class="icon" aria-hidden="true">
+                          <use href="#icon-pencil-square"></use>
+                        </svg><span>Edit</span>
+                      </button>
+                      <button class="btn btn-danger js-delete-asset" type="button" data-asset-id="<%= asset.id %>" <%= canDeleteAsset ? '' : 'disabled' %>>
+                        <svg class="icon" aria-hidden="true">
+                          <use href="#icon-trash"></use>
+                        </svg><span>Delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td class="table-empty" colspan="<%= allAssetColumns.length %>">No assets found for the selected camp.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" data-assets-prev-table="allAssets" <%= Number(tableMeta.allAssets && tableMeta.allAssets.page) > 1 ? '' : 'disabled' %>>Previous</button>
+            <span class="pagination-label" data-assets-page-label="allAssets"><%= pageLabel(tableMeta.allAssets) %></span>
+            <button class="btn btn-ghost" type="button" data-assets-next-table="allAssets" <%= Number(tableMeta.allAssets && tableMeta.allAssets.page) < Number(tableMeta.allAssets && tableMeta.allAssets.totalPages) ? '' : 'disabled' %>>Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-inventory-tracking" data-tab-panel="inventory-tracking" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Inventory tracking</span>
+              <h2 class="panel-card__title">Asset coverage and quantity movement</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-danger" type="button" id="restart-inventory-button" <%= canSaveInventory ? '' : 'disabled' %>>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Restart inventory</span>
+              </button>
+              <button class="btn btn-secondary" type="button" data-refresh-assets>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <h3 class="inventory-section__title">Inventory Status</h3>
+          <div class="table-shell">
+            <table class="data-table data-table--compact">
+              <thead>
+                <tr>
+                  <% statusColumns.forEach((column) => { %>
+                  <th id="assets-status-<%= column.key %>-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <% if (column.searchable !== false) { %>
+                      <label class="search-field" for="assets-status-search-<%= column.key %>-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="assets-status-search-<%= column.key %>-input" type="search" placeholder="<%= column.search %>" autocomplete="off" data-assets-filter-table="inventoryStatusRows" data-assets-filter-column="<%= column.key %>" value="<%= (tableMeta.inventoryStatusRows && tableMeta.inventoryStatusRows.filters && tableMeta.inventoryStatusRows.filters[column.key]) || '' %>" /></label>
+                      <% } %>
+                      <button class="sort-header-button" type="button" data-assets-sort-table="inventoryStatusRows" data-assets-sort-column="<%= column.key %>" aria-label="Sort by <%= column.label %>"><span><%= column.label %></span><span class="sort-header-button__indicator" data-assets-sort-indicator="inventoryStatusRows:<%= column.key %>" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody data-assets-table-body="inventoryStatusRows">
+                <% resolvedInventoryStatusRows.forEach((row) => { %>
+                <tr>
+                  <td><span class="table-badge" data-assets-status="<%= row.status %>"><%= row.label %></span></td>
+                  <td><%= row.lastInventoryDate %></td>
+                  <td><%= row.assetCount %></td>
+                  <td><%= row.quantity %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" data-assets-prev-table="inventoryStatusRows" <%= Number(tableMeta.inventoryStatusRows && tableMeta.inventoryStatusRows.page) > 1 ? '' : 'disabled' %>>Previous</button>
+            <span class="pagination-label" data-assets-page-label="inventoryStatusRows"><%= pageLabel(tableMeta.inventoryStatusRows) %></span>
+            <button class="btn btn-ghost" type="button" data-assets-next-table="inventoryStatusRows" <%= Number(tableMeta.inventoryStatusRows && tableMeta.inventoryStatusRows.page) < Number(tableMeta.inventoryStatusRows && tableMeta.inventoryStatusRows.totalPages) ? '' : 'disabled' %>>Next</button>
+          </div>
+          <h3 class="inventory-section__title">Inventory Events</h3>
+          <div class="table-shell">
+            <table class="data-table data-table--compact">
+              <thead>
+                <tr>
+                  <% eventColumns.forEach((column) => { %>
+                  <th id="assets-events-<%= column.key %>-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <% if (column.searchable !== false) { %>
+                      <label class="search-field" for="assets-events-search-<%= column.key %>-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="assets-events-search-<%= column.key %>-input" type="search" placeholder="<%= column.search %>" autocomplete="off" data-assets-filter-table="inventoryEvents" data-assets-filter-column="<%= column.key %>" value="<%= (tableMeta.inventoryEvents && tableMeta.inventoryEvents.filters && tableMeta.inventoryEvents.filters[column.key]) || '' %>" /></label>
+                      <% } %>
+                      <button class="sort-header-button" type="button" data-assets-sort-table="inventoryEvents" data-assets-sort-column="<%= column.key %>" aria-label="Sort by <%= column.label %>"><span><%= column.label %></span><span class="sort-header-button__indicator" data-assets-sort-indicator="inventoryEvents:<%= column.key %>" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody data-assets-table-body="inventoryEvents">
+                <% if (resolvedInventoryEvents.length) { %>
+                <% resolvedInventoryEvents.forEach((event) => { %>
+                <tr>
+                  <td><%= event.changedAt %></td>
+                  <td><%= event.addedQuantity %></td>
+                  <td><%= event.removedQuantity %></td>
+                  <td><%= event.lostQuantity %></td>
+                  <td><%= event.modifiedQuantity %></td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td class="table-empty" colspan="<%= eventColumns.length %>">No inventory activity has been recorded yet.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" data-assets-prev-table="inventoryEvents" <%= Number(tableMeta.inventoryEvents && tableMeta.inventoryEvents.page) > 1 ? '' : 'disabled' %>>Previous</button>
+            <span class="pagination-label" data-assets-page-label="inventoryEvents"><%= pageLabel(tableMeta.inventoryEvents) %></span>
+            <button class="btn btn-ghost" type="button" data-assets-next-table="inventoryEvents" <%= Number(tableMeta.inventoryEvents && tableMeta.inventoryEvents.page) < Number(tableMeta.inventoryEvents && tableMeta.inventoryEvents.totalPages) ? '' : 'disabled' %>>Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-asset-types" data-tab-panel="asset-types" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Asset types</span>
+              <h2 class="panel-card__title">Types and inventory coverage</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" data-open-add-asset-type-modal <%= canAddAssetType ? '' : 'disabled' %>>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add type</span>
+              </button>
+              <button class="btn btn-secondary" type="button" data-open-asset-type-bulk-modal <%= canBulkAssetTypes ? '' : 'disabled' %>>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" data-refresh-assets>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="table-shell">
+            <table class="data-table data-table--compact">
+              <thead>
+                <tr>
+                  <% typeColumns.forEach((column) => { %>
+                  <% if (column.key === 'actions') { %>
+                  <th class="table-action-col">Action</th>
+                  <% } else { %>
+                  <th id="assets-types-<%= column.key %>-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <% if (column.searchable !== false) { %>
+                      <label class="search-field" for="assets-types-search-<%= column.key %>-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="assets-types-search-<%= column.key %>-input" type="search" placeholder="<%= column.search %>" autocomplete="off" data-assets-filter-table="assetTypes" data-assets-filter-column="<%= column.key %>" value="<%= (tableMeta.assetTypes && tableMeta.assetTypes.filters && tableMeta.assetTypes.filters[column.key]) || '' %>" /></label>
+                      <% } %>
+                      <button class="sort-header-button" type="button" data-assets-sort-table="assetTypes" data-assets-sort-column="<%= column.key %>" aria-label="Sort by <%= column.label %>"><span><%= column.label %></span><span class="sort-header-button__indicator" data-assets-sort-indicator="assetTypes:<%= column.key %>" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <% } %>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody data-assets-table-body="assetTypes">
+                <% if (resolvedAssetTypes.length) { %>
+                <% resolvedAssetTypes.forEach((type) => { %>
+                <tr>
+                  <td><code><%= type.id %></code></td>
+                  <td><%= type.name %></td>
+                  <td><%= type.assetCount %></td>
+                  <td><%= type.notFoundCount %></td>
+                  <td><%= type.completedCount %></td>
+                  <td>
+                    <div class="table-action-group">
+                      <button class="btn btn-primary js-edit-asset-type" type="button" data-type-id="<%= type.id %>" data-protected="<%= type.isProtected ? 'true' : 'false' %>" <%= (!canEditAssetType || type.isProtected) ? 'disabled' : '' %>>
+                        <svg class="icon" aria-hidden="true">
+                          <use href="#icon-pencil-square"></use>
+                        </svg><span>Edit</span>
+                      </button>
+                      <button class="btn btn-danger js-delete-asset-type" type="button" data-type-id="<%= type.id %>" data-protected="<%= type.isProtected ? 'true' : 'false' %>" data-has-assets="<%= Number(type.assetCount) > 0 ? 'true' : 'false' %>" data-is-bed="<%= String(type.name || '').trim() === 'Bed' ? 'true' : 'false' %>" <%= (!canDeleteAssetType || String(type.name || '').trim() === 'Bed') ? 'disabled' : '' %>>
+                        <svg class="icon" aria-hidden="true">
+                          <use href="#icon-trash"></use>
+                        </svg><span>Delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td class="table-empty" colspan="<%= typeColumns.length %>">No asset types are currently configured.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" data-assets-prev-table="assetTypes" <%= Number(tableMeta.assetTypes && tableMeta.assetTypes.page) > 1 ? '' : 'disabled' %>>Previous</button>
+            <span class="pagination-label" data-assets-page-label="assetTypes"><%= pageLabel(tableMeta.assetTypes) %></span>
+            <button class="btn btn-ghost" type="button" data-assets-next-table="assetTypes" <%= Number(tableMeta.assetTypes && tableMeta.assetTypes.page) < Number(tableMeta.assetTypes && tableMeta.assetTypes.totalPages) ? '' : 'disabled' %>>Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-clean-items" data-tab-panel="clean-items" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Clean items</span>
+              <h2 class="panel-card__title">Large and small warehouse stock</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-clean-item-modal" <%= canAddCleanItem ? '' : 'disabled' %>>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add item</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-clean-item-bulk-modal" <%= canBulkCleanItems ? '' : 'disabled' %>>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" data-refresh-assets>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="overview-grid assets-clean-summary" aria-label="Clean item warehouse summary">
+            <article class="mini-card">
+              <h3 class="mini-card__title">Total items</h3>
+              <p class="assets-metric" id="clean-total-items"><%= cleanItemSummary.totalItems || 0 %></p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Large quantity</h3>
+              <p class="assets-metric" id="clean-large-total-amount"><%= cleanItemSummary.largeTotalAmount || '0' %></p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Small quantity</h3>
+              <p class="assets-metric" id="clean-small-total-amount"><%= cleanItemSummary.smallTotalAmount || '0' %></p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Total quantity</h3>
+              <p class="assets-metric" id="clean-total-amount"><%= cleanItemSummary.totalAmount || '0' %></p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Large checked out</h3>
+              <p class="assets-metric" id="clean-large-checked-out"><%= cleanItemSummary.largeCheckedOutAmount || '0' %></p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Small checked out</h3>
+              <p class="assets-metric" id="clean-small-checked-out"><%= cleanItemSummary.smallCheckedOutAmount || '0' %></p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Total checked out</h3>
+              <p class="assets-metric" id="clean-checked-out"><%= cleanItemSummary.checkedOutAmount || '0' %></p>
+            </article>
+          </div>
+          <div class="clean-warehouse-toolbar">
+            <h3 class="clean-warehouse-toolbar__title">Warehouse lookup</h3>
+            <div class="segmented-control" role="group" aria-label="Clean item warehouse">
+              <label class="segmented-control__item" for="clean-items-warehouse-large">
+                <input id="clean-items-warehouse-large" type="radio" name="cleanItemsWarehouse" value="large" checked />
+                <span>Large warehouse</span>
+              </label>
+              <label class="segmented-control__item" for="clean-items-warehouse-small">
+                <input id="clean-items-warehouse-small" type="radio" name="cleanItemsWarehouse" value="small" />
+                <span>Small warehouse</span>
+              </label>
+            </div>
+          </div>
+          <div class="table-shell">
+            <table class="data-table clean-items-table">
+              <thead>
+                <tr>
+                  <% cleanItemColumns.forEach((column) => { %>
+                  <% if (column.key === 'actions') { %>
+                  <th class="table-action-col">Action</th>
+                  <% } else { %>
+                  <th id="assets-clean-items-<%= column.key %>-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <% if (column.searchable !== false) { %>
+                      <label class="search-field" for="assets-clean-items-search-<%= column.key %>-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="assets-clean-items-search-<%= column.key %>-input" type="search" placeholder="<%= column.search %>" autocomplete="off" data-assets-filter-table="cleanItems" data-assets-filter-column="<%= column.key %>" value="<%= (tableMeta.cleanItems && tableMeta.cleanItems.filters && tableMeta.cleanItems.filters[column.key]) || '' %>" /></label>
+                      <% } %>
+                      <% if (column.sortable !== false) { %>
+                      <button class="sort-header-button" type="button" data-assets-sort-table="cleanItems" data-assets-sort-column="<%= column.key %>" aria-label="Sort by <%= column.label %>"><span><%= column.label %></span><span class="sort-header-button__indicator" data-assets-sort-indicator="cleanItems:<%= column.key %>" aria-hidden="true">-</span></button>
+                      <% } else { %>
+                      <span class="sort-header-button sort-header-button--static"><%= column.label %></span>
+                      <% } %>
+                    </div>
+                  </th>
+                  <% } %>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody data-assets-table-body="cleanItems">
+                <% if (visibleCleanItems.length) { %>
+                <% visibleCleanItems.forEach((item) => { %>
+                <tr>
+                  <td><code><%= item.id %></code></td>
+                  <td><%= item.itemName %></td>
+                  <td><%= item.totalAmount %></td>
+                  <td><%= item.countGetItem %></td>
+                  <td><%= item.availableAmount %></td>
+                  <td>
+                    <div class="table-action-group">
+                      <button class="btn btn-primary js-edit-clean-item" type="button" data-item-id="<%= item.id %>" <%= canEditCleanItem ? '' : 'disabled' %>>
+                        <svg class="icon" aria-hidden="true">
+                          <use href="#icon-pencil-square"></use>
+                        </svg><span>Edit</span>
+                      </button>
+                      <button class="btn btn-secondary js-move-clean-item" type="button" data-item-id="<%= item.id %>" <%= canMoveCleanItem ? '' : 'disabled' %>>
+                        <svg class="icon" aria-hidden="true">
+                          <use href="#icon-refresh"></use>
+                        </svg><span>Move</span>
+                      </button>
+                      <button class="btn btn-danger js-delete-clean-item" type="button" data-item-id="<%= item.id %>" <%= canDeleteCleanItem ? '' : 'disabled' %>>
+                        <svg class="icon" aria-hidden="true">
+                          <use href="#icon-trash"></use>
+                        </svg><span>Delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td class="table-empty" colspan="<%= cleanItemColumns.length %>">No clean items are currently configured.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" data-assets-prev-table="cleanItems" <%= Number(tableMeta.cleanItems && tableMeta.cleanItems.page) > 1 ? '' : 'disabled' %>>Previous</button>
+            <span class="pagination-label" data-assets-page-label="cleanItems"><%= pageLabel(tableMeta.cleanItems) %></span>
+            <button class="btn btn-ghost" type="button" data-assets-next-table="cleanItems" <%= Number(tableMeta.cleanItems && tableMeta.cleanItems.page) < Number(tableMeta.cleanItems && tableMeta.cleanItems.totalPages) ? '' : 'disabled' %>>Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-guide" data-tab-panel="guide" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Guide</span>
+              <h2 class="panel-card__title">Asset management workflow</h2>
+            </div>
+          </div>
+          <div class="guide-grid">
+            <article class="guide-card">
+              <h3 class="guide-card__title">Add and edit</h3>
+              <p class="guide-card__text">Use the All assets tab to create records, update ownership, move an asset to a room or key, and change its inventory status.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Bulk update</h3>
+              <p class="guide-card__text">Download the template and upload completed rows. Leave Identifier blank to add a new asset, or include it to update an existing one.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Live refresh</h3>
+              <p class="guide-card__text">Changes made by other users refresh this page automatically when you have access to the selected camp.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'asset-modal',
+    titleId: 'asset-modal-title',
+    title: 'Add asset',
+    eyebrow: 'Asset record',
+    description: 'Create or update a tracked asset in the selected camp.',
+    descriptionId: 'asset-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `
+      <form class="workspace-form assets-form" id="asset-form" novalidate>
+        <input type="hidden" id="asset-form-mode" value="create" />
+        <input type="hidden" id="asset-id-input" value="" />
+        <input type="hidden" id="asset-type-input" value="" />
+        <input type="hidden" id="asset-room-input" value="" />
+        <input type="hidden" id="asset-key-input" value="" />
+        <input type="hidden" id="asset-replaced-off-input" value="" />
+        <input type="hidden" id="asset-replaced-by-input" value="" />
+        <input type="hidden" id="asset-status-value-input" value="" />
+        <input type="hidden" id="asset-inventory-status-input" value="undiscovered" />
+        <input type="hidden" id="asset-expandable-input" value="Non Expandable" />
+        <div class="workspace-form__grid">
+          <div class="field"><label for="asset-code-input">Code</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-box"></use></svg><input id="asset-code-input" type="text" required maxlength="64" autocomplete="off" placeholder="ASSET-123" /></div></div>
+          <div class="field"><label for="asset-rfid-input">RFID code</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-nfc"></use></svg><input id="asset-rfid-input" type="text" required maxlength="128" autocomplete="off" placeholder="RFID-ASSET-001" /></div></div>
+          <div class="field"><label for="asset-name-input">Name</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-pencil-square"></use></svg><input id="asset-name-input" type="text" required maxlength="128" autocomplete="off" placeholder="Office desk" /></div></div>
+          <div class="field lookup-field"><label for="asset-type-search-input">Type</label><div class="lookup-combobox" data-lookup-combobox><div class="lookup-combobox__control"><svg class="icon" aria-hidden="true"><use href="#icon-filter"></use></svg><input id="asset-type-search-input" type="search" required placeholder="Search type" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="asset-type-options" /><span class="lookup-combobox__chevron" aria-hidden="true"></span></div><div class="lookup-menu" id="asset-type-options" role="listbox" aria-label="Asset type results" hidden></div></div></div>
+          <div class="field lookup-field"><label for="asset-room-search-input">Room</label><div class="lookup-combobox" data-lookup-combobox><div class="lookup-combobox__control"><svg class="icon" aria-hidden="true"><use href="#icon-house-door"></use></svg><input id="asset-room-search-input" type="search" required placeholder="Search room" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="asset-room-options" /><span class="lookup-combobox__chevron" aria-hidden="true"></span></div><div class="lookup-menu" id="asset-room-options" role="listbox" aria-label="Room results" hidden></div></div></div>
+          <div class="field lookup-field"><label for="asset-key-search-input">Key</label><div class="lookup-combobox" data-lookup-combobox><div class="lookup-combobox__control"><svg class="icon" aria-hidden="true"><use href="#icon-key"></use></svg><input id="asset-key-search-input" type="search" placeholder="Search key" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="asset-key-options" /><span class="lookup-combobox__chevron" aria-hidden="true"></span></div><div class="lookup-menu" id="asset-key-options" role="listbox" aria-label="Key results" hidden></div></div></div>
+          <div class="field"><label for="asset-quantity-input">Quantity</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-inbox"></use></svg><input id="asset-quantity-input" type="number" min="1" required value="1" placeholder="1" /></div></div>
+          <div class="field"><label for="asset-owner-input">Owner</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-people"></use></svg><input id="asset-owner-input" type="text" maxlength="96" placeholder="Pesho" /></div></div>
+          <div class="field lookup-field"><label for="asset-status-input">Status</label><div class="lookup-combobox" data-lookup-combobox><div class="lookup-combobox__control"><svg class="icon" aria-hidden="true"><use href="#icon-check-circle"></use></svg><input id="asset-status-input" type="search" required maxlength="96" placeholder="Search status" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="asset-status-options" /><span class="lookup-combobox__chevron" aria-hidden="true"></span></div><div class="lookup-menu" id="asset-status-options" role="listbox" aria-label="Status results" hidden></div></div></div>
+          <div class="field"><label for="asset-category-input">Category</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-filter"></use></svg><input id="asset-category-input" type="text" maxlength="96" placeholder="Furniture" /></div></div>
+          <div class="field"><label for="asset-service-input">Service</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"></use></svg><input id="asset-service-input" type="text" maxlength="96" placeholder="Billeting" /></div></div>
+          <div class="field"><label for="asset-mrah-input">MRAH</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-pencil-square"></use></svg><input id="asset-mrah-input" type="text" maxlength="96" placeholder="MRAH reference" /></div></div>
+          <div class="field"><label for="asset-m2-inside-input">M2 inside</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-box"></use></svg><input id="asset-m2-inside-input" type="number" min="0" step="0.01" placeholder="0.00" /></div></div>
+          <div class="field"><label for="asset-purchase-date-input">Purchase date</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-calendar"></use></svg><input id="asset-purchase-date-input" type="datetime-local" /></div></div>
+          <div class="field"><label for="asset-purchase-price-input">Purchase price</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-inbox"></use></svg><input id="asset-purchase-price-input" type="number" min="0" step="0.01" placeholder="0.00" /></div></div>
+          <div class="field lookup-field"><label for="asset-replaced-off-search-input">Replaced off</label><div class="lookup-combobox" data-lookup-combobox><div class="lookup-combobox__control"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"></use></svg><input id="asset-replaced-off-search-input" type="search" placeholder="Search asset" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="asset-replaced-off-options" /><span class="lookup-combobox__chevron" aria-hidden="true"></span></div><div class="lookup-menu" id="asset-replaced-off-options" role="listbox" aria-label="Replaced off asset results" hidden></div></div></div>
+          <div class="field lookup-field"><label for="asset-replaced-by-search-input">Replaced by</label><div class="lookup-combobox" data-lookup-combobox><div class="lookup-combobox__control"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"></use></svg><input id="asset-replaced-by-search-input" type="search" placeholder="Search asset" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="asset-replaced-by-options" /><span class="lookup-combobox__chevron" aria-hidden="true"></span></div><div class="lookup-menu" id="asset-replaced-by-options" role="listbox" aria-label="Replaced by asset results" hidden></div></div></div>
+          <div class="field"><label for="asset-year-life-cycle-input">Lifecycle year</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-clock-history"></use></svg><input id="asset-year-life-cycle-input" type="number" min="0" step="any" placeholder="Year" /></div></div>
+          <div class="field"><label for="asset-rest-life-cycle-input">Lifecycle rest</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-clock-history"></use></svg><input id="asset-rest-life-cycle-input" type="number" min="0" step="any" placeholder="Remaining life" /></div></div>
+          <div class="field"><label for="asset-rest-value-input">Rest value</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-inbox"></use></svg><input id="asset-rest-value-input" type="number" min="0" step="any" placeholder="0" /></div></div>
+          <div class="field lookup-field"><label for="asset-inventory-status-search-input">Inventory</label><div class="lookup-combobox" data-lookup-combobox><div class="lookup-combobox__control"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg><input id="asset-inventory-status-search-input" type="search" placeholder="Search inventory" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="asset-inventory-status-options" /><span class="lookup-combobox__chevron" aria-hidden="true"></span></div><div class="lookup-menu" id="asset-inventory-status-options" role="listbox" aria-label="Inventory status results" hidden></div></div></div>
+          <div class="field lookup-field"><label for="asset-expandable-search-input">Expandable</label><div class="lookup-combobox" data-lookup-combobox><div class="lookup-combobox__control"><svg class="icon" aria-hidden="true"><use href="#icon-plus-circle"></use></svg><input id="asset-expandable-search-input" type="search" placeholder="Search expandable" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="asset-expandable-options" /><span class="lookup-combobox__chevron" aria-hidden="true"></span></div><div class="lookup-menu" id="asset-expandable-options" role="listbox" aria-label="Expandable results" hidden></div></div></div>
+          <label class="check-field asset-create-only-field" for="asset-quantitative-input" id="asset-quantitative-field"><input id="asset-quantitative-input" type="checkbox" /><span>Quantitative asset</span></label>
+          <label class="check-field" for="asset-fixed-input"><input id="asset-fixed-input" type="checkbox" /><span>Fixed asset</span></label>
+          <div class="field workspace-field--wide"><label for="asset-comments-input">Comments</label><textarea id="asset-comments-input" maxlength="512" rows="3" placeholder="Additional asset comments"></textarea></div>
+          <div class="field workspace-field--wide"><label for="asset-description-input">Description</label><textarea id="asset-description-input" maxlength="512" rows="3" placeholder="Short asset notes"></textarea></div>
+        </div>
+        <div class="workspace-form__actions">
+          <button class="btn btn-primary" type="submit" id="save-asset-button">Save asset</button>
+          <button class="btn btn-ghost" type="button" data-close-modal="true">Cancel</button>
+        </div>
+      </form>
+    `
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'asset-bulk-modal',
+    titleId: 'asset-bulk-modal-title',
+    closeLabel: 'Close asset bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import assets from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit assets in bulk.',
+    descriptionId: 'asset-bulk-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="asset-import-card" id="asset-import-card">
+      <div class="asset-import-card__header">
+        <div>
+          <h3 class="asset-import-card__title">Download a template, fill it in, and import asset adds or edits</h3>
+        </div>
+        <a class="btn btn-secondary" id="download-asset-template-button" href="/web/assets/template" ${assetTemplateDownloadAttrs}>
+          <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg><span>Download template</span>
+        </a>
+      </div>
+      <p class="asset-import-card__text">
+        Leave <strong>Identifier</strong> blank to create a new asset. Provide an existing <strong>Identifier</strong> to update that record.
+      </p>
+      <div class="asset-import-form">
+        <label class="asset-import-field" for="asset-template-file-input">
+          <span class="asset-import-field__label">Filled template (.xlsx)</span>
+          <span class="input-icon-field">
+            <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+            <input id="asset-template-file-input" type="file" accept=".xlsx" ${assetTemplateInputAttrs} />
+          </span>
+        </label>
+        <button class="btn btn-primary" type="button" id="upload-asset-template-button" ${assetTemplateInputAttrs}>Upload template</button>
+      </div>
+      <div class="asset-import-meta">
+        <span id="asset-template-selected-file">No file selected.</span>
+      </div>
+      <div class="asset-import-progress" id="asset-import-progress-panel" hidden>
+        <div class="asset-import-progress__row">
+          <span>Upload</span>
+          <span id="asset-import-upload-label">0%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <progress class="progress-track__bar" id="asset-import-upload-progress-bar" max="100" value="0"></progress>
+        </div>
+        <div class="asset-import-progress__row">
+          <span>Processing</span>
+          <span id="asset-import-processing-label">0%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <progress class="progress-track__bar progress-track__bar--accent" id="asset-import-processing-progress-bar" max="100" value="0"></progress>
+        </div>
+        <p class="asset-import-status" id="asset-import-status-message">Waiting to start.</p>
+        <div class="asset-import-summary" id="asset-import-summary"></div>
+        <div class="asset-import-errors" id="asset-import-errors" hidden></div>
+      </div>
+    </section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'asset-type-modal',
+    titleId: 'asset-type-modal-title',
+    title: 'Add asset type',
+    eyebrow: 'Asset type',
+    description: 'Create or update an asset type.',
+    descriptionId: 'asset-type-modal-text',
+    body: `
+      <form class="workspace-form assets-form" id="asset-type-form" novalidate>
+        <input type="hidden" id="asset-type-form-mode" value="create" />
+        <input type="hidden" id="asset-type-id-input" value="" />
+        <div class="workspace-form__grid">
+          <div class="field workspace-field--wide"><label for="asset-type-name-input">Type name</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-filter"></use></svg><input id="asset-type-name-input" type="text" required maxlength="96" autocomplete="off" placeholder="Furniture" /></div></div>
+        </div>
+        <div class="workspace-form__actions">
+          <button class="btn btn-primary" type="submit" id="save-asset-type-button">Save type</button>
+          <button class="btn btn-ghost" type="button" data-close-modal="true">Cancel</button>
+        </div>
+      </form>
+    `
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'asset-type-bulk-modal',
+    titleId: 'asset-type-bulk-modal-title',
+    closeLabel: 'Close asset type bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import asset types from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit asset types in bulk.',
+    descriptionId: 'asset-type-bulk-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="asset-import-card" id="asset-type-import-card">
+      <div class="asset-import-card__header">
+        <div>
+          <h3 class="asset-import-card__title">Download a template, fill it in, and import asset type adds or edits</h3>
+        </div>
+        <a class="btn btn-secondary" id="download-asset-type-template-button" href="/web/assets/types/template" ${assetTypeTemplateDownloadAttrs}>
+          <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg><span>Download template</span>
+        </a>
+      </div>
+      <p class="asset-import-card__text">
+        Leave <strong>Identifier</strong> blank to create a new asset type. Provide an existing <strong>Identifier</strong> to update that type.
+      </p>
+      <div class="asset-import-form">
+        <label class="asset-import-field" for="asset-type-template-file-input">
+          <span class="asset-import-field__label">Filled template (.xlsx)</span>
+          <span class="input-icon-field">
+            <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+            <input id="asset-type-template-file-input" type="file" accept=".xlsx" ${assetTypeTemplateInputAttrs} />
+          </span>
+        </label>
+        <button class="btn btn-primary" type="button" id="upload-asset-type-template-button" ${assetTypeTemplateInputAttrs}>Upload template</button>
+      </div>
+      <div class="asset-import-meta">
+        <span id="asset-type-template-selected-file">No file selected.</span>
+      </div>
+      <div class="asset-import-progress" id="asset-type-import-progress-panel" hidden>
+        <div class="asset-import-progress__row">
+          <span>Upload</span>
+          <span id="asset-type-import-upload-label">0%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <progress class="progress-track__bar" id="asset-type-import-upload-progress-bar" max="100" value="0"></progress>
+        </div>
+        <div class="asset-import-progress__row">
+          <span>Processing</span>
+          <span id="asset-type-import-processing-label">0%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <progress class="progress-track__bar progress-track__bar--accent" id="asset-type-import-processing-progress-bar" max="100" value="0"></progress>
+        </div>
+        <p class="asset-import-status" id="asset-type-import-status-message">Waiting to start.</p>
+        <div class="asset-import-summary" id="asset-type-import-summary"></div>
+        <div class="asset-import-errors" id="asset-type-import-errors" hidden></div>
+      </div>
+    </section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'clean-item-modal',
+    titleId: 'clean-item-modal-title',
+    title: 'Add clean item',
+    eyebrow: 'Clean item',
+    description: 'Create or update clean item stock in a warehouse.',
+    descriptionId: 'clean-item-modal-text',
+    body: `
+      <form class="workspace-form assets-form" id="clean-item-form" novalidate>
+        <input type="hidden" id="clean-item-form-mode" value="create" />
+        <input type="hidden" id="clean-item-id-input" value="" />
+          <div class="workspace-form__grid">
+          <div class="field"><label for="clean-item-name-input">Item name</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-inbox"></use></svg><input id="clean-item-name-input" type="text" required maxlength="128" autocomplete="off" placeholder="Towel" /></div></div>
+          <input type="hidden" id="clean-item-warehouse-input" value="large" />
+          <div class="field"><label for="clean-item-total-input">Quantity</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-inbox"></use></svg><input id="clean-item-total-input" type="number" min="0" step="1" required value="0" /></div></div>
+        </div>
+        <div class="workspace-form__actions">
+          <button class="btn btn-primary" type="submit" id="save-clean-item-button">Save item</button>
+          <button class="btn btn-ghost" type="button" data-close-modal="true">Cancel</button>
+        </div>
+      </form>
+    `
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'clean-item-move-modal',
+    titleId: 'clean-item-move-modal-title',
+    title: 'Move clean item quantity',
+    eyebrow: 'Clean item',
+    description: 'Move available stock between the large and small warehouses.',
+    descriptionId: 'clean-item-move-modal-text',
+    body: `
+      <form class="workspace-form assets-form" id="clean-item-move-form" novalidate>
+        <input type="hidden" id="clean-item-move-id-input" value="" />
+        <input type="hidden" id="clean-item-move-target-input" value="" />
+        <div class="workspace-form__grid">
+          <div class="field workspace-field--wide"><label for="clean-item-move-quantity-input">Quantity</label><div class="input-icon-field"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"></use></svg><input id="clean-item-move-quantity-input" type="number" min="1" step="1" required value="1" /></div></div>
+        </div>
+        <div class="workspace-form__actions">
+          <button class="btn btn-primary" type="submit" id="move-clean-item-button">Move quantity</button>
+          <button class="btn btn-ghost" type="button" data-close-modal="true">Cancel</button>
+        </div>
+      </form>
+    `
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'clean-item-bulk-modal',
+    titleId: 'clean-item-bulk-modal-title',
+    closeLabel: 'Close clean item bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import clean items from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit clean items in bulk.',
+    descriptionId: 'clean-item-bulk-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="asset-import-card" id="clean-item-import-card">
+      <div class="asset-import-card__header">
+        <div>
+          <h3 class="asset-import-card__title">Download a template, fill it in, and import clean item adds or edits</h3>
+        </div>
+        <a class="btn btn-secondary" id="download-clean-item-template-button" href="/web/assets/clean-items/template" ${cleanItemTemplateDownloadAttrs}>
+          <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg><span>Download template</span>
+        </a>
+      </div>
+      <p class="asset-import-card__text">
+        Leave <strong>Identifier</strong> blank to create a new clean item. Provide an existing <strong>Identifier</strong> to update that item.
+      </p>
+      <div class="asset-import-form">
+        <label class="asset-import-field" for="clean-item-template-file-input">
+          <span class="asset-import-field__label">Filled template (.xlsx)</span>
+          <span class="input-icon-field">
+            <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+            <input id="clean-item-template-file-input" type="file" accept=".xlsx" ${cleanItemTemplateInputAttrs} />
+          </span>
+        </label>
+        <button class="btn btn-primary" type="button" id="upload-clean-item-template-button" ${cleanItemTemplateInputAttrs}>Upload template</button>
+      </div>
+      <div class="asset-import-meta">
+        <span id="clean-item-template-selected-file">No file selected.</span>
+      </div>
+      <div class="asset-import-progress" id="clean-item-import-progress-panel" hidden>
+        <div class="asset-import-progress__row">
+          <span>Upload</span>
+          <span id="clean-item-import-upload-label">0%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <progress class="progress-track__bar" id="clean-item-import-upload-progress-bar" max="100" value="0"></progress>
+        </div>
+        <div class="asset-import-progress__row">
+          <span>Processing</span>
+          <span id="clean-item-import-processing-label">0%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <progress class="progress-track__bar progress-track__bar--accent" id="clean-item-import-processing-progress-bar" max="100" value="0"></progress>
+        </div>
+        <p class="asset-import-status" id="clean-item-import-status-message">Waiting to start.</p>
+        <div class="asset-import-summary" id="clean-item-import-summary"></div>
+        <div class="asset-import-errors" id="clean-item-import-errors" hidden></div>
+      </div>
+    </section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/confirm-modal') %>
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/assets/assets/js/assets-page.ts"></script>
+</body>
+
+</html>

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<%- await include('../../../../shared/views/partials/auth/head', {
+  title,
+  pageStyles: ['/assets/auth/css/login.css']
+}) %>
+
+<body data-page="auth-login">
+  <%- await include('../../../../shared/views/partials/common/a11y-primitives') %>
+  <%- await include('../../../../shared/views/partials/auth/icons') %>
+  <%- await include('../../../../shared/views/partials/auth/theme-toolbar') %>
+
+  <main class="saas-auth" id="main-content">
+    <%- await include('../../../../shared/views/partials/auth/brand-panel', {
+      headline: 'Corporate access for secure operations.',
+      subtext: 'Sign in to Global Support System to manage inventory, accommodation, laundry and permission workflows in one controlled environment.',
+      badges: ['Role-based access', '2FA verification', 'Audit-ready'],
+      panelEyebrow: 'Built for operational control',
+      panelTitle: 'One system for access governance and day-to-day logistics.',
+      panelText: 'Centralize workflows, reduce manual mistakes and keep every important action traceable across teams and camps.',
+      featureCards: [
+        { icon: 'ID', title: 'Permission discipline', text: 'Give each user only the access they need and review changes with confidence.' },
+        { icon: 'RT', title: 'Real-time updates', text: 'Keep operations aligned when records or rights change during the workday.' },
+        { icon: 'LOG', title: 'Clear accountability', text: 'Track requests, authentication steps and session-sensitive actions in a consistent flow.' },
+      ],
+      featureList: [],
+      panelClass: 'product-panel',
+      panelAriaLabel: 'System overview'
+    }) %>
+
+    <section class="saas-auth__right">
+      <div class="login-card" aria-label="Sign in form">
+        <header class="login-card__header">
+          <span class="login-card__eyebrow">Secure sign in</span>
+          <h1 class="login-card__title"><%= title %></h1>
+          <p class="login-card__hint">Use your assigned username and password to continue.</p>
+        </header>
+
+        <%- await include('../../../../shared/views/partials/auth/alert', {
+          id: 'login-alert',
+          textId: 'error-message',
+          message: '',
+          isVisible: false,
+        }) %>
+
+        <form id="login-form" method="post" action="/web/login" class="login-form" novalidate data-state-root="true">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+          <div class="field">
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" autocomplete="username" placeholder="Enter username" required />
+            <div class="field__help">Use your assigned system username.</div>
+          </div>
+
+          <div class="field">
+            <div class="field__row">
+              <label for="password">Password</label>
+              <a id="forgot-password" class="link" href="/web/password/change/data">Change password</a>
+            </div>
+            <div class="input-with-icon">
+              <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter password" required />
+              <%- await include('../../../../shared/views/partials/auth/password-toggle-button', { targetId: 'password' }) %>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary">Sign in</button>
+
+          <div id="loading-indicator" class="loading" aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <span>Signing in...</span>
+          </div>
+
+          <section class="invite-panel" aria-labelledby="invite-title">
+            <span class="invite-panel__eyebrow">Need access?</span>
+            <h2 id="invite-title" class="invite-panel__title">Request system onboarding</h2>
+            <p class="invite-panel__text">Provide your team, role and business reason so the request can be reviewed and routed faster.</p>
+            <div class="invite-panel__meta">
+              <span class="invite-chip">Structured request</span>
+              <span class="invite-chip">Team-based review</span>
+              <span class="invite-chip">Controlled approval</span>
+            </div>
+            <button type="button" class="btn-secondary invite-panel__action" id="open-invite-modal" aria-haspopup="dialog">Request access</button>
+          </section>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <div class="invite-modal" id="invite-modal" hidden>
+    <div class="invite-modal__backdrop" data-close-invite="true"></div>
+    <section class="invite-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="invite-modal-title">
+      <button type="button" class="invite-modal__close" id="close-invite-modal" aria-label="Close invite dialog">×</button>
+      <header class="invite-modal__header">
+        <span class="invite-modal__eyebrow">Access request</span>
+        <h2 id="invite-modal-title" class="invite-modal__title">Request access to Global Support System</h2>
+        <p class="invite-modal__text">Add clear business context so administrators can review the request with less back-and-forth.</p>
+      </header>
+      <div class="invite-modal__content">
+        <form id="invite-form" class="invite-form" action="/web/request-access" method="post" novalidate data-state-root="true">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="invite-form__grid">
+            <div class="field">
+              <label for="invite-name">Full name <span class="required-marker" aria-hidden="true">*</span></label>
+              <input id="invite-name" name="name" type="text" autocomplete="name" maxlength="120" required placeholder="Alex Johnson" />
+            </div>
+            <div class="field">
+              <label for="invite-email">Work email <span class="required-marker" aria-hidden="true">*</span></label>
+              <input id="invite-email" name="email" type="email" autocomplete="email" maxlength="160" required placeholder="name@company.com" />
+            </div>
+            <div class="field">
+              <label for="invite-team">Team <span class="field__optional">Optional</span></label>
+              <input id="invite-team" name="team" type="text" maxlength="120" placeholder="Operations" />
+            </div>
+            <div class="field">
+              <label for="invite-role-search">Access need <span class="required-marker" aria-hidden="true">*</span></label>
+              <div class="lookup-combobox" data-invite-access-combobox>
+                <div class="lookup-combobox__control">
+                  <input id="invite-role-search" type="search" required placeholder="Search access need" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="invite-role-options" />
+                  <input id="invite-role" name="access" type="hidden" required />
+                  <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+                </div>
+                <div class="lookup-menu" id="invite-role-options" role="listbox" aria-label="Access need results" hidden></div>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="invite-reason">Reason for access <span class="required-marker" aria-hidden="true">*</span></label>
+            <textarea id="invite-reason" name="reason" rows="4" maxlength="2000" required placeholder="Describe what you need to do in the system."></textarea>
+          </div>
+          <div class="invite-confirm" id="invite-confirm" hidden aria-live="polite"></div>
+          <div class="invite-preview" aria-live="polite">
+            <span class="invite-preview__label">Request summary</span>
+            <p id="invite-preview-text" class="invite-preview__text">Add your details to build a clear request before continuing.</p>
+          </div>
+          <div class="invite-form__actions">
+            <button type="button" class="btn-ghost" id="cancel-invite-modal">Cancel</button>
+            <button type="submit" class="btn-primary btn-primary--compact" id="send-invite-request">Send request</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="/assets/auth/js/login/login-page.ts"></script>
+</body>
+
+</html>

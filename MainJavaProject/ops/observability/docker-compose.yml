@@ -1,0 +1,57 @@
+services:
+  prometheus:
+    image: prom/prometheus:v3.3.1
+    container_name: gss-prometheus
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./prometheus/prometheus.template.yml:/etc/prometheus/prometheus.template.yml:ro
+      - ./prometheus/start-prometheus.sh:/start-prometheus.sh:ro
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus-data:/prometheus
+    entrypoint: ['/bin/sh', '/start-prometheus.sh']
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      - alertmanager
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: gss-alertmanager
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - '9093:9093'
+    volumes:
+      - ./alertmanager/alertmanager.template.yml:/etc/alertmanager/alertmanager.template.yml:ro
+      - ./alertmanager/start-alertmanager.sh:/start-alertmanager.sh:ro
+      - alertmanager-data:/alertmanager
+    entrypoint: ['/bin/sh', '/start-alertmanager.sh']
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: gss-grafana
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - '3001:3000'
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus-data:
+  alertmanager-data:
+  grafana-data:

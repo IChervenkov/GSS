@@ -1,0 +1,21 @@
+name: migration-gate-example
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migration-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: npm ci
+      - name: Run migration gate
+        env:
+          DB_MIGRATION_GATE_TOKEN: ${{ secrets.DB_MIGRATION_GATE_TOKEN }}
+          DB_MIGRATION_RELEASE_ID: ${{ github.sha }}
+          DB_MIGRATION_APPLIED_BY: ci:${{ github.actor }}
+          ALLOW_RUNTIME_MIGRATIONS: 'true'
+          DB_RUN_MIGRATIONS_ON_BOOT: 'true'
+        run: |
+          node -e "const env=require('./src/core/config/env'); const { runMigrations } = require('./src/infrastructure/db/migrations/migrate'); runMigrations({ env, executionMode: 'ci-gate', gateToken: env.DB_MIGRATION_GATE_TOKEN, releaseId: env.DB_MIGRATION_RELEASE_ID, appliedBy: env.DB_MIGRATION_APPLIED_BY }).then(() => process.exit(0)).catch((error) => { console.error(error); process.exit(1); });"

@@ -1,0 +1,22 @@
+<div class="workspace-modal" id="global-confirm-modal" hidden>
+  <div class="workspace-modal__backdrop" data-close-modal="true"></div>
+
+  <section class="workspace-modal__dialog workspace-modal__dialog--compact workspace-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="global-confirm-modal-title" aria-describedby="global-confirm-modal-message">
+    <button type="button" class="workspace-modal__close" data-close-modal="true" aria-label="Close confirmation modal">×</button>
+
+    <header class="workspace-modal__header">
+      <span class="workspace-modal__eyebrow">Confirmation required</span>
+      <h2 id="global-confirm-modal-title" class="workspace-modal__title" data-confirm-title>Confirm action</h2>
+      <p id="global-confirm-modal-message" class="workspace-modal__text" data-confirm-message>
+        Are you sure you want to continue?
+      </p>
+    </header>
+
+    <div class="workspace-modal__body">
+      <div class="workspace-form__actions workspace-confirm-modal__actions">
+        <button type="button" class="btn btn-primary" data-confirm-accept>Confirm</button>
+        <button type="button" class="btn btn-ghost" data-confirm-cancel>Cancel</button>
+      </div>
+    </div>
+  </section>
+</div>

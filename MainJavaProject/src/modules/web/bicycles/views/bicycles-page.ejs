@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="en">
+<%- await include('../../../../shared/views/partials/workspace/head', {
+  title,
+  pageStyles: ['/assets/bicycles/css/bicycles-page.css']
+}) %>
+
+<body class="main-workspace" data-page="bicycles-page" data-current-camp-id="<%= campId || '' %>" data-can-download-bike-mobile-app="<%= canDownloadBikeMobileApp ? 'true' : 'false' %>">
+  <%- await include('../../../../shared/views/partials/common/a11y-primitives') %>
+  <%- await include('../../../../shared/views/partials/workspace/icons') %>
+  <%- await include('../../../../shared/views/partials/common/page-data', { pageData: { pageKey: 'bicycles-page', campId: campId || '', currentNav: 'Bicycles' } }) %>
+
+  <input type="hidden" id="csrf-token" value="<%= csrfToken %>" />
+
+  <%- await include('../../../../shared/views/partials/workspace/topbar', {
+    navItems: horizontalNavItems,
+    currentNav: 'Bicycles',
+    csrfToken
+  }) %>
+
+  <main class="workspace-shell" id="main-content" data-state-root="true">
+    <section class="hero-card">
+      <div class="hero-card__content">
+        <span class="hero-card__eyebrow">Bike desk</span>
+        <h1 class="hero-card__title"><%= title %></h1>
+        <p class="hero-card__text">Track camp bicycles, paired helmets, rider assignments, and return follow-up from one operating view.</p>
+        <div class="hero-card__meta">
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-bicycle"></use>
+            </svg><span>Fleet status</span></span>
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-helmet"></use>
+            </svg><span>Helmet pairings</span></span>
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-clock-history"></use>
+            </svg><span>Return checks</span></span>
+        </div>
+        <div class="hero-card__actions hero-card__actions--mobile-download">
+          <button class="btn btn-primary hero-card__mobile-download-button" id="download-bike-mobile-app-button" type="button" data-download-url="<%= bikeMobileAppDownloadUrl %>" <%= canDownloadBikeMobileApp ? '' : 'disabled aria-disabled="true"' %> title="<%= canDownloadBikeMobileApp ? 'Download the bicycle mobile app.' : 'You do not have permission to download the bicycle mobile app.' %>">
+            <svg class="icon" aria-hidden="true">
+              <use href="#icon-download"></use>
+            </svg>
+            <span>Download bicycle mobile app</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="summary-grid" aria-label="Bicycle summary">
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Available</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-check-circle"></use>
+          </svg></div>
+        <div class="summary-card__value" id="bike-count-available">-</div>
+        <p class="summary-card__text">Bikes available for issue at the selected camp.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Rented</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-bicycle"></use>
+          </svg></div>
+        <div class="summary-card__value" id="bike-count-rented">-</div>
+        <p class="summary-card__text">Short-term rentals currently checked out to soldiers.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Repair</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-refresh"></use>
+          </svg></div>
+        <div class="summary-card__value" id="bike-count-repair">-</div>
+        <p class="summary-card__text">Bikes held back for repair, inspection, or cleanup.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Late</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-clock-history"></use>
+          </svg></div>
+        <div class="summary-card__value" id="bike-count-late">-</div>
+        <p class="summary-card__text">Rentals that need return confirmation or follow-up.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Long term</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-helmet"></use>
+          </svg></div>
+        <div class="summary-card__value" id="bike-count-long-term">-</div>
+        <p class="summary-card__text">Long-term assignments that stay visible in the fleet count.</p>
+      </article>
+    </section>
+
+    <section class="workspace-panels" aria-label="Bicycle workspace">
+      <div class="tab-bar" role="tablist" aria-label="Bicycle sections">
+        <button class="tab-pill is-active" type="button" role="tab" data-tab-trigger="overview" aria-selected="true">Overview</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="bikes" aria-selected="false">Bikes</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="helmets" aria-selected="false">Helmets</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="report" aria-selected="false">Report</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="guide" aria-selected="false">Guide</button>
+      </div>
+
+      <section class="tab-panel is-active" id="tab-overview" data-tab-panel="overview" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Operational overview</span>
+              <h2 class="panel-card__title">Fleet pressure and return follow-up</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-secondary" type="button" id="refresh-bicycles-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="overview-grid">
+            <article class="mini-card">
+              <h3 class="mini-card__title">Total tracked bikes</h3>
+              <p class="bicycles-metric" id="bike-count-total">0</p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Helmet pairings</h3>
+              <p class="bicycles-metric" id="helmet-pairing-count">0</p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Needs attention</h3>
+              <p class="bicycles-metric" id="bike-count-attention">0</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-bikes" data-tab-panel="bikes" role="tabpanel">
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Bike fleet</span>
+              <h2 class="panel-card__title">Bikes by assignment and condition</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-bicycle-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add bike</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-bulk-bicycle-import-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="refresh-bikes-table-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="table-shell">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th id="bicycle-id-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="bicycle-search-id-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="bicycle-search-id-input" type="search" placeholder="Search identifier" autocomplete="off" data-bicycle-filter-column="id" /></label>
+                      <button class="sort-header-button" type="button" data-bicycle-sort-column="id" aria-label="Sort by identifier">
+                        <span>Identifier</span>
+                        <span class="sort-header-button__indicator" data-bicycle-sort-indicator="id" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="bicycle-name-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="bicycle-search-name-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="bicycle-search-name-input" type="search" placeholder="Search bicycle" autocomplete="off" data-bicycle-filter-column="name" /></label>
+                      <button class="sort-header-button" type="button" data-bicycle-sort-column="name" aria-label="Sort by bicycle">
+                        <span>Bicycle</span>
+                        <span class="sort-header-button__indicator" data-bicycle-sort-indicator="name" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="bicycle-nfc-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="bicycle-search-nfc-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="bicycle-search-nfc-input" type="search" placeholder="Search NFC" autocomplete="off" data-bicycle-filter-column="nfcCode" /></label>
+                      <button class="sort-header-button" type="button" data-bicycle-sort-column="nfcCode" aria-label="Sort by NFC code">
+                        <span>NFC code</span>
+                        <span class="sort-header-button__indicator" data-bicycle-sort-indicator="nfcCode" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="bicycle-status-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="bicycle-search-status-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="bicycle-search-status-input" type="search" placeholder="Search status" autocomplete="off" data-bicycle-filter-column="status" /></label>
+                      <button class="sort-header-button" type="button" data-bicycle-sort-column="status" aria-label="Sort by status">
+                        <span>Status</span>
+                        <span class="sort-header-button__indicator" data-bicycle-sort-indicator="status" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="bicycle-soldier-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="bicycle-search-soldier-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="bicycle-search-soldier-input" type="search" placeholder="Search soldier" autocomplete="off" data-bicycle-filter-column="assignedSoldier" /></label>
+                      <button class="sort-header-button" type="button" data-bicycle-sort-column="assignedSoldier" aria-label="Sort by assigned soldier">
+                        <span>Assigned soldier</span>
+                        <span class="sort-header-button__indicator" data-bicycle-sort-indicator="assignedSoldier" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="bicycle-helmet-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="bicycle-search-helmet-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="bicycle-search-helmet-input" type="search" placeholder="Search helmet" autocomplete="off" data-bicycle-filter-column="helmetCode" /></label>
+                      <button class="sort-header-button" type="button" data-bicycle-sort-column="helmetCode" aria-label="Sort by helmet">
+                        <span>Helmet</span>
+                        <span class="sort-header-button__indicator" data-bicycle-sort-indicator="helmetCode" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="bicycle-rented-at-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="bicycle-search-rented-at-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="bicycle-search-rented-at-input" type="search" placeholder="Search rental date" autocomplete="off" data-bicycle-filter-column="rentedAt" /></label>
+                      <button class="sort-header-button" type="button" data-bicycle-sort-column="rentedAt" aria-label="Sort by rental date and time">
+                        <span>Rental date</span>
+                        <span class="sort-header-button__indicator" data-bicycle-sort-indicator="rentedAt" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="bicycles-table-body">
+                <tr>
+                  <td colspan="8" class="table-empty">Bike records will appear here after the fleet overview loads.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="bikes-prev-button">Previous</button>
+            <span id="bikes-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="bikes-next-button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-helmets" data-tab-panel="helmets" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Helmet tracking</span>
+              <h2 class="panel-card__title">Helmets by assignment and availability</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-helmet-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add helmet</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-bulk-helmet-import-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="refresh-helmets-table-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="table-shell">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th id="helmet-id-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="helmet-search-id-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="helmet-search-id-input" type="search" placeholder="Search identifier" autocomplete="off" data-helmet-filter-column="id" /></label>
+                      <button class="sort-header-button" type="button" data-helmet-sort-column="id" aria-label="Sort by identifier">
+                        <span>Identifier</span>
+                        <span class="sort-header-button__indicator" data-helmet-sort-indicator="id" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="helmet-code-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="helmet-search-code-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="helmet-search-code-input" type="search" placeholder="Search helmet" autocomplete="off" data-helmet-filter-column="code" /></label>
+                      <button class="sort-header-button" type="button" data-helmet-sort-column="code" aria-label="Sort by helmet code">
+                        <span>Helmet</span>
+                        <span class="sort-header-button__indicator" data-helmet-sort-indicator="code" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="helmet-nfc-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="helmet-search-nfc-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="helmet-search-nfc-input" type="search" placeholder="Search NFC" autocomplete="off" data-helmet-filter-column="nfcCode" /></label>
+                      <button class="sort-header-button" type="button" data-helmet-sort-column="nfcCode" aria-label="Sort by helmet NFC code">
+                        <span>NFC code</span>
+                        <span class="sort-header-button__indicator" data-helmet-sort-indicator="nfcCode" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="helmet-bicycle-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="helmet-search-bicycle-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="helmet-search-bicycle-input" type="search" placeholder="Search bicycle" autocomplete="off" data-helmet-filter-column="bicycleName" /></label>
+                      <button class="sort-header-button" type="button" data-helmet-sort-column="bicycleName" aria-label="Sort by linked bicycle">
+                        <span>Linked bicycle</span>
+                        <span class="sort-header-button__indicator" data-helmet-sort-indicator="bicycleName" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="helmet-soldier-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="helmet-search-soldier-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="helmet-search-soldier-input" type="search" placeholder="Search soldier" autocomplete="off" data-helmet-filter-column="assignedSoldier" /></label>
+                      <button class="sort-header-button" type="button" data-helmet-sort-column="assignedSoldier" aria-label="Sort by assigned soldier">
+                        <span>Assigned soldier</span>
+                        <span class="sort-header-button__indicator" data-helmet-sort-indicator="assignedSoldier" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="helmet-status-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="helmet-search-status-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="helmet-search-status-input" type="search" placeholder="Search status" autocomplete="off" data-helmet-filter-column="status" /></label>
+                      <button class="sort-header-button" type="button" data-helmet-sort-column="status" aria-label="Sort by status">
+                        <span>Status</span>
+                        <span class="sort-header-button__indicator" data-helmet-sort-indicator="status" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="helmets-table-body">
+                <tr>
+                  <td colspan="7" class="table-empty">Helmet records will appear here after the fleet overview loads.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="helmets-prev-button">Previous</button>
+            <span id="helmets-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="helmets-next-button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-report" data-tab-panel="report" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card">
+            <div class="panel-card__header">
+              <div>
+                <span class="panel-card__eyebrow">Search information</span>
+                <h2 class="panel-card__title">Search bicycles and helmets information</h2>
+              </div>
+            </div>
+            <div class="report-tools-grid">
+              <section class="report-section" aria-label="Selected bike or helmet rental history">
+                <div class="report-section__header">
+                  <h3 class="report-section__title">Bike / helmet lookup</h3>
+                  <div class="segmented-control" role="group" aria-label="Asset type">
+                    <label class="segmented-control__item" for="report-asset-type-bike">
+                      <input id="report-asset-type-bike" type="radio" name="reportAssetType" value="bicycle" checked />
+                      <span>Bike</span>
+                    </label>
+                    <label class="segmented-control__item" for="report-asset-type-helmet">
+                      <input id="report-asset-type-helmet" type="radio" name="reportAssetType" value="helmet" />
+                      <span>Helmet</span>
+                    </label>
+                  </div>
+                </div>
+                <input type="hidden" id="report-asset-id-input" />
+                <div class="field lookup-field">
+                  <label for="report-asset-search-input">Bike or helmet</label>
+                  <div class="lookup-combobox" data-lookup-combobox>
+                    <div class="lookup-combobox__control">
+                      <svg class="icon" aria-hidden="true">
+                        <use href="#icon-search"></use>
+                      </svg>
+                      <input id="report-asset-search-input" type="search" placeholder="Search bike" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="report-asset-options" />
+                      <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+                    </div>
+                    <div class="lookup-menu" id="report-asset-options" role="listbox" aria-label="Bike and helmet results" hidden></div>
+                  </div>
+                </div>
+                <div class="table-shell">
+                  <table class="data-table data-table--report">
+                    <thead>
+                      <tr>
+                        <th>Rented at</th>
+                        <th>Returned at</th>
+                        <th>Status</th>
+                        <th>Bicycle</th>
+                        <th>Bicycle NFC</th>
+                        <th>Soldier</th>
+                        <th>Helmet</th>
+                        <th>Helmet NFC</th>
+                      </tr>
+                    </thead>
+                    <tbody id="report-asset-history-body">
+                      <tr>
+                        <td colspan="8" class="table-empty">Select a bike or helmet.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+              <section class="report-section" aria-label="Soldier active bicycle and helmet assignments">
+                <div class="report-section__header">
+                  <h3 class="report-section__title">Soldier in-use lookup</h3>
+                </div>
+                <input type="hidden" id="report-soldier-id-input" />
+                <div class="field lookup-field">
+                  <label for="report-soldier-search-input">Soldier</label>
+                  <div class="lookup-combobox" data-lookup-combobox>
+                    <div class="lookup-combobox__control">
+                      <svg class="icon" aria-hidden="true">
+                        <use href="#icon-search"></use>
+                      </svg>
+                      <input id="report-soldier-search-input" type="search" placeholder="Search soldier" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="report-soldier-options" />
+                      <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+                    </div>
+                    <div class="lookup-menu" id="report-soldier-options" role="listbox" aria-label="Soldier results" hidden></div>
+                  </div>
+                </div>
+                <div class="table-shell">
+                  <table class="data-table data-table--soldier-report">
+                    <thead>
+                      <tr>
+                        <th>Bicycle</th>
+                        <th>Bicycle NFC</th>
+                        <th>Helmet</th>
+                        <th>Helmet NFC</th>
+                        <th>Status</th>
+                        <th>Rented at</th>
+                      </tr>
+                    </thead>
+                    <tbody id="report-soldier-active-body">
+                      <tr>
+                        <td colspan="6" class="table-empty">Select a soldier.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+          <div class="panel-card">
+            <div class="panel-card__header">
+              <div>
+                <span class="panel-card__eyebrow">Rental history</span>
+                <h2 class="panel-card__title">Bicycles and helmets rented by date</h2>
+              </div>
+            </div>
+            <form class="report-filter-bar" id="bicycle-report-filter-form">
+              <label class="field" for="bicycle-report-from-date-input">
+                <span>From</span>
+                <span class="input-icon-field">
+                  <svg class="icon" aria-hidden="true">
+                    <use href="#icon-calendar"></use>
+                  </svg>
+                  <input id="bicycle-report-from-date-input" name="fromDate" type="date" required />
+                </span>
+              </label>
+              <label class="field" for="bicycle-report-to-date-input">
+                <span>To</span>
+                <span class="input-icon-field">
+                  <svg class="icon" aria-hidden="true">
+                    <use href="#icon-calendar"></use>
+                  </svg>
+                  <input id="bicycle-report-to-date-input" name="toDate" type="date" required />
+                </span>
+              </label>
+              <div class="hero-card__actions">
+                <a class="btn btn-primary" id="download-bicycle-report-button" href="/web/bicycles/report/download" aria-disabled="true">
+                  <svg class="icon" aria-hidden="true">
+                    <use href="#icon-download"></use>
+                  </svg>
+                  <span>Excel</span>
+                </a>
+                <button class="btn btn-secondary" type="button" id="reset-bicycle-report-button">
+                  <svg class="icon" aria-hidden="true">
+                    <use href="#icon-refresh"></use>
+                  </svg>
+                  <span>Reset</span>
+                </button>
+              </div>
+            </form>
+            <div class="report-metric-grid">
+              <article class="mini-card">
+                <h3 class="mini-card__title">Rental records</h3>
+                <p class="bicycles-metric" id="bicycle-report-row-count">0</p>
+              </article>
+              <article class="mini-card">
+                <h3 class="mini-card__title">Helmets included</h3>
+                <p class="bicycles-metric" id="bicycle-report-helmet-count">0</p>
+              </article>
+            </div>
+            <div class="report-grid">
+              <section class="report-section" aria-label="Daily rental totals">
+                <h3 class="report-section__title">Daily totals</h3>
+                <div class="table-shell">
+                  <table class="data-table data-table--compact">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Total rentals by days</th>
+                      </tr>
+                    </thead>
+                    <tbody id="bicycle-report-daily-body">
+                      <tr>
+                        <td colspan="2" class="table-empty">Choose a date interval to load totals.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="pagination-row">
+                  <button class="btn btn-ghost" type="button" id="report-daily-prev-button">Previous</button>
+                  <span id="report-daily-page-label" class="pagination-label">Page 1</span>
+                  <button class="btn btn-ghost" type="button" id="report-daily-next-button">Next</button>
+                </div>
+              </section>
+              <section class="report-section" aria-label="Rental history rows">
+                <h3 class="report-section__title">History</h3>
+                <div class="table-shell">
+                  <table class="data-table data-table--report">
+                    <thead>
+                      <tr>
+                        <th id="report-rented-at-header" aria-sort="none">
+                          <div class="table-header-stack">
+                            <label class="search-field" for="report-search-rented-at-input"><svg class="icon" aria-hidden="true">
+                                <use href="#icon-search"></use>
+                              </svg><input id="report-search-rented-at-input" type="search" placeholder="Search rented" autocomplete="off" data-report-filter-column="rentedAt" /></label>
+                            <button class="sort-header-button" type="button" data-report-sort-column="rentedAt" aria-label="Sort by rented date">
+                              <span>Rented at</span>
+                              <span class="sort-header-button__indicator" data-report-sort-indicator="rentedAt" aria-hidden="true">-</span>
+                            </button>
+                          </div>
+                        </th>
+                        <th id="report-returned-at-header" aria-sort="none">
+                          <div class="table-header-stack">
+                            <label class="search-field" for="report-search-returned-at-input"><svg class="icon" aria-hidden="true">
+                                <use href="#icon-search"></use>
+                              </svg><input id="report-search-returned-at-input" type="search" placeholder="Search returned" autocomplete="off" data-report-filter-column="returnedAt" /></label>
+                            <button class="sort-header-button" type="button" data-report-sort-column="returnedAt" aria-label="Sort by returned date">
+                              <span>Returned at</span>
+                              <span class="sort-header-button__indicator" data-report-sort-indicator="returnedAt" aria-hidden="true">-</span>
+                            </button>
+                          </div>
+                        </th>
+                        <th id="report-status-header" aria-sort="none">
+                          <div class="table-header-stack">
+                            <label class="search-field" for="report-search-status-input"><svg class="icon" aria-hidden="true">
+                                <use href="#icon-search"></use>
+                              </svg><input id="report-search-status-input" type="search" placeholder="Search status" autocomplete="off" data-report-filter-column="status" /></label>
+                            <button class="sort-header-button" type="button" data-report-sort-column="status" aria-label="Sort by status">
+                              <span>Status</span>
+                              <span class="sort-header-button__indicator" data-report-sort-indicator="status" aria-hidden="true">-</span>
+                            </button>
+                          </div>
+                        </th>
+                        <th id="report-bicycle-header" aria-sort="none">
+                          <div class="table-header-stack">
+                            <label class="search-field" for="report-search-bicycle-input"><svg class="icon" aria-hidden="true">
+                                <use href="#icon-search"></use>
+                              </svg><input id="report-search-bicycle-input" type="search" placeholder="Search bicycle" autocomplete="off" data-report-filter-column="bicycleName" /></label>
+                            <button class="sort-header-button" type="button" data-report-sort-column="bicycleName" aria-label="Sort by bicycle">
+                              <span>Bicycle</span>
+                              <span class="sort-header-button__indicator" data-report-sort-indicator="bicycleName" aria-hidden="true">-</span>
+                            </button>
+                          </div>
+                        </th>
+                        <th id="report-bicycle-nfc-header" aria-sort="none">
+                          <div class="table-header-stack">
+                            <label class="search-field" for="report-search-bicycle-nfc-input"><svg class="icon" aria-hidden="true">
+                                <use href="#icon-search"></use>
+                              </svg><input id="report-search-bicycle-nfc-input" type="search" placeholder="Search bike NFC" autocomplete="off" data-report-filter-column="bicycleNfcCode" /></label>
+                            <button class="sort-header-button" type="button" data-report-sort-column="bicycleNfcCode" aria-label="Sort by bicycle NFC">
+                              <span>Bicycle NFC</span>
+                              <span class="sort-header-button__indicator" data-report-sort-indicator="bicycleNfcCode" aria-hidden="true">-</span>
+                            </button>
+                          </div>
+                        </th>
+                        <th id="report-soldier-header" aria-sort="none">
+                          <div class="table-header-stack">
+                            <label class="search-field" for="report-search-soldier-input"><svg class="icon" aria-hidden="true">
+                                <use href="#icon-search"></use>
+                              </svg><input id="report-search-soldier-input" type="search" placeholder="Search soldier" autocomplete="off" data-report-filter-column="soldierName" /></label>
+                            <button class="sort-header-button" type="button" data-report-sort-column="soldierName" aria-label="Sort by soldier">
+                              <span>Soldier</span>
+                              <span class="sort-header-button__indicator" data-report-sort-indicator="soldierName" aria-hidden="true">-</span>
+                            </button>
+                          </div>
+                        </th>
+                        <th id="report-helmet-header" aria-sort="none">
+                          <div class="table-header-stack">
+                            <label class="search-field" for="report-search-helmet-input"><svg class="icon" aria-hidden="true">
+                                <use href="#icon-search"></use>
+                              </svg><input id="report-search-helmet-input" type="search" placeholder="Search helmet" autocomplete="off" data-report-filter-column="helmetCode" /></label>
+                            <button class="sort-header-button" type="button" data-report-sort-column="helmetCode" aria-label="Sort by helmet">
+                              <span>Helmet</span>
+                              <span class="sort-header-button__indicator" data-report-sort-indicator="helmetCode" aria-hidden="true">-</span>
+                            </button>
+                          </div>
+                        </th>
+                        <th id="report-helmet-nfc-header" aria-sort="none">
+                          <div class="table-header-stack">
+                            <label class="search-field" for="report-search-helmet-nfc-input"><svg class="icon" aria-hidden="true">
+                                <use href="#icon-search"></use>
+                              </svg><input id="report-search-helmet-nfc-input" type="search" placeholder="Search helmet NFC" autocomplete="off" data-report-filter-column="helmetNfcCode" /></label>
+                            <button class="sort-header-button" type="button" data-report-sort-column="helmetNfcCode" aria-label="Sort by helmet NFC">
+                              <span>Helmet NFC</span>
+                              <span class="sort-header-button__indicator" data-report-sort-indicator="helmetNfcCode" aria-hidden="true">-</span>
+                            </button>
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="bicycle-report-history-body">
+                      <tr>
+                        <td colspan="8" class="table-empty">Choose a date interval to load rental history.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="pagination-row">
+                  <button class="btn btn-ghost" type="button" id="report-history-prev-button">Previous</button>
+                  <span id="report-history-page-label" class="pagination-label">Page 1</span>
+                  <button class="btn btn-ghost" type="button" id="report-history-next-button">Next</button>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-guide" data-tab-panel="guide" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Guide</span>
+              <h2 class="panel-card__title">Quick operating notes</h2>
+            </div>
+          </div>
+          <div class="guide-grid">
+            <article class="guide-card">
+              <h3 class="guide-card__title">Bikes</h3>
+              <p>Add bikes with a unique NFC code, edit active rental details when needed, and return bikes from the table action buttons.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Helmets</h3>
+              <p>Add or edit helmet codes from the Helmets tab. Assigned helmets show their linked bike, soldier, and current bike status.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Bulk Update</h3>
+              <p>Download the matching template, leave the Identifier blank for new records, or include an existing Identifier to update that bike or helmet.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'bulk-bicycle-import-modal',
+    titleId: 'bulk-bicycle-import-modal-title',
+    closeLabel: 'Close bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import bicycles from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit bicycles in bulk.',
+    descriptionId: 'bulk-bicycle-import-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="bicycle-import-card" id="bicycle-import-card">
+  <div class="bicycle-import-card__header">
+    <div>
+      <h3 class="bicycle-import-card__title">Download a template, fill it in, and import bicycle adds or edits</h3>
+    </div>
+    <a class="btn btn-secondary" id="download-bicycle-template-button" href="/web/bicycles/template">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-download"></use>
+      </svg>
+      <span>Download template</span>
+    </a>
+  </div>
+  <p class="bicycle-import-card__text">
+    Leave <strong>Identifier</strong> blank to create a new bike. Existing rented bikes can also update status, soldier, helmet, and rental date.
+  </p>
+  <div class="bicycle-import-form">
+    <label class="bicycle-import-field" for="bicycle-template-file-input">
+      <span class="bicycle-import-field__label">Filled template (.xlsx)</span>
+      <span class="input-icon-field">
+        <svg class="icon" aria-hidden="true">
+          <use href="#icon-download"></use>
+        </svg>
+        <input id="bicycle-template-file-input" type="file" accept=".xlsx" />
+      </span>
+    </label>
+    <button class="btn btn-primary" type="button" id="upload-bicycle-template-button">Upload template</button>
+  </div>
+  <div class="bicycle-import-meta">
+    <span id="bicycle-template-selected-file">No file selected.</span>
+  </div>
+  <div class="bicycle-import-progress" id="bicycle-import-progress-panel" hidden>
+    <div class="bicycle-import-progress__row">
+      <span>Upload</span>
+      <span id="bicycle-import-upload-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar" id="bicycle-import-upload-progress-bar" max="100" value="0"></progress>
+    </div>
+    <div class="bicycle-import-progress__row">
+      <span>Processing</span>
+      <span id="bicycle-import-processing-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar progress-track__bar--accent" id="bicycle-import-processing-progress-bar" max="100" value="0"></progress>
+    </div>
+    <p class="bicycle-import-status" id="bicycle-import-status-message">Waiting to start.</p>
+    <div class="bicycle-import-summary" id="bicycle-import-summary"></div>
+    <div class="bicycle-import-errors" id="bicycle-import-errors" hidden></div>
+  </div>
+</section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'bulk-helmet-import-modal',
+    titleId: 'bulk-helmet-import-modal-title',
+    closeLabel: 'Close helmet bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import helmets from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit helmets in bulk.',
+    descriptionId: 'bulk-helmet-import-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="bicycle-import-card" id="helmet-import-card">
+  <div class="bicycle-import-card__header">
+    <div>
+      <h3 class="bicycle-import-card__title">Download a template, fill it in, and import helmet adds or edits</h3>
+    </div>
+    <a class="btn btn-secondary" id="download-helmet-template-button" href="/web/bicycles/helmets/template">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-download"></use>
+      </svg>
+      <span>Download template</span>
+    </a>
+  </div>
+  <p class="bicycle-import-card__text">
+    Leave <strong>Identifier</strong> blank to create a new helmet. Provide an existing <strong>Identifier</strong> to update its code or NFC code.
+  </p>
+  <div class="bicycle-import-form">
+    <label class="bicycle-import-field" for="helmet-template-file-input">
+      <span class="bicycle-import-field__label">Filled template (.xlsx)</span>
+      <span class="input-icon-field">
+        <svg class="icon" aria-hidden="true">
+          <use href="#icon-download"></use>
+        </svg>
+        <input id="helmet-template-file-input" type="file" accept=".xlsx" />
+      </span>
+    </label>
+    <button class="btn btn-primary" type="button" id="upload-helmet-template-button">Upload template</button>
+  </div>
+  <div class="bicycle-import-meta">
+    <span id="helmet-template-selected-file">No file selected.</span>
+  </div>
+  <div class="bicycle-import-progress" id="helmet-import-progress-panel" hidden>
+    <div class="bicycle-import-progress__row">
+      <span>Upload</span>
+      <span id="helmet-import-upload-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar" id="helmet-import-upload-progress-bar" max="100" value="0"></progress>
+    </div>
+    <div class="bicycle-import-progress__row">
+      <span>Processing</span>
+      <span id="helmet-import-processing-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar progress-track__bar--accent" id="helmet-import-processing-progress-bar" max="100" value="0"></progress>
+    </div>
+    <p class="bicycle-import-status" id="helmet-import-status-message">Waiting to start.</p>
+    <div class="bicycle-import-summary" id="helmet-import-summary"></div>
+    <div class="bicycle-import-errors" id="helmet-import-errors" hidden></div>
+  </div>
+</section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'bicycle-modal',
+    titleId: 'bicycle-modal-title',
+    closeLabel: 'Close bicycle modal',
+    eyebrow: 'Bike metadata',
+    title: 'Add bicycle',
+    description: 'Register a bicycle with a unique NFC code for scan-based workflows.',
+    descriptionId: 'bicycle-modal-text',
+    body: `<form id="bicycle-form" class="workspace-form" novalidate>
+  <input type="hidden" id="bicycle-form-mode" name="mode" value="create" />
+  <input type="hidden" id="bicycle-id-input" name="identifier" />
+  <input type="hidden" id="bicycle-current-status-input" name="currentStatus" value="available" />
+  <input type="hidden" id="bicycle-status-value-input" name="statusValue" />
+  <input type="hidden" id="bicycle-soldier-id-input" name="soldierId" />
+  <input type="hidden" id="bicycle-helmet-id-input" name="helmetId" />
+  <div class="field">
+    <label for="bicycle-name-input">Bicycle name</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-bicycle"></use>
+      </svg>
+      <input id="bicycle-name-input" name="name" type="text" placeholder="123 Bike" required />
+    </div>
+  </div>
+  <div class="field">
+    <label for="bicycle-nfc-input">NFC code</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-nfc"></use>
+      </svg>
+      <input id="bicycle-nfc-input" name="nfcCode" type="text" placeholder="NFC-BIKE-12" required />
+    </div>
+  </div>
+  <section class="assignment-edit-fields" id="bicycle-assignment-fields" hidden>
+    <div class="field lookup-field">
+      <label for="bicycle-status-input">Status</label>
+      <div class="lookup-combobox" data-lookup-combobox>
+        <div class="lookup-combobox__control">
+          <svg class="icon" aria-hidden="true">
+            <use href="#icon-refresh"></use>
+          </svg>
+          <input id="bicycle-status-input" name="status" type="search" placeholder="Search status" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="bicycle-status-options" />
+          <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+        </div>
+        <div class="lookup-menu" id="bicycle-status-options" role="listbox" aria-label="Status results" hidden></div>
+      </div>
+    </div>
+    <div class="field lookup-field">
+      <label for="bicycle-soldier-search-input">Soldier</label>
+      <div class="lookup-combobox" data-lookup-combobox>
+        <div class="lookup-combobox__control">
+          <svg class="icon" aria-hidden="true">
+            <use href="#icon-search"></use>
+          </svg>
+          <input id="bicycle-soldier-search-input" type="search" placeholder="Search soldier" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="bicycle-soldier-options" />
+          <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+        </div>
+        <div class="lookup-menu" id="bicycle-soldier-options" role="listbox" aria-label="Soldier results" hidden></div>
+      </div>
+    </div>
+    <div class="field lookup-field">
+      <label for="bicycle-helmet-search-input">Helmet</label>
+      <div class="lookup-combobox" data-lookup-combobox>
+        <div class="lookup-combobox__control">
+          <svg class="icon" aria-hidden="true">
+            <use href="#icon-helmet"></use>
+          </svg>
+          <input id="bicycle-helmet-search-input" type="search" placeholder="Search helmet" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="bicycle-helmet-options" />
+          <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+        </div>
+        <div class="lookup-menu" id="bicycle-helmet-options" role="listbox" aria-label="Helmet results" hidden></div>
+      </div>
+    </div>
+    <div class="field">
+      <label for="bicycle-rent-date-input">Rental date and time</label>
+      <div class="input-icon-field">
+        <svg class="icon" aria-hidden="true">
+          <use href="#icon-calendar"></use>
+        </svg>
+        <input id="bicycle-rent-date-input" name="rentedAt" type="datetime-local" />
+      </div>
+    </div>
+  </section>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-bicycle-button">Save bike</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'helmet-modal',
+    titleId: 'helmet-modal-title',
+    closeLabel: 'Close helmet modal',
+    eyebrow: 'Helmet metadata',
+    title: 'Add helmet',
+    description: 'Register a helmet code and NFC code for bike rental workflows.',
+    descriptionId: 'helmet-modal-text',
+    body: `<form id="helmet-form" class="workspace-form" novalidate>
+  <input type="hidden" id="helmet-form-mode" name="mode" value="create" />
+  <input type="hidden" id="helmet-id-input" name="helmetId" />
+  <div class="field">
+    <label for="helmet-code-input">Helmet code</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-helmet"></use>
+      </svg>
+      <input id="helmet-code-input" name="code" type="text" placeholder="123 helmet" required />
+    </div>
+  </div>
+  <div class="field">
+    <label for="helmet-nfc-input">NFC code</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-nfc"></use>
+      </svg>
+      <input id="helmet-nfc-input" name="nfcCode" type="text" placeholder="NFC-HELMET-12" required />
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-helmet-button">Save helmet</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'rent-bicycle-modal',
+    titleId: 'rent-bicycle-modal-title',
+    closeLabel: 'Close rent bicycle modal',
+    eyebrow: 'Bike rental',
+    title: 'Rent bicycle',
+    description: 'Select a soldier, optional helmet, and rental date before issuing the bike.',
+    descriptionId: 'rent-bicycle-modal-text',
+    body: `<form id="rent-bicycle-form" class="workspace-form" novalidate>
+  <input type="hidden" id="rent-bicycle-id-input" name="identifier" />
+  <input type="hidden" id="rent-soldier-id-input" name="soldierId" />
+  <input type="hidden" id="rent-helmet-id-input" name="helmetId" />
+  <div class="field">
+    <label for="rent-bicycle-name-input">Bicycle</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-bicycle"></use>
+      </svg>
+      <input id="rent-bicycle-name-input" type="text" readonly />
+    </div>
+  </div>
+  <label class="check-field" for="rent-repair-input">
+    <input id="rent-repair-input" name="repair" type="checkbox" />
+    <span>Repair status</span>
+  </label>
+  <div class="field lookup-field">
+    <label for="rent-soldier-search-input">Soldier</label>
+    <div class="lookup-combobox" data-lookup-combobox>
+      <div class="lookup-combobox__control">
+        <svg class="icon" aria-hidden="true">
+          <use href="#icon-search"></use>
+        </svg>
+        <input id="rent-soldier-search-input" type="search" placeholder="Search soldier" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="rent-soldier-options" required />
+        <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+      </div>
+      <div class="lookup-menu" id="rent-soldier-options" role="listbox" aria-label="Soldier results" hidden></div>
+    </div>
+  </div>
+  <div class="field lookup-field">
+    <label for="rent-helmet-search-input">Helmet</label>
+    <div class="lookup-combobox" data-lookup-combobox>
+      <div class="lookup-combobox__control">
+        <svg class="icon" aria-hidden="true">
+          <use href="#icon-helmet"></use>
+        </svg>
+        <input id="rent-helmet-search-input" type="search" placeholder="Search helmet" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="rent-helmet-options" />
+        <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+      </div>
+      <div class="lookup-menu" id="rent-helmet-options" role="listbox" aria-label="Helmet results" hidden></div>
+    </div>
+  </div>
+  <div class="field">
+    <label for="rent-date-input">Rental date and time</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-calendar"></use>
+      </svg>
+      <input id="rent-date-input" name="rentedAt" type="datetime-local" required />
+    </div>
+  </div>
+  <label class="check-field" for="rent-long-term-input">
+    <input id="rent-long-term-input" name="longTerm" type="checkbox" />
+    <span>Long-term status</span>
+  </label>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="rent-bicycle-submit-button">Rent bike</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'return-bicycle-modal',
+    titleId: 'return-bicycle-modal-title',
+    closeLabel: 'Close return bicycle modal',
+    eyebrow: 'Bike return',
+    title: 'Return bicycle',
+    description: 'Review the active rental and confirm the return date.',
+    descriptionId: 'return-bicycle-modal-text',
+    body: `<form id="return-bicycle-form" class="workspace-form" novalidate>
+  <input type="hidden" id="return-bicycle-id-input" name="identifier" />
+  <div class="rental-detail-panel">
+    <div><span>Bicycle</span><strong id="return-bike-name-text">-</strong></div>
+    <div><span>Soldier</span><strong id="return-soldier-name-text">-</strong></div>
+    <div><span>Helmet</span><strong id="return-helmet-code-text">-</strong></div>
+    <div><span>Rental date</span><strong id="return-rented-at-text">-</strong></div>
+  </div>
+  <div class="field">
+    <label for="return-date-input">Return date and time</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-calendar"></use>
+      </svg>
+      <input id="return-date-input" name="returnedAt" type="datetime-local" required />
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary">Return bike</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/confirm-modal') %>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/assets/bicycles/js/bicycles-page.ts"></script>
+</body>
+
+</html>

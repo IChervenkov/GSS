@@ -1,0 +1,86 @@
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 1080px) {
+  .saas-auth {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .saas-auth__left {
+    padding: 0;
+  }
+
+  .saas-auth__headline {
+    font-size: clamp(28px, 7vw, 42px);
+  }
+
+  .product-grid,
+  .status-grid,
+  .product-grid--single-mobile {
+    grid-template-columns: 1fr;
+  }
+
+  .saas-auth__right {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .login-card,
+  .product-panel,
+  .security-panel,
+  .invite-panel,
+  .request-summary,
+  .invite-modal__header,
+  .invite-modal__content {
+    padding: 18px;
+  }
+
+  .invite-form__grid,
+  .request-summary__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .invite-form__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .invite-form__actions .btn-ghost,
+  .invite-form__actions .btn-primary {
+    width: 100%;
+  }
+
+  .code-inputs__row {
+    gap: 8px;
+  }
+
+  .code-digit {
+    min-height: 48px;
+    font-size: 20px;
+  }
+
+  .invite-modal__dialog {
+    width: calc(100vw - 16px);
+    margin: 8px auto;
+    max-height: calc(100vh - 16px);
+  }
+}
+
+@media (max-width: 768px) {
+  .theme-toolbar {
+    top: 16px;
+    right: 16px;
+  }
+
+  .theme-toggle-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .saas-auth {
+    padding-top: 76px;
+  }
+}

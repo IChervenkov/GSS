@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<%- await include('../../../../shared/views/partials/workspace/head', {
+  title,
+  pageStyles: ['/assets/laundry/css/laundry-page.css']
+}) %>
+
+<%
+  const statusSections = [
+    { key: 'drop_off', tab: 'drop-off', title: 'Drop-off', eyebrow: 'Drop-off', metricId: 'laundry-count-drop-off' },
+    { key: 'laundry_facility', tab: 'facility', title: 'Laundry facility', eyebrow: 'Facility', metricId: 'laundry-count-facility' },
+    { key: 'ready_to_pick_up', tab: 'ready', title: 'Ready to pick up', eyebrow: 'Ready', metricId: 'laundry-count-ready' }
+  ];
+  const statusTableColumns = [
+    { key: 'id', label: 'Identifier', search: 'Search identifier' },
+    { key: 'code', label: 'Code', search: 'Search code' },
+    { key: 'type', label: 'Type', search: 'Search type' },
+    { key: 'status', label: 'Status', search: 'Search status' },
+    { key: 'soldierName', label: 'Soldier', search: 'Search soldier' }
+  ];
+  const allTableColumns = [
+    { key: 'id', label: 'Identifier', search: 'Search identifier' },
+    { key: 'code', label: 'Code', search: 'Search code' },
+    { key: 'rfidCode', label: 'RFID code', search: 'Search RFID' },
+    { key: 'type', label: 'Type', search: 'Search type' },
+    { key: 'status', label: 'Status', search: 'Search status' },
+    { key: 'soldierName', label: 'Soldier', search: 'Search soldier' },
+    { key: 'laundryCount', label: 'Laundry count', searchable: false },
+    { key: 'maxCountLaundry', label: 'Max count', searchable: false }
+  ];
+%>
+
+<body class="main-workspace" data-page="laundry-page" data-current-camp-id="<%= campId || '' %>" data-can-download-laundry-mobile-app="<%= canDownloadLaundryMobileApp ? 'true' : 'false' %>">
+  <%- await include('../../../../shared/views/partials/common/a11y-primitives') %>
+  <%- await include('../../../../shared/views/partials/workspace/icons') %>
+  <%- await include('../../../../shared/views/partials/common/page-data', { pageData: { pageKey: 'laundry-page', campId: campId || '', currentNav: 'Laundry' } }) %>
+
+  <input type="hidden" id="csrf-token" value="<%= csrfToken %>" />
+
+  <%- await include('../../../../shared/views/partials/workspace/topbar', {
+    navItems: horizontalNavItems,
+    currentNav: 'Laundry',
+    csrfToken
+  }) %>
+
+  <main class="workspace-shell" id="main-content" data-state-root="true">
+    <section class="hero-card">
+      <div class="hero-card__content">
+        <span class="hero-card__eyebrow">Laundry desk</span>
+        <h1 class="hero-card__title"><%= title %></h1>
+        <p class="hero-card__text">Track laundry bags from drop-off through facility processing, ready pickup, and available stock.</p>
+        <div class="hero-card__meta">
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-water"></use>
+            </svg><span>Status flow</span></span>
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-box"></use>
+            </svg><span>Bag inventory</span></span>
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-refresh"></use>
+            </svg><span>Live refresh</span></span>
+        </div>
+        <div class="hero-card__actions hero-card__actions--mobile-download">
+          <button class="btn btn-primary hero-card__mobile-download-button" id="download-laundry-mobile-app-button" type="button" data-download-url="<%= laundryMobileAppDownloadUrl %>" <%= canDownloadLaundryMobileApp ? '' : 'disabled aria-disabled="true"' %> title="<%= canDownloadLaundryMobileApp ? 'Download the laundry mobile app.' : 'You do not have permission to download the laundry mobile app.' %>">
+            <svg class="icon" aria-hidden="true">
+              <use href="#icon-download"></use>
+            </svg>
+            <span>Download laundry mobile app</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="summary-grid" aria-label="Laundry summary">
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Total</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-box"></use>
+          </svg></div>
+        <div class="summary-card__value" id="laundry-count-total">-</div>
+        <p class="summary-card__text">Bags tracked in the selected camp.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Available</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-check-circle"></use>
+          </svg></div>
+        <div class="summary-card__value" id="laundry-count-available">-</div>
+        <p class="summary-card__text">Bags currently in pick-up stock.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Drop-off</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-inbox"></use>
+          </svg></div>
+        <div class="summary-card__value" id="laundry-count-drop-off">-</div>
+        <p class="summary-card__text">Bags received and waiting for facility handoff.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Facility</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-refresh"></use>
+          </svg></div>
+        <div class="summary-card__value" id="laundry-count-facility">-</div>
+        <p class="summary-card__text">Bags currently in laundry processing.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Ready</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-check-circle"></use>
+          </svg></div>
+        <div class="summary-card__value" id="laundry-count-ready">-</div>
+        <p class="summary-card__text">Bags ready to return to pick-up stock.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">In soldier</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-user"></use>
+          </svg></div>
+        <div class="summary-card__value" id="laundry-count-in-soldier">-</div>
+        <p class="summary-card__text">Bags currently in soldier possession.</p>
+      </article>
+    </section>
+
+    <section class="workspace-panels" aria-label="Laundry workspace">
+      <div class="tab-bar" role="tablist" aria-label="Laundry sections">
+        <button class="tab-pill is-active" type="button" role="tab" data-tab-trigger="overview" aria-selected="true">Overview</button>
+        <% statusSections.forEach((section) => { %>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="<%= section.tab %>" aria-selected="false"><%= section.title %></button>
+        <% }) %>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="all" aria-selected="false">All laundry bags</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="report" aria-selected="false">Report</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="guide" aria-selected="false">Guide</button>
+      </div>
+
+      <section class="tab-panel is-active" id="tab-overview" data-tab-panel="overview" role="tabpanel">
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Operational overview</span>
+              <h2 class="panel-card__title">Laundry flow pressure and pickup readiness</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-secondary" type="button" data-refresh-laundry>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="overview-grid">
+            <article class="mini-card">
+              <h3 class="mini-card__title">Active status bags</h3>
+              <p class="laundry-metric" id="laundry-count-active">0</p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Available share</h3>
+              <p class="laundry-metric" id="laundry-available-share">0%</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <% statusSections.forEach((section) => { %>
+      <section class="tab-panel" id="tab-<%= section.tab %>" data-tab-panel="<%= section.tab %>" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow"><%= section.eyebrow %></span>
+              <h2 class="panel-card__title"><%= section.title %> bags</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-secondary" type="button" data-refresh-laundry>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="type-breakdown" data-laundry-type-breakdown="<%= section.key %>" aria-label="<%= section.title %> bags by type">
+            <span class="type-breakdown__empty">No bag types loaded yet.</span>
+          </div>
+          <div class="table-shell">
+            <table class="data-table laundry-table">
+              <thead>
+                <tr>
+                  <% statusTableColumns.forEach((column) => { %>
+                  <th id="laundry-<%= section.key %>-<%= column.key %>-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <% if (column.searchable !== false) { %>
+                      <label class="search-field" for="laundry-<%= section.key %>-search-<%= column.key %>-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="laundry-<%= section.key %>-search-<%= column.key %>-input" type="search" placeholder="<%= column.search %>" autocomplete="off" data-laundry-filter-table="<%= section.key %>" data-laundry-filter-column="<%= column.key %>" /></label>
+                      <% } %>
+                      <button class="sort-header-button" type="button" data-laundry-sort-table="<%= section.key %>" data-laundry-sort-column="<%= column.key %>" aria-label="Sort by <%= column.label %>"><span><%= column.label %></span><span class="sort-header-button__indicator" data-laundry-sort-indicator="<%= section.key %>:<%= column.key %>" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <% }) %>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody data-laundry-table-body="<%= section.key %>">
+                <tr>
+                  <td colspan="6" class="table-empty">No bags loaded for this status yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" data-laundry-prev-table="<%= section.key %>" disabled>Previous</button>
+            <span class="pagination-label" data-laundry-page-label="<%= section.key %>">Page 1</span>
+            <button class="btn btn-ghost" type="button" data-laundry-next-table="<%= section.key %>" disabled>Next</button>
+          </div>
+        </div>
+      </section>
+      <% }) %>
+
+      <section class="tab-panel" id="tab-all" data-tab-panel="all" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Inventory</span>
+              <h2 class="panel-card__title">All laundry bags</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-bag-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add bag</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-bulk-bag-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" data-refresh-laundry>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="table-shell">
+            <table class="data-table laundry-table">
+              <thead>
+                <tr>
+                  <% allTableColumns.forEach((column) => { %>
+                  <th id="laundry-all-<%= column.key %>-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <% if (column.searchable !== false) { %>
+                      <label class="search-field" for="laundry-all-search-<%= column.key %>-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="laundry-all-search-<%= column.key %>-input" type="search" placeholder="<%= column.search %>" autocomplete="off" data-laundry-filter-table="all" data-laundry-filter-column="<%= column.key %>" /></label>
+                      <% } %>
+                      <button class="sort-header-button" type="button" data-laundry-sort-table="all" data-laundry-sort-column="<%= column.key %>" aria-label="Sort by <%= column.label %>"><span><%= column.label %></span><span class="sort-header-button__indicator" data-laundry-sort-indicator="all:<%= column.key %>" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <% }) %>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody data-laundry-table-body="all">
+                <tr>
+                  <td colspan="9" class="table-empty">Laundry bags will appear here after the table loads.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" data-laundry-prev-table="all" disabled>Previous</button>
+            <span class="pagination-label" data-laundry-page-label="all">Page 1</span>
+            <button class="btn btn-ghost" type="button" data-laundry-next-table="all" disabled>Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-report" data-tab-panel="report" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Laundry history</span>
+              <h2 class="panel-card__title">Bags being washed and washed by date</h2>
+            </div>
+          </div>
+          <form class="report-filter-bar" id="laundry-report-filter-form">
+            <label class="field" for="laundry-report-from-date-input">
+              <span>From</span>
+              <span class="input-icon-field">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-calendar"></use>
+                </svg>
+                <input id="laundry-report-from-date-input" name="fromDate" type="date" required />
+              </span>
+            </label>
+            <label class="field" for="laundry-report-to-date-input">
+              <span>To</span>
+              <span class="input-icon-field">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-calendar"></use>
+                </svg>
+                <input id="laundry-report-to-date-input" name="toDate" type="date" required />
+              </span>
+            </label>
+            <div class="hero-card__actions">
+              <a class="btn btn-primary" id="download-laundry-report-button" href="/web/laundry/report/download" aria-disabled="true">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Excel</span>
+              </a>
+              <button class="btn btn-secondary" type="button" id="reset-laundry-report-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Reset</span>
+              </button>
+            </div>
+          </form>
+          <div class="report-metric-grid">
+            <article class="mini-card">
+              <h3 class="mini-card__title">Report records</h3>
+              <p class="laundry-metric" id="laundry-report-row-count">0</p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Being washed</h3>
+              <p class="laundry-metric" id="laundry-report-active-count">0</p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Washed</h3>
+              <p class="laundry-metric" id="laundry-report-washed-count">0</p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Linen exchange</h3>
+              <p class="laundry-metric" id="laundry-report-linen-count">0</p>
+            </article>
+          </div>
+          <div class="report-grid">
+            <section class="report-section report-section--full" aria-label="Washed bags by soldier country">
+              <h3 class="report-section__title">Washed by country</h3>
+              <div class="table-shell">
+                <table class="data-table data-table--compact">
+                  <thead>
+                    <tr>
+                      <th id="laundry-report-country-country-header" aria-sort="none">
+                        <div class="table-header-stack">
+                          <label class="search-field" for="laundry-report-country-search-country-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="laundry-report-country-search-country-input" type="search" placeholder="Search country" autocomplete="off" data-laundry-country-filter-column="country" /></label>
+                          <button class="sort-header-button" type="button" data-laundry-country-sort-column="country" aria-label="Sort by country"><span>Country</span><span class="sort-header-button__indicator" data-laundry-country-sort-indicator="country" aria-hidden="true">-</span></button>
+                        </div>
+                      </th>
+                      <th id="laundry-report-country-total-header" aria-sort="none">
+                        <button class="sort-header-button" type="button" data-laundry-country-sort-column="totalCount" aria-label="Sort by total count"><span>Total count</span><span class="sort-header-button__indicator" data-laundry-country-sort-indicator="totalCount" aria-hidden="true">-</span></button>
+                      </th>
+                      <th id="laundry-report-country-being-washed-header" aria-sort="none">
+                        <button class="sort-header-button" type="button" data-laundry-country-sort-column="beingWashedCount" aria-label="Sort by being washed"><span>Being washed</span><span class="sort-header-button__indicator" data-laundry-country-sort-indicator="beingWashedCount" aria-hidden="true">-</span></button>
+                      </th>
+                      <th id="laundry-report-country-washable-header" aria-sort="none">
+                        <button class="sort-header-button" type="button" data-laundry-country-sort-column="washableCount" aria-label="Sort by washable bags"><span>Washable bags</span><span class="sort-header-button__indicator" data-laundry-country-sort-indicator="washableCount" aria-hidden="true">-</span></button>
+                      </th>
+                      <th id="laundry-report-country-linen-header" aria-sort="none">
+                        <button class="sort-header-button" type="button" data-laundry-country-sort-column="linenExchangeCount" aria-label="Sort by linen exchange"><span>Linen exchange</span><span class="sort-header-button__indicator" data-laundry-country-sort-indicator="linenExchangeCount" aria-hidden="true">-</span></button>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="laundry-report-country-body">
+                    <tr>
+                      <td colspan="5" class="table-empty">Choose a date interval to load countries.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="pagination-row">
+                <button class="btn btn-ghost" type="button" id="laundry-report-country-prev-button">Previous</button>
+                <span id="laundry-report-country-page-label" class="pagination-label">Page 1</span>
+                <button class="btn btn-ghost" type="button" id="laundry-report-country-next-button">Next</button>
+              </div>
+            </section>
+          </div>
+          <section class="report-section report-section--full" aria-label="Laundry history rows">
+            <h3 class="report-section__title">History</h3>
+            <div class="table-shell">
+              <table class="data-table data-table--report laundry-report-table">
+                <thead>
+                  <tr>
+                    <th id="laundry-report-drop-off-header" aria-sort="none">
+                      <div class="table-header-stack">
+                        <label class="search-field" for="laundry-report-search-drop-off-input"><svg class="icon" aria-hidden="true">
+                            <use href="#icon-search"></use>
+                          </svg><input id="laundry-report-search-drop-off-input" type="search" placeholder="Search drop-off" autocomplete="off" data-laundry-report-filter-column="dateDropOff" /></label>
+                        <button class="sort-header-button" type="button" data-laundry-report-sort-column="dateDropOff" aria-label="Sort by drop-off date"><span>Drop-off</span><span class="sort-header-button__indicator" data-laundry-report-sort-indicator="dateDropOff" aria-hidden="true">-</span></button>
+                      </div>
+                    </th>
+                    <th id="laundry-report-ready-header" aria-sort="none">
+                      <div class="table-header-stack">
+                        <label class="search-field" for="laundry-report-search-ready-input"><svg class="icon" aria-hidden="true">
+                            <use href="#icon-search"></use>
+                          </svg><input id="laundry-report-search-ready-input" type="search" placeholder="Search ready" autocomplete="off" data-laundry-report-filter-column="dateReadyToPickUp" /></label>
+                        <button class="sort-header-button" type="button" data-laundry-report-sort-column="dateReadyToPickUp" aria-label="Sort by ready date"><span>Ready</span><span class="sort-header-button__indicator" data-laundry-report-sort-indicator="dateReadyToPickUp" aria-hidden="true">-</span></button>
+                      </div>
+                    </th>
+                    <th id="laundry-report-status-header" aria-sort="none">
+                      <div class="table-header-stack">
+                        <label class="search-field" for="laundry-report-search-status-input"><svg class="icon" aria-hidden="true">
+                            <use href="#icon-search"></use>
+                          </svg><input id="laundry-report-search-status-input" type="search" placeholder="Search status" autocomplete="off" data-laundry-report-filter-column="status" /></label>
+                        <button class="sort-header-button" type="button" data-laundry-report-sort-column="status" aria-label="Sort by status"><span>Status</span><span class="sort-header-button__indicator" data-laundry-report-sort-indicator="status" aria-hidden="true">-</span></button>
+                      </div>
+                    </th>
+                    <th id="laundry-report-flow-header" aria-sort="none">
+                      <div class="table-header-stack">
+                        <label class="search-field" for="laundry-report-search-flow-input"><svg class="icon" aria-hidden="true">
+                            <use href="#icon-search"></use>
+                          </svg><input id="laundry-report-search-flow-input" type="search" placeholder="Search flow" autocomplete="off" data-laundry-report-filter-column="flowType" /></label>
+                        <button class="sort-header-button" type="button" data-laundry-report-sort-column="flowType" aria-label="Sort by flow type"><span>Flow</span><span class="sort-header-button__indicator" data-laundry-report-sort-indicator="flowType" aria-hidden="true">-</span></button>
+                      </div>
+                    </th>
+                    <th id="laundry-report-bag-header" aria-sort="none">
+                      <div class="table-header-stack">
+                        <label class="search-field" for="laundry-report-search-bag-input"><svg class="icon" aria-hidden="true">
+                            <use href="#icon-search"></use>
+                          </svg><input id="laundry-report-search-bag-input" type="search" placeholder="Search bag" autocomplete="off" data-laundry-report-filter-column="bagCode" /></label>
+                        <button class="sort-header-button" type="button" data-laundry-report-sort-column="bagCode" aria-label="Sort by bag code"><span>Bag</span><span class="sort-header-button__indicator" data-laundry-report-sort-indicator="bagCode" aria-hidden="true">-</span></button>
+                      </div>
+                    </th>
+                    <th id="laundry-report-soldier-header" aria-sort="none">
+                      <div class="table-header-stack">
+                        <label class="search-field" for="laundry-report-search-soldier-input"><svg class="icon" aria-hidden="true">
+                            <use href="#icon-search"></use>
+                          </svg><input id="laundry-report-search-soldier-input" type="search" placeholder="Search soldier" autocomplete="off" data-laundry-report-filter-column="soldierName" /></label>
+                        <button class="sort-header-button" type="button" data-laundry-report-sort-column="soldierName" aria-label="Sort by soldier"><span>Soldier</span><span class="sort-header-button__indicator" data-laundry-report-sort-indicator="soldierName" aria-hidden="true">-</span></button>
+                      </div>
+                    </th>
+                    <th id="laundry-report-country-header" aria-sort="none">
+                      <div class="table-header-stack">
+                        <label class="search-field" for="laundry-report-search-country-input"><svg class="icon" aria-hidden="true">
+                            <use href="#icon-search"></use>
+                          </svg><input id="laundry-report-search-country-input" type="search" placeholder="Search country" autocomplete="off" data-laundry-report-filter-column="soldierCountry" /></label>
+                        <button class="sort-header-button" type="button" data-laundry-report-sort-column="soldierCountry" aria-label="Sort by country"><span>Country</span><span class="sort-header-button__indicator" data-laundry-report-sort-indicator="soldierCountry" aria-hidden="true">-</span></button>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="laundry-report-history-body">
+                  <tr>
+                    <td colspan="7" class="table-empty">Choose a date interval to load laundry history.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination-row">
+              <button class="btn btn-ghost" type="button" id="laundry-report-history-prev-button">Previous</button>
+              <span id="laundry-report-history-page-label" class="pagination-label">Page 1</span>
+              <button class="btn btn-ghost" type="button" id="laundry-report-history-next-button">Next</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-guide" data-tab-panel="guide" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Guide</span>
+              <h2 class="panel-card__title">Quick operating notes</h2>
+            </div>
+          </div>
+          <div class="guide-grid">
+            <article class="guide-card">
+              <h3 class="guide-card__title">Status lanes</h3>
+              <p>Use Move on bags assigned to soldiers to send them from available stock through drop-off, facility processing, and ready pickup.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Available inventory</h3>
+              <p>Edit bag metadata from any status. Deletion is blocked when a bag is assigned or has related laundry/report data.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Bulk update</h3>
+              <p>Use the template to add new bags or update bag metadata in one pass. Status is changed only through Move.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'bag-modal',
+    titleId: 'bag-modal-title',
+    closeLabel: 'Close laundry bag modal',
+    eyebrow: 'Bag metadata',
+    title: 'Add laundry bag',
+    description: 'Register a laundry bag with its code, RFID, type, and laundry limit.',
+    descriptionId: 'bag-modal-text',
+    body: `
+      <form class="workspace-form" id="bag-form" novalidate>
+        <input type="hidden" id="bag-form-mode" name="mode" value="create" />
+        <input type="hidden" id="bag-id-input" name="bagId" />
+        <input id="bag-status-value-input" name="status" type="hidden" value="pick_up" />
+        <div class="field">
+          <label for="bag-code-input">Code</label>
+          <div class="input-icon-field">
+            <svg class="icon" aria-hidden="true"><use href="#icon-box"></use></svg>
+            <input id="bag-code-input" name="code" type="text" autocomplete="off" placeholder="BAG-001" required maxlength="64" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="bag-rfid-input">RFID code</label>
+          <div class="input-icon-field">
+            <svg class="icon" aria-hidden="true"><use href="#icon-box"></use></svg>
+            <input id="bag-rfid-input" name="rfidCode" type="text" autocomplete="off" placeholder="RFID-BAG-001" required maxlength="128" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="bag-type-input">Type</label>
+          <div class="input-icon-field">
+            <svg class="icon" aria-hidden="true"><use href="#icon-box"></use></svg>
+            <input id="bag-type-input" name="type" type="text" autocomplete="off" placeholder="Mesh bag" maxlength="64" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="bag-max-count-input">Max laundry count</label>
+          <div class="input-icon-field">
+            <svg class="icon" aria-hidden="true"><use href="#icon-box"></use></svg>
+            <input id="bag-max-count-input" name="maxCountLaundry" type="number" min="1" max="100000" value="1" required />
+          </div>
+        </div>
+        <div class="workspace-form__actions">
+          <button class="btn btn-primary" type="submit" id="save-bag-button">Create bag</button>
+          <button class="btn btn-ghost" type="button" data-close-modal="true">Cancel</button>
+        </div>
+      </form>
+    `
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'status-add-modal',
+    titleId: 'status-add-modal-title',
+    closeLabel: 'Close add bag to status modal',
+    eyebrow: 'Add to status',
+    title: 'Add available bag',
+    description: 'Search the available inventory, choose a bag, and place it into the selected status lane.',
+    descriptionId: 'status-add-modal-text',
+    body: `
+      <form class="workspace-form" id="status-add-form" novalidate>
+        <input type="hidden" id="status-add-target-input" name="status" />
+        <input type="hidden" id="status-bag-input" name="bagId" />
+        <div class="field">
+          <label for="status-bag-search-input">Bag</label>
+          <div class="lookup-combobox" data-lookup-combobox>
+            <div class="lookup-combobox__control">
+              <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+              <input id="status-bag-search-input" type="search" autocomplete="off" placeholder="Search available bag" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="status-bag-options" required />
+              <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+            </div>
+            <div class="lookup-menu" id="status-bag-options" role="listbox" aria-label="Available bag results" hidden></div>
+          </div>
+        </div>
+        <div class="workspace-form__actions">
+          <button class="btn btn-primary" type="submit" id="save-status-add-button">Add bag</button>
+          <button class="btn btn-ghost" type="button" data-close-modal="true">Cancel</button>
+        </div>
+      </form>
+    `
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'move-bag-modal',
+    titleId: 'move-bag-modal-title',
+    closeLabel: 'Close move bag modal',
+    eyebrow: 'Status move',
+    title: 'Move bag',
+    description: 'Review the bag and choose its next laundry status.',
+    descriptionId: 'move-bag-modal-text',
+    body: `
+      <form class="workspace-form" id="move-bag-form" novalidate>
+        <input type="hidden" id="move-bag-id-input" name="bagId" />
+        <div class="rental-detail-panel">
+          <div><span>Bag</span><strong id="move-bag-code-text">-</strong></div>
+          <div><span>Current status</span><strong id="move-bag-current-status-text">-</strong></div>
+          <div><span>Soldier</span><strong id="move-bag-soldier-text">-</strong></div>
+          <div><span>Laundry count</span><strong id="move-bag-count-text">-</strong></div>
+        </div>
+        <div class="field lookup-field">
+          <label for="move-bag-status-input">Status</label>
+          <input id="move-bag-status-value-input" name="status" type="hidden" />
+          <div class="lookup-combobox" data-lookup-combobox>
+            <div class="lookup-combobox__control">
+              <svg class="icon" aria-hidden="true"><use href="#icon-refresh"></use></svg>
+              <input id="move-bag-status-input" type="search" placeholder="Search status" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="move-bag-status-options" required />
+              <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+            </div>
+            <div class="lookup-menu" id="move-bag-status-options" role="listbox" aria-label="Move status results" hidden></div>
+          </div>
+        </div>
+        <div class="workspace-form__actions">
+          <button class="btn btn-primary" type="submit" id="save-move-bag-button">Move bag</button>
+          <button class="btn btn-ghost" type="button" data-close-modal="true">Cancel</button>
+        </div>
+      </form>
+    `
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'bulk-bag-modal',
+    titleId: 'bulk-bag-modal-title',
+    closeLabel: 'Close laundry bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import bags from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit laundry bags in bulk.',
+    descriptionId: 'bulk-bag-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `
+      <section class="laundry-bulk-card" id="laundry-bulk-card">
+        <div class="laundry-bulk-card__header">
+          <div>
+            <h3 class="laundry-bulk-card__title">Download a template, fill it in, and import laundry bag adds or edits</h3>
+          </div>
+          <a class="btn btn-secondary" id="download-bag-template-button" href="/web/laundry/template">
+            <svg class="icon" aria-hidden="true">
+              <use href="#icon-download"></use>
+            </svg>
+            <span>Download template</span>
+          </a>
+        </div>
+        <p class="laundry-bulk-card__text">
+          Leave <strong>Identifier</strong> blank to create a new bag. Provide an existing <strong>Identifier</strong> to update its code, RFID code, type, or max laundry count. Status is changed only through Move.
+        </p>
+        <div class="laundry-bulk-form">
+          <label class="laundry-bulk-field" for="bag-template-file-input">
+            <span class="laundry-bulk-field__label">Filled template (.xlsx)</span>
+            <span class="input-icon-field">
+              <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+              <input id="bag-template-file-input" type="file" accept=".xlsx" />
+            </span>
+          </label>
+          <button class="btn btn-primary" type="button" id="upload-bag-template-button">Upload template</button>
+        </div>
+        <div class="laundry-bulk-meta">
+          <span id="bag-template-selected-file">No file selected.</span>
+        </div>
+        <div class="laundry-bulk-progress" id="laundry-bulk-progress-panel" hidden>
+          <div class="laundry-bulk-progress__row">
+            <span>Upload</span>
+            <span id="laundry-bulk-upload-label">0%</span>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <progress class="progress-track__bar" id="laundry-bulk-upload-progress-bar" max="100" value="0"></progress>
+          </div>
+          <div class="laundry-bulk-progress__row">
+            <span>Processing</span>
+            <span id="laundry-bulk-processing-label">0%</span>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <progress class="progress-track__bar progress-track__bar--accent" id="laundry-bulk-processing-progress-bar" max="100" value="0"></progress>
+          </div>
+          <p class="laundry-bulk-status" id="laundry-bulk-status-message">Waiting to start.</p>
+          <div class="laundry-bulk-summary" id="laundry-bulk-summary"></div>
+          <div class="laundry-bulk-errors" id="laundry-bulk-errors" hidden></div>
+        </div>
+      </section>
+    `
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/confirm-modal') %>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/assets/laundry/js/laundry-page.ts"></script>
+</body>
+
+</html>

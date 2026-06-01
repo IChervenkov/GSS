@@ -1,0 +1,25 @@
+# Simple machine-readable catalog used by CI governance checks.
+# Keep paths repo-relative so they can be validated easily.
+- name: auth_incident_spike
+  severity: critical
+  module: src/modules/web/auth
+  dashboard: auth-overview
+  runbook: src/operations/runbooks/auth-incident-runbook.md
+
+- name: redis_unavailable
+  severity: critical
+  module: src/infrastructure/redis
+  dashboard: platform-cache
+  runbook: src/operations/runbooks/redis-outage-runbook.md
+
+- name: db_failover_or_restore
+  severity: critical
+  module: src/infrastructure/db
+  dashboard: platform-database
+  runbook: src/operations/runbooks/db-failover-restore-runbook.md
+
+- name: deployment_rollback_required
+  severity: high
+  module: src/bootstrap
+  dashboard: deployment-health
+  runbook: src/operations/runbooks/deployment-rollback-runbook.md

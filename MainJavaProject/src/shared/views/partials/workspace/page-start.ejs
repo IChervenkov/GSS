@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<%- include('./head', { title, pageStyles }) %>
+
+<body class="<%= bodyClass || 'main-workspace' %>" data-page="<%= pageKey || '' %>" data-current-camp-id="<%= currentCampId || '' %>">
+  <%- include('../shared/skip-link', { targetId: mainId || 'main-content' }) %>
+  <%- include('../shared/live-regions') %>
+  <%- include('./icons') %>
+  <% if (typeof pageData !== 'undefined') { %>
+  <%- include('../shared/page-data', { pageData }) %>
+  <% } %>

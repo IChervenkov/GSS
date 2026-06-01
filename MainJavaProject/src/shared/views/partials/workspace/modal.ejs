@@ -1,0 +1,44 @@
+<%
+  const {
+    id = 'workspace-modal',
+    titleId = 'workspace-modal-title',
+    title = '',
+    eyebrow = '',
+    closeLabel = 'Close modal',
+    dialogClass = '',
+    bodyClass = '',
+    footerClass = '',
+    showFooter = false,
+    description = '',
+    descriptionId = ''
+  } = typeof locals !== 'undefined' ? locals : {};
+%>
+
+<div class="workspace-modal" id="<%= id %>" hidden>
+  <div class="workspace-modal__backdrop" data-close-modal="true"></div>
+
+  <section class="workspace-modal__dialog <%= dialogClass %>" role="dialog" aria-modal="true" aria-labelledby="<%= titleId %>">
+    <button type="button" class="workspace-modal__close" data-close-modal="true" aria-label="<%= closeLabel %>">×</button>
+
+    <header class="workspace-modal__header">
+      <% if (eyebrow) { %>
+      <span class="workspace-modal__eyebrow"><%= eyebrow %></span>
+      <% } %>
+
+      <h2 class="workspace-modal__title" id="<%= titleId %>"><%= title %></h2>
+      <% if (description) { %>
+      <p class="workspace-modal__text" <%- descriptionId ? `id="${descriptionId}"` : "" %>><%= description %></p>
+      <% } %>
+    </header>
+
+    <div class="workspace-modal__body <%= bodyClass %>">
+      <%- body %>
+    </div>
+
+    <% if (showFooter) { %>
+    <footer class="workspace-modal__footer <%= footerClass %>">
+      <%- footer || '' %>
+    </footer>
+    <% } %>
+  </section>
+</div>

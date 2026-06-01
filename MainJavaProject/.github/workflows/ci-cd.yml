@@ -1,0 +1,218 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: gss_test
+          POSTGRES_USER: gss
+          POSTGRES_PASSWORD: gss
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gss -d gss_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Create CI env file
+        run: cp .env.example .env
+
+      - name: Override CI env values
+        run: |
+          cat <<'EOFVARS' >> .env
+          NODE_ENV=test
+          ENVIRONMENT_NAME=test
+          APP_URL=http://127.0.0.1:3000
+          DB_HOST=127.0.0.1
+          DB_PORT=5432
+          DB_NAME=gss_test
+          DB_USER=gss
+          DB_PASSWORD=gss
+          REDIS_HOST=127.0.0.1
+          REDIS_PORT=6379
+          REDIS_REQUIRED=true
+          DB_RUN_MIGRATIONS_ON_BOOT=true
+          ALLOW_RUNTIME_MIGRATIONS=true
+          DB_MIGRATION_EXECUTION_MODE=ci-gate
+          DB_MIGRATION_GATE_TOKEN=ci-safe-gate-token
+          DB_MIGRATION_RELEASE_ID=${{ github.sha }}
+          DB_MIGRATION_APPLIED_BY=ci:${{ github.actor }}
+          OBSERVABILITY_METRICS_AUTH_TOKEN=ci-metrics-token-1234567890
+          OBSERVABILITY_HEALTH_AUTH_TOKEN=ci-health-token-1234567890
+          EOFVARS
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Secret scan
+        run: npm run security:secret-scan
+
+      - name: Dependency audit policy
+        run: npm run security:dependency-audit
+
+      - name: Migration gate
+        run: npm run db:migration-gate
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: E2E tests
+        run: npm run test:e2e
+
+      - name: Smoke tests
+        run: npm run test:smoke
+
+      - name: Build artifact metadata
+        run: npm run build
+
+      - name: Build container image
+        run: docker build -t $REGISTRY/${IMAGE_NAME}:${{ github.sha }} .
+
+  publish:
+    if: github.ref == 'refs/heads/main'
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  migrate-staging:
+    if: github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Run explicit staging migration gate
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -eu
+            export IMAGE_REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            docker pull "$IMAGE_REF"
+            docker run --rm \
+              --env-file /opt/gss/.env \
+              -e NODE_ENV=staging \
+              -e ENVIRONMENT_NAME=staging \
+              -e DB_RUN_MIGRATIONS_ON_BOOT=false \
+              -e ALLOW_RUNTIME_MIGRATIONS=true \
+              -e DB_MIGRATION_EXECUTION_MODE=ci-gate \
+              -e DB_MIGRATION_GATE_TOKEN='${{ secrets.STAGING_DB_MIGRATION_GATE_TOKEN }}' \
+              -e DB_MIGRATION_RELEASE_ID='${{ github.sha }}' \
+              -e DB_MIGRATION_APPLIED_BY='ci:${{ github.actor }}' \
+              "$IMAGE_REF" \
+              node ./scripts/migration-gate.js
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/main'
+    needs: migrate-staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Deploy on staging host
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -eu
+            cd /opt/gss
+            if docker ps --format '{{.Names}}' | grep -qx app; then
+              docker inspect app --format='{{ index .Config.Image }}' > .previous-successful-image-tag
+            elif [ -f .current-successful-image-tag ]; then
+              cp .current-successful-image-tag .previous-successful-image-tag
+            fi
+            export IMAGE_TAG=${{ github.sha }}
+            docker compose -f ops/compose/docker-compose.staging.yml pull
+            docker compose -f ops/compose/docker-compose.staging.yml up -d --remove-orphans
+            printf '%s' "${IMAGE_TAG}" > .current-successful-image-tag
+            docker image prune -f
+
+      - name: Staging smoke check
+        run: |
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${{ secrets.STAGING_HEALTH_TOKEN }}" \
+            "${{ secrets.STAGING_BASE_URL }}/health/ready"
+
+  rollback-staging:
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Roll back to previous image tag
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -eu
+            cd /opt/gss
+            export IMAGE_TAG=$(cat .previous-successful-image-tag)
+            docker compose -f ops/compose/docker-compose.staging.yml up -d --remove-orphans

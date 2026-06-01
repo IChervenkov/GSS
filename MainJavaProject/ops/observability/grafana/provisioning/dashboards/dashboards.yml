@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: GSS Dashboards
+    orgId: 1
+    folder: GSS
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

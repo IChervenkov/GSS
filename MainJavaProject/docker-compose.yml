@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-gss}
+      POSTGRES_USER: ${DB_USER:-gss}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-myGssDB}
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - ./docker-data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-gss} -d ${DB_NAME:-gss}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - ./docker-data/redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    profiles: ['production']
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      ENVIRONMENT_NAME: production
+      APP_URL: ${APP_URL_PRODUCTION:-https://localhost}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_REQUIRED: 'true'
+      OBSERVABILITY_METRICS_AUTH_TOKEN: ${OBSERVABILITY_METRICS_AUTH_TOKEN_PRODUCTION:-production-metrics-token}
+      OBSERVABILITY_HEALTH_AUTH_TOKEN: ${OBSERVABILITY_HEALTH_AUTH_TOKEN_PRODUCTION:-production-health-token}
+    ports:
+      - '${PORT:-3000}:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

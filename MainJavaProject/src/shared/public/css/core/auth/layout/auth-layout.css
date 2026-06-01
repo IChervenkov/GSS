@@ -1,0 +1,74 @@
+/* =========================================================
+   AUTH LAYOUT
+   ========================================================= */
+.saas-auth {
+  min-height: 100vh;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 32px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(400px, 460px);
+  gap: 32px;
+  align-items: stretch;
+}
+
+.saas-auth__left,
+.saas-auth__right {
+  min-width: 0;
+}
+
+.saas-auth__left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px 8px 20px 4px;
+}
+
+.saas-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.saas-brand__logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: contain;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px;
+  box-shadow: var(--shadow-xs);
+}
+
+.saas-brand__name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.saas-auth__headline {
+  margin: 8px 0 0;
+  font-size: clamp(34px, 4vw, 52px);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+}
+
+.saas-auth__sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.saas-auth__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saas-auth__right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

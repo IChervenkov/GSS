@@ -1,0 +1,14 @@
+/* Aggregated auth stylesheet. Prefer importing the split files directly for long-term maintenance. */
+@import url('/assets/shared/css/core/auth/tokens.css');
+@import url('/assets/shared/css/core/auth/base.css');
+@import url('/assets/shared/css/core/auth/layout/auth-layout.css');
+@import url('/assets/shared/css/core/auth/layout/theme-toggle.css');
+@import url('/assets/shared/css/core/auth/components/buttons.css');
+@import url('/assets/shared/css/core/auth/components/dark-theme.css');
+@import url('/assets/shared/css/core/auth/components/form-shell.css');
+@import url('/assets/shared/css/core/auth/components/invite.css');
+@import url('/assets/shared/css/core/auth/components/panels.css');
+@import url('/assets/shared/css/core/auth/components/request.css');
+@import url('/assets/shared/css/core/auth/components/status.css');
+@import url('/assets/shared/css/core/auth/components/validation.css');
+@import url('/assets/shared/css/core/auth/responsive.css');

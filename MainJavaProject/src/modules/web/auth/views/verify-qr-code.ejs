@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<%- await include('../../../../shared/views/partials/auth/head', {
+  title,
+  pageStyles: ['/assets/auth/css/verify-qr-code.css']
+}) %>
+
+<body data-page="auth-verify">
+  <%- await include('../../../../shared/views/partials/common/a11y-primitives') %>
+  <%- await include('../../../../shared/views/partials/auth/icons') %>
+  <%- await include('../../../../shared/views/partials/auth/theme-toolbar') %>
+
+  <main class="saas-auth" id="main-content">
+    <%- await include('../../../../shared/views/partials/auth/brand-panel', {
+      headline: 'Two-factor verification for controlled access.',
+      subtext: 'Confirm your sign-in with the six-digit code from your authenticator app. If you still need the seed QR, request a temporary administrator-approved visualization for this session only.',
+      badges: ['Second factor required', 'Realtime approval', 'Ephemeral QR visibility'],
+      panelEyebrow: '2FA workflow',
+      panelTitle: 'One session, one approval path, one temporary QR.',
+      panelText: 'Users verify with a time-based code. QR visualization stays guarded behind an explicit approval flow and disappears automatically.',
+      featureCards: [
+        { icon: 'QR', title: 'Short-lived QR display', text: 'The QR code is shown only for the approved active session.' },
+        { icon: 'UX', title: 'Clear user guidance', text: 'The page guides the user through code entry and QR request fallback.' },
+        { icon: 'RT', title: 'Realtime decision updates', text: 'Socket-driven resolution updates the screen as soon as an administrator responds.' },
+      ],
+      featureList: [],
+      panelClass: 'product-panel',
+      panelAriaLabel: 'Verification overview'
+    }) %>
+
+    <section class="saas-auth__right">
+      <div class="login-card">
+        <header class="login-card__header">
+          <span class="login-card__eyebrow">Second factor</span>
+          <h1 class="login-card__title"><%= title %></h1>
+          <p class="login-card__hint">Enter the six-digit code from your authenticator app.</p>
+        </header>
+
+        <%- await include('../../../../shared/views/partials/auth/alert', {
+          id: 'verify-alert',
+          textId: 'error-message',
+          message: '',
+          isVisible: false,
+        }) %>
+
+        <form id="verify-form" class="login-form" method="post" action="/web/verify" novalidate data-state-root="true">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" id="code" name="code" value="">
+
+          <div class="field">
+            <label for="digit-1">Verification code</label>
+            <div class="code-inputs__row" role="group" aria-label="Six digit code" aria-describedby="code-status">
+              <% for (let i = 1; i <= 6; i += 1) { %>
+              <input id="digit-<%= i %>" class="code-digit" name="digit-<%= i %>" aria-label="Verification digit <%= i %>" inputmode="numeric" autocomplete="one-time-code" maxlength="1" pattern="[0-9]*" />
+              <% } %>
+            </div>
+            <div class="field__help" id="code-status">0/6 digits</div>
+          </div>
+
+          <button type="submit" class="btn-primary">Verify code</button>
+          <div id="loading-indicator" class="loading" aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div><span>Checking code...</span>
+          </div>
+
+          <aside class="invite-panel" aria-labelledby="qr-panel-title">
+            <span class="invite-panel__eyebrow">Need help?</span>
+            <h2 id="qr-panel-title" class="invite-panel__title"><%= qrCodeDataURL ? 'Your one-time QR code' : 'Need to visualize the QR code?' %></h2>
+            <p id="qr-panel-text" class="invite-panel__text"><%= qrCodeDataURL ? 'Scan this QR code in your authenticator app before continuing. Treat it like a secret.' : 'If you have not set up your authenticator yet, request a one-time QR code visualization for this active session only.' %></p>
+
+            <% if (qrCodeDataURL) { %>
+            <div class="qr-wrapper" id="qr-wrapper">
+              <div class="qr-visual"><img src="<%= qrCodeDataURL %>" alt="One-time QR code for authenticator setup" /></div>
+              <div class="qr-panel__meta">Visible only for the current allowed session.</div>
+            </div>
+            <% } else { %>
+            <button id="qr-request" type="button" class="btn-secondary qr-panel__action">Request one-time QR visualization</button>
+            <div class="qr-request-card" id="qr-request-card">
+              <strong>How it works</strong>
+              <p>The system shows the QR code only when the request is allowed for this exact session.</p>
+            </div>
+            <% } %>
+          </aside>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/assets/auth/js/verify/verify-page.ts"></script>
+</body>
+
+</html>

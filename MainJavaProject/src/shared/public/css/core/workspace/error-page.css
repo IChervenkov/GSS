@@ -1,0 +1,121 @@
+.main-workspace[data-page='error-page'] {
+  min-height: 100dvh;
+}
+
+.main-workspace[data-page='error-page'] .error-page {
+  width: min(100%, 960px);
+  min-height: 100dvh;
+  align-content: center;
+  padding-block: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-bottom));
+}
+
+.main-workspace[data-page='error-page'] .error-page__hero {
+  overflow: hidden;
+}
+
+.main-workspace[data-page='error-page'] .error-page__content {
+  display: grid;
+  gap: 1rem;
+}
+
+.main-workspace[data-page='error-page'] .error-page__eyebrow {
+  width: fit-content;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.main-workspace[data-page='error-page'] .error-page__status {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(4rem, 28vw, 9rem);
+  line-height: 0.9;
+  overflow-wrap: anywhere;
+}
+
+.main-workspace[data-page='error-page'] .error-page__message {
+  max-width: 64ch;
+  margin: 0;
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  overflow-wrap: anywhere;
+}
+
+.main-workspace[data-page='error-page'] .error-page__meta,
+.main-workspace[data-page='error-page'] .error-page__actions {
+  margin-top: 0.25rem;
+}
+
+.main-workspace[data-page='error-page'] .error-page__chip {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.main-workspace[data-page='error-page'] .error-page__chip span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.main-workspace[data-page='error-page'] .error-page__panel {
+  overflow: hidden;
+}
+
+.main-workspace[data-page='error-page'] .error-page__details {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.main-workspace[data-page='error-page'] .error-page__stack {
+  max-width: 100%;
+  max-height: min(50vh, 28rem);
+  margin: 0;
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 639px) {
+  .main-workspace[data-page='error-page'] .error-page {
+    min-height: 100dvh;
+    align-content: start;
+    padding-inline: max(0.875rem, env(safe-area-inset-left))
+      max(0.875rem, env(safe-area-inset-right));
+  }
+
+  .main-workspace[data-page='error-page'] .error-page__hero,
+  .main-workspace[data-page='error-page'] .error-page__panel {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .main-workspace[data-page='error-page'] .error-page__meta,
+  .main-workspace[data-page='error-page'] .error-page__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .main-workspace[data-page='error-page'] .error-page__chip {
+    justify-content: flex-start;
+  }
+
+  .main-workspace[data-page='error-page'] .error-page__stack {
+    max-height: 42vh;
+    padding: 0.75rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (min-width: 1080px) {
+  .main-workspace[data-page='error-page'] .error-page__hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,0 +1,26 @@
+name: Governance Checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate governance artifacts
+        run: node src/operations/ci/scripts/check-governance.mjs
+
+      - name: Validate alert and runbook links
+        run: node src/operations/ci/scripts/check-alert-runbook-links.mjs

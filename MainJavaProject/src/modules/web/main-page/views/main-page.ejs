@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<%- await include('../../../../shared/views/partials/workspace/head', {
+  title,
+  pageStyles: ['/assets/main/css/main-page.css']
+}) %>
+
+<body class="main-workspace" data-page="main-page" data-current-camp-id="<%= campId || '' %>" data-current-camp-name="<%= currentCampName || '' %>" data-first-login="<%= firstLogin ? 'true' : 'false' %>" data-is-admin="<%= isAdmin ? 'true' : 'false' %>">
+  <%
+    const permissionNames = new Set((permissions || []).map((permission) => permission?.name).filter(Boolean));
+    const canManageSystemAccess = permissionNames.has('Admin permission');
+  %>
+  <%- await include('../../../../shared/views/partials/common/a11y-primitives') %>
+  <%- await include('../../../../shared/views/partials/workspace/icons') %>
+  <%- await include('../../../../shared/views/partials/common/page-data', { pageData: { pageKey: 'main-page', campId: campId || '', currentNav: 'Main Page' } }) %>
+
+  <input type="hidden" id="csrf-token" value="<%= csrfToken %>" />
+  <%- await include('../../../../shared/views/partials/workspace/topbar', {
+    navItems: horizontalNavItems,
+    currentNav: 'Main Page',
+    csrfToken
+  }) %>
+
+  <main class="workspace-shell" id="main-content" data-state-root="true" data-current-camp-id="<%= campId || '' %>" data-current-camp-name="<%= currentCampName || '' %>" data-is-admin="<%= isAdmin ? 'true' : 'false' %>">
+    <section class="hero-card">
+      <div class="hero-card__content">
+        <span class="hero-card__eyebrow">Central control</span>
+        <h1 class="hero-card__title"><%= startMessage %></h1>
+        <p class="hero-card__text">
+          Manage camp selection, user access and permission assignments from one enterprise workspace.
+        </p>
+        <div class="hero-card__meta">
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-building"></use>
+            </svg><span id="current-camp-chip"><%= currentCampName || 'No camp selected' %></span></span>
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-person-gear"></use>
+            </svg><span id="permission-hero-count"><%= permissions.length %> permissions</span></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="summary-grid" aria-label="Workspace summary">
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Information</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-book"></use>
+          </svg></div>
+        <div class="summary-card__value">Introduction</div>
+        <p class="summary-card__text">Central workspace for camp context, user access and permission governance.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Camp scope</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-building"></use>
+          </svg></div>
+        <div class="summary-card__value" id="camp-summary-value"><%= currentCampName || 'Not selected' %></div>
+        <p class="summary-card__text">Choose the active camp once and keep downstream pages aligned with the same context.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Granted permissions</span><svg class="icon" aria-hidden="true">
+            <use href="#icon-check-circle"></use>
+          </svg></div>
+        <div class="summary-card__value" id="permission-summary-value"><%= permissions.length %></div>
+        <p class="summary-card__text">Your visible modules and admin controls are driven by permission records.</p>
+      </article>
+    </section>
+
+    <section class="workspace-panels">
+      <div class="tab-bar" role="tablist" aria-label="Workspace sections">
+        <button class="tab-pill is-active" type="button" role="tab" data-tab-trigger="overview" aria-selected="true">Overview</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="camps" aria-selected="false">Camps</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="message" aria-selected="false">Send message</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="admin" aria-selected="false" <%= canManageSystemAccess ? '' : 'disabled' %>>Admin panel</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="guide" aria-selected="false">Guide</button>
+      </div>
+
+      <section class="tab-panel is-active" id="tab-overview" data-tab-panel="overview" role="tabpanel">
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Access snapshot</span>
+              <h2 class="panel-card__title">Available navigation and permission coverage</h2>
+            </div>
+          </div>
+          <div class="overview-grid">
+            <article class="mini-card">
+              <h3 class="mini-card__title">Active modules</h3>
+              <div class="token-grid" id="current-user-nav-list">
+                <% horizontalNavItems.forEach((item) => { %>
+                <span class="token"><%= item.name %></span>
+                <% }) %>
+              </div>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Granted permissions</h3>
+              <div class="token-grid" id="current-user-permission-list">
+                <% permissions.forEach((permission) => { %>
+                <span class="token token--soft"><%= permission.name %></span>
+                <% }) %>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-camps" data-tab-panel="camps" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Camp management</span>
+              <h2 class="panel-card__title">Switch the active camp and add, edit or remove at once</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-camp-modal"><svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg><span>Add camp</span></button>
+              <button class="btn btn-secondary" type="button" id="open-bulk-camp-import-modal"><svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg><span>Bulk update</span></button>
+              <button class="btn btn-secondary" type="button" id="refresh-camps-button"><svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg><span>Refresh</span></button>
+            </div>
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th id="camp-id-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="camp-search-id-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="camp-search-id-input" type="search" placeholder="Search identifier" autocomplete="off" data-main-search-table="campTable" data-main-search-column="id" /></label>
+                      <button class="sort-header-button" type="button" data-main-sort-table="campTable" data-main-sort-column="id" aria-label="Sort by identifier">
+                        <span>Identifier</span>
+                        <span class="sort-header-button__indicator" data-main-sort-indicator="campTable:id" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="camp-name-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="camp-search-name-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="camp-search-name-input" type="search" placeholder="Search camp name" autocomplete="off" data-main-search-table="campTable" data-main-search-column="name" /></label>
+                      <button class="sort-header-button" type="button" data-main-sort-table="campTable" data-main-sort-column="name" aria-label="Sort by camp name">
+                        <span>Camp name</span>
+                        <span class="sort-header-button__indicator" data-main-sort-indicator="campTable:name" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="camp-table-body">
+                <tr>
+                  <td colspan="3" class="table-empty">Load camps to continue.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="camps-prev-button">Previous</button>
+            <span id="camps-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="camps-next-button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-message" data-tab-panel="message" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">User message</span>
+              <h2 class="panel-card__title">Send suggestions, issues or messages to administrators</h2>
+            </div>
+          </div>
+          <form class="workspace-form compact-message-form" id="user-message-form" novalidate>
+            <div class="field">
+              <label for="user-message-type-input">Type <span class="required-marker" aria-hidden="true">*</span></label>
+              <div class="lookup-combobox user-message-type-select" data-user-message-type-combobox>
+                <div class="lookup-combobox__control">
+                  <svg class="icon" aria-hidden="true">
+                    <use href="#icon-filter"></use>
+                  </svg>
+                  <input id="user-message-type-input" type="search" required placeholder="Search type" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="user-message-type-options" />
+                  <input id="user-message-type-value" name="type" type="hidden" required />
+                  <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+                </div>
+                <div class="lookup-menu" id="user-message-type-options" role="listbox" aria-label="Message type results" hidden></div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="user-message-subject-input">Subject <span class="required-marker" aria-hidden="true">*</span></label>
+              <input id="user-message-subject-input" name="subject" type="text" maxlength="120" autocomplete="off" required placeholder="Brief summary" />
+            </div>
+            <div class="field">
+              <label for="user-message-body-input">Message <span class="required-marker" aria-hidden="true">*</span></label>
+              <textarea id="user-message-body-input" name="message" rows="6" maxlength="2000" required placeholder="Describe the suggestion, issue or request for the administrators."></textarea>
+            </div>
+            <div class="workspace-form__actions">
+              <button class="btn btn-primary" type="submit"><svg class="icon" aria-hidden="true">
+                  <use href="#icon-check-circle"></use>
+                </svg><span>Send</span></button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="tab-panel admin-panel-stack" id="tab-admin" data-tab-panel="admin" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">User inbox</span>
+              <h2 class="panel-card__title">Review submitted suggestions, messages and access requests</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-secondary" type="button" id="refresh-admin-inbox-button"><svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg><span>Refresh</span></button>
+            </div>
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table admin-inbox-table">
+              <thead>
+                <tr>
+                  <th id="admin-inbox-type-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="admin-inbox-search-type-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="admin-inbox-search-type-input" type="search" placeholder="Search type" autocomplete="off" data-main-search-table="adminInbox" data-main-search-column="type" /></label>
+                      <button class="sort-header-button" type="button" data-main-sort-table="adminInbox" data-main-sort-column="type" aria-label="Sort by type">
+                        <span>Type</span>
+                        <span class="sort-header-button__indicator" data-main-sort-indicator="adminInbox:type" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="admin-inbox-username-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="admin-inbox-search-username-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="admin-inbox-search-username-input" type="search" placeholder="Search sender" autocomplete="off" data-main-search-table="adminInbox" data-main-search-column="username" /></label>
+                      <button class="sort-header-button" type="button" data-main-sort-table="adminInbox" data-main-sort-column="username" aria-label="Sort by sender">
+                        <span>From</span>
+                        <span class="sort-header-button__indicator" data-main-sort-indicator="adminInbox:username" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="admin-inbox-subject-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="admin-inbox-search-subject-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="admin-inbox-search-subject-input" type="search" placeholder="Search subject" autocomplete="off" data-main-search-table="adminInbox" data-main-search-column="subject" /></label>
+                      <button class="sort-header-button" type="button" data-main-sort-table="adminInbox" data-main-sort-column="subject" aria-label="Sort by subject">
+                        <span>Subject</span>
+                        <span class="sort-header-button__indicator" data-main-sort-indicator="adminInbox:subject" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="admin-inbox-status-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="admin-inbox-search-status-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="admin-inbox-search-status-input" type="search" placeholder="Search status" autocomplete="off" data-main-search-table="adminInbox" data-main-search-column="status" /></label>
+                      <button class="sort-header-button" type="button" data-main-sort-table="adminInbox" data-main-sort-column="status" aria-label="Sort by status">
+                        <span>Status</span>
+                        <span class="sort-header-button__indicator" data-main-sort-indicator="adminInbox:status" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="admin-inbox-created-at-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="admin-inbox-search-created-at-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="admin-inbox-search-created-at-input" type="search" placeholder="Search date" autocomplete="off" data-main-search-table="adminInbox" data-main-search-column="createdAt" /></label>
+                      <button class="sort-header-button" type="button" data-main-sort-table="adminInbox" data-main-sort-column="createdAt" aria-label="Sort by submitted date">
+                        <span>Submitted</span>
+                        <span class="sort-header-button__indicator" data-main-sort-indicator="adminInbox:createdAt" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-inbox-table-body">
+                <tr>
+                  <td colspan="6" class="table-empty">Load user messages to continue.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="admin-inbox-prev-button">Previous</button>
+            <span id="admin-inbox-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="admin-inbox-next-button">Next</button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">User directory</span>
+              <h2 class="panel-card__title">Add, edit and remove users with one consistent workflow</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-user-modal"><svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg><span>Add user</span></button>
+              <button class="btn btn-secondary" type="button" id="refresh-users-button"><svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg><span>Refresh</span></button>
+            </div>
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th id="user-name-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="user-search-username-input">
+                        <svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg>
+                        <input id="user-search-username-input" type="search" placeholder="Search username" autocomplete="off" data-main-search-table="users" data-main-search-column="username" />
+                      </label>
+                      <button class="sort-header-button" type="button" data-main-sort-table="users" data-main-sort-column="username" aria-label="Sort by username">
+                        <span>Username</span>
+                        <span class="sort-header-button__indicator" data-main-sort-indicator="users:username" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="user-account-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="user-search-account-input">
+                        <svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg>
+                        <input id="user-search-account-input" type="search" placeholder="Search account" autocomplete="off" data-main-search-table="users" data-main-search-column="account" />
+                      </label>
+                      <button class="sort-header-button" type="button" data-main-sort-table="users" data-main-sort-column="account" aria-label="Sort by account">
+                        <span>Account</span>
+                        <span class="sort-header-button__indicator" data-main-sort-indicator="users:account" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="user-table-body">
+                <tr>
+                  <td colspan="3" class="table-empty">Load users to continue.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="users-prev-button">Previous</button>
+            <span id="users-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="users-next-button">Next</button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Permission matrix</span>
+              <h2 class="panel-card__title">Review and stage permission changes before saving</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-secondary" type="button" id="refresh-permissions-button"><svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg><span>Refresh</span></button>
+            </div>
+          </div>
+          <div id="permission-dirty-banner" class="inline-banner" hidden aria-live="polite"></div>
+          <div class="data-table-wrap">
+            <table class="data-table permissions-table">
+              <thead id="permission-table-head"></thead>
+              <tbody id="permission-table-body">
+                <tr>
+                  <td class="table-empty">Load permissions to continue.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="permissions-prev-button">Previous</button>
+            <span id="permissions-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="permissions-next-button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-guide" data-tab-panel="guide" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Operational guide</span>
+              <h2 class="panel-card__title">What each section is responsible for</h2>
+            </div>
+          </div>
+          <div class="guide-grid">
+            <article class="guide-card">
+              <h3 class="guide-card__title">Main page</h3>
+              <p>Central workspace for camp context, user access and permission governance.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Assets</h3>
+              <p>Inventory records, room placement and lifecycle tracking for managed equipment.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Laundry</h3>
+              <p>Bag ownership, movement and wash-state workflows tied to camp operations.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Accommodation and keys</h3>
+              <p>Buildings, rooms, keys and soldier allocation flows.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Bicycles</h3>
+              <p>Bike assignment, return status and related operational accountability.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'bulk-camp-import-modal',
+    titleId: 'bulk-camp-import-modal-title',
+    closeLabel: 'Close bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import camps from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit camps in bulk.',
+    descriptionId: 'bulk-camp-import-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="camp-import-card" id="camp-import-card">
+  <div class="camp-import-card__header">
+    <div>
+      <h3 class="camp-import-card__title">Download a template, fill it in, and import camp adds or edits</h3>
+    </div>
+    <a class="btn btn-secondary" id="download-camp-template-button" href="/web/camp/template">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-download"></use>
+      </svg>
+      <span>Download template</span>
+    </a>
+  </div>
+  <p class="camp-import-card__text">
+    Leave <strong>Camp ID</strong> blank to create a new camp. Provide an existing <strong>Camp ID</strong> to rename that camp.
+  </p>
+  <div class="camp-import-form">
+    <label class="camp-import-field" for="camp-template-file-input">
+      <span class="camp-import-field__label">Filled template (.xlsx)</span>
+      <span class="input-icon-field">
+        <svg class="icon" aria-hidden="true">
+          <use href="#icon-download"></use>
+        </svg>
+        <input id="camp-template-file-input" type="file" accept=".xlsx" />
+      </span>
+    </label>
+    <button class="btn btn-primary" type="button" id="upload-camp-template-button">Upload template</button>
+  </div>
+  <div class="camp-import-meta">
+    <span id="camp-template-selected-file">No file selected.</span>
+  </div>
+  <div class="camp-import-progress" id="camp-import-progress-panel" hidden>
+    <div class="camp-import-progress__row">
+      <span>Upload</span>
+      <span id="camp-import-upload-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar" id="camp-import-upload-progress-bar" max="100" value="0"></progress>
+    </div>
+    <div class="camp-import-progress__row">
+      <span>Processing</span>
+      <span id="camp-import-processing-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar progress-track__bar--accent" id="camp-import-processing-progress-bar" max="100" value="0"></progress>
+    </div>
+    <p class="camp-import-status" id="camp-import-status-message">Waiting to start.</p>
+    <div class="camp-import-summary" id="camp-import-summary"></div>
+    <div class="camp-import-errors" id="camp-import-errors" hidden></div>
+  </div>
+</section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'add-camp-modal',
+    titleId: 'add-camp-modal-title',
+    closeLabel: 'Close add camp modal',
+    eyebrow: 'Create camp',
+    title: 'Add a new camp',
+    description: 'Use a clear and unique camp name so operators can switch context safely.',
+    descriptionId: 'add-camp-modal-text',
+    body: `<form id="add-camp-form" class="workspace-form" novalidate>
+  <div class="field">
+    <label for="add-camp-name-input">Camp name</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-building"></use>
+      </svg>
+      <input id="add-camp-name-input" name="campName" type="text" placeholder="Camp Alpha" required />
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary">Create camp</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'edit-camp-modal',
+    titleId: 'edit-camp-modal-title',
+    closeLabel: 'Close edit camp modal',
+    eyebrow: 'Edit camp',
+    title: 'Edit a camp',
+    description: 'Use a clear and unique camp name so operators can switch context safely.',
+    descriptionId: 'edit-camp-modal-text',
+    body: `<form id="edit-camp-form" class="workspace-form" novalidate>
+  <input type="hidden" id="edit-camp-id-input" name="campId" />
+  <div class="field">
+    <label for="edit-camp-name-input">Camp name</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-building"></use>
+      </svg>
+      <input id="edit-camp-name-input" name="campName" type="text" placeholder="Camp Alpha" required />
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-camp-button">Save changes</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'user-modal',
+    titleId: 'user-modal-title',
+    closeLabel: 'Close user modal',
+    eyebrow: 'User lifecycle',
+    title: 'Add user',
+    description: 'Create a user account with a controlled temporary password flow.',
+    descriptionId: 'user-modal-text',
+    body: `<form id="user-form" class="workspace-form" novalidate>
+  <input type="hidden" id="user-form-mode" name="mode" value="create" />
+  <input type="hidden" id="user-id-input" name="id" />
+  <div class="field">
+    <label for="user-name-input">Username</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-person-gear"></use>
+      </svg>
+      <input id="user-name-input" name="username" type="text" placeholder="username@company.com" required />
+    </div>
+  </div>
+  <div class="field" id="user-password-field">
+    <label for="user-password-input" id="user-password-label">Temporary password</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-lock"></use>
+      </svg>
+      <input id="user-password-input" name="password" type="text" placeholder="Generated when needed" />
+    </div>
+    <div class="field__hint" id="user-password-hint">Leave empty during create to let the system generate one.</div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-user-button">Save user</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/confirm-modal') %>
+
+  <div class="workspace-modal" id="temp-password-modal" hidden>
+    <div class="workspace-modal__backdrop" data-close-modal="true"></div>
+    <section class="workspace-modal__dialog workspace-modal__dialog--compact" role="dialog" aria-modal="true" aria-labelledby="temp-password-modal-title">
+      <button type="button" class="workspace-modal__close" data-close-modal="true" aria-label="Close temporary password modal">×</button>
+      <header class="workspace-modal__header">
+        <span class="workspace-modal__eyebrow">Temporary password</span>
+        <h2 id="temp-password-modal-title" class="workspace-modal__title">Store this credential securely</h2>
+        <p class="workspace-modal__text">This value is shown once after user creation.</p>
+      </header>
+      <div class="workspace-modal__body">
+        <div class="temp-password-panel">
+          <code id="temp-password-value" class="temp-password-value"></code>
+          <button class="btn btn-ghost btn-icon" id="copy-temp-password-button" type="button" aria-label="Copy temporary password" title="Copy temporary password">
+            <svg class="icon" aria-hidden="true">
+              <use href="#icon-inbox"></use>
+            </svg>
+            <span>Copy</span>
+          </button>
+        </div>
+      </div>
+      <div class="workspace-modal__footer">
+        <div class="workspace-form__actions"><button class="btn btn-primary" type="button" data-close-modal="true">Done</button></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/assets/main/js/main-page.ts"></script>
+</body>
+
+</html>

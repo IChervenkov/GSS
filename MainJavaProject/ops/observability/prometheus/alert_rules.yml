@@ -1,0 +1,62 @@
+groups:
+  - name: gss-operability
+    rules:
+      - alert: GSSRepeated500s
+        expr: sum by (route) (increase(gss_http_error_total{class="5xx"}[5m])) >= 5
+        for: 5m
+        labels:
+          severity: critical
+          service: gss
+        annotations:
+          summary: Repeated 5xx responses on {{ $labels.route }}
+          description: The service produced at least 5 server errors in the last 5 minutes for this route.
+
+      - alert: GSSAuthFailureSpike
+        expr: sum(increase(gss_auth_failures_total[10m])) >= 20
+        for: 10m
+        labels:
+          severity: warning
+          service: gss
+        annotations:
+          summary: Authentication failures spiked
+          description: Authentication and authorization failures increased sharply in the last 10 minutes.
+
+      - alert: GSSDbPoolPressure
+        expr: max_over_time(gss_db_pool_waiting_clients[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: gss
+        annotations:
+          summary: PostgreSQL pool has waiting clients
+          description: The database pool has sustained waiting clients, which suggests pool exhaustion or slow queries.
+
+      - alert: GSSRedisNotReady
+        expr: min_over_time(gss_dependency_readiness{dependency="redis"}[5m]) < 1
+        for: 5m
+        labels:
+          severity: critical
+          service: gss
+        annotations:
+          summary: Redis readiness failed
+          description: Redis has not been ready for at least 5 minutes.
+
+      - alert: GSSHighHttpLatency
+        expr: (sum(increase(gss_http_request_duration_ms_sum[5m])) / clamp_min(sum(increase(gss_http_request_duration_ms_count[5m])), 1)) > 750
+        for: 10m
+        labels:
+          severity: warning
+          service: gss
+        annotations:
+          summary: High average HTTP latency
+          description: Average HTTP latency has been above 750 ms for 10 minutes.
+
+      - alert: GSSSocketInstability
+        expr: sum(increase(gss_socket_disconnects_total[10m])) > sum(increase(gss_socket_connections_total[10m])) * 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: gss
+        annotations:
+          summary: Socket disconnect rate is high
+          description: Socket disconnects are abnormally high relative to accepted connections in the last 10 minutes.

@@ -1,0 +1,7 @@
+<%
+  const serializedPageData = JSON.stringify(pageData || {})
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+%>
+<template id="<%= id || 'page-data' %>" data-page-data><%- serializedPageData %></template>

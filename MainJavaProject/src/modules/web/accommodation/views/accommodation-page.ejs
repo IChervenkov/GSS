@@ -1,0 +1,1660 @@
+<!doctype html>
+<html lang="en">
+<%- await include('../../../../shared/views/partials/workspace/head', {
+  title,
+  pageStyles: ['/assets/accommodation/css/accommodation-page.css']
+}) %>
+
+<body class="main-workspace" data-page="accommodation-page" data-current-camp-id="<%= campId || '' %>">
+  <%- await include('../../../../shared/views/partials/common/a11y-primitives') %>
+  <%- await include('../../../../shared/views/partials/workspace/icons') %>
+  <%- await include('../../../../shared/views/partials/common/page-data', { pageData: { pageKey, campId: campId || '', currentNav, permissionNames: permissionNames || [] } }) %>
+
+  <input type="hidden" id="csrf-token" value="<%= csrfToken %>" />
+
+  <%- await include('../../../../shared/views/partials/workspace/topbar', {
+    navItems: horizontalNavItems,
+    currentNav,
+    csrfToken
+  }) %>
+
+  <main class="workspace-shell" id="main-content">
+    <section class="hero-card">
+      <div class="hero-card__content">
+        <span class="hero-card__eyebrow"><%= eyebrow %></span>
+        <h1 class="hero-card__title"><%= title %></h1>
+        <p class="hero-card__text"><%= intro %></p>
+        <div class="hero-card__meta">
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-house-door"></use>
+            </svg><span>Buildings and rooms</span></span>
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-key"></use>
+            </svg><span>Key availability</span></span>
+          <span class="hero-chip"><svg class="icon" aria-hidden="true">
+              <use href="#icon-check-circle"></use>
+            </svg><span>Occupancy overview</span></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="summary-grid" aria-label="Accommodation summary">
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Buildings</span></div>
+        <div class="summary-card__value" id="summary-buildings">-</div>
+        <p class="summary-card__text">Tracked building locations.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Rooms</span></div>
+        <div class="summary-card__value" id="summary-rooms">-</div>
+        <p class="summary-card__text">Rooms visible in the selected camp.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Keys</span></div>
+        <div class="summary-card__value" id="summary-keys">-</div>
+        <p class="summary-card__text">Total keys mapped to rooms.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Free keys</span></div>
+        <div class="summary-card__value" id="summary-free-keys">-</div>
+        <p class="summary-card__text">Keys that are currently available.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Occupied keys</span></div>
+        <div class="summary-card__value" id="summary-occupied-keys">-</div>
+        <p class="summary-card__text">Keys currently assigned to a soldier.</p>
+      </article>
+      <article class="mini-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Upcoming actions</span></div>
+        <div class="summary-card__value" id="summary-upcoming-action">-</div>
+        <p class="summary-card__text">Soldiers that have upcoming actions.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Soldiers</span></div>
+        <div class="summary-card__value" id="summary-soldiers">-</div>
+        <p class="summary-card__text">Soldiers tracked in this camp.</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-card__header"><span class="summary-card__eyebrow">Additional items</span></div>
+        <div class="summary-card__value" id="summary-additional-items">-</div>
+        <p class="summary-card__text">Items and bags assigned to soldiers.</p>
+      </article>
+    </section>
+
+    <section class="workspace-panels" aria-label="Accommodation workspace">
+      <div class="tab-bar" role="tablist" aria-label="Accommodation sections">
+        <button class="tab-pill is-active" type="button" role="tab" data-tab-trigger="overview" aria-selected="true">Overview</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="buildings" aria-selected="false">Buildings</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="rooms" aria-selected="false">Rooms</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="keys" aria-selected="false">Keys</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="soldiers" aria-selected="false">Soldiers</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="additional-items" aria-selected="false">Additional items</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="report" aria-selected="false">Report</button>
+        <button class="tab-pill" type="button" role="tab" data-tab-trigger="guide" aria-selected="false">Guide</button>
+      </div>
+
+      <section class="tab-panel is-active" data-tab-panel="overview" role="tabpanel">
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Operational overview</span>
+              <h2 class="panel-card__title">Accommodation pressure</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-secondary" type="button" id="refresh-accommodation-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="overview-split">
+            <article class="mini-card">
+              <h3 class="mini-card__title">Upcoming accommodation</h3>
+              <ul class="name-list" id="upcoming-accommodation-list">
+                <li>No pending accommodation entries.</li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Upcoming release</h3>
+              <ul class="name-list" id="upcoming-release-list">
+                <li>No pending release entries.</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="buildings" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Buildings</span>
+              <h2 class="panel-card__title">Buildings and mapped rooms/keys</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-building-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add building</span>
+              </button>
+              <button class="btn btn-danger" type="button" id="release-selected-buildings-button" disabled>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-box-arrow-right"></use>
+                </svg>
+                <span>Release selected</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-building-import-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="refresh-buildings-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="table-select-col">
+                    <input id="building-select-page-checkbox" type="checkbox" aria-label="Select visible occupied buildings" />
+                  </th>
+                  <th id="building-id-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="building-search-id-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="building-search-id-input" type="search" placeholder="Search identifier" autocomplete="off" data-building-filter-column="id" /></label>
+                      <button class="sort-header-button" type="button" data-building-sort-column="id" aria-label="Sort by identifier">
+                        <span>Identifier</span>
+                        <span class="sort-header-button__indicator" data-building-sort-indicator="id" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="building-name-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="building-search-name-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="building-search-name-input" type="search" placeholder="Search building" autocomplete="off" data-building-filter-column="name" /></label>
+                      <button class="sort-header-button" type="button" data-building-sort-column="name" aria-label="Sort by building">
+                        <span>Building</span>
+                        <span class="sort-header-button__indicator" data-building-sort-indicator="name" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="building-type-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="building-search-type-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="building-search-type-input" type="search" placeholder="Search type" autocomplete="off" data-building-filter-column="type" /></label>
+                      <button class="sort-header-button" type="button" data-building-sort-column="type" aria-label="Sort by type">
+                        <span>Type</span>
+                        <span class="sort-header-button__indicator" data-building-sort-indicator="type" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="building-status-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="building-search-status-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="building-search-status-input" type="search" placeholder="Search status" autocomplete="off" data-building-filter-column="status" /></label>
+                      <button class="sort-header-button" type="button" data-building-sort-column="status" aria-label="Sort by status">
+                        <span>Status</span>
+                        <span class="sort-header-button__indicator" data-building-sort-indicator="status" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="building-rooms-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <button class="sort-header-button" type="button" data-building-sort-column="roomCount" aria-label="Sort by rooms">
+                        <span>Rooms</span>
+                        <span class="sort-header-button__indicator" data-building-sort-indicator="roomCount" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="building-total-keys-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <button class="sort-header-button" type="button" data-building-sort-column="totalKeys" aria-label="Sort by total keys">
+                        <span>Total keys</span>
+                        <span class="sort-header-button__indicator" data-building-sort-indicator="totalKeys" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="building-free-keys-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <button class="sort-header-button" type="button" data-building-sort-column="freeKeys" aria-label="Sort by free keys">
+                        <span>Free keys</span>
+                        <span class="sort-header-button__indicator" data-building-sort-indicator="freeKeys" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="building-occupied-keys-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <button class="sort-header-button" type="button" data-building-sort-column="occupiedKeys" aria-label="Sort by occupied keys">
+                        <span>Occupied keys</span>
+                        <span class="sort-header-button__indicator" data-building-sort-indicator="occupiedKeys" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="buildings-table-body">
+                <tr>
+                  <td colspan="10">Loading building information...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="buildings-prev-button">Previous</button>
+            <span id="buildings-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="buildings-next-button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="rooms" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Rooms</span>
+              <h2 class="panel-card__title">Rooms and mapped keys</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-room-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add room</span>
+              </button>
+              <button class="btn btn-danger" type="button" id="release-selected-rooms-button" disabled>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-box-arrow-right"></use>
+                </svg>
+                <span>Release selected</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-room-import-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="refresh-rooms-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="table-select-col">
+                    <input id="room-select-page-checkbox" type="checkbox" aria-label="Select visible occupied rooms" />
+                  </th>
+                  <th id="room-id-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="room-search-id-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="room-search-id-input" type="search" placeholder="Search identifier" autocomplete="off" data-room-filter-column="id" /></label>
+                      <button class="sort-header-button" type="button" data-room-sort-column="id" aria-label="Sort by identifier">
+                        <span>Identifier</span>
+                        <span class="sort-header-button__indicator" data-room-sort-indicator="id" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="room-name-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="room-search-name-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="room-search-name-input" type="search" placeholder="Search room" autocomplete="off" data-room-filter-column="name" /></label>
+                      <button class="sort-header-button" type="button" data-room-sort-column="name" aria-label="Sort by room">
+                        <span>Room</span>
+                        <span class="sort-header-button__indicator" data-room-sort-indicator="name" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="room-building-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="room-search-building-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="room-search-building-input" type="search" placeholder="Search building" autocomplete="off" data-room-filter-column="buildingName" /></label>
+                      <button class="sort-header-button" type="button" data-room-sort-column="buildingName" aria-label="Sort by building">
+                        <span>Building</span>
+                        <span class="sort-header-button__indicator" data-room-sort-indicator="buildingName" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="room-status-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="room-search-status-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="room-search-status-input" type="search" placeholder="Search status" autocomplete="off" data-room-filter-column="status" /></label>
+                      <button class="sort-header-button" type="button" data-room-sort-column="status" aria-label="Sort by status">
+                        <span>Status</span>
+                        <span class="sort-header-button__indicator" data-room-sort-indicator="status" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="room-total-keys-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <button class="sort-header-button" type="button" data-room-sort-column="totalKeys" aria-label="Sort by total keys">
+                        <span>Total keys</span>
+                        <span class="sort-header-button__indicator" data-room-sort-indicator="totalKeys" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="room-free-keys-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <button class="sort-header-button" type="button" data-room-sort-column="freeKeys" aria-label="Sort by free keys">
+                        <span>Free keys</span>
+                        <span class="sort-header-button__indicator" data-room-sort-indicator="freeKeys" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="room-occupied-keys-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <button class="sort-header-button" type="button" data-room-sort-column="occupiedKeys" aria-label="Sort by occupied keys">
+                        <span>Occupied keys</span>
+                        <span class="sort-header-button__indicator" data-room-sort-indicator="occupiedKeys" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="rooms-table-body">
+                <tr>
+                  <td colspan="9">Loading room information...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="rooms-prev-button">Previous</button>
+            <span id="rooms-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="rooms-next-button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="keys" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Keys</span>
+              <h2 class="panel-card__title">All free and occupied keys</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-key-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add key</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-key-import-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="refresh-keys-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th id="key-id-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="key-search-id-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="key-search-id-input" type="search" placeholder="Search identifier" autocomplete="off" data-key-filter-column="id" /></label>
+                      <button class="sort-header-button" type="button" data-key-sort-column="id" aria-label="Sort by identifier">
+                        <span>Identifier</span>
+                        <span class="sort-header-button__indicator" data-key-sort-indicator="id" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="key-name-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="key-search-name-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="key-search-name-input" type="search" placeholder="Search key" autocomplete="off" data-key-filter-column="name" /></label>
+                      <button class="sort-header-button" type="button" data-key-sort-column="name" aria-label="Sort by key">
+                        <span>Key</span>
+                        <span class="sort-header-button__indicator" data-key-sort-indicator="name" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="key-nfc-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="key-search-nfc-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="key-search-nfc-input" type="search" placeholder="Search NFC code" autocomplete="off" data-key-filter-column="nfcCode" /></label>
+                      <button class="sort-header-button" type="button" data-key-sort-column="nfcCode" aria-label="Sort by NFC code">
+                        <span>NFC code</span>
+                        <span class="sort-header-button__indicator" data-key-sort-indicator="nfcCode" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="key-room-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="key-search-room-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="key-search-room-input" type="search" placeholder="Search room" autocomplete="off" data-key-filter-column="roomName" /></label>
+                      <button class="sort-header-button" type="button" data-key-sort-column="roomName" aria-label="Sort by room">
+                        <span>Room</span>
+                        <span class="sort-header-button__indicator" data-key-sort-indicator="roomName" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="key-building-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="key-search-building-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="key-search-building-input" type="search" placeholder="Search building" autocomplete="off" data-key-filter-column="buildingName" /></label>
+                      <button class="sort-header-button" type="button" data-key-sort-column="buildingName" aria-label="Sort by building">
+                        <span>Building</span>
+                        <span class="sort-header-button__indicator" data-key-sort-indicator="buildingName" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="key-status-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="key-search-status-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="key-search-status-input" type="search" placeholder="Search status" autocomplete="off" data-key-filter-column="status" /></label>
+                      <button class="sort-header-button" type="button" data-key-sort-column="status" aria-label="Sort by status">
+                        <span>Status</span>
+                        <span class="sort-header-button__indicator" data-key-sort-indicator="status" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th id="key-soldier-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="key-search-soldier-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="key-search-soldier-input" type="search" placeholder="Search soldier" autocomplete="off" data-key-filter-column="soldierName" /></label>
+                      <button class="sort-header-button" type="button" data-key-sort-column="soldierName" aria-label="Sort by soldier">
+                        <span>Soldier</span>
+                        <span class="sort-header-button__indicator" data-key-sort-indicator="soldierName" aria-hidden="true">-</span>
+                      </button>
+                    </div>
+                  </th>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="keys-table-body">
+                <tr>
+                  <td colspan="8">Loading key information...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="keys-prev-button">Previous</button>
+            <span id="keys-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="keys-next-button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="soldiers" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Soldiers</span>
+              <h2 class="panel-card__title">Soldier records and accommodation actions</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-soldier-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add soldier</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-bulk-accommodate-soldiers-modal" disabled>
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-key"></use>
+                </svg>
+                <span>Accommodate selected</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-soldier-import-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="refresh-soldiers-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table data-table--soldiers">
+              <thead>
+                <tr>
+                  <th class="table-select-col">
+                    <input id="soldier-select-page-checkbox" type="checkbox" aria-label="Select visible unaccommodated soldiers" />
+                  </th>
+                  <th id="soldier-id-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="soldier-search-id-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="soldier-search-id-input" type="search" placeholder="Search identifier" autocomplete="off" data-soldier-filter-column="id" /></label>
+                      <button class="sort-header-button" type="button" data-soldier-sort-column="id" aria-label="Sort by identifier"><span>Identifier</span><span class="sort-header-button__indicator" data-soldier-sort-indicator="id" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="soldier-name-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="soldier-search-name-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="soldier-search-name-input" type="search" placeholder="Search soldier" autocomplete="off" data-soldier-filter-column="name" /></label>
+                      <button class="sort-header-button" type="button" data-soldier-sort-column="name" aria-label="Sort by soldier"><span>Soldier</span><span class="sort-header-button__indicator" data-soldier-sort-indicator="name" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="soldier-country-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="soldier-search-country-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="soldier-search-country-input" type="search" placeholder="Search country" autocomplete="off" data-soldier-filter-column="country" /></label>
+                      <button class="sort-header-button" type="button" data-soldier-sort-column="country" aria-label="Sort by country"><span>Country</span><span class="sort-header-button__indicator" data-soldier-sort-indicator="country" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="soldier-meal-card-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="soldier-search-meal-card-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="soldier-search-meal-card-input" type="search" placeholder="Search meal card" autocomplete="off" data-soldier-filter-column="mealCard" /></label>
+                      <button class="sort-header-button" type="button" data-soldier-sort-column="mealCard" aria-label="Sort by meal card"><span>Meal card</span><span class="sort-header-button__indicator" data-soldier-sort-indicator="mealCard" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="soldier-bag-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="soldier-search-bag-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="soldier-search-bag-input" type="search" placeholder="Search bag" autocomplete="off" data-soldier-filter-column="laundryBagCode" /></label>
+                      <button class="sort-header-button" type="button" data-soldier-sort-column="laundryBagCode" aria-label="Sort by bag"><span>Bag</span><span class="sort-header-button__indicator" data-soldier-sort-indicator="laundryBagCode" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="soldier-status-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="soldier-search-status-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="soldier-search-status-input" type="search" placeholder="Search status" autocomplete="off" data-soldier-filter-column="status" /></label>
+                      <button class="sort-header-button" type="button" data-soldier-sort-column="status" aria-label="Sort by status"><span>Status</span><span class="sort-header-button__indicator" data-soldier-sort-indicator="status" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="soldier-key-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="soldier-search-key-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="soldier-search-key-input" type="search" placeholder="Search key" autocomplete="off" data-soldier-filter-column="keyName" /></label>
+                      <button class="sort-header-button" type="button" data-soldier-sort-column="keyName" aria-label="Sort by key"><span>Key</span><span class="sort-header-button__indicator" data-soldier-sort-indicator="keyName" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="soldier-room-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="soldier-search-room-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="soldier-search-room-input" type="search" placeholder="Search room" autocomplete="off" data-soldier-filter-column="roomName" /></label>
+                      <button class="sort-header-button" type="button" data-soldier-sort-column="roomName" aria-label="Sort by room"><span>Room</span><span class="sort-header-button__indicator" data-soldier-sort-indicator="roomName" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="soldiers-table-body">
+                <tr>
+                  <td colspan="10">Loading soldier information...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="soldiers-prev-button">Previous</button>
+            <span id="soldiers-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="soldiers-next-button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="additional-items" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Additional items</span>
+              <h2 class="panel-card__title">Additional items and bags assigned to soldiers</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-primary" type="button" id="open-add-additional-item-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-plus-circle"></use>
+                </svg>
+                <span>Add item</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="open-additional-item-import-modal">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Bulk update</span>
+              </button>
+              <button class="btn btn-secondary" type="button" id="refresh-additional-items-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table data-table--additional-items">
+              <thead>
+                <tr>
+                  <th id="additional-item-id-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="additional-item-search-id-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="additional-item-search-id-input" type="search" placeholder="Search identifier" autocomplete="off" data-additional-item-filter-column="id" /></label>
+                      <button class="sort-header-button" type="button" data-additional-item-sort-column="id" aria-label="Sort by identifier"><span>Identifier</span><span class="sort-header-button__indicator" data-additional-item-sort-indicator="id" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="additional-item-soldier-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="additional-item-search-soldier-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="additional-item-search-soldier-input" type="search" placeholder="Search soldier" autocomplete="off" data-additional-item-filter-column="soldierName" /></label>
+                      <button class="sort-header-button" type="button" data-additional-item-sort-column="soldierName" aria-label="Sort by soldier"><span>Soldier</span><span class="sort-header-button__indicator" data-additional-item-sort-indicator="soldierName" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="additional-item-description-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="additional-item-search-description-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="additional-item-search-description-input" type="search" placeholder="Search description" autocomplete="off" data-additional-item-filter-column="description" /></label>
+                      <button class="sort-header-button" type="button" data-additional-item-sort-column="description" aria-label="Sort by description"><span>Description</span><span class="sort-header-button__indicator" data-additional-item-sort-indicator="description" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="additional-item-bag-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <label class="search-field" for="additional-item-search-bag-input"><svg class="icon" aria-hidden="true">
+                          <use href="#icon-search"></use>
+                        </svg><input id="additional-item-search-bag-input" type="search" placeholder="Search bag" autocomplete="off" data-additional-item-filter-column="laundryBagCode" /></label>
+                      <button class="sort-header-button" type="button" data-additional-item-sort-column="laundryBagCode" aria-label="Sort by bag"><span>Bag</span><span class="sort-header-button__indicator" data-additional-item-sort-indicator="laundryBagCode" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th id="additional-item-quantity-header" aria-sort="none">
+                    <div class="table-header-stack">
+                      <button class="sort-header-button" type="button" data-additional-item-sort-column="quantity" aria-label="Sort by quantity"><span>Quantity</span><span class="sort-header-button__indicator" data-additional-item-sort-indicator="quantity" aria-hidden="true">-</span></button>
+                    </div>
+                  </th>
+                  <th class="table-action-col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="additional-items-table-body">
+                <tr>
+                  <td colspan="6">Loading additional item information...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="additional-items-prev-button">Previous</button>
+            <span id="additional-items-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="additional-items-next-button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="report" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Report</span>
+              <h2 class="panel-card__title">Accommodation history</h2>
+            </div>
+            <div class="panel-card__actions">
+              <a class="btn btn-primary" id="download-accommodation-report-button" href="/web/accommodation/report/download?section=all">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-download"></use>
+                </svg>
+                <span>Excel</span>
+              </a>
+              <button class="btn btn-secondary" type="button" id="refresh-report-button">
+                <svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div class="report-metric-grid">
+            <article class="mini-card">
+              <h3 class="mini-card__title">Check-ins / check-outs</h3>
+              <p class="accommodation-metric" id="accommodation-report-check-count">0</p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Soldier moves</h3>
+              <p class="accommodation-metric" id="accommodation-report-move-count">0</p>
+            </article>
+            <article class="mini-card">
+              <h3 class="mini-card__title">Additional items</h3>
+              <p class="accommodation-metric" id="accommodation-report-item-count">0</p>
+            </article>
+          </div>
+          <div class="report-grid accommodation-report-grid">
+            <section class="report-section" aria-label="Soldier check-in and check-out history">
+              <h3 class="report-section__title">Check-ins / check-outs</h3>
+              <form class="report-filter-bar" data-accommodation-report-filter-form="check">
+                <label class="field" for="accommodation-report-check-from-date-input">
+                  <span>From</span>
+                  <span class="input-icon-field">
+                    <svg class="icon" aria-hidden="true">
+                      <use href="#icon-calendar"></use>
+                    </svg>
+                    <input id="accommodation-report-check-from-date-input" type="date" data-accommodation-report-date-filter="check:fromDate" />
+                  </span>
+                </label>
+                <label class="field" for="accommodation-report-check-to-date-input">
+                  <span>To</span>
+                  <span class="input-icon-field">
+                    <svg class="icon" aria-hidden="true">
+                      <use href="#icon-calendar"></use>
+                    </svg>
+                    <input id="accommodation-report-check-to-date-input" type="date" data-accommodation-report-date-filter="check:toDate" />
+                  </span>
+                </label>
+                <div class="hero-card__actions">
+                  <button class="btn btn-secondary" type="button" data-accommodation-report-reset="check">
+                    <svg class="icon" aria-hidden="true">
+                      <use href="#icon-refresh"></use>
+                    </svg>
+                    <span>Reset</span>
+                  </button>
+                </div>
+              </form>
+              <div class="table-shell">
+                <table class="data-table data-table--accommodation-report">
+                  <thead>
+                    <tr>
+                      <th id="accommodation-report-check-time-header" aria-sort="none">
+                        <div class="table-header-stack">
+                          <label class="search-field" for="accommodation-report-check-search-time-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-check-search-time-input" type="search" placeholder="Search time" autocomplete="off" data-accommodation-report-filter-table="check" data-accommodation-report-filter-column="happenedAt" /></label>
+                          <button class="sort-header-button" type="button" data-accommodation-report-sort-table="check" data-accommodation-report-sort-column="happenedAt" aria-label="Sort by time"><span>Time</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="check:happenedAt" aria-hidden="true">-</span></button>
+                        </div>
+                      </th>
+                      <th id="accommodation-report-check-action-header" aria-sort="none">
+                        <div class="table-header-stack">
+                          <label class="search-field" for="accommodation-report-check-search-action-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-check-search-action-input" type="search" placeholder="Search action" autocomplete="off" data-accommodation-report-filter-table="check" data-accommodation-report-filter-column="eventLabel" /></label>
+                          <button class="sort-header-button" type="button" data-accommodation-report-sort-table="check" data-accommodation-report-sort-column="eventLabel" aria-label="Sort by action"><span>Action</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="check:eventLabel" aria-hidden="true">-</span></button>
+                        </div>
+                      </th>
+                      <th id="accommodation-report-check-soldier-header" aria-sort="none">
+                        <div class="table-header-stack">
+                          <label class="search-field" for="accommodation-report-check-search-soldier-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-check-search-soldier-input" type="search" placeholder="Search soldier" autocomplete="off" data-accommodation-report-filter-table="check" data-accommodation-report-filter-column="soldierName" /></label>
+                          <button class="sort-header-button" type="button" data-accommodation-report-sort-table="check" data-accommodation-report-sort-column="soldierName" aria-label="Sort by soldier"><span>Soldier</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="check:soldierName" aria-hidden="true">-</span></button>
+                        </div>
+                      </th>
+                      <th id="accommodation-report-check-meal-card-header" aria-sort="none">
+                        <div class="table-header-stack">
+                          <label class="search-field" for="accommodation-report-check-search-meal-card-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-check-search-meal-card-input" type="search" placeholder="Search meal card" autocomplete="off" data-accommodation-report-filter-table="check" data-accommodation-report-filter-column="soldierMealCard" /></label>
+                          <button class="sort-header-button" type="button" data-accommodation-report-sort-table="check" data-accommodation-report-sort-column="soldierMealCard" aria-label="Sort by meal card"><span>Meal card</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="check:soldierMealCard" aria-hidden="true">-</span></button>
+                        </div>
+                      </th>
+                      <th id="accommodation-report-check-bag-header" aria-sort="none">
+                        <div class="table-header-stack">
+                          <label class="search-field" for="accommodation-report-check-search-bag-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-check-search-bag-input" type="search" placeholder="Search bag" autocomplete="off" data-accommodation-report-filter-table="check" data-accommodation-report-filter-column="laundryBagCode" /></label>
+                          <button class="sort-header-button" type="button" data-accommodation-report-sort-table="check" data-accommodation-report-sort-column="laundryBagCode" aria-label="Sort by bag"><span>Bag</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="check:laundryBagCode" aria-hidden="true">-</span></button>
+                        </div>
+                      </th>
+                      <th id="accommodation-report-check-key-header" aria-sort="none">
+                        <div class="table-header-stack">
+                          <label class="search-field" for="accommodation-report-check-search-key-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-check-search-key-input" type="search" placeholder="Search key" autocomplete="off" data-accommodation-report-filter-table="check" data-accommodation-report-filter-column="keyName" /></label>
+                          <button class="sort-header-button" type="button" data-accommodation-report-sort-table="check" data-accommodation-report-sort-column="keyName" aria-label="Sort by key"><span>Key</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="check:keyName" aria-hidden="true">-</span></button>
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="accommodation-report-check-body">
+                    <tr>
+                      <td colspan="6" class="table-empty">No check-in or check-out history loaded.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="pagination-row">
+                <button class="btn btn-ghost" type="button" id="accommodation-report-check-prev-button">Previous</button>
+                <span id="accommodation-report-check-page-label" class="pagination-label">Page 1</span>
+                <button class="btn btn-ghost" type="button" id="accommodation-report-check-next-button">Next</button>
+              </div>
+            </section>
+            <section class="report-section" aria-label="Soldier key move history">
+              <h3 class="report-section__title">Moves</h3>
+              <form class="report-filter-bar" data-accommodation-report-filter-form="move">
+                <label class="field" for="accommodation-report-move-from-date-input">
+                  <span>From</span>
+                  <span class="input-icon-field"><svg class="icon" aria-hidden="true">
+                      <use href="#icon-calendar"></use>
+                    </svg><input id="accommodation-report-move-from-date-input" type="date" data-accommodation-report-date-filter="move:fromDate" /></span>
+                </label>
+                <label class="field" for="accommodation-report-move-to-date-input">
+                  <span>To</span>
+                  <span class="input-icon-field"><svg class="icon" aria-hidden="true">
+                      <use href="#icon-calendar"></use>
+                    </svg><input id="accommodation-report-move-to-date-input" type="date" data-accommodation-report-date-filter="move:toDate" /></span>
+                </label>
+                <div class="hero-card__actions">
+                  <button class="btn btn-secondary" type="button" data-accommodation-report-reset="move"><svg class="icon" aria-hidden="true">
+                      <use href="#icon-refresh"></use>
+                    </svg><span>Reset</span></button>
+                </div>
+              </form>
+              <div class="table-shell">
+                <table class="data-table data-table--accommodation-report">
+                  <thead>
+                    <tr>
+                      <th id="accommodation-report-move-time-header" aria-sort="none">
+                        <div class="table-header-stack"><label class="search-field" for="accommodation-report-move-search-time-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-move-search-time-input" type="search" placeholder="Search time" autocomplete="off" data-accommodation-report-filter-table="move" data-accommodation-report-filter-column="happenedAt" /></label><button class="sort-header-button" type="button" data-accommodation-report-sort-table="move" data-accommodation-report-sort-column="happenedAt" aria-label="Sort by time"><span>Time</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="move:happenedAt" aria-hidden="true">-</span></button></div>
+                      </th>
+                      <th id="accommodation-report-move-soldier-header" aria-sort="none">
+                        <div class="table-header-stack"><label class="search-field" for="accommodation-report-move-search-soldier-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-move-search-soldier-input" type="search" placeholder="Search soldier" autocomplete="off" data-accommodation-report-filter-table="move" data-accommodation-report-filter-column="soldierName" /></label><button class="sort-header-button" type="button" data-accommodation-report-sort-table="move" data-accommodation-report-sort-column="soldierName" aria-label="Sort by soldier"><span>Soldier</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="move:soldierName" aria-hidden="true">-</span></button></div>
+                      </th>
+                      <th id="accommodation-report-move-prev-key-header" aria-sort="none">
+                        <div class="table-header-stack"><label class="search-field" for="accommodation-report-move-search-prev-key-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-move-search-prev-key-input" type="search" placeholder="Search previous" autocomplete="off" data-accommodation-report-filter-table="move" data-accommodation-report-filter-column="previousKeyName" /></label><button class="sort-header-button" type="button" data-accommodation-report-sort-table="move" data-accommodation-report-sort-column="previousKeyName" aria-label="Sort by previous key"><span>Previous key</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="move:previousKeyName" aria-hidden="true">-</span></button></div>
+                      </th>
+                      <th id="accommodation-report-move-new-key-header" aria-sort="none">
+                        <div class="table-header-stack"><label class="search-field" for="accommodation-report-move-search-new-key-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-move-search-new-key-input" type="search" placeholder="Search new" autocomplete="off" data-accommodation-report-filter-table="move" data-accommodation-report-filter-column="newKeyName" /></label><button class="sort-header-button" type="button" data-accommodation-report-sort-table="move" data-accommodation-report-sort-column="newKeyName" aria-label="Sort by new key"><span>New key</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="move:newKeyName" aria-hidden="true">-</span></button></div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="accommodation-report-move-body">
+                    <tr>
+                      <td colspan="4" class="table-empty">No move history loaded.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="pagination-row">
+                <button class="btn btn-ghost" type="button" id="accommodation-report-move-prev-button">Previous</button>
+                <span id="accommodation-report-move-page-label" class="pagination-label">Page 1</span>
+                <button class="btn btn-ghost" type="button" id="accommodation-report-move-next-button">Next</button>
+              </div>
+            </section>
+            <section class="report-section" aria-label="Additional item issue history">
+              <h3 class="report-section__title">Additional items</h3>
+              <form class="report-filter-bar" data-accommodation-report-filter-form="item">
+                <label class="field" for="accommodation-report-item-from-date-input"><span>From</span><span class="input-icon-field"><svg class="icon" aria-hidden="true">
+                      <use href="#icon-calendar"></use>
+                    </svg><input id="accommodation-report-item-from-date-input" type="date" data-accommodation-report-date-filter="item:fromDate" /></span></label>
+                <label class="field" for="accommodation-report-item-to-date-input"><span>To</span><span class="input-icon-field"><svg class="icon" aria-hidden="true">
+                      <use href="#icon-calendar"></use>
+                    </svg><input id="accommodation-report-item-to-date-input" type="date" data-accommodation-report-date-filter="item:toDate" /></span></label>
+                <div class="hero-card__actions">
+                  <button class="btn btn-secondary" type="button" data-accommodation-report-reset="item"><svg class="icon" aria-hidden="true">
+                      <use href="#icon-refresh"></use>
+                    </svg><span>Reset</span></button>
+                </div>
+              </form>
+              <div class="table-shell">
+                <table class="data-table data-table--accommodation-report">
+                  <thead>
+                    <tr>
+                      <th id="accommodation-report-item-time-header" aria-sort="none">
+                        <div class="table-header-stack"><label class="search-field" for="accommodation-report-item-search-time-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-item-search-time-input" type="search" placeholder="Search given at" autocomplete="off" data-accommodation-report-filter-table="item" data-accommodation-report-filter-column="createdAt" /></label><button class="sort-header-button" type="button" data-accommodation-report-sort-table="item" data-accommodation-report-sort-column="createdAt" aria-label="Sort by given date"><span>Given at</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="item:createdAt" aria-hidden="true">-</span></button></div>
+                      </th>
+                      <th id="accommodation-report-item-soldier-header" aria-sort="none">
+                        <div class="table-header-stack"><label class="search-field" for="accommodation-report-item-search-soldier-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-item-search-soldier-input" type="search" placeholder="Search soldier" autocomplete="off" data-accommodation-report-filter-table="item" data-accommodation-report-filter-column="soldierName" /></label><button class="sort-header-button" type="button" data-accommodation-report-sort-table="item" data-accommodation-report-sort-column="soldierName" aria-label="Sort by soldier"><span>Soldier</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="item:soldierName" aria-hidden="true">-</span></button></div>
+                      </th>
+                      <th id="accommodation-report-item-description-header" aria-sort="none">
+                        <div class="table-header-stack"><label class="search-field" for="accommodation-report-item-search-description-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-item-search-description-input" type="search" placeholder="Search description" autocomplete="off" data-accommodation-report-filter-table="item" data-accommodation-report-filter-column="description" /></label><button class="sort-header-button" type="button" data-accommodation-report-sort-table="item" data-accommodation-report-sort-column="description" aria-label="Sort by description"><span>Description</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="item:description" aria-hidden="true">-</span></button></div>
+                      </th>
+                      <th id="accommodation-report-item-bag-header" aria-sort="none">
+                        <div class="table-header-stack"><label class="search-field" for="accommodation-report-item-search-bag-input"><svg class="icon" aria-hidden="true">
+                              <use href="#icon-search"></use>
+                            </svg><input id="accommodation-report-item-search-bag-input" type="search" placeholder="Search bag" autocomplete="off" data-accommodation-report-filter-table="item" data-accommodation-report-filter-column="laundryBagCode" /></label><button class="sort-header-button" type="button" data-accommodation-report-sort-table="item" data-accommodation-report-sort-column="laundryBagCode" aria-label="Sort by bag"><span>Bag</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="item:laundryBagCode" aria-hidden="true">-</span></button></div>
+                      </th>
+                      <th id="accommodation-report-item-quantity-header" aria-sort="none"><button class="sort-header-button" type="button" data-accommodation-report-sort-table="item" data-accommodation-report-sort-column="quantity" aria-label="Sort by quantity"><span>Quantity</span><span class="sort-header-button__indicator" data-accommodation-report-sort-indicator="item:quantity" aria-hidden="true">-</span></button></th>
+                    </tr>
+                  </thead>
+                  <tbody id="accommodation-report-item-body">
+                    <tr>
+                      <td colspan="5" class="table-empty">No additional item history loaded.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="pagination-row">
+                <button class="btn btn-ghost" type="button" id="accommodation-report-item-prev-button">Previous</button>
+                <span id="accommodation-report-item-page-label" class="pagination-label">Page 1</span>
+                <button class="btn btn-ghost" type="button" id="accommodation-report-item-next-button">Next</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="guide" role="tabpanel" hidden>
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Guide</span>
+              <h2 class="panel-card__title">Quick operating notes</h2>
+            </div>
+          </div>
+          <div class="guide-grid">
+            <article class="guide-card">
+              <h3 class="guide-card__title">Buildings and rooms</h3>
+              <p>Create buildings first, then rooms, then keys. Bulk update templates can add new rows or update existing rows when an identifier is provided.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Soldiers and keys</h3>
+              <p>Accommodate a soldier to a free key, discharge them to release the key, or use Move to pass soldiers through a key chain.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Additional items</h3>
+              <p>Assign extra issued items to soldiers with a quantity starting from 1. Delete or reassign those items before deleting that soldier.</p>
+            </article>
+            <article class="guide-card">
+              <h3 class="guide-card__title">Reports</h3>
+              <p>Use Report to review check-ins, check-outs, key moves, and additional items recorded for the selected camp.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'building-import-modal',
+    titleId: 'building-import-modal-title',
+    closeLabel: 'Close building bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import buildings from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit buildings in bulk.',
+    descriptionId: 'building-import-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="accommodation-import-card" data-import-resource="building">
+  <div class="accommodation-import-card__header">
+    <div>
+      <h3 class="accommodation-import-card__title">Download a template, fill it in, and import building adds or edits</h3>
+    </div>
+    <a class="btn btn-secondary" id="download-building-template-button" href="/web/accommodation/buildings/template">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-download"></use>
+      </svg>
+      <span>Download template</span>
+    </a>
+  </div>
+  <p class="accommodation-import-card__text">
+    Leave <strong>Identifier</strong> blank to create a new building. Provide an existing <strong>Identifier</strong> to update its name or type.
+  </p>
+  <div class="accommodation-import-form">
+    <label class="accommodation-import-field" for="building-template-file-input">
+      <span class="accommodation-import-field__label">Filled template (.xlsx)</span>
+      <span class="input-icon-field">
+        <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+        <input id="building-template-file-input" type="file" accept=".xlsx" />
+      </span>
+    </label>
+    <button class="btn btn-primary" type="button" id="upload-building-template-button">Upload template</button>
+  </div>
+  <div class="accommodation-import-meta">
+    <span id="building-template-selected-file">No file selected.</span>
+  </div>
+  <div class="accommodation-import-progress" id="building-import-progress-panel" hidden>
+    <div class="accommodation-import-progress__row">
+      <span>Upload</span>
+      <span id="building-import-upload-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar" id="building-import-upload-progress-bar" max="100" value="0"></progress>
+    </div>
+    <div class="accommodation-import-progress__row">
+      <span>Processing</span>
+      <span id="building-import-processing-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar progress-track__bar--accent" id="building-import-processing-progress-bar" max="100" value="0"></progress>
+    </div>
+    <p class="accommodation-import-status" id="building-import-status-message">Waiting to start.</p>
+    <div class="accommodation-import-summary" id="building-import-summary"></div>
+    <div class="accommodation-import-errors" id="building-import-errors" hidden></div>
+  </div>
+</section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'room-import-modal',
+    titleId: 'room-import-modal-title',
+    closeLabel: 'Close room bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import rooms from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit rooms in bulk.',
+    descriptionId: 'room-import-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="accommodation-import-card" data-import-resource="room">
+  <div class="accommodation-import-card__header">
+    <div>
+      <h3 class="accommodation-import-card__title">Download a template, fill it in, and import room adds or edits</h3>
+    </div>
+    <a class="btn btn-secondary" id="download-room-template-button" href="/web/accommodation/rooms/template">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-download"></use>
+      </svg>
+      <span>Download template</span>
+    </a>
+  </div>
+  <p class="accommodation-import-card__text">
+    Leave <strong>Identifier</strong> blank to create a room. Use an exact building name or building UUID in <strong>Building</strong>.
+  </p>
+  <div class="accommodation-import-form">
+    <label class="accommodation-import-field" for="room-template-file-input">
+      <span class="accommodation-import-field__label">Filled template (.xlsx)</span>
+      <span class="input-icon-field">
+        <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+        <input id="room-template-file-input" type="file" accept=".xlsx" />
+      </span>
+    </label>
+    <button class="btn btn-primary" type="button" id="upload-room-template-button">Upload template</button>
+  </div>
+  <div class="accommodation-import-meta">
+    <span id="room-template-selected-file">No file selected.</span>
+  </div>
+  <div class="accommodation-import-progress" id="room-import-progress-panel" hidden>
+    <div class="accommodation-import-progress__row">
+      <span>Upload</span>
+      <span id="room-import-upload-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar" id="room-import-upload-progress-bar" max="100" value="0"></progress>
+    </div>
+    <div class="accommodation-import-progress__row">
+      <span>Processing</span>
+      <span id="room-import-processing-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar progress-track__bar--accent" id="room-import-processing-progress-bar" max="100" value="0"></progress>
+    </div>
+    <p class="accommodation-import-status" id="room-import-status-message">Waiting to start.</p>
+    <div class="accommodation-import-summary" id="room-import-summary"></div>
+    <div class="accommodation-import-errors" id="room-import-errors" hidden></div>
+  </div>
+</section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'key-import-modal',
+    titleId: 'key-import-modal-title',
+    closeLabel: 'Close key bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import keys from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit keys in bulk.',
+    descriptionId: 'key-import-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="accommodation-import-card" data-import-resource="key">
+  <div class="accommodation-import-card__header">
+    <div>
+      <h3 class="accommodation-import-card__title">Download a template, fill it in, and import key adds or edits</h3>
+    </div>
+    <a class="btn btn-secondary" id="download-key-template-button" href="/web/accommodation/keys/template">
+      <svg class="icon" aria-hidden="true">
+        <use href="#icon-download"></use>
+      </svg>
+      <span>Download template</span>
+    </a>
+  </div>
+  <p class="accommodation-import-card__text">
+    Leave <strong>Identifier</strong> blank to create a key. Provide a unique <strong>NFC Code</strong> and use an exact room name or room UUID in <strong>Room</strong>.
+  </p>
+  <div class="accommodation-import-form">
+    <label class="accommodation-import-field" for="key-template-file-input">
+      <span class="accommodation-import-field__label">Filled template (.xlsx)</span>
+      <span class="input-icon-field">
+        <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+        <input id="key-template-file-input" type="file" accept=".xlsx" />
+      </span>
+    </label>
+    <button class="btn btn-primary" type="button" id="upload-key-template-button">Upload template</button>
+  </div>
+  <div class="accommodation-import-meta">
+    <span id="key-template-selected-file">No file selected.</span>
+  </div>
+  <div class="accommodation-import-progress" id="key-import-progress-panel" hidden>
+    <div class="accommodation-import-progress__row">
+      <span>Upload</span>
+      <span id="key-import-upload-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar" id="key-import-upload-progress-bar" max="100" value="0"></progress>
+    </div>
+    <div class="accommodation-import-progress__row">
+      <span>Processing</span>
+      <span id="key-import-processing-label">0%</span>
+    </div>
+    <div class="progress-track" aria-hidden="true">
+      <progress class="progress-track__bar progress-track__bar--accent" id="key-import-processing-progress-bar" max="100" value="0"></progress>
+    </div>
+    <p class="accommodation-import-status" id="key-import-status-message">Waiting to start.</p>
+    <div class="accommodation-import-summary" id="key-import-summary"></div>
+    <div class="accommodation-import-errors" id="key-import-errors" hidden></div>
+  </div>
+</section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'soldier-import-modal',
+    titleId: 'soldier-import-modal-title',
+    closeLabel: 'Close soldier bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import soldiers from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit soldiers in bulk.',
+    descriptionId: 'soldier-import-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="accommodation-import-card" data-import-resource="soldier">
+  <div class="accommodation-import-card__header">
+    <div>
+      <h3 class="accommodation-import-card__title">Download a template, fill it in, and import soldier adds or edits</h3>
+    </div>
+    <a class="btn btn-secondary" id="download-soldier-template-button" href="/web/accommodation/soldiers/template">
+      <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+      <span>Download template</span>
+    </a>
+  </div>
+  <p class="accommodation-import-card__text">
+    Leave <strong>Identifier</strong> blank to create a soldier. Use bag codes or UUIDs for laundry bags, and key names or UUIDs for upcoming keys.
+  </p>
+  <div class="accommodation-import-form">
+    <label class="accommodation-import-field" for="soldier-template-file-input">
+      <span class="accommodation-import-field__label">Filled template (.xlsx)</span>
+      <span class="input-icon-field">
+        <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+        <input id="soldier-template-file-input" type="file" accept=".xlsx" />
+      </span>
+    </label>
+    <button class="btn btn-primary" type="button" id="upload-soldier-template-button">Upload template</button>
+  </div>
+  <div class="accommodation-import-meta">
+    <span id="soldier-template-selected-file">No file selected.</span>
+  </div>
+  <div class="accommodation-import-progress" id="soldier-import-progress-panel" hidden>
+    <div class="accommodation-import-progress__row"><span>Upload</span><span id="soldier-import-upload-label">0%</span></div>
+    <div class="progress-track" aria-hidden="true"><progress class="progress-track__bar" id="soldier-import-upload-progress-bar" max="100" value="0"></progress></div>
+    <div class="accommodation-import-progress__row"><span>Processing</span><span id="soldier-import-processing-label">0%</span></div>
+    <div class="progress-track" aria-hidden="true"><progress class="progress-track__bar progress-track__bar--accent" id="soldier-import-processing-progress-bar" max="100" value="0"></progress></div>
+    <p class="accommodation-import-status" id="soldier-import-status-message">Waiting to start.</p>
+    <div class="accommodation-import-summary" id="soldier-import-summary"></div>
+    <div class="accommodation-import-errors" id="soldier-import-errors" hidden></div>
+  </div>
+</section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'additional-item-import-modal',
+    titleId: 'additional-item-import-modal-title',
+    closeLabel: 'Close additional item bulk update modal',
+    eyebrow: 'Bulk update',
+    title: 'Import additional items from template',
+    description: 'Download the template, fill it in, and upload it here to add or edit additional items in bulk.',
+    descriptionId: 'additional-item-import-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<section class="accommodation-import-card" data-import-resource="additional-item">
+  <div class="accommodation-import-card__header">
+    <div>
+      <h3 class="accommodation-import-card__title">Download a template, fill it in, and import item adds or edits</h3>
+    </div>
+    <a class="btn btn-secondary" id="download-additional-item-template-button" href="/web/accommodation/additional-items/template">
+      <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+      <span>Download template</span>
+    </a>
+  </div>
+  <p class="accommodation-import-card__text">
+    Leave <strong>Identifier</strong> blank to create an item. Soldier accepts an exact name or UUID; Laundry Bag accepts an exact bag code or UUID.
+  </p>
+  <div class="accommodation-import-form">
+    <label class="accommodation-import-field" for="additional-item-template-file-input">
+      <span class="accommodation-import-field__label">Filled template (.xlsx)</span>
+      <span class="input-icon-field">
+        <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+        <input id="additional-item-template-file-input" type="file" accept=".xlsx" />
+      </span>
+    </label>
+    <button class="btn btn-primary" type="button" id="upload-additional-item-template-button">Upload template</button>
+  </div>
+  <div class="accommodation-import-meta">
+    <span id="additional-item-template-selected-file">No file selected.</span>
+  </div>
+  <div class="accommodation-import-progress" id="additional-item-import-progress-panel" hidden>
+    <div class="accommodation-import-progress__row"><span>Upload</span><span id="additional-item-import-upload-label">0%</span></div>
+    <div class="progress-track" aria-hidden="true"><progress class="progress-track__bar" id="additional-item-import-upload-progress-bar" max="100" value="0"></progress></div>
+    <div class="accommodation-import-progress__row"><span>Processing</span><span id="additional-item-import-processing-label">0%</span></div>
+    <div class="progress-track" aria-hidden="true"><progress class="progress-track__bar progress-track__bar--accent" id="additional-item-import-processing-progress-bar" max="100" value="0"></progress></div>
+    <p class="accommodation-import-status" id="additional-item-import-status-message">Waiting to start.</p>
+    <div class="accommodation-import-summary" id="additional-item-import-summary"></div>
+    <div class="accommodation-import-errors" id="additional-item-import-errors" hidden></div>
+  </div>
+</section>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'building-modal',
+    titleId: 'building-modal-title',
+    closeLabel: 'Close building modal',
+    eyebrow: 'Building',
+    title: 'Add building',
+    description: 'Create a building for the selected camp.',
+    descriptionId: 'building-modal-text',
+    body: `<form id="building-form" class="workspace-form" novalidate>
+  <input type="hidden" id="building-form-mode" value="create" />
+  <input type="hidden" id="building-id-input" />
+  <div class="field">
+    <label for="building-name-input">Building name</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true"><use href="#icon-house-door"></use></svg>
+      <input id="building-name-input" name="name" type="text" placeholder="Building A" required />
+    </div>
+  </div>
+  <div class="field">
+    <label for="building-type-input">Building type</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true"><use href="#icon-box"></use></svg>
+      <input id="building-type-input" name="type" type="text" placeholder="Barracks" />
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-building-button">Save building</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'room-modal',
+    titleId: 'room-modal-title',
+    closeLabel: 'Close room modal',
+    eyebrow: 'Room',
+    title: 'Add room',
+    description: 'Create a room and attach it to a building.',
+    descriptionId: 'room-modal-text',
+    body: `<form id="room-form" class="workspace-form" novalidate>
+  <input type="hidden" id="room-form-mode" value="create" />
+  <input type="hidden" id="room-id-input" />
+  <div class="field">
+    <label for="room-name-input">Room name</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true"><use href="#icon-house-door"></use></svg>
+      <input id="room-name-input" name="name" type="text" placeholder="Building A / 101" required />
+    </div>
+  </div>
+  <div class="field lookup-field">
+    <label for="room-building-search-input">Building</label>
+    <input id="room-building-input" name="buildingId" type="hidden" />
+    <div class="lookup-combobox" data-lookup-combobox>
+      <div class="lookup-combobox__control">
+        <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+        <input id="room-building-search-input" type="search" placeholder="Search building" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="room-building-options" required />
+        <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+      </div>
+      <div class="lookup-menu" id="room-building-options" role="listbox" aria-label="Building results" hidden></div>
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-room-button">Save room</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'key-modal',
+    titleId: 'key-modal-title',
+    closeLabel: 'Close key modal',
+    eyebrow: 'Key',
+    title: 'Add key',
+    description: 'Create a key with a unique NFC code and attach it to a room.',
+    descriptionId: 'key-modal-text',
+    body: `<form id="key-form" class="workspace-form" novalidate>
+  <input type="hidden" id="key-form-mode" value="create" />
+  <input type="hidden" id="key-id-input" />
+  <div class="field">
+    <label for="key-name-input">Key name</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true"><use href="#icon-key"></use></svg>
+      <input id="key-name-input" name="name" type="text" placeholder="Building A / 101 / 1" required />
+    </div>
+  </div>
+  <div class="field">
+    <label for="key-nfc-input">NFC code</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true"><use href="#icon-key"></use></svg>
+      <input id="key-nfc-input" name="nfcCode" type="text" placeholder="NFC-KEY-101-1" required />
+    </div>
+  </div>
+  <div class="field lookup-field">
+    <label for="key-room-search-input">Room</label>
+    <input id="key-room-input" name="roomId" type="hidden" />
+    <div class="lookup-combobox" data-lookup-combobox>
+      <div class="lookup-combobox__control">
+        <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+        <input id="key-room-search-input" type="search" placeholder="Search room" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="key-room-options" required />
+        <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+      </div>
+      <div class="lookup-menu" id="key-room-options" role="listbox" aria-label="Room results" hidden></div>
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-key-button">Save key</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'issue-key-modal',
+    titleId: 'issue-key-modal-title',
+    closeLabel: 'Close issue key modal',
+    eyebrow: 'Key issue',
+    title: 'Issue key',
+    description: 'Assign this key to a soldier without changing their accommodation.',
+    descriptionId: 'issue-key-modal-text',
+    body: `<form id="issue-key-form" class="workspace-form" novalidate>
+  <input type="hidden" id="issue-key-id-input" />
+  <div class="rental-detail-panel">
+    <div><span>Key</span><strong id="issue-key-name-text">-</strong></div>
+    <div><span>Room</span><strong id="issue-key-room-text">-</strong></div>
+    <div><span>Building</span><strong id="issue-key-building-text">-</strong></div>
+  </div>
+  <div class="field lookup-field">
+    <label for="issue-key-soldier-search-input">Soldier</label>
+    <input id="issue-key-soldier-input" name="soldierId" type="hidden" />
+    <div class="lookup-combobox" data-lookup-combobox>
+      <div class="lookup-combobox__control">
+        <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+        <input id="issue-key-soldier-search-input" type="search" placeholder="Search soldier" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="issue-key-soldier-options" required />
+        <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+      </div>
+      <div class="lookup-menu" id="issue-key-soldier-options" role="listbox" aria-label="Soldier results" hidden></div>
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-issue-key-button">Issue key</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'soldier-modal',
+    titleId: 'soldier-modal-title',
+    closeLabel: 'Close soldier modal',
+    eyebrow: 'Soldier',
+    title: 'Add soldier',
+    description: 'Create a soldier record for the selected camp.',
+    descriptionId: 'soldier-modal-text',
+    body: `<form id="soldier-form" class="workspace-form" novalidate>
+  <input type="hidden" id="soldier-form-mode" value="create" />
+  <input type="hidden" id="soldier-id-input" />
+  <div class="field">
+    <label for="soldier-name-input">Soldier name</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true"><use href="#icon-people"></use></svg>
+      <input id="soldier-name-input" name="name" type="text" placeholder="Soldier name" required />
+    </div>
+  </div>
+  <div class="field">
+    <label for="soldier-country-input">Country</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true"><use href="#icon-people"></use></svg>
+      <input id="soldier-country-input" name="country" type="text" placeholder="Country" />
+    </div>
+  </div>
+  <div class="field">
+    <label for="soldier-meal-card-input">Meal card</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true"><use href="#icon-box"></use></svg>
+      <input id="soldier-meal-card-input" name="mealCard" type="text" placeholder="Meal card" />
+    </div>
+  </div>
+  <div class="field">
+    <label for="soldier-upcoming-accommodation-input">Upcoming accommodation</label>
+    <input id="soldier-upcoming-accommodation-input" name="upcomingAccommodation" type="date" />
+  </div>
+  <div class="field">
+    <label for="soldier-upcoming-release-input">Upcoming release</label>
+    <input id="soldier-upcoming-release-input" name="upcomingRelease" type="date" />
+  </div>
+  <div class="field">
+    <label for="soldier-laundry-bag-search-input">Laundry bag</label>
+    <input id="soldier-laundry-bag-input" name="laundryBagId" type="hidden" />
+    <div class="lookup-combobox" data-lookup-combobox>
+      <div class="lookup-combobox__control">
+        <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+        <input id="soldier-laundry-bag-search-input" type="search" placeholder="Search laundry bag" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="soldier-laundry-bag-options" />
+        <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+      </div>
+      <div class="lookup-menu" id="soldier-laundry-bag-options" role="listbox" aria-label="Laundry bag results" hidden></div>
+    </div>
+  </div>
+  <div class="field">
+    <label for="soldier-upcoming-key-search-input">Upcoming key</label>
+    <input id="soldier-upcoming-key-input" name="upcomingAccommodationKey" type="hidden" />
+    <div class="lookup-combobox" data-lookup-combobox>
+      <div class="lookup-combobox__control">
+        <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+        <input id="soldier-upcoming-key-search-input" type="search" placeholder="Search key" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="soldier-upcoming-key-options" />
+        <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+      </div>
+      <div class="lookup-menu" id="soldier-upcoming-key-options" role="listbox" aria-label="Key results" hidden></div>
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-soldier-button">Save soldier</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'accommodate-soldier-modal',
+    titleId: 'accommodate-soldier-modal-title',
+    closeLabel: 'Close accommodate soldier modal',
+    eyebrow: 'Accommodation',
+    title: 'Accommodate soldier',
+    description: 'Review the soldier and choose a free key.',
+    descriptionId: 'accommodate-soldier-modal-text',
+    body: `<form id="accommodate-soldier-form" class="workspace-form" novalidate>
+  <input type="hidden" id="accommodate-soldier-id-input" />
+  <div class="rental-detail-panel">
+    <div><span>Soldier</span><strong id="accommodate-soldier-name-text">-</strong></div>
+    <div><span>Nationality</span><strong id="accommodate-soldier-country-text">-</strong></div>
+    <div><span>Bag</span><strong id="accommodate-soldier-bag-text">-</strong></div>
+    <div><span>Meal card</span><strong id="accommodate-soldier-meal-card-text">-</strong></div>
+  </div>
+  <div class="field">
+    <label for="accommodate-soldier-key-search-input">Free key</label>
+    <input id="accommodate-soldier-key-input" name="keyId" type="hidden" />
+    <div class="lookup-combobox" data-lookup-combobox>
+      <div class="lookup-combobox__control">
+        <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+        <input id="accommodate-soldier-key-search-input" type="search" placeholder="Search free key" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="accommodate-soldier-key-options" required />
+        <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+      </div>
+      <div class="lookup-menu" id="accommodate-soldier-key-options" role="listbox" aria-label="Free key results" hidden></div>
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-accommodate-soldier-button">Accommodate</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'bulk-accommodate-soldiers-modal',
+    titleId: 'bulk-accommodate-soldiers-modal-title',
+    closeLabel: 'Close multiple soldier accommodation modal',
+    eyebrow: 'Accommodation',
+    title: 'Accommodate selected soldiers',
+    description: 'Assign one free key to each selected soldier.',
+    descriptionId: 'bulk-accommodate-soldiers-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<form id="bulk-accommodate-soldiers-form" class="workspace-form" novalidate>
+  <div class="bulk-accommodation-list" id="bulk-accommodate-soldiers-list"></div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-bulk-accommodate-soldiers-button">Accommodate selected</button>
+    <button type="button" class="btn btn-secondary" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'swap-soldiers-modal',
+    titleId: 'swap-soldiers-modal-title',
+    closeLabel: 'Close move soldiers modal',
+    eyebrow: 'Move',
+    title: 'Move soldiers',
+    description: 'Review the chain and choose the next key for each soldier.',
+    descriptionId: 'swap-soldiers-modal-text',
+    dialogClass: 'workspace-modal__dialog--wide',
+    body: `<form id="swap-soldiers-form" class="workspace-form" novalidate>
+  <input type="hidden" id="swap-soldier-id-input" />
+  <div class="chain-move-list" id="swap-soldiers-chain-list"></div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-swap-soldiers-button">Move soldiers</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'discharge-soldier-modal',
+    titleId: 'discharge-soldier-modal-title',
+    closeLabel: 'Close discharge soldier modal',
+    eyebrow: 'Accommodation',
+    title: 'Discharge soldier',
+    description: 'Review the soldier before releasing the current key.',
+    descriptionId: 'discharge-soldier-modal-text',
+    body: `<form id="discharge-soldier-form" class="workspace-form" novalidate>
+  <input type="hidden" id="discharge-soldier-id-input" />
+  <div class="rental-detail-panel">
+    <div><span>Soldier</span><strong id="discharge-soldier-name-text">-</strong></div>
+    <div><span>Nationality</span><strong id="discharge-soldier-country-text">-</strong></div>
+    <div><span>Bag</span><strong id="discharge-soldier-bag-text">-</strong></div>
+    <div><span>Meal card</span><strong id="discharge-soldier-meal-card-text">-</strong></div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-discharge-soldier-button">Discharge soldier</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/modal', {
+    id: 'additional-item-modal',
+    titleId: 'additional-item-modal-title',
+    closeLabel: 'Close additional item modal',
+    eyebrow: 'Additional item',
+    title: 'Add item',
+    description: 'Create an item assigned to a soldier.',
+    descriptionId: 'additional-item-modal-text',
+    body: `<form id="additional-item-form" class="workspace-form" novalidate>
+  <input type="hidden" id="additional-item-form-mode" value="create" />
+  <input type="hidden" id="additional-item-id-input" />
+  <div class="field">
+    <label for="additional-item-soldier-search-input">Soldier</label>
+    <input id="additional-item-soldier-input" name="soldierId" type="hidden" />
+    <div class="lookup-combobox" data-lookup-combobox>
+      <div class="lookup-combobox__control">
+        <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+        <input id="additional-item-soldier-search-input" type="search" placeholder="Search soldier" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="additional-item-soldier-options" required />
+        <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+      </div>
+      <div class="lookup-menu" id="additional-item-soldier-options" role="listbox" aria-label="Soldier results" hidden></div>
+    </div>
+  </div>
+  <div class="field">
+    <label for="additional-item-description-input">Description</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true"><use href="#icon-box"></use></svg>
+      <input id="additional-item-description-input" name="description" type="text" placeholder="Item description" required />
+    </div>
+  </div>
+  <div class="field">
+    <label for="additional-item-quantity-input">Quantity</label>
+    <div class="input-icon-field">
+      <svg class="icon" aria-hidden="true"><use href="#icon-box"></use></svg>
+      <input id="additional-item-quantity-input" name="quantity" type="number" min="1" max="100000" value="1" required data-positive-integer-input />
+    </div>
+  </div>
+  <div class="field">
+    <label for="additional-item-laundry-bag-search-input">Laundry bag</label>
+    <input id="additional-item-laundry-bag-input" name="laundryBagId" type="hidden" />
+    <div class="lookup-combobox" data-lookup-combobox>
+      <div class="lookup-combobox__control">
+        <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+        <input id="additional-item-laundry-bag-search-input" type="search" placeholder="Search laundry bag" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="additional-item-laundry-bag-options" />
+        <span class="lookup-combobox__chevron" aria-hidden="true"></span>
+      </div>
+      <div class="lookup-menu" id="additional-item-laundry-bag-options" role="listbox" aria-label="Laundry bag results" hidden></div>
+    </div>
+  </div>
+  <div class="workspace-form__actions">
+    <button type="submit" class="btn btn-primary" id="save-additional-item-button">Save item</button>
+    <button type="button" class="btn btn-ghost" data-close-modal="true">Cancel</button>
+  </div>
+</form>`
+  }) %>
+
+  <%- await include('../../../../shared/views/partials/workspace/confirm-modal') %>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/assets/accommodation/js/accommodation-page.ts"></script>
+</body>
+
+</html>

@@ -1,0 +1,103 @@
+/* =========================================================
+   PASSWORD CHANGE & VALIDATION STATES
+   ========================================================= */
+.form-section {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.pw-meter {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5eaf1;
+  margin-top: 4px;
+}
+
+.pw-meter__bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  overflow: hidden;
+}
+
+.pw-meter__bar::-webkit-progress-bar {
+  background: transparent;
+}
+
+.pw-meter__bar::-webkit-progress-value {
+  border-radius: inherit;
+  background: linear-gradient(90deg, #dc2626 0%, #f59e0b 50%, #16a34a 100%);
+  transition: width 0.2s ease;
+}
+
+.pw-meter__bar::-moz-progress-bar {
+  border-radius: inherit;
+  background: linear-gradient(90deg, #dc2626 0%, #f59e0b 50%, #16a34a 100%);
+  transition: width 0.2s ease;
+}
+
+.pw-rules {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.pw-rules li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pw-rules li::before {
+  content: '•';
+  color: var(--muted-2);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.pw-rules li.ok {
+  color: var(--success);
+}
+
+.pw-rules li.ok::before {
+  content: '✓';
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pw-rules li.bad {
+  color: var(--danger);
+}
+
+.pw-rules li.bad::before {
+  color: var(--danger);
+}
+
+.field input.is-valid,
+.field textarea.is-valid,
+.field select.is-valid {
+  border-color: #86efac;
+  box-shadow: 0 0 0 3px rgba(134, 239, 172, 0.18);
+}
+
+.field input.is-invalid,
+.field textarea.is-invalid,
+.field select.is-invalid {
+  border-color: #fca5a5;
+  box-shadow: 0 0 0 3px rgba(252, 165, 165, 0.16);
+}

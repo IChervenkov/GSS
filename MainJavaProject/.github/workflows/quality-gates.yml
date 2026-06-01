@@ -1,0 +1,31 @@
+name: quality-gates
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint threshold
+        run: npm run lint
+
+      - name: Secret scan threshold
+        run: npm run security:secret-scan
+
+      - name: Dependency audit threshold
+        run: npm run security:dependency-audit
+
+      - name: Coverage map visibility
+        run: npm run test:coverage-map

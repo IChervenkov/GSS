@@ -1,0 +1,47 @@
+name: migration-gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment_name:
+        description: Target environment name
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+      image_tag:
+        description: Image tag to validate and migrate
+        required: true
+        default: latest
+        type: string
+
+jobs:
+  run-migration-gate:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment_name }}
+    steps:
+      - name: Run manual migration gate on target host
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ vars.DEPLOY_SSH_HOST }}
+          username: ${{ vars.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -eu
+            export IMAGE_REF=ghcr.io/${{ github.repository }}:${{ inputs.image_tag }}
+            docker pull "$IMAGE_REF"
+            docker run --rm \
+              --env-file /opt/gss/.env \
+              -e NODE_ENV='${{ inputs.environment_name }}' \
+              -e ENVIRONMENT_NAME='${{ inputs.environment_name }}' \
+              -e DB_RUN_MIGRATIONS_ON_BOOT=false \
+              -e ALLOW_RUNTIME_MIGRATIONS=true \
+              -e DB_MIGRATION_EXECUTION_MODE=manual-gate \
+              -e DB_MIGRATION_GATE_TOKEN='${{ secrets.DB_MIGRATION_GATE_TOKEN }}' \
+              -e DB_MIGRATION_RELEASE_ID='${{ inputs.image_tag }}' \
+              -e DB_MIGRATION_APPLIED_BY='manual:${{ github.actor }}' \
+              "$IMAGE_REF" \
+              node ./scripts/migration-gate.js

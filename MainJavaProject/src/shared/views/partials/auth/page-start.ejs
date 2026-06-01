@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en">
+<%- include('./head', { title, pageStyles }) %>
+
+<body data-page="<%= pageKey || '' %>">
+  <%- include('../shared/skip-link', { targetId: mainId || 'main-content' }) %>
+  <%- include('../shared/live-regions') %>
+  <%- include('./icons') %>
+  <%- include('./theme-toolbar') %>

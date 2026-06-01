@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<%- await include('./partials/workspace/head', {
+  title: title || 'Error',
+  pageStyles: ['/assets/shared/css/core/workspace/error-page.css']
+}) %>
+
+<body class="main-workspace" data-page="error-page">
+  <%- await include('./partials/common/a11y-primitives') %>
+  <main class="workspace-shell error-page" id="main-content">
+    <section class="hero-card error-page__hero" aria-labelledby="error-page-title">
+      <div class="hero-card__content error-page__content">
+        <span class="hero-card__eyebrow error-page__eyebrow">Request error</span>
+        <h1 class="hero-card__title error-page__status" id="error-page-title"><%= statusCode || 500 %></h1>
+        <p class="hero-card__text error-page__message"><%= message || 'The request could not be completed.' %></p>
+        <div class="hero-card__meta error-page__meta">
+          <% if (code) { %>
+          <span class="hero-chip error-page__chip"><span><%= code %></span></span>
+          <% } %>
+          <% if (requestId) { %>
+          <span class="hero-chip error-page__chip"><span>Request <%= requestId %></span></span>
+          <% } %>
+          <div class="hero-card__actions error-page__actions">
+            <a class="btn btn-secondary" href="/web/main-page">Back to main</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <% if (Array.isArray(details) && details.length) { %>
+    <section class="panel-card error-page__panel">
+      <div class="panel-card__header">
+        <div>
+          <span class="panel-card__eyebrow">Details</span>
+          <h2 class="panel-card__title">What happened</h2>
+        </div>
+      </div>
+      <ul class="error-page__details">
+        <% details.forEach((detail) => { %>
+        <li><%= typeof detail === 'string' ? detail : JSON.stringify(detail) %></li>
+        <% }) %>
+      </ul>
+    </section>
+    <% } %>
+
+    <% if (stack) { %>
+    <section class="panel-card error-page__panel error-page__panel--stack">
+      <div class="panel-card__header">
+        <div>
+          <span class="panel-card__eyebrow">Development</span>
+          <h2 class="panel-card__title">Stack trace</h2>
+        </div>
+      </div>
+      <pre class="error-page__stack"><code><%= stack %></code></pre>
+    </section>
+    <% } %>
+  </main>
+</body>
+
+</html>

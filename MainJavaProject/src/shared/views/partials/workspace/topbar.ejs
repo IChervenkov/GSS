@@ -1,0 +1,65 @@
+<header class="workspace-topbar" data-workspace-topbar>
+
+  <%
+    const {
+      navItems = [],
+      currentNav = '',
+      brandEyebrow = 'Operations workspace',
+      brandTitle = 'Global Support System',
+      csrfToken = ''
+    } = typeof locals !== 'undefined' ? locals : {};
+  %>
+
+  <div class="workspace-topbar__brand">
+    <div class="brand-mark">
+      <img class="brand-mark__logo" src="/assets/shared/icon/gss-icon.png" alt="" aria-hidden="true">
+    </div>
+    <div>
+      <div class="brand-eyebrow"><%= brandEyebrow || 'Operations workspace' %></div>
+      <div class="brand-title"><%= brandTitle || 'Global Support System' %></div>
+    </div>
+  </div>
+
+  <button class="workspace-topbar__menu" id="workspace-menu-toggle" type="button" aria-label="Open navigation menu" aria-controls="workspace-navigation" aria-expanded="false" data-workspace-menu-toggle>
+    <svg class="icon" aria-hidden="true">
+      <use href="#icon-list"></use>
+    </svg>
+  </button>
+
+  <nav class="workspace-topbar__nav" id="workspace-navigation" aria-label="Primary navigation" data-workspace-nav data-current-nav="<%= currentNav || '' %>">
+    <% const iconByName = {
+      'main page': 'icon-house-door',
+      'assets': 'icon-box',
+      'laundry': 'icon-water',
+      'gym': 'icon-activity',
+      'accommodation and keys': 'icon-key',
+      'bicycles': 'icon-bicycle',
+      'logout': 'icon-box-arrow-right'
+    }; %>
+    <% (navItems || []).forEach((item) => { %>
+    <% const normalized = String(item.name || '').toLowerCase(); %>
+    <% if (String(item.method || 'get').toLowerCase() === 'post') { %>
+    <form class="nav-pill-form" action="<%= item.href %>" method="post">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="nav-pill <%= normalized === String(currentNav || '').toLowerCase() ? 'is-current' : '' %>" type="submit">
+        <svg class="icon" aria-hidden="true">
+          <use href="#<%= iconByName[normalized] || 'icon-house-door' %>"></use>
+        </svg>
+        <span><%= item.name %></span>
+      </button>
+    </form>
+    <% } else { %>
+    <a class="nav-pill <%= normalized === String(currentNav || '').toLowerCase() ? 'is-current' : '' %>" href="<%= item.href %>">
+      <svg class="icon" aria-hidden="true">
+        <use href="#<%= iconByName[normalized] || 'icon-house-door' %>"></use>
+      </svg>
+      <span><%= item.name %></span>
+    </a>
+    <% } %>
+    <% }); %>
+  </nav>
+
+  <button class="theme-toggle workspace-topbar__theme-toggle" id="theme-toggle" type="button" data-theme-toggle aria-label="Toggle theme">
+    <span class="theme-toggle__icon" aria-hidden="true"></span>
+  </button>
+</header>

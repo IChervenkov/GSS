@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: gss
+    metrics_path: __GSS_METRICS_PATH__
+    scheme: __GSS_METRICS_SCHEME__
+    static_configs:
+      - targets: ['__GSS_TARGET_HOST__:__GSS_TARGET_PORT__']
+        labels:
+          app: gss
+__GSS_AUTH_BLOCK__

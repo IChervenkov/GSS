@@ -1,0 +1,24 @@
+<main class="workspace-shell" id="main-content">
+  <section class="hero-card">
+    <div class="hero-card__content">
+      <span class="hero-card__eyebrow"><%= eyebrow %></span>
+      <h1 class="hero-card__title"><%= title %></h1>
+      <p class="hero-card__text"><%= intro %></p>
+      <div class="hero-card__meta">
+        <% (highlights || []).forEach((highlight) => { %>
+        <span class="hero-chip"><span><%= highlight %></span></span>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel-card">
+    <div class="panel-card__header">
+      <div>
+        <span class="panel-card__eyebrow">Next refactor step</span>
+        <h2 class="panel-card__title">Feature module is in place</h2>
+      </div>
+    </div>
+    <p class="hero-card__text"><%= migrationNotice %></p>
+  </section>
+</main>
