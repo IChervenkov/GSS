@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { randomUUID } = require('crypto');
 const { AppError } = require('../errors/app-error');
 const { ERROR_CODES } = require('../errors/error-codes');

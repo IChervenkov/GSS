@@ -1,3 +1,4 @@
+// @ts-nocheck
 const crypto = require('crypto');
 const { AppError } = require('../../../../../shared/errors/app-error');
 const { ERROR_CODES } = require('../../../../../shared/errors/error-codes');

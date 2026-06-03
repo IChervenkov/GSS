@@ -1,3 +1,4 @@
+// @ts-nocheck
 function renderResponse(view, model = {}, status = 200) {
   return {
     type: 'render',

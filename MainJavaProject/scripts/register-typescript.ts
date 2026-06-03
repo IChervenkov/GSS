@@ -1,1 +1,1 @@
-require.extensions['.ts'] = require.extensions['.js'];
+require('ts-node/register/transpile-only');

@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { withClient } = require('../../infrastructure/db/transaction');
 
 async function insertAuditLog({ event, meta = {} }) {

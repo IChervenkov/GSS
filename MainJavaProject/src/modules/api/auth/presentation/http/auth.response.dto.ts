@@ -1,3 +1,4 @@
+// @ts-nocheck
 function toRefreshTokenResponseDto(model = {}) {
   return {
     accessToken: String(model?.accessToken || ''),

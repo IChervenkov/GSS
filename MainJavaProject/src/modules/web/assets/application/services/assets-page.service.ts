@@ -1,3 +1,4 @@
+// @ts-nocheck
 const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');

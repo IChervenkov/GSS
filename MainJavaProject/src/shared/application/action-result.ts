@@ -1,3 +1,4 @@
+// @ts-nocheck
 const ACTION_META = Symbol('actionResult.meta');
 
 const AUTH_NEXT_STEP_TO_REDIRECT = Object.freeze({

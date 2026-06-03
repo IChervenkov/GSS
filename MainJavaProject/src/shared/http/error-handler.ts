@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { createToAppError } = require('../errors/to-app-error');
 const { destroySessionAndClearCookie } = require('../utils/session-utils');
 const { buildRequestMeta } = require('../security/audit-log');

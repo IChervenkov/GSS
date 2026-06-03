@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { toActionPayload } = require('../../../../../shared/application/action-result');
 
 function toMainPageViewResponseDto(model = {}) {

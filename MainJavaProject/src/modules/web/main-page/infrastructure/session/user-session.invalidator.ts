@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { invalidateUserSessions } = require('../../../../../shared/utils/session-utils');
 
 function normalizeUserIds(userIds = []) {

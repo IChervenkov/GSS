@@ -1,3 +1,4 @@
+// @ts-nocheck
 const express = require('express');
 const { asyncHandler } = require('../../../shared/http/async-handler');
 const {

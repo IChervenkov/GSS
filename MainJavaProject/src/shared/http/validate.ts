@@ -25,7 +25,16 @@ module.exports = function validate(schema, source = 'body') {
         }),
       );
     }
-    req[source] = value;
+    if (source === 'query') {
+      Object.defineProperty(req, 'query', {
+        configurable: true,
+        enumerable: true,
+        value,
+        writable: true,
+      });
+    } else {
+      req[source] = value;
+    }
     return next();
   };
 };

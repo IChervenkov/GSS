@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { getLifecycleState } = require('../runtime/lifecycle');
 
 function createHealthMonitor({

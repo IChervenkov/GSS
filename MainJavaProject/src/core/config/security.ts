@@ -1,3 +1,4 @@
+// @ts-nocheck
 const crypto = require('crypto');
 const helmet = require('helmet');
 const hpp = require('hpp');

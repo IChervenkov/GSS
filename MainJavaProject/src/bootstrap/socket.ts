@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { Server } = require('socket.io');
 const {
   validateEventPayload,

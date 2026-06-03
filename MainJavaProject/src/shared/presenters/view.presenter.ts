@@ -1,3 +1,4 @@
+// @ts-nocheck
 function presentRenderModel(model = {}) {
   return { ...model };
 }

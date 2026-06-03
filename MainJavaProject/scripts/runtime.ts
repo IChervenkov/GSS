@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-nocheck
 const { spawn } = require('node:child_process');
 
 const args = process.argv.slice(2);

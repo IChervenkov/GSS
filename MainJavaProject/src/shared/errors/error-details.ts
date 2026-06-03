@@ -1,3 +1,4 @@
+// @ts-nocheck
 function normalizePath(path) {
   if (Array.isArray(path)) return path.map((segment) => String(segment));
   if (path === undefined || path === null || path === '') return [];

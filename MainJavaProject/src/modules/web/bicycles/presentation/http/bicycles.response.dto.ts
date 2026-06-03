@@ -1,3 +1,4 @@
+// @ts-nocheck
 function toBicyclesOverviewResponseDto(result = {}) {
   return { ...(result?.body || result || {}) };
 }

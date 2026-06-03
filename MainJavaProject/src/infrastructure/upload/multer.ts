@@ -1,3 +1,4 @@
+// @ts-nocheck
 const multer = require('multer');
 const path = require('path');
 const MAX_FILES = 1;

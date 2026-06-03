@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { withClient, withTransaction } = require('../../../../../infrastructure/db/transaction');
 const {
   buildAllowedOrderBy,

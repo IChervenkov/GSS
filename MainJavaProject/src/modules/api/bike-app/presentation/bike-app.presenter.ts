@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { fileResponse, jsonResponse } = require('../../../../shared/http/response-contract');
 
 function presentBikeAppResult(result = {}) {

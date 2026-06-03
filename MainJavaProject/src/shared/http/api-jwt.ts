@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { AppError } = require('../errors/app-error');
 const { ERROR_CODES } = require('../errors/error-codes');
 const { verifyAccessToken } = require('../../modules/api/auth/infrastructure/security/auth.tokens');

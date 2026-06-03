@@ -1,3 +1,4 @@
+// @ts-nocheck
 const os = require('os');
 const env = require('../../core/config/env');
 

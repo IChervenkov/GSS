@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { createAccommodationPort } = require('./application/ports/accommodation.repositories');
 const { createAccommodationService } = require('./application/services/accommodation.service');
 const {

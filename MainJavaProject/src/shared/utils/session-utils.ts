@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { metrics } = require('../observability/metrics');
 const { getSessionPrincipalId } = require('../session/web-session-state');
 

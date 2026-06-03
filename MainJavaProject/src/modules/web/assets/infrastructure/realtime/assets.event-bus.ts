@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { REALTIME_EVENT_NAMES } = require('../../../../../shared/realtime/event-names');
 
 function createAssetsEventBus({ emitRoomEvent } = {}) {

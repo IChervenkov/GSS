@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { MAIN_PERMISSIONS } = require('../../modules/web/main-page/domain/main.permissions');
 const {
   BICYCLE_PERMISSIONS,

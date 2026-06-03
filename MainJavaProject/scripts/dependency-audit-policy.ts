@@ -1,11 +1,15 @@
 const { spawnSync } = require('child_process');
 
-const isWindows = process.platform === 'win32';
-const result = spawnSync(isWindows ? 'npm.cmd' : 'npm', ['audit', '--json'], {
+const result = spawnSync('npm', ['audit', '--json'], {
   encoding: 'utf8',
-  shell: isWindows,
+  shell: process.platform === 'win32',
   stdio: ['ignore', 'pipe', 'pipe'],
 });
+
+if (result.error) {
+  process.stderr.write(`Could not run npm audit: ${result.error.message}\n`);
+  process.exit(1);
+}
 
 if (!result.stdout && !result.stderr) {
   process.stderr.write('npm audit returned no output.\n');

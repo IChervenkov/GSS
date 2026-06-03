@@ -144,9 +144,9 @@ test('api bike app bicycle list accepts server-side table query state', async ()
     assert.equal(response.status, 200);
     assert.deepEqual(listPayload, {
       campId,
-      page: '2',
-      limit: '10',
-      filters: JSON.stringify({ name: 'alpha', status: 'available' }),
+      page: 2,
+      limit: 10,
+      filters: { name: 'alpha', status: 'available' },
       sortColumn: 'name',
       sortDirection: 'desc',
     });

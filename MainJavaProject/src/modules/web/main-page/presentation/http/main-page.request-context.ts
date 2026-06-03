@@ -1,3 +1,4 @@
+// @ts-nocheck
 function toTrimmedArray(value) {
   if (Array.isArray(value)) {
     return value.map((item) => String(item ?? '').trim()).filter(Boolean);

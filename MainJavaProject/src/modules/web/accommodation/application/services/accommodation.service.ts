@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { AppError } = require('../../../../../shared/errors/app-error');
 const ExcelJS = require('exceljs');
 const { invalid, success } = require('../../../../../shared/application/action-result');

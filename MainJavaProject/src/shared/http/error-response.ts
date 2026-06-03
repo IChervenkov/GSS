@@ -1,3 +1,4 @@
+// @ts-nocheck
 function normalizeDetails(details) {
   if (Array.isArray(details)) return details;
   if (details === undefined || details === null) return [];

@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { AppError } = require('../../../../../shared/errors/app-error');
 const { success } = require('../../../../../shared/application/action-result');
 const { buildRequestMeta } = require('../../../../../shared/security/audit-log');

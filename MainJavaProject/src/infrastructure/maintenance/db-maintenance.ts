@@ -1,3 +1,4 @@
+// @ts-nocheck
 const defaultEnv = require('../../core/config/env');
 const { metrics: defaultMetrics } = require('../../shared/observability/metrics');
 const { withClient } = require('../db/transaction');

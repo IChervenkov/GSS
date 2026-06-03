@@ -13,6 +13,7 @@
     "test:e2e": "node --require ./scripts/register-typescript.ts --test tests/e2e/**/*.test.ts",
     "test:coverage-map": "node ./scripts/print-coverage-map.ts",
     "test:smoke": "node --require ./scripts/register-typescript.ts --test tests/smoke/**/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "build": "node ./scripts/create-build-metadata.ts",
     "db:migrate": "node --require ./scripts/register-typescript.ts ./scripts/run-migrations.ts",
     "db:schema-doc": "node --require ./scripts/register-typescript.ts ./scripts/generate-schema-doc.ts",
@@ -22,7 +23,7 @@
     "ops:up": "docker compose -f ops/observability/docker-compose.yml up -d",
     "ops:down": "docker compose -f ops/observability/docker-compose.yml down",
     "ops:logs": "docker compose -f ops/observability/docker-compose.yml logs -f",
-    "dev:server": "nodemon --exec node ./src/bootstrap/server.ts",
+    "dev:server": "nodemon ./src/bootstrap/server.ts",
     "infra:up": "docker compose up -d postgres redis",
     "infra:down": "docker compose down",
     "prod:up": "docker compose --profile production up --build -d postgres redis app",
@@ -55,9 +56,24 @@
     "speakeasy": "2.0.0"
   },
   "devDependencies": {
-    "nodemon": "3.1.10"
+    "@types/cors": "2.8.19",
+    "@types/ejs": "3.1.5",
+    "@types/express": "5.0.6",
+    "@types/express-session": "1.19.0",
+    "@types/hpp": "0.2.7",
+    "@types/jsonwebtoken": "9.0.10",
+    "@types/multer": "2.1.0",
+    "@types/node": "22.19.19",
+    "@types/pg": "8.20.0",
+    "@types/qrcode": "1.5.6",
+    "@types/speakeasy": "2.0.10",
+    "nodemon": "3.1.10",
+    "ts-node": "10.9.2",
+    "typescript": "6.0.3"
   },
   "overrides": {
+    "qs": "6.15.2",
+    "tmp": "0.2.7",
     "uuid": "11.1.1",
     "ws": "8.20.1"
   },

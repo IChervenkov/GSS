@@ -1,3 +1,4 @@
+// @ts-nocheck
 function mapRow(row, fieldMap) {
   if (!row) return null;
 

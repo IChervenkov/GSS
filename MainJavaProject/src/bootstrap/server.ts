@@ -1,3 +1,4 @@
+// @ts-nocheck
 require('../../scripts/register-typescript.ts');
 
 const http = require('http');

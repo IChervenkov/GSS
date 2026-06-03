@@ -1,3 +1,4 @@
+// @ts-nocheck
 const session = require('express-session');
 const {
   SESSION_COOKIE_NAME,

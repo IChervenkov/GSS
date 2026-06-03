@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { AppError } = require('../../../../../shared/errors/app-error');
 const { buildHorizontalNavItems } = require('../../../../../shared/public/js/ui/navigation');
 const { success } = require('../../../../../shared/application/action-result');

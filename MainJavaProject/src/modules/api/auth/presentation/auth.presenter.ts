@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { jsonResponse } = require('../../../../shared/http/response-contract');
 const { toRefreshTokenResponseDto } = require('./http/auth.response.dto');
 

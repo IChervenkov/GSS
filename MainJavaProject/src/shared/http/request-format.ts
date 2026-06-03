@@ -1,3 +1,4 @@
+// @ts-nocheck
 function wantsJsonResponse(req = {}) {
   const accept = String(req.headers?.accept || '').toLowerCase();
   const contentType = String(req.headers?.['content-type'] || '').toLowerCase();

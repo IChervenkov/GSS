@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { normalizeErrorDetails } = require('./error-details');
 
 class AppError extends Error {

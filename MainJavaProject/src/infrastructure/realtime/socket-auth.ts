@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { isUuid } = require('./event-catalog');
 const { verifyAccessToken } = require('../../modules/api/auth/infrastructure/security/auth.tokens');
 

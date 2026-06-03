@@ -1,3 +1,4 @@
+// @ts-nocheck
 function toAccommodationResponseDto(result = {}) {
   return { ...(result?.body || result || {}) };
 }
