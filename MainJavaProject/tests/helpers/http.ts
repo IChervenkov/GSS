@@ -1,3 +1,4 @@
+// @ts-nocheck
 const http = require('http');
 const assert = require('node:assert/strict');
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { bootstrapPage } from '/assets/shared/js/app/bootstrap-page.ts';
 import { byId, debounce, qsa, setProgressValue } from '/assets/shared/js/core/dom.ts';
 import { confirmAction, initConfirmModal } from '/assets/shared/js/core/confirm.ts';

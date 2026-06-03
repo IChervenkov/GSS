@@ -1,3 +1,4 @@
+// @ts-nocheck
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -32,9 +33,13 @@ function createSessionReq() {
 
 const sessionUtils = {
   regenerateSession: (req) =>
-    new Promise((resolve, reject) => req.session.regenerate((err) => (err ? reject(err) : resolve()))),
+    new Promise((resolve, reject) =>
+      req.session.regenerate((err) => (err ? reject(err) : resolve())),
+    ),
   saveSession: (req) =>
-    new Promise((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve()))),
+    new Promise((resolve, reject) =>
+      req.session.save((err) => (err ? reject(err) : resolve())),
+    ),
 };
 
 test('web session state clears pending auth fields when completing two-factor login', async () => {

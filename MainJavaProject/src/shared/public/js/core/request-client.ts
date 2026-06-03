@@ -2,7 +2,21 @@ import { safeRedirect } from '/assets/shared/js/core/dom.ts';
 import { normalizeApiResult, SECURITY_REDIRECT_CODES } from '/assets/shared/js/core/app-errors.ts';
 import { safeReadJson } from '/assets/shared/js/core/http.ts';
 
-function joinUrl(path, query = null) {
+type RequestQuery = Record<string, unknown> | null;
+
+type RequestClientOptions = {
+  body?: unknown;
+  csrfToken?: string;
+  headers?: HeadersInit;
+  signal?: AbortSignal;
+  query?: RequestQuery;
+};
+
+type RequestClientConfig = {
+  onSecurityRedirect?: ((url: string, fallback?: string) => void) | null;
+};
+
+function joinUrl(path: string, query: RequestQuery = null) {
   const url = new URL(path, window.location.origin);
   if (query && typeof query === 'object') {
     Object.entries(query).forEach(([key, value]) => {
@@ -14,7 +28,7 @@ function joinUrl(path, query = null) {
 }
 
 export function createRequestScope() {
-  let activeController = null;
+  let activeController: AbortController | null = null;
   let token = 0;
 
   return {
@@ -33,8 +47,12 @@ export function createRequestScope() {
   };
 }
 
-export function createRequestClient({ onSecurityRedirect = null } = {}) {
-  async function send(method, path, { body, csrfToken = '', headers = {}, signal, query } = {}) {
+export function createRequestClient({ onSecurityRedirect = null }: RequestClientConfig = {}) {
+  async function send(
+    method: string,
+    path: string,
+    { body, csrfToken = '', headers = {}, signal, query }: RequestClientOptions = {},
+  ) {
     const requestHeaders = {
       Accept: 'application/json',
       ...headers,

@@ -12,14 +12,22 @@ const VARIANT_BY_STATE = {
   warning: 'warning',
 };
 
+type PageStateControllerOptions = {
+  root?: HTMLElement | null;
+  panel?: HTMLElement | null;
+  messageEl?: HTMLElement | null;
+  loadingTargets?: HTMLElement[];
+  disableTargets?: any[];
+};
+
 export function createPageStateController({
   root,
   panel,
   messageEl,
   loadingTargets = [],
   disableTargets = [],
-} = {}) {
-  let currentState = PAGE_STATES.IDLE;
+}: PageStateControllerOptions = {}) {
+  let currentState: string = PAGE_STATES.IDLE;
   let currentMessage = '';
 
   const render = () => {

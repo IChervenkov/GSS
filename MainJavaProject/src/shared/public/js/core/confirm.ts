@@ -2,7 +2,7 @@ import { byId } from '/assets/shared/js/core/dom.ts';
 import { createModalController } from '/assets/shared/js/ui/modal.ts';
 
 let confirmController = null;
-let confirmElements = null;
+let confirmElements: any = null;
 let pendingResolve = null;
 let pendingCleanup = null;
 
@@ -103,7 +103,18 @@ export function initConfirmModal() {
   return confirmController;
 }
 
-export async function confirmAction(options = {}) {
+type ConfirmTextOption = string | (() => string);
+
+type ConfirmActionOptions = {
+  title?: ConfirmTextOption;
+  message?: ConfirmTextOption;
+  confirmText?: ConfirmTextOption;
+  cancelText?: ConfirmTextOption;
+  variant?: string;
+  canConfirm?: boolean | (() => boolean);
+};
+
+export async function confirmAction(options: ConfirmActionOptions = {}) {
   const controller = initConfirmModal();
   if (!controller || !confirmElements) return false;
 

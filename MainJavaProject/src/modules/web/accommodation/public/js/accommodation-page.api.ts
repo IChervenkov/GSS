@@ -1,9 +1,13 @@
 import { createRequestClient } from '/assets/shared/js/core/request-client.ts';
 
+type UploadTemplateOptions = {
+  onUploadProgress?: (progress: number) => void;
+};
+
 export function createAccommodationPageApi({ csrfToken = '' } = {}) {
   const client = createRequestClient();
 
-  function importTemplate(path, file, { onUploadProgress } = {}) {
+  function importTemplate(path, file, { onUploadProgress }: UploadTemplateOptions = {}) {
     return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
       const formData = new FormData();

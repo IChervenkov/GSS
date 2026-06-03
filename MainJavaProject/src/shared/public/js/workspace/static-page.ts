@@ -4,11 +4,11 @@ import { initWorkspacePermissionAccessRefresh } from '/assets/shared/js/workspac
 import { initWorkspacePage, syncTabPanels } from '/assets/shared/js/workspace/page-shell.ts';
 
 function initStaticTabs() {
-  const tabButtons = Array.from(document.querySelectorAll('[data-tab-trigger]'));
-  const tabPanels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+  const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab-trigger]'));
+  const tabPanels = Array.from(document.querySelectorAll<HTMLElement>('[data-tab-panel]'));
   if (!tabButtons.length || !tabPanels.length) return;
 
-  const setActiveTab = (nextTab) => {
+  const setActiveTab = (nextTab?: string) => {
     const activeTab =
       nextTab && tabPanels.some((panel) => panel.dataset.tabPanel === nextTab)
         ? nextTab

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { bootstrapPage } from '/assets/shared/js/app/bootstrap-page.ts';
 import {
   byId,

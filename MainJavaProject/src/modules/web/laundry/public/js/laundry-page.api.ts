@@ -1,5 +1,9 @@
 import { createRequestClient } from '/assets/shared/js/core/request-client.ts';
 
+type UploadTemplateOptions = {
+  onUploadProgress?: (progress: number) => void;
+};
+
 export function createLaundryPageApi({ csrfToken = '' } = {}) {
   const client = createRequestClient();
 
@@ -60,7 +64,7 @@ export function createLaundryPageApi({ csrfToken = '' } = {}) {
     bulkUpdateBags(payload, signal) {
       return client.postJson('/web/laundry/bags/bulk', { csrfToken, signal, body: payload });
     },
-    importBagTemplate(file, { onUploadProgress } = {}) {
+    importBagTemplate(file, { onUploadProgress }: UploadTemplateOptions = {}) {
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
         const formData = new FormData();

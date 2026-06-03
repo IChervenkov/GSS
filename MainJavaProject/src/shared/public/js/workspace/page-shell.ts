@@ -1,6 +1,12 @@
 import { initThemeToggle } from '/assets/shared/js/core/theme-toggle.ts';
 
-function getRequiredMarkerHost(label, control) {
+type WorkspacePageData = Record<string, any>;
+type WorkspacePayload = Record<string, any>;
+type ToastManager = {
+  show(options: { title?: string; message?: string; variant?: string }): void;
+};
+
+function getRequiredMarkerHost(label: HTMLElement, control: HTMLElement) {
   const directTextChild = Array.from(label.children || []).find((child) => {
     if (!(child instanceof HTMLElement)) return false;
     if (child.matches('.required-marker')) return false;
@@ -11,15 +17,15 @@ function getRequiredMarkerHost(label, control) {
   return directTextChild || label;
 }
 
-function syncRequiredFieldLabels(root = document) {
+function syncRequiredFieldLabels(root: ParentNode = document) {
   const controls = Array.from(root.querySelectorAll?.('input, select, textarea') || []);
   controls.forEach((control) => {
     if (!(control instanceof HTMLElement)) return;
     if (control.getAttribute('type') === 'hidden') return;
 
-    const labels = [];
+    const labels: HTMLElement[] = [];
     if (control.id && typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
-      labels.push(...document.querySelectorAll(`label[for="${CSS.escape(control.id)}"]`));
+      labels.push(...document.querySelectorAll<HTMLElement>(`label[for="${CSS.escape(control.id)}"]`));
     }
     const wrappingLabel = control.closest('label');
     if (wrappingLabel) labels.push(wrappingLabel);
@@ -31,7 +37,7 @@ function syncRequiredFieldLabels(root = document) {
     labels.forEach((label) => {
       label.classList.toggle('field-label--required', isRequired);
       const markerHost = getRequiredMarkerHost(label, control);
-      const markers = Array.from(label.querySelectorAll('.required-marker'));
+      const markers = Array.from(label.querySelectorAll<HTMLElement>('.required-marker'));
       let marker = markers.find((item) => item.parentElement === markerHost);
       markers.forEach((item) => {
         if (!isRequired || item !== marker) item.remove();
@@ -47,7 +53,7 @@ function syncRequiredFieldLabels(root = document) {
   });
 }
 
-export function createToastManager(root) {
+export function createToastManager(root: HTMLElement | null | undefined): ToastManager {
   const removeToast = (toast) => {
     if (!(toast instanceof HTMLElement) || toast.dataset.leaving === 'true') return;
     toast.dataset.leaving = 'true';
@@ -68,8 +74,8 @@ export function createToastManager(root) {
         '<div class="toast__title"></div>',
         '<div class="toast__text"></div>',
       ].join('');
-      toast.querySelector('.toast__title').textContent = title || 'Notice';
-      toast.querySelector('.toast__text').textContent = message || '';
+      toast.querySelector('.toast__title')!.textContent = title || 'Notice';
+      toast.querySelector('.toast__text')!.textContent = message || '';
       toast.querySelector('.toast__dismiss')?.addEventListener('click', () => removeToast(toast));
       root.appendChild(toast);
       window.requestAnimationFrame(() => toast.classList.add('is-visible'));
@@ -81,31 +87,31 @@ export function createToastManager(root) {
 const WORKSPACE_NOTIFICATION_ROOM = 'ui:workspace:notifications';
 const UPCOMING_TOAST_STORAGE_KEY = 'gss:workspace:shown-upcoming-accommodation-toasts';
 
-function normalizeStatus(value) {
+function normalizeStatus(value: unknown) {
   return String(value || '')
     .trim()
     .toLowerCase();
 }
 
-function isRentStatus(value) {
+function isRentStatus(value: unknown) {
   return ['rented', 'long_term'].includes(normalizeStatus(value));
 }
 
-function isLateStatus(value) {
+function isLateStatus(value: unknown) {
   return normalizeStatus(value) === 'late';
 }
 
-function isLaundryOverdueStatus(value) {
+function isLaundryOverdueStatus(value: unknown) {
   return normalizeStatus(value) === 'overdue';
 }
 
-function isCurrentCampPayload(payload = {}, pageData = {}) {
+function isCurrentCampPayload(payload: WorkspacePayload = {}, pageData: WorkspacePageData = {}) {
   const changedCampId = String(payload?.campId || '');
   const currentCampId = String(pageData?.campId || pageData?.currentCampId || '');
   return !changedCampId || !currentCampId || changedCampId === currentCampId;
 }
 
-function getCurrentCampId(pageData = {}) {
+function getCurrentCampId(pageData: WorkspacePageData = {}) {
   const dynamicCampId =
     typeof pageData.currentCampId === 'function'
       ? pageData.currentCampId()
@@ -115,7 +121,7 @@ function getCurrentCampId(pageData = {}) {
   ).trim();
 }
 
-function normalizeUpcomingList(value) {
+function normalizeUpcomingList(value: unknown) {
   return Array.isArray(value)
     ? value
         .filter(Boolean)
@@ -124,7 +130,7 @@ function normalizeUpcomingList(value) {
     : [];
 }
 
-function buildUpcomingToastMessage(list, fallback) {
+function buildUpcomingToastMessage(list: unknown, fallback: string) {
   const items = normalizeUpcomingList(list);
   if (items.length === 0) return fallback;
   const visibleItems = items.slice(0, 3);
@@ -143,7 +149,7 @@ function readShownUpcomingToastKeys() {
   }
 }
 
-function writeShownUpcomingToastKeys(keys) {
+function writeShownUpcomingToastKeys(keys: Iterable<string>) {
   try {
     window.sessionStorage?.setItem(UPCOMING_TOAST_STORAGE_KEY, JSON.stringify([...keys]));
   } catch {
@@ -155,13 +161,13 @@ export function bindUpcomingAccommodationToasts({
   toast,
   pageData = {},
   fetchImpl = window.fetch,
-} = {}) {
+}: { toast?: ToastManager; pageData?: WorkspacePageData; fetchImpl?: typeof window.fetch } = {}) {
   if (!toast || typeof fetchImpl !== 'function') return () => {};
 
   const shownNotifications = new Set(readShownUpcomingToastKeys());
   let lastNotificationKey = '';
   let isDisposed = false;
-  let activeController = null;
+  let activeController: AbortController | null = null;
 
   function showUpcomingToastOnce({ campId, type, list, fallback, title }) {
     const normalizedList = normalizeUpcomingList(list);
@@ -244,7 +250,17 @@ export function bindUpcomingAccommodationToasts({
   };
 }
 
-export function bindLateBicycleToast({ socket, roomManager, toast, pageData = {} } = {}) {
+export function bindLateBicycleToast({
+  socket,
+  roomManager,
+  toast,
+  pageData = {},
+}: {
+  socket?: any;
+  roomManager?: any;
+  toast?: ToastManager;
+  pageData?: WorkspacePageData;
+} = {}) {
   if (!socket || typeof socket.on !== 'function' || !roomManager || !toast) return () => {};
 
   const shownNotifications = new Set();
@@ -253,7 +269,7 @@ export function bindLateBicycleToast({ socket, roomManager, toast, pageData = {}
     void roomManager.subscribe([WORKSPACE_NOTIFICATION_ROOM]);
   };
 
-  const handleLaundryOverdue = (payload = {}) => {
+  const handleLaundryOverdue = (payload: WorkspacePayload = {}) => {
     if (!isCurrentCampPayload(payload, pageData)) return;
     const status = payload?.status || payload?.newStatus || payload?.toStatus;
     if (!isLaundryOverdueStatus(status)) return;
@@ -273,7 +289,7 @@ export function bindLateBicycleToast({ socket, roomManager, toast, pageData = {}
     });
   };
 
-  const handleStatusChanged = (payload = {}) => {
+  const handleStatusChanged = (payload: WorkspacePayload = {}) => {
     if (!isCurrentCampPayload(payload, pageData)) return;
     const previousStatus = payload?.previousStatus || payload?.oldStatus || payload?.fromStatus;
     const status = payload?.status || payload?.newStatus || payload?.toStatus;
@@ -308,7 +324,15 @@ export function bindLateBicycleToast({ socket, roomManager, toast, pageData = {}
   };
 }
 
-export function syncTabPanels({ activeTab, tabButtons = [], tabPanels = [] } = {}) {
+export function syncTabPanels({
+  activeTab,
+  tabButtons = [],
+  tabPanels = [],
+}: {
+  activeTab?: string;
+  tabButtons?: HTMLElement[];
+  tabPanels?: HTMLElement[];
+} = {}) {
   tabButtons.forEach((button) => {
     const active = button.dataset.tabTrigger === activeTab;
     button.classList.toggle('is-active', active);

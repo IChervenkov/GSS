@@ -1,5 +1,10 @@
 import { createRequestClient } from '/assets/shared/js/core/request-client.ts';
 
+type UploadTemplateOptions = {
+  onUploadProgress?: (progress: number) => void;
+  errorMessage?: string;
+};
+
 export function createAssetsPageApi({ csrfToken = '' } = {}) {
   const client = createRequestClient();
 
@@ -70,7 +75,7 @@ export function createAssetsPageApi({ csrfToken = '' } = {}) {
     bulkUpdateAssets(payload, signal) {
       return client.postJson('/web/assets/bulk', { csrfToken, signal, body: payload });
     },
-    uploadTemplate(url, file, { onUploadProgress, errorMessage } = {}) {
+    uploadTemplate(url, file, { onUploadProgress, errorMessage }: UploadTemplateOptions = {}) {
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
         const formData = new FormData();

@@ -1,5 +1,9 @@
 import { createRequestClient } from '/assets/shared/js/core/request-client.ts';
 
+type UploadTemplateOptions = {
+  onUploadProgress?: (progress: number) => void;
+};
+
 export function createBicyclesPageApi({ csrfToken = '' } = {}) {
   const client = createRequestClient();
 
@@ -70,7 +74,7 @@ export function createBicyclesPageApi({ csrfToken = '' } = {}) {
     returnBicycle(payload, signal) {
       return client.postJson('/web/bicycles/return', { csrfToken, signal, body: payload });
     },
-    importBicycleTemplate(file, { onUploadProgress } = {}) {
+    importBicycleTemplate(file, { onUploadProgress }: UploadTemplateOptions = {}) {
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
         const formData = new FormData();
@@ -115,7 +119,7 @@ export function createBicyclesPageApi({ csrfToken = '' } = {}) {
         xhr.send(formData);
       });
     },
-    importHelmetTemplate(file, { onUploadProgress } = {}) {
+    importHelmetTemplate(file, { onUploadProgress }: UploadTemplateOptions = {}) {
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
         const formData = new FormData();

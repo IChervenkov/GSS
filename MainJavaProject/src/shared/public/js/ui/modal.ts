@@ -1,13 +1,20 @@
+type ModalControllerOptions = {
+  root?: HTMLElement | null;
+  dialog?: Element | null;
+  closeSelectors?: string[];
+  onAfterClose?: (() => void) | null;
+};
+
 export function createModalController({
   root,
   dialog,
   closeSelectors = [],
   onAfterClose = null,
-} = {}) {
+}: ModalControllerOptions = {}) {
   if (!root || !dialog) return null;
 
-  let lastFocusedElement = null;
-  let closingTimer = null;
+  let lastFocusedElement: any = null;
+  let closingTimer: number | null = null;
 
   const focusableSelector = [
     'a[href]',
@@ -19,7 +26,7 @@ export function createModalController({
   ].join(',');
 
   const getFocusable = () =>
-    Array.from(dialog.querySelectorAll(focusableSelector)).filter(
+    Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector)).filter(
       (element) => !element.hidden && element.getAttribute('aria-hidden') !== 'true',
     );
 

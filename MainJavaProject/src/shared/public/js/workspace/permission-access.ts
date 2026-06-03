@@ -1,6 +1,32 @@
 import { createRequestClient } from '/assets/shared/js/core/request-client.ts';
 import { bindForcedSignOut } from '/assets/shared/js/core/socket-client.ts';
 
+declare global {
+  interface Window {
+    io?: (...args: any[]) => any;
+  }
+}
+
+type PermissionRow = {
+  name?: string;
+};
+
+type PermissionAccessPageData = {
+  csrfToken?: string;
+};
+
+type WorkspacePermissionRenderOptions = {
+  permissionNames?: Set<string>;
+  csrfToken?: string;
+  isAdmin?: boolean;
+};
+
+type WorkspacePermissionRefreshOptions = {
+  socket?: any;
+  pageData?: PermissionAccessPageData;
+  isAdmin?: boolean;
+};
+
 const NAV_ITEMS = Object.freeze([
   { key: 'main-page', href: '/web/main-page', name: 'Main Page', always: true },
   { key: 'assets', href: '/web/assets', name: 'Assets', permissions: ['Asset management', 'Assets'] },
@@ -44,7 +70,7 @@ function escapeAttr(value) {
   return escapeHtml(value).replaceAll('`', '&#96;');
 }
 
-function normalizePermissionsPayload(payload) {
+function normalizePermissionsPayload(payload: any): PermissionRow[] {
   if (!payload || typeof payload !== 'object') return [];
   if (Array.isArray(payload.permissions)) return payload.permissions;
   if (payload.permissions && Array.isArray(payload.permissions.rows)) {
@@ -53,7 +79,7 @@ function normalizePermissionsPayload(payload) {
   return [];
 }
 
-function buildHorizontalNavItems(permissionNames = new Set(), isAdmin = false) {
+function buildHorizontalNavItems(permissionNames = new Set<string>(), isAdmin = false) {
   if (permissionNames.has('Full permission')) {
     return [...NAV_ITEMS];
   }
@@ -63,19 +89,21 @@ function buildHorizontalNavItems(permissionNames = new Set(), isAdmin = false) {
   );
 }
 
-function getCsrfToken(pageData = {}) {
-  return document.querySelector('#csrf-token')?.value || pageData.csrfToken || '';
+function getCsrfToken(pageData: PermissionAccessPageData = {}) {
+  return document.querySelector<HTMLInputElement>('#csrf-token')?.value || pageData.csrfToken || '';
 }
 
 function getCurrentNavName() {
-  return String(document.querySelector('[data-workspace-nav]')?.dataset.currentNav || '').toLowerCase();
+  return String(
+    document.querySelector<HTMLElement>('[data-workspace-nav]')?.dataset.currentNav || '',
+  ).toLowerCase();
 }
 
 function resolveCurrentPagePermission() {
   return CURRENT_PAGE_PERMISSION_BY_NAV[getCurrentNavName()] || null;
 }
 
-function hasAccessToCurrentPage(permissionNames = new Set()) {
+function hasAccessToCurrentPage(permissionNames = new Set<string>()) {
   const requiredPermission = resolveCurrentPagePermission();
   if (!requiredPermission) return true;
   const requiredPermissions = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
@@ -85,7 +113,7 @@ function hasAccessToCurrentPage(permissionNames = new Set()) {
   );
 }
 
-function dispatchPermissionsRefreshed(permissionNames) {
+function dispatchPermissionsRefreshed(permissionNames: Set<string>) {
   document.dispatchEvent(
     new CustomEvent('workspace:permissions:refreshed', {
       detail: {
@@ -96,13 +124,17 @@ function dispatchPermissionsRefreshed(permissionNames) {
   );
 }
 
-function redirectIfCurrentPageAccessWasRevoked(permissionNames) {
+function redirectIfCurrentPageAccessWasRevoked(permissionNames: Set<string>) {
   if (hasAccessToCurrentPage(permissionNames)) return;
   window.location.assign('/web/main-page');
 }
 
-function renderWorkspaceNavigation({ permissionNames, csrfToken = '', isAdmin = false } = {}) {
-  const nav = document.querySelector('[data-workspace-nav]');
+function renderWorkspaceNavigation({
+  permissionNames = new Set<string>(),
+  csrfToken = '',
+  isAdmin = false,
+}: WorkspacePermissionRenderOptions = {}) {
+  const nav = document.querySelector<HTMLElement>('[data-workspace-nav]');
   if (!nav) return;
 
   const navItems = buildHorizontalNavItems(permissionNames, isAdmin);
@@ -141,7 +173,7 @@ export function createWorkspacePermissionAccessRefresh({
   socket = null,
   pageData = {},
   isAdmin = false,
-} = {}) {
+}: WorkspacePermissionRefreshOptions = {}) {
   const client = createRequestClient();
   let refreshInFlight = null;
 
@@ -189,7 +221,10 @@ export function createWorkspacePermissionAccessRefresh({
   };
 }
 
-export function initWorkspacePermissionAccessRefresh({ pageData = {}, isAdmin = false } = {}) {
+export function initWorkspacePermissionAccessRefresh({
+  pageData = {},
+  isAdmin = false,
+}: Omit<WorkspacePermissionRefreshOptions, 'socket'> = {}) {
   const socket =
     typeof window.io === 'function' ? window.io({ transports: ['websocket', 'polling'] }) : null;
   bindForcedSignOut(socket);

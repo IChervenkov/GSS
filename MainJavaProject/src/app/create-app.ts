@@ -1,6 +1,8 @@
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const ejs = require('ejs');
+const ts = require('typescript');
 
 const { applySecurity } = require('../core/config/security');
 const { csrfSynchronisedProtection, attachCsrfToken } = require('../core/config/csrf');
@@ -36,9 +38,70 @@ const scriptStaticOptions = {
   },
 };
 
+function isPathInside(basePath, candidatePath) {
+  const relativePath = path.relative(basePath, candidatePath);
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
+}
+
+function resolvePublicAssetPath(publicRoot, requestPath) {
+  let relativePath;
+  try {
+    relativePath = decodeURIComponent(requestPath).replace(/^[/\\]+/, '');
+  } catch {
+    return null;
+  }
+
+  const normalizedPath = path.normalize(relativePath);
+  const absolutePath = path.resolve(publicRoot, normalizedPath);
+  return isPathInside(publicRoot, absolutePath) ? absolutePath : null;
+}
+
+function transpileBrowserTypeScript(source, fileName) {
+  return ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.ES2022,
+      target: ts.ScriptTarget.ES2022,
+      sourceMap: false,
+    },
+    fileName,
+  }).outputText;
+}
+
+function serveBrowserTypeScript(publicRoot) {
+  return async (req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    if (path.extname(req.path) !== '.ts') return next();
+
+    const filePath = resolvePublicAssetPath(publicRoot, req.path);
+    if (!filePath) return next();
+
+    try {
+      const stat = await fs.promises.stat(filePath);
+      if (!stat.isFile()) return next();
+
+      const source = await fs.promises.readFile(filePath, 'utf8');
+      const output = transpileBrowserTypeScript(source, filePath);
+      res.setHeader('Content-Type', 'text/javascript; charset=UTF-8');
+      res.setHeader('Cache-Control', 'no-cache');
+      if (req.method === 'HEAD') return res.status(200).end();
+      return res.status(200).send(output);
+    } catch (error) {
+      if (error?.code === 'ENOENT') return next();
+      return next(error);
+    }
+  };
+}
+
 function createApp({ env, requestLoggerMiddleware, errorHandler, modules, rateLimitStore }) {
   const app = express();
   const rootDir = path.resolve(__dirname, '../..');
+  const sharedPublicRoot = path.join(rootDir, 'src/shared/public');
+  const authPublicRoot = path.join(rootDir, 'src/modules/web/auth/public');
+  const accommodationPublicRoot = path.join(rootDir, 'src/modules/web/accommodation/public');
+  const assetsPublicRoot = path.join(rootDir, 'src/modules/web/assets/public');
+  const bicyclesPublicRoot = path.join(rootDir, 'src/modules/web/bicycles/public');
+  const laundryPublicRoot = path.join(rootDir, 'src/modules/web/laundry/public');
+  const mainPublicRoot = path.join(rootDir, 'src/modules/web/main-page/public');
 
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ limit: '250kb', extended: true }));
@@ -65,31 +128,38 @@ function createApp({ env, requestLoggerMiddleware, errorHandler, modules, rateLi
   ]);
   app.use(
     '/assets/shared',
-    express.static(path.join(rootDir, 'src/shared/public'), scriptStaticOptions),
+    serveBrowserTypeScript(sharedPublicRoot),
+    express.static(sharedPublicRoot, scriptStaticOptions),
   );
   app.use(
     '/assets/auth',
-    express.static(path.join(rootDir, 'src/modules/web/auth/public'), scriptStaticOptions),
+    serveBrowserTypeScript(authPublicRoot),
+    express.static(authPublicRoot, scriptStaticOptions),
   );
   app.use(
     '/assets/accommodation',
-    express.static(path.join(rootDir, 'src/modules/web/accommodation/public'), scriptStaticOptions),
+    serveBrowserTypeScript(accommodationPublicRoot),
+    express.static(accommodationPublicRoot, scriptStaticOptions),
   );
   app.use(
     '/assets/assets',
-    express.static(path.join(rootDir, 'src/modules/web/assets/public'), scriptStaticOptions),
+    serveBrowserTypeScript(assetsPublicRoot),
+    express.static(assetsPublicRoot, scriptStaticOptions),
   );
   app.use(
     '/assets/bicycles',
-    express.static(path.join(rootDir, 'src/modules/web/bicycles/public'), scriptStaticOptions),
+    serveBrowserTypeScript(bicyclesPublicRoot),
+    express.static(bicyclesPublicRoot, scriptStaticOptions),
   );
   app.use(
     '/assets/laundry',
-    express.static(path.join(rootDir, 'src/modules/web/laundry/public'), scriptStaticOptions),
+    serveBrowserTypeScript(laundryPublicRoot),
+    express.static(laundryPublicRoot, scriptStaticOptions),
   );
   app.use(
     '/assets/main',
-    express.static(path.join(rootDir, 'src/modules/web/main-page/public'), scriptStaticOptions),
+    serveBrowserTypeScript(mainPublicRoot),
+    express.static(mainPublicRoot, scriptStaticOptions),
   );
 
   const apiBurstProtection = createRateLimitMiddleware({

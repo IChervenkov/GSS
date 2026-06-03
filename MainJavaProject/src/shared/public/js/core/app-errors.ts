@@ -17,7 +17,19 @@ export const SECURITY_REDIRECT_CODES = new Set([
   'SESSION_EXPIRED',
 ]);
 
-export function normalizeApiResult({ response, body, aborted = false } = {}) {
+type ApiResultInput = {
+  response?: Response;
+  body?: any;
+  aborted?: boolean;
+};
+
+type PageStateInput = {
+  status?: number;
+  code?: string;
+  aborted?: boolean;
+};
+
+export function normalizeApiResult({ response, body, aborted = false }: ApiResultInput = {}) {
   const status = Number(response?.status || 0);
   const code = String(body?.code || body?.errorCode || '').trim();
   const message = body?.message || body?.errorMessage || defaultMessageForStatus(status);
@@ -47,7 +59,7 @@ export function defaultMessageForStatus(status) {
   return 'The operation could not be completed.';
 }
 
-export function derivePageState({ status = 0, code = '', aborted = false } = {}) {
+export function derivePageState({ status = 0, code = '', aborted = false }: PageStateInput = {}) {
   if (aborted) return PAGE_STATES.IDLE;
   if (SECURITY_REDIRECT_CODES.has(code) || status === 401) return PAGE_STATES.EXPIRED_SESSION;
   if (code === 'PERMISSION_REVOKED') return PAGE_STATES.PERMISSION_REVOKED;
@@ -57,7 +69,7 @@ export function derivePageState({ status = 0, code = '', aborted = false } = {})
   return PAGE_STATES.SUCCESS;
 }
 
-export function isRetryable({ status = 0, code = '', aborted = false } = {}) {
+export function isRetryable({ status = 0, code = '', aborted = false }: PageStateInput = {}) {
   if (aborted) return false;
   if (SECURITY_REDIRECT_CODES.has(code)) return false;
   return status in { 408: 1, 425: 1, 429: 1, 502: 1, 503: 1, 504: 1 };

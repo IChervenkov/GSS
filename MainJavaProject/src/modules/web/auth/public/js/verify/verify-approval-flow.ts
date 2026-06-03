@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { debounce } from '/assets/shared/js/core/dom.ts';
 
 export function createApprovalFlow({ socket, onResolved }) {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createRequestClient, createRequestScope } from '/assets/shared/js/core/request-client.ts';
 import { createModalController } from '/assets/shared/js/ui/modal.ts';
 

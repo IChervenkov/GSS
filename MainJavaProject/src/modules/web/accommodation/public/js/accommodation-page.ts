@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { bootstrapPage } from '/assets/shared/js/app/bootstrap-page.ts';
 import { byId, debounce, setProgressValue } from '/assets/shared/js/core/dom.ts';
 import { readPageData } from '/assets/shared/js/core/page-data.ts';

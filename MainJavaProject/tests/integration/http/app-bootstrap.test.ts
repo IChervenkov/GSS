@@ -153,6 +153,10 @@ test('app bootstrap mounts each web router once and parses JSON and urlencoded b
 
     const bicyclesResult = await requestJson(server.baseUrl, '/web/bicycles/ping');
     const assetsResult = await requestJson(server.baseUrl, '/web/assets/ping');
+    const browserScriptResponse = await fetch(
+      `${server.baseUrl}/assets/shared/js/core/request-client.ts`,
+    );
+    const browserScript = await browserScriptResponse.text();
 
     assert.equal(jsonResult.response.status, 200);
     assert.deepEqual(jsonResult.body, { body: { username: 'admin' } });
@@ -162,6 +166,14 @@ test('app bootstrap mounts each web router once and parses JSON and urlencoded b
     });
     assert.equal(assetsResult.response.status, 200);
     assert.equal(bicyclesResult.response.status, 200);
+    assert.equal(browserScriptResponse.status, 200);
+    assert.match(
+      browserScriptResponse.headers.get('content-type') || '',
+      /text\/javascript/i,
+    );
+    assert.match(browserScript, /export function createRequestClient/);
+    assert.doesNotMatch(browserScript, /\btype RequestQuery\b/);
+    assert.doesNotMatch(browserScript, /: RequestClientConfig/);
     assert.deepEqual(factoryCalls, {
       accommodation: 1,
       assets: 1,

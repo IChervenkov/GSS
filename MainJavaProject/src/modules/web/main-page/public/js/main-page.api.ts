@@ -1,5 +1,9 @@
 import { createRequestClient } from '/assets/shared/js/core/request-client.ts';
 
+type UploadTemplateOptions = {
+  onUploadProgress?: (progress: number) => void;
+};
+
 export function createMainPageApi({ csrfToken = '' } = {}) {
   const client = createRequestClient();
 
@@ -16,7 +20,7 @@ export function createMainPageApi({ csrfToken = '' } = {}) {
     addCamp(campName, signal) {
       return client.postJson('/web/camp/add', { csrfToken, signal, body: { campName } });
     },
-    importCampTemplate(file, { onUploadProgress } = {}) {
+    importCampTemplate(file, { onUploadProgress }: UploadTemplateOptions = {}) {
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
         const formData = new FormData();

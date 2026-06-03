@@ -11,6 +11,16 @@
     "skipLibCheck": true,
     "strict": false,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "/assets/accommodation/*": ["./src/modules/web/accommodation/public/*"],
+      "/assets/assets/*": ["./src/modules/web/assets/public/*"],
+      "/assets/auth/*": ["./src/modules/web/auth/public/*"],
+      "/assets/bicycles/*": ["./src/modules/web/bicycles/public/*"],
+      "/assets/laundry/*": ["./src/modules/web/laundry/public/*"],
+      "/assets/main/*": ["./src/modules/web/main-page/public/*"],
+      "/assets/shared/*": ["./src/shared/public/*"]
+    },
     "resolveJsonModule": true
   },
   "include": ["src/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],

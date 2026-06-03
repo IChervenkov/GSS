@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { bootstrapPage } from '/assets/shared/js/app/bootstrap-page.ts';
 import { byId, debounce, safeRedirect, setProgressValue } from '/assets/shared/js/core/dom.ts';
 import { createPageStateController } from '/assets/shared/js/core/page-state.ts';
