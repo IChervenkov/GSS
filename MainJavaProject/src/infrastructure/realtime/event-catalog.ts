@@ -235,6 +235,16 @@ const EVENT_CATALOG = Object.freeze({
     validatePayload: validateCampChangedPayload,
     allowedRoomKinds: ['ui.camp.list'],
   }),
+  [REALTIME_EVENT_NAMES.CAMP_RECORD.ACCESS_CHANGED]: createServerEvent({
+    resolveRooms: () => ['ui:camp:list', 'ui:permission:list'],
+    validatePayload: validateEmptyPayload,
+    allowedRoomKinds: ['ui.camp.list', 'ui.permission.list'],
+  }),
+  [REALTIME_EVENT_NAMES.CAMP_RECORD.ACCESS_SELF_REFRESHED]: createServerEvent({
+    resolveRooms: (payload) => [`user:${String(payload.userId).toLowerCase()}`],
+    validatePayload: validatePermissionSelfRefreshPayload,
+    allowedRoomKinds: ['user'],
+  }),
   [REALTIME_EVENT_NAMES.CAMP_IMPORT.PROGRESSED]: createServerEvent({
     resolveRooms: (payload) => [`user:${String(payload.userId).toLowerCase()}`],
     validatePayload: validateCampImportProgressPayload,
@@ -377,6 +387,10 @@ function resolveCatalogEventName(eventName) {
       return REALTIME_EVENT_NAMES.CAMP_RECORD.UPDATED;
     case 'camp:record:deleted':
       return REALTIME_EVENT_NAMES.CAMP_RECORD.DELETED;
+    case 'camp:access:updated':
+      return REALTIME_EVENT_NAMES.CAMP_RECORD.ACCESS_CHANGED;
+    case 'camp:access:self:refreshed':
+      return REALTIME_EVENT_NAMES.CAMP_RECORD.ACCESS_SELF_REFRESHED;
     case 'camp:import:progressed':
       return REALTIME_EVENT_NAMES.CAMP_IMPORT.PROGRESSED;
     case 'bicycle:record:created':

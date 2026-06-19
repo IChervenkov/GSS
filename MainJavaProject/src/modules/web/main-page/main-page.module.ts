@@ -28,6 +28,12 @@ const {
   createSavePermissionsUseCase,
 } = require('./application/use-cases/save-permissions.use-case');
 const {
+  createGetCampAccessMatrixUseCase,
+} = require('./application/use-cases/get-camp-access-matrix.use-case');
+const {
+  createSaveCampAccessUseCase,
+} = require('./application/use-cases/save-camp-access.use-case');
+const {
   createGetCurrentUserPermissionsUseCase,
 } = require('./application/use-cases/get-current-user-permissions.use-case');
 const { createGetUsersUseCase } = require('./application/use-cases/get-users.use-case');
@@ -89,7 +95,9 @@ function createMainModule({ env, auditLog, eventBus, repositories = {}, sessionI
     env,
     repository: {
       listPermissionMatrix: permissionsRepository.listPermissionMatrix,
+      listCampAccessMatrix: permissionsRepository.listCampAccessMatrix,
       savePermissions: permissionsRepository.savePermissions,
+      saveCampAccess: permissionsRepository.saveCampAccess,
       listCurrentUserPermissions: permissionsRepository.listCurrentUserPermissions,
       userHasPermission: permissionsRepository.userHasPermission,
     },
@@ -131,6 +139,8 @@ function createMainModule({ env, auditLog, eventBus, repositories = {}, sessionI
     importCamps: createImportCampsUseCase({ campService }),
     getPermissionMatrix: createGetPermissionMatrixUseCase({ permissionService }),
     savePermissions: createSavePermissionsUseCase({ permissionService }),
+    getCampAccessMatrix: createGetCampAccessMatrixUseCase({ permissionService }),
+    saveCampAccess: createSaveCampAccessUseCase({ permissionService }),
     getCurrentUserPermissions: createGetCurrentUserPermissionsUseCase({ permissionService }),
     getUsers: createGetUsersUseCase({ userService }),
     addUser: createAddUserUseCase({ userService }),

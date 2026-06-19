@@ -31,6 +31,222 @@ Never share a database or secret bundle across environments.
 6. Keep previous image tag for rollback.
 7. Roll back immediately if readiness, smoke checks, or key flows fail.
 
+## Production security baseline
+
+This baseline is mandatory before any public VPS deployment.
+
+### Network perimeter
+
+- Use a Hetzner Cloud Firewall on every public server.
+- Allow inbound `80/tcp` and `443/tcp` from the internet.
+- Allow inbound `22/tcp` only from a fixed administrator IP range or VPN range.
+- Block all other inbound traffic.
+- Keep host-level `ufw` enabled as defense in depth, but do not rely on it to protect
+  Docker-published ports. Docker creates its own firewall/NAT rules for published ports,
+  and published container traffic can bypass normal `ufw` input rules.
+- Do not disable Docker iptables management globally. That can break container networking
+  and is not a safe default for this deployment model.
+
+Required host firewall commands:
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow from ADMIN_OR_VPN_CIDR to any port 22 proto tcp
+sudo ufw --force enable
+sudo ufw status verbose
+```
+
+### SSH access
+
+- Root SSH login must be disabled.
+- Password authentication must be disabled.
+- Only key-based login for the deployment user is allowed.
+- Prefer VPN-only SSH. If there is no VPN, restrict SSH to a fixed source IP in both
+  Hetzner Cloud Firewall and `ufw`.
+- Enable `fail2ban` for sshd.
+
+Required SSH hardening:
+
+```bash
+sudo tee /etc/ssh/sshd_config.d/99-gss-hardening.conf >/dev/null <<'EOF'
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+X11Forwarding no
+AllowUsers deploy
+MaxAuthTries 3
+ClientAliveInterval 300
+ClientAliveCountMax 2
+EOF
+sudo sshd -t
+sudo systemctl reload ssh
+```
+
+### Docker port exposure
+
+- Production compose files must not publish PostgreSQL or Redis to the host.
+- PostgreSQL and Redis must be reachable only on the private Docker network.
+- The application container should use `expose: ["3000"]`, not `ports`, when a reverse
+  proxy is running in the same compose project.
+- Only the reverse proxy should publish `80:80` and `443:443`.
+- The local development `docker-compose.yml` publishes database ports for developer
+  convenience and must not be used as-is for public production.
+
+Pre-flight checks:
+
+```bash
+docker compose --env-file /opt/gss/.env -f ops/compose/docker-compose.production.yml config
+sudo ss -tulpn
+```
+
+Expected public listeners: `22`, `80`, and `443` only. Ports `3000`, `5432`, and
+`6379` must not be public.
+
+### Docker and image updates
+
+- Deploy immutable image tags, preferably commit SHA tags. Do not deploy `latest` to
+  production.
+- Rebuild with fresh base images during each release using `docker build --pull`.
+- Run dependency audit and image vulnerability scanning in CI before publishing.
+- Patch the host OS weekly, and immediately for critical CVEs.
+- Patch Docker Engine through the OS package manager during a maintenance window.
+- Remove unused images after a successful deployment, but keep the previous successful
+  image tag available for rollback.
+
+Release commands:
+
+```bash
+export IMAGE_REF="ghcr.io/ORG/REPO:GIT_SHA"
+docker pull "$IMAGE_REF"
+docker compose --env-file /opt/gss/.env -f ops/compose/docker-compose.production.yml up -d --remove-orphans
+docker image prune -f
+```
+
+### Backups and restore testing
+
+- Hetzner snapshots/backups are not sufficient alone.
+- Keep encrypted PostgreSQL backups outside the VPS and outside the primary Hetzner
+  project.
+- Use daily full backups plus WAL or incremental archiving when the RPO target requires
+  less than 24 hours of possible data loss.
+- Encrypt backups before upload. Store encryption keys separately from the VPS.
+- Run a restore drill at least monthly and after every major schema change.
+- A backup is not considered valid until a restore has been tested.
+
+Minimum backup check:
+
+```bash
+test -s latest-backup.sql.gz
+gpg --decrypt latest-backup.sql.gz.gpg >/dev/null
+```
+
+Minimum restore drill:
+
+```bash
+createdb gss_restore_drill
+gunzip -c latest-backup.sql.gz | psql gss_restore_drill
+npm run test:smoke
+dropdb gss_restore_drill
+```
+
+### Monitoring and alerts
+
+- Monitor `/health/ready` and alert when it returns non-2xx.
+- Scrape `/metrics` only with `OBSERVABILITY_METRICS_AUTH_TOKEN`.
+- Alerts must cover: instance down, disk usage, memory pressure, CPU saturation,
+  container restart loop, database readiness, Redis readiness, high HTTP 5xx rate,
+  login failure spike, and backup failure.
+- Store logs outside the container lifecycle. Docker log rotation is required.
+
+Docker log rotation:
+
+```bash
+sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "log-driver": "local",
+  "log-opts": {
+    "max-size": "20m",
+    "max-file": "5"
+  },
+  "live-restore": true
+}
+EOF
+sudo systemctl restart docker
+```
+
+### Application hardening
+
+- Production must use HTTPS `APP_URL`.
+- `TRUST_PROXY=true` is required when TLS terminates at a reverse proxy.
+- `SESSION_COOKIE_SECURE=true` is required in production.
+- Keep `SESSION_COOKIE_SAME_SITE=lax` unless a real cross-site flow requires otherwise.
+- Redis is mandatory for sessions in staging and production. Memory sessions are not
+  acceptable outside local development.
+- `CSP_REPORT_ONLY=false` is required once CSP has been validated.
+- CSRF protection must remain enabled for all unsafe HTTP methods.
+- Rotate `SESSION_SECRET`, access-token, refresh-token, database, Redis, metrics, and
+  health tokens on a schedule and after any suspected leak.
+- Keep `BCRYPT_ROUNDS` between `12` and `15`; benchmark before increasing.
+
+Required production environment posture:
+
+```text
+NODE_ENV=production
+ENVIRONMENT_NAME=production
+APP_URL=https://example.com
+APP_HOST=example.com
+TLS_EMAIL=ops@example.com
+IMAGE_REF=ghcr.io/ORG/REPO:GIT_SHA
+TRUST_PROXY=true
+SESSION_COOKIE_SECURE=true
+REDIS_REQUIRED=true
+CSP_REPORT_ONLY=false
+OBSERVABILITY_METRICS_AUTH_TOKEN=<real secret>
+OBSERVABILITY_HEALTH_AUTH_TOKEN=<real secret>
+```
+
+### Database hardening
+
+- PostgreSQL must not listen publicly.
+- Use separate credentials for runtime, migrations, and backups where the deployment
+  platform supports it.
+- Runtime credentials must not own the database schema.
+- Keep `DATABASE_STATEMENT_TIMEOUT_MS` enabled.
+- Keep `DATABASE_MAX_CLIENTS` sized below the PostgreSQL connection limit with room for
+  maintenance, migrations, and backup jobs.
+- Run schema changes through the migration gate before traffic shifts.
+
+### Hetzner account security
+
+- Enable 2FA on the Hetzner account before attaching production resources.
+- Store the Hetzner recovery key offline.
+- Use more than one active 2FA method when possible.
+- Use project-level access with least privilege for team members.
+- API tokens must be scoped narrowly, stored outside git, and rotated regularly.
+
+### CIS audit
+
+- Run a CIS-oriented host audit before production launch and after major OS changes.
+- Track exceptions explicitly; do not silently ignore findings.
+- At minimum, audit Ubuntu host hardening and Docker host hardening.
+- Suggested tools: CIS-CAT Pro if available, plus `lynis` or `docker-bench-security`
+  for practical local checks.
+
+Example audit commands:
+
+```bash
+sudo apt install -y lynis
+sudo lynis audit system
+
+git clone https://github.com/docker/docker-bench-security.git
+cd docker-bench-security
+sudo sh docker-bench-security.sh
+```
+
 ## Migration compatibility rules
 
 - Only additive or backward-compatible migrations may ship with an app version that is still serving traffic.

@@ -38,6 +38,7 @@ function readMainPageSessionState(req) {
   return {
     firstLogin: Boolean(req.session?.firstLogin),
     currentCampId: readCurrentCampId(req),
+    campSelectionCleared: Boolean(req.session?.campSelectionCleared),
   };
 }
 

@@ -113,6 +113,7 @@ bootstrapPage(() => {
       byId('refresh-camps-button'),
       byId('refresh-users-button'),
       byId('refresh-permissions-button'),
+      byId('refresh-camp-access-button'),
       byId('refresh-admin-inbox-button'),
     ],
   });
@@ -120,6 +121,7 @@ bootstrapPage(() => {
   const campsLoadScope = createRequestScope();
   const usersLoadScope = createRequestScope();
   const permissionsLoadScope = createRequestScope();
+  const campAccessLoadScope = createRequestScope();
   const adminInboxLoadScope = createRequestScope();
 
   const pageDataset = root?.dataset || document.body?.dataset || {};
@@ -172,6 +174,17 @@ bootstrapPage(() => {
       users: [],
       permissions: [],
       userPermissions: [],
+      pending: new Set(),
+    },
+    campAccess: {
+      page: 1,
+      totalPages: 1,
+      searchValue: '',
+      sortColumn: null,
+      sortDirection: 'default',
+      users: [],
+      camps: [],
+      userCampAccess: [],
       pending: new Set(),
     },
     adminInbox: {
@@ -332,6 +345,14 @@ bootstrapPage(() => {
     setDisabledById('refresh-permissions-button', !canAccess);
     setDisabledById('permission-search-input', !canAccess);
     setDisabledBySelector('[data-main-sort-table="permissions"]', !canAccess);
+    setDisabledById('refresh-camp-access-button', !canAccess);
+    setDisabledById('camp-access-search-input', !canAccess);
+    setDisabledBySelector('[data-main-sort-table="campAccess"]', !canAccess);
+    setDisabledById('camp-access-prev-button', !canAccess || state.campAccess.page <= 1);
+    setDisabledById(
+      'camp-access-next-button',
+      !canAccess || state.campAccess.page >= state.campAccess.totalPages,
+    );
     setDisabledById('refresh-admin-inbox-button', !canAccess);
     setDisabledBySelector('[data-main-search-table="adminInbox"]', !canAccess);
     setDisabledBySelector('[data-main-sort-table="adminInbox"]', !canAccess);
@@ -350,6 +371,7 @@ bootstrapPage(() => {
       !canAccess,
     );
     if (!canAccess) setDisabledBySelector('.js-permission-toggle', true);
+    if (!canAccess) setDisabledBySelector('.js-camp-access-toggle', true);
     setFormActionDisabled('user-form', !canAccess);
     setDisabledById('copy-temp-password-button', !canAccess);
 
@@ -358,7 +380,10 @@ bootstrapPage(() => {
       permissionsLoadScope.abort();
       adminInboxLoadScope.abort();
       state.permissions.pending.clear();
+      campAccessLoadScope.abort();
+      state.campAccess.pending.clear();
       renderPermissionBanner();
+      renderCampAccessBanner();
       clearUserRequestExpiryTimer();
     }
 
@@ -380,6 +405,7 @@ bootstrapPage(() => {
       loadAdminInbox();
       loadUsers();
       loadPermissions();
+      loadCampAccess();
     }
     void syncSocketSubscriptions();
   }
@@ -417,6 +443,16 @@ bootstrapPage(() => {
     state.currentCampId = '';
     state.currentCampName = '';
     updateSummaries();
+  }
+
+  async function clearCurrentCampSelectionAndPersist() {
+    const previousCampId = state.currentCampId;
+    clearCurrentCampSelection();
+    renderCamps();
+    notifyCampContextChanged();
+    if (previousCampId) {
+      await api.setCamp('');
+    }
   }
 
   function renderCurrentUserNavigation() {
@@ -711,6 +747,7 @@ bootstrapPage(() => {
       renderAdminInbox();
       renderUsers();
       renderPermissions();
+      renderCampAccess();
     }
   }
 
@@ -982,8 +1019,17 @@ bootstrapPage(() => {
         '<tr><td colspan="3" class="table-empty">No camps matched the current filters.</td></tr>';
     } else {
       tbody.innerHTML = state.camps
-        .map(
-          (camp) => `
+        .map((camp) => {
+          const isActive = String(camp.id) === String(state.currentCampId);
+          const canAccessCamp = camp.canAccess !== false;
+          const canSelectCamp = canAccessCamp && !isActive;
+          const selectTitle = canAccessCamp
+            ? isActive
+              ? 'This camp is active.'
+              : 'Set this camp as the active scope.'
+            : 'You do not have access to this camp.';
+
+          return `
       <tr>
         <td><code>${escapeHtml(camp.id)}</code></td>
         <td>${escapeHtml(camp.name)}</td>
@@ -993,8 +1039,8 @@ bootstrapPage(() => {
               <svg class="icon" aria-hidden="true"><use href="#icon-pencil-square"></use></svg>
               <span>Edit</span>
             </button>
-            <button class="btn btn-ghost js-select-camp" type="button" data-camp-id="${escapeAttr(camp.id)}" data-camp-name="${escapeAttr(camp.name)}" ${String(camp.id) === String(state.currentCampId) ? 'disabled' : ''}>
-              ${String(camp.id) === String(state.currentCampId) ? 'Active' : 'Set active'}
+            <button class="btn btn-ghost js-select-camp" type="button" data-camp-id="${escapeAttr(camp.id)}" data-camp-name="${escapeAttr(camp.name)}" data-can-access="${canAccessCamp ? 'true' : 'false'}" title="${escapeAttr(selectTitle)}" ${canSelectCamp ? '' : 'disabled'}>
+              ${isActive ? 'Active' : 'Set active'}
             </button>
             <button class="btn btn-danger js-delete-camp" type="button" data-camp-id="${escapeAttr(camp.id)}" ${canDeleteCamp ? '' : 'disabled'}>
               <svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg>
@@ -1003,8 +1049,8 @@ bootstrapPage(() => {
           </div>
         </td>
       </tr>
-    `,
-        )
+    `;
+        })
         .join('');
     }
 
@@ -1050,15 +1096,44 @@ bootstrapPage(() => {
     const selectedCamp = state.camps.find(
       (camp) => String(camp.id) === String(state.currentCampId),
     );
-    if (selectedCamp) {
+    if (selectedCamp && selectedCamp.canAccess !== false) {
       state.currentCampId = selectedCamp.id || '';
       state.currentCampName = selectedCamp.name || '';
     } else if (state.currentCampId) {
-      clearCurrentCampSelection();
+      await clearCurrentCampSelectionAndPersist();
     }
     renderCamps();
     updateSummaries();
     pageState.clear();
+  }
+
+  async function refreshCurrentCampAccess() {
+    if (!state.currentCampId) return;
+
+    const campId = state.currentCampId;
+    const result = await api.getCamps({
+      page: 1,
+      limit: 1,
+      searchColumn: 'id',
+      searchValue: campId,
+    });
+    if (!result?.ok) return;
+
+    const camps = Array.isArray(result.data?.camps) ? result.data.camps : [];
+    const camp = camps.find((item) => String(item.id) === String(campId)) || null;
+    if (camp && camp.canAccess !== false) {
+      state.currentCampName = camp.name || state.currentCampName;
+      updateSummaries();
+      renderCamps();
+      return;
+    }
+
+    await clearCurrentCampSelectionAndPersist();
+    toast.show({
+      title: 'Camp access changed',
+      message: 'Your active camp is no longer available.',
+      variant: 'warning',
+    });
   }
 
   function buildUsersQuery() {
@@ -1743,6 +1818,252 @@ bootstrapPage(() => {
     return true;
   }
 
+  function getCampAccessChecked(userId, campId) {
+    return state.campAccess.userCampAccess.some(
+      (item) =>
+        String(item.userId) === String(userId) && String(item.campId) === String(campId),
+    );
+  }
+
+  function renderCampAccessBanner() {
+    const banner = byId('camp-access-dirty-banner');
+    if (!banner) return;
+    if (state.campAccess.pending.size === 0) {
+      banner.hidden = true;
+      banner.textContent = '';
+      return;
+    }
+    banner.hidden = false;
+    banner.textContent = `Saving ${state.campAccess.pending.size} camp access change${state.campAccess.pending.size === 1 ? '' : 's'}...`;
+  }
+
+  function renderCampAccessSortIndicator() {
+    if (state.campAccess.sortDirection === 'default') {
+      return { indicator: '-', ariaSort: 'none' };
+    }
+
+    if (state.campAccess.sortDirection === 'asc') {
+      return { indicator: '^', ariaSort: 'ascending' };
+    }
+
+    return { indicator: 'v', ariaSort: 'descending' };
+  }
+
+  function renderCampAccessHeader() {
+    const { indicator, ariaSort } = renderCampAccessSortIndicator();
+    const canManageCampAccess = canAccessSystemManagement();
+
+    return `
+      <tr>
+        <th id="camp-access-name-header" aria-sort="${ariaSort}">
+          <div class="table-header-stack">
+            <label class="search-field" for="camp-access-search-input">
+              <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+              <input
+                id="camp-access-search-input"
+                type="search"
+                placeholder="Search by camp name"
+                autocomplete="off"
+                value="${escapeAttr(state.campAccess.searchValue)}"
+                ${canManageCampAccess ? '' : 'disabled'}
+              />
+            </label>
+            <button
+              class="sort-header-button"
+              type="button"
+              data-main-sort-table="campAccess"
+              data-main-sort-column="name"
+              aria-label="Sort by camp name"
+              ${canManageCampAccess ? '' : 'disabled'}
+            >
+              <span>Camp name</span>
+              <span class="sort-header-button__indicator" data-main-sort-indicator="campAccess:name" aria-hidden="true">${indicator}</span>
+            </button>
+          </div>
+        </th>
+        ${state.campAccess.users.map((user) => `<th>${escapeHtml(user.username)}</th>`).join('')}
+      </tr>
+    `;
+  }
+
+  function renderCampAccess() {
+    const head = byId('camp-access-table-head');
+    const body = byId('camp-access-table-body');
+    if (!head || !body) return;
+    const canManageCampAccess = canAccessSystemManagement();
+    const activeElement = document.activeElement;
+    const shouldRestoreSearchFocus =
+      activeElement instanceof HTMLInputElement && activeElement.id === 'camp-access-search-input';
+    const searchSelection =
+      shouldRestoreSearchFocus && typeof activeElement.selectionStart === 'number'
+        ? {
+            start: activeElement.selectionStart,
+            end: activeElement.selectionEnd,
+          }
+        : null;
+
+    head.innerHTML = renderCampAccessHeader();
+    if (shouldRestoreSearchFocus) {
+      const searchInput = byId('camp-access-search-input');
+      if (searchInput instanceof HTMLInputElement) {
+        searchInput.focus();
+        if (searchSelection) {
+          searchInput.setSelectionRange(searchSelection.start, searchSelection.end);
+        }
+      }
+    }
+
+    if (!state.campAccess.camps.length || !state.campAccess.users.length) {
+      body.innerHTML =
+        '<tr><td class="table-empty">No camp access data matched the current filters.</td></tr>';
+      renderCampAccessBanner();
+      return;
+    }
+
+    body.innerHTML = state.campAccess.camps
+      .map(
+        (camp) => `
+      <tr>
+        <td>${escapeHtml(camp.name)}</td>
+        ${state.campAccess.users
+          .map(
+            (user) => `
+          <td>
+            <input
+              type="checkbox"
+              class="js-camp-access-toggle"
+              data-user-id="${escapeAttr(user.id)}"
+              data-camp-id="${escapeAttr(camp.id)}"
+              ${getCampAccessChecked(user.id, camp.id) ? 'checked' : ''}
+              ${!canManageCampAccess || state.campAccess.pending.has(`${user.id}:${camp.id}`) ? 'disabled' : ''}
+            />
+          </td>
+        `,
+          )
+          .join('')}
+      </tr>
+    `,
+      )
+      .join('');
+
+    byId('camp-access-page-label').textContent =
+      `Page ${state.campAccess.page} of ${state.campAccess.totalPages}`;
+    byId('camp-access-prev-button').disabled = state.campAccess.page <= 1;
+    byId('camp-access-next-button').disabled =
+      state.campAccess.page >= state.campAccess.totalPages;
+    renderCampAccessBanner();
+    updateControlVisibility();
+  }
+
+  function buildCampAccessQuery() {
+    const query = {
+      page: state.campAccess.page,
+      limit: 10,
+      sortDirection: state.campAccess.sortDirection,
+    };
+    if (state.campAccess.sortColumn && state.campAccess.sortDirection !== 'default') {
+      query.sortColumn = state.campAccess.sortColumn;
+    }
+    if (state.campAccess.searchValue.trim()) {
+      query.searchColumn = 'name';
+      query.searchValue = state.campAccess.searchValue.trim();
+    }
+    return query;
+  }
+
+  async function loadCampAccess() {
+    if (!canAccessSystemManagement()) {
+      if (state.activeTab === 'admin') {
+        setActiveTab('overview');
+      }
+      return;
+    }
+
+    pageState.set('loading', 'Loading camp access matrix...');
+    const requestedPage = state.campAccess.page;
+    const request = campAccessLoadScope.next();
+    const result = await api.getCampAccess(buildCampAccessQuery(), request.signal);
+    if (result.aborted || !campAccessLoadScope.isCurrent(request.token)) return;
+    if (!result.ok) {
+      renderCampAccess();
+      handleResult(result);
+      return;
+    }
+
+    const users = Array.isArray(result.data?.users) ? result.data.users : [];
+    const camps = Array.isArray(result.data?.camps) ? result.data.camps : [];
+    const userCampAccess = Array.isArray(result.data?.userCampAccess)
+      ? result.data.userCampAccess
+      : [];
+    const totalPages = Number(result.data?.totalPages) || 1;
+
+    if (requestedPage > totalPages && totalPages > 0) {
+      state.campAccess.page = totalPages;
+      await loadCampAccess();
+      return;
+    }
+
+    state.campAccess.users = users;
+    state.campAccess.camps = camps;
+    state.campAccess.userCampAccess = userCampAccess;
+    state.campAccess.page = Math.min(requestedPage, totalPages);
+    state.campAccess.totalPages = totalPages;
+    renderCampAccess();
+    pageState.clear();
+  }
+
+  function applyCampAccessChange({ userId, campId, isChecked }) {
+    const existingIndex = state.campAccess.userCampAccess.findIndex(
+      (item) =>
+        String(item.userId) === String(userId) && String(item.campId) === String(campId),
+    );
+
+    if (isChecked && existingIndex === -1) {
+      state.campAccess.userCampAccess.push({ userId, campId });
+      return;
+    }
+
+    if (!isChecked && existingIndex >= 0) {
+      state.campAccess.userCampAccess.splice(existingIndex, 1);
+    }
+  }
+
+  async function saveCampAccess(campAccess = []) {
+    if (!canAccessSystemManagement()) {
+      updateControlVisibility();
+      renderCampAccess();
+      return false;
+    }
+    if (!campAccess.length) return false;
+
+    const pendingKeys = campAccess.map((item) => `${item.userId}:${item.campId}`);
+    pendingKeys.forEach((key) => state.campAccess.pending.add(key));
+    renderCampAccess();
+
+    pageState.set('loading', 'Saving camp access changes...');
+    const result = await api.saveCampAccess(campAccess);
+    if (!result.ok) {
+      pendingKeys.forEach((key) => state.campAccess.pending.delete(key));
+      renderCampAccess();
+      handleResult(result);
+      return false;
+    }
+
+    campAccess.forEach((item) =>
+      applyCampAccessChange({
+        userId: item.userId,
+        campId: item.campId,
+        isChecked: item.isCheck,
+      }),
+    );
+
+    pendingKeys.forEach((key) => state.campAccess.pending.delete(key));
+    renderCampAccess();
+    if (state.activeTab === 'camps') await loadCamps();
+    pageState.clear();
+    return true;
+  }
+
   function openCreateCampModal() {
     if (!canAddCamps()) {
       updateControlVisibility();
@@ -1847,6 +2168,10 @@ bootstrapPage(() => {
 
     const selectCampButton = event.target.closest('.js-select-camp');
     if (selectCampButton) {
+      if (selectCampButton.disabled || selectCampButton.dataset.canAccess === 'false') {
+        renderCamps();
+        return;
+      }
       pageState.set('loading', 'Switching active camp…');
       const result = await api.setCamp(selectCampButton.dataset.campId);
       if (!handleResult(result, 'Active camp updated.')) return;
@@ -1876,7 +2201,10 @@ bootstrapPage(() => {
       const tableKey = mainSortButton.dataset.mainSortTable;
       const column = mainSortButton.dataset.mainSortColumn;
       if (
-        (tableKey === 'users' || tableKey === 'permissions' || tableKey === 'adminInbox') &&
+        (tableKey === 'users' ||
+          tableKey === 'permissions' ||
+          tableKey === 'campAccess' ||
+          tableKey === 'adminInbox') &&
         !canAccessSystemManagement()
       ) {
         updateControlVisibility();
@@ -1897,6 +2225,7 @@ bootstrapPage(() => {
       if (tableKey === 'campTable') loadCamps();
       if (tableKey === 'users') loadUsers();
       if (tableKey === 'permissions') loadPermissions();
+      if (tableKey === 'campAccess') loadCampAccess();
       if (tableKey === 'adminInbox') loadAdminInbox();
       return;
     }
@@ -2085,6 +2414,14 @@ bootstrapPage(() => {
         return;
       }
       loadPermissions();
+      return;
+    }
+    if (event.target.closest('#refresh-camp-access-button')) {
+      if (!canAccessSystemManagement()) {
+        updateControlVisibility();
+        return;
+      }
+      loadCampAccess();
       return;
     }
     const deleteUserButton = event.target.closest('.js-delete-user');
@@ -2418,6 +2755,38 @@ bootstrapPage(() => {
     await savePermissions([{ userId, permId, isCheck: nextChecked }]);
   });
 
+  byId('camp-access-table-body')?.addEventListener('change', async (event) => {
+    const input = event.target;
+    if (
+      !(input instanceof HTMLInputElement) ||
+      !input.classList.contains('js-camp-access-toggle')
+    )
+      return;
+
+    if (!canAccessSystemManagement()) {
+      renderCampAccess();
+      updateControlVisibility();
+      return;
+    }
+
+    const userId = input.dataset.userId || '';
+    const campId = input.dataset.campId || '';
+    const key = `${userId}:${campId}`;
+    if (!userId || !campId || state.campAccess.pending.has(key)) {
+      renderCampAccess();
+      return;
+    }
+
+    const original = state.campAccess.userCampAccess.some(
+      (item) => String(item.userId) === String(userId) && String(item.campId) === String(campId),
+    );
+    if (input.checked === original) return;
+
+    const nextChecked = input.checked;
+    input.checked = original;
+    await saveCampAccess([{ userId, campId, isCheck: nextChecked }]);
+  });
+
   byId('camps-prev-button')?.addEventListener('click', () => {
     if (state.campTable.page <= 1) return;
     state.campTable.page -= 1;
@@ -2443,7 +2812,10 @@ bootstrapPage(() => {
 
       const tableKey = input.dataset.mainSearchTable;
       if (
-        (tableKey === 'users' || tableKey === 'permissions' || tableKey === 'adminInbox') &&
+        (tableKey === 'users' ||
+          tableKey === 'permissions' ||
+          tableKey === 'campAccess' ||
+          tableKey === 'adminInbox') &&
         !canAccessSystemManagement()
       ) {
         updateControlVisibility();
@@ -2514,6 +2886,24 @@ bootstrapPage(() => {
     state.permissions.page += 1;
     loadPermissions();
   });
+  byId('camp-access-prev-button')?.addEventListener('click', () => {
+    if (!canAccessSystemManagement()) {
+      updateControlVisibility();
+      return;
+    }
+    if (state.campAccess.page <= 1) return;
+    state.campAccess.page -= 1;
+    loadCampAccess();
+  });
+  byId('camp-access-next-button')?.addEventListener('click', () => {
+    if (!canAccessSystemManagement()) {
+      updateControlVisibility();
+      return;
+    }
+    if (state.campAccess.page >= state.campAccess.totalPages) return;
+    state.campAccess.page += 1;
+    loadCampAccess();
+  });
   byId('admin-inbox-prev-button')?.addEventListener('click', () => {
     if (!canAccessSystemManagement()) {
       updateControlVisibility();
@@ -2546,6 +2936,22 @@ bootstrapPage(() => {
     const input = event.target;
     if (!(input instanceof HTMLInputElement) || input.id !== 'permission-search-input') return;
     handlePermissionSearchInput(input.value);
+  });
+
+  const handleCampAccessSearchInput = debounce((value) => {
+    if (!canAccessSystemManagement()) {
+      updateControlVisibility();
+      return;
+    }
+    state.campAccess.searchValue = String(value || '');
+    state.campAccess.page = 1;
+    loadCampAccess();
+  }, 250);
+
+  byId('camp-access-table-head')?.addEventListener('input', (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.id !== 'camp-access-search-input') return;
+    handleCampAccessSearchInput(input.value);
   });
 
   const socket =
@@ -2651,6 +3057,7 @@ bootstrapPage(() => {
     if (state.activeTab === 'admin') {
       await loadUsers();
       await loadPermissions();
+      await loadCampAccess();
     }
   }
 
@@ -2796,6 +3203,14 @@ bootstrapPage(() => {
     onSocketEvents(['permission:self:refresh', 'permission:self:refreshed'], async () => {
       await loadCurrentUserPermissions();
       if (state.activeTab === 'admin') await loadPermissions();
+    });
+    onSocketEvents(['camp:access:changed', 'camp:access:updated'], async () => {
+      if (state.activeTab === 'admin') await loadCampAccess();
+      if (state.activeTab === 'camps') await loadCamps();
+    });
+    onSocketEvents(['camp:access:self:refresh', 'camp:access:self:refreshed'], async () => {
+      await refreshCurrentCampAccess();
+      if (state.activeTab === 'camps') await loadCamps();
     });
   }
 

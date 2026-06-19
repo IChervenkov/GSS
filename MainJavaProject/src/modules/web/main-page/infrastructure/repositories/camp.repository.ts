@@ -34,6 +34,15 @@ async function addCamp({ actorUserId, campName }) {
         RETURNING id, name AS name, created_at`,
       [campName],
     );
+    const createdCamp = mapCampRowToEntity(result.rows[0]);
+
+    await client.query(
+      `INSERT INTO app.user_camp_access (user_id, camp_id, created_by)
+       SELECT id, $1, $2
+         FROM app.users
+       ON CONFLICT (user_id, camp_id) DO NOTHING`,
+      [createdCamp.id, actorUserId],
+    );
 
     await client.query(
       `INSERT INTO app.user_monitoring_events (username, location)
@@ -41,7 +50,7 @@ async function addCamp({ actorUserId, campName }) {
       [actorUserId, `Camp ${campName} added`],
     );
 
-    return mapCampRowToEntity(result.rows[0]);
+    return createdCamp;
   });
 }
 

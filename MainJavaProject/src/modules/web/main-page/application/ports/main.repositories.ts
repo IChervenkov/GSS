@@ -18,7 +18,9 @@ function createMainPagePort(repository) {
 function createPermissionPort(repository) {
   return assertMethods('permissionRepository', repository, [
     'listPermissionMatrix',
+    'listCampAccessMatrix',
     'savePermissions',
+    'saveCampAccess',
     'listCurrentUserPermissions',
     'userHasPermission',
   ]);

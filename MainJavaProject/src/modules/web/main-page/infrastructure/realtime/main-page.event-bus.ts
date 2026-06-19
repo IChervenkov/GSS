@@ -51,6 +51,16 @@ function createMainEventBus({ emitRoomEvent } = {}) {
     return emitRoomEvent?.('ui:camp:list', REALTIME_EVENT_NAMES.CAMP_RECORD.DELETED, { campId });
   }
 
+  function emitCampAccessChanged() {
+    emitRoomEvent?.('ui:camp:list', REALTIME_EVENT_NAMES.CAMP_RECORD.ACCESS_CHANGED);
+    return emitRoomEvent?.('ui:permission:list', REALTIME_EVENT_NAMES.CAMP_RECORD.ACCESS_CHANGED);
+  }
+
+  function emitCampAccessSelfRefresh(userId) {
+    if (!userId) return false;
+    return emitRoomEvent?.(`user:${userId}`, REALTIME_EVENT_NAMES.CAMP_RECORD.ACCESS_SELF_REFRESHED, { userId });
+  }
+
   function emitCampImportProgress(userId, payload = {}) {
     if (!userId) return false;
     return emitRoomEvent?.(`user:${userId}`, REALTIME_EVENT_NAMES.CAMP_IMPORT.PROGRESSED, { userId, ...payload });
@@ -111,6 +121,8 @@ function createMainEventBus({ emitRoomEvent } = {}) {
     emitCampAdded,
     emitCampEdited,
     emitCampDeleted,
+    emitCampAccessChanged,
+    emitCampAccessSelfRefresh,
     emitCampImportProgress,
     emitUserRequestUpdated,
     emitUserRequestResolved,

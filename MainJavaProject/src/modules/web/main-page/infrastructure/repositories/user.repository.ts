@@ -469,6 +469,15 @@ async function createUser({ actorUserId, username, temporaryPasswordHash }) {
        RETURNING id, username`,
       [username, temporaryPasswordHash],
     );
+    const createdUserId = insertResult.rows[0]?.id;
+
+    await client.query(
+      `INSERT INTO app.user_camp_access (user_id, camp_id, created_by)
+       SELECT $1, c.id, $2
+         FROM app.camps c
+       ON CONFLICT (user_id, camp_id) DO NOTHING`,
+      [createdUserId, actorUserId],
+    );
 
     await client.query(
       `INSERT INTO app.user_monitoring_events (username, location)
@@ -477,7 +486,7 @@ async function createUser({ actorUserId, username, temporaryPasswordHash }) {
     );
 
     return {
-      id: insertResult.rows[0]?.id,
+      id: createdUserId,
       username: insertResult.rows[0]?.username,
     };
   });

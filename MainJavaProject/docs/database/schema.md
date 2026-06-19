@@ -266,6 +266,13 @@ Generated from `src/infrastructure/db/migrations/sql/*.sql`.
 - `created_at`
 - `updated_at`
 
+## `app.user_camp_access`
+
+- `user_id`
+- `camp_id`
+- `created_by`
+- `created_at`
+
 ## `app.user_messages`
 
 - `id`

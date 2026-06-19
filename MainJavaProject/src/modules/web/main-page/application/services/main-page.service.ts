@@ -37,7 +37,7 @@ function createMainPageService({ env, repository }) {
       });
     }
 
-    const defaultCamp = getFirstCreatedCamp(context.camps);
+    const defaultCamp = sessionState.campSelectionCleared ? null : getFirstCreatedCamp(context.camps);
     const requestedCampId = sessionState.currentCampId || defaultCamp?.id || null;
     const selectedCamp =
       context.camps.find((camp) => String(camp.id) === String(requestedCampId)) || null;
@@ -101,6 +101,7 @@ function createMainPageService({ env, repository }) {
         id: camp.id,
         name: camp.name,
         createdAt: camp.createdAt,
+        canAccess: camp.canAccess !== false,
         canEdit: canEditCamp,
         canDelete: canDeleteCamp,
       })),
@@ -114,10 +115,26 @@ function createMainPageService({ env, repository }) {
     });
   }
 
-  async function setCurrentCamp({ campId, mainSession = null }) {
-    const exists = await repository.campExists(campId);
+  async function setCurrentCamp({ userId, campId, mainSession = null }) {
+    if (!campId) {
+      if (mainSession) {
+        mainSession.clearCurrentCamp();
+        await mainSession.save();
+      }
+
+      return success({
+        success: true,
+        campId: null,
+      });
+    }
+
+    const exists = await repository.campExists(campId, userId);
     if (!exists) {
-      throw new AppError({ status: 404, code: 'CAMP_NOT_FOUND', message: 'Camp not found.' });
+      throw new AppError({
+        status: 404,
+        code: 'CAMP_NOT_FOUND',
+        message: 'Camp not found or not available to your account.',
+      });
     }
 
     if (mainSession) {

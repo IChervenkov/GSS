@@ -125,6 +125,16 @@ export function createMainPageApi({ csrfToken = '' } = {}) {
     savePermissions(permissions, signal) {
       return client.postJson('/web/permissions/save', { csrfToken, signal, body: { permissions } });
     },
+    getCampAccess(query = {}, signal) {
+      return client.getJson('/web/camp-access/data', { signal, query });
+    },
+    saveCampAccess(campAccess, signal) {
+      return client.postJson('/web/camp-access/save', {
+        csrfToken,
+        signal,
+        body: { campAccess },
+      });
+    },
     getCurrentUserPermissions(signal) {
       return client.getJson('/web/permission/current-user', { signal });
     },

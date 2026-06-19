@@ -237,6 +237,14 @@ const manifest = Object.freeze({
       'Adds Asset management page access and granular Assets action permissions while preserving legacy grants.',
     rollback: 'Keep the additive permissions until all users have been migrated safely.',
   },
+  '0032_user_camp_access': {
+    phase: MIGRATION_PHASES.EXPAND,
+    risk: MIGRATION_RISK.LOW,
+    safeOnBoot: true,
+    requiresManualGate: false,
+    summary: 'Adds per-user camp access grants and backfills existing users to existing camps.',
+    rollback: 'Keep the additive access table until dependent code can be removed safely.',
+  },
 });
 
 function getMigrationMeta(version) {

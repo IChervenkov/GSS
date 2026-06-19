@@ -12,6 +12,7 @@ const CAMP_SORT_COLUMNS = Object.freeze(['name', 'id']);
 const USER_LIST_COLUMNS = Object.freeze(['username', 'account', 'status']);
 const USER_SORT_COLUMNS = Object.freeze(['username', 'account', 'status', 'user_confirmation']);
 const PERMISSION_COLUMNS = Object.freeze(['name']);
+const CAMP_ACCESS_COLUMNS = Object.freeze(['name', 'id']);
 const SORT_DIRECTIONS = Object.freeze(['desc', 'asc', 'default']);
 const USER_MESSAGE_TYPES = Object.freeze(['suggestion', 'message', 'issue', 'other']);
 const ADMIN_INBOX_COLUMNS = Object.freeze(['type', 'username', 'subject', 'status', 'createdAt']);
@@ -84,8 +85,12 @@ const campsDataRequestDto = withSearchPairing(
 );
 
 const campChangeRequestDto = Joi.object({
-  campId: Joi.string()
-    .uuid({ version: ['uuidv4', 'uuidv5'] })
+  campId: Joi.alternatives()
+    .try(
+      Joi.string().uuid({ version: ['uuidv4', 'uuidv5'] }),
+      Joi.string().allow(''),
+      Joi.valid(null),
+    )
     .required(),
 })
   .required()
@@ -141,6 +146,44 @@ const permissionsSaveRequestDto = Joi.object({
           .uuid({ version: ['uuidv4', 'uuidv5'] })
           .required(),
         permId: Joi.string()
+          .uuid({ version: ['uuidv4', 'uuidv5'] })
+          .required(),
+        isCheck: Joi.boolean().strict().required(),
+      })
+        .required()
+        .unknown(false),
+    )
+    .min(1)
+    .max(1000)
+    .required(),
+})
+  .required()
+  .unknown(false)
+  .prefs({ abortEarly: true, convert: true, stripUnknown: true });
+
+const campAccessDataRequestDto = withSearchPairing(
+  Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(10),
+    searchColumn: arrayOrSingle(Joi.string().valid(...CAMP_ACCESS_COLUMNS)).optional(),
+    searchValue: arrayOrSingle(Joi.string().trim().pattern(SAFE_SEARCH_PATTERN)).optional(),
+    sortColumn: Joi.string()
+      .valid(...CAMP_ACCESS_COLUMNS)
+      .optional(),
+    sortDirection: Joi.string()
+      .valid(...SORT_DIRECTIONS)
+      .default('default'),
+  }),
+);
+
+const campAccessSaveRequestDto = Joi.object({
+  campAccess: Joi.array()
+    .items(
+      Joi.object({
+        userId: Joi.string()
+          .uuid({ version: ['uuidv4', 'uuidv5'] })
+          .required(),
+        campId: Joi.string()
           .uuid({ version: ['uuidv4', 'uuidv5'] })
           .required(),
         isCheck: Joi.boolean().strict().required(),
@@ -284,6 +327,8 @@ module.exports = {
   campDeleteRequestDto,
   permissionsDataRequestDto,
   permissionsSaveRequestDto,
+  campAccessDataRequestDto,
+  campAccessSaveRequestDto,
   usersDataRequestDto,
   addUserRequestDto,
   editUserRequestDto,

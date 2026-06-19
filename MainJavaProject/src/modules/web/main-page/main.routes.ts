@@ -19,6 +19,8 @@ const {
   campImportRequestDto,
   permissionsDataRequestDto,
   permissionsSaveRequestDto,
+  campAccessDataRequestDto,
+  campAccessSaveRequestDto,
   usersDataRequestDto,
   addUserRequestDto,
   editUserRequestDto,
@@ -93,6 +95,20 @@ function createWebMainRouter({ env, upload, ...moduleDependencies } = {}) {
     requirePermission(permissionChecker, MAIN_PERMISSIONS.system),
     permissionsSaveRequestDto,
     controller.permissionsSave,
+  );
+  buildGetRoute(
+    router,
+    '/camp-access/data',
+    requirePermission(permissionChecker, MAIN_PERMISSIONS.system),
+    campAccessDataRequestDto,
+    controller.campAccessData,
+  );
+  buildPostRoute(
+    router,
+    '/camp-access/save',
+    requirePermission(permissionChecker, MAIN_PERMISSIONS.system),
+    campAccessSaveRequestDto,
+    controller.campAccessSave,
   );
   buildGetRoute(router, '/permission/current-user', controller.currentUserPermissions);
 

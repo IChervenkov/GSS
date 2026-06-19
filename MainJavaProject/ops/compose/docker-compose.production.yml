@@ -1,0 +1,103 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_HOST: ${APP_HOST:?APP_HOST is required}
+      TLS_EMAIL: ${TLS_EMAIL:?TLS_EMAIL is required}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.production:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - frontend
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ${GSS_ENV_FILE:-../../.env}
+    environment:
+      NODE_ENV: production
+      ENVIRONMENT_NAME: production
+      APP_URL: ${APP_URL_PRODUCTION:?APP_URL_PRODUCTION is required}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?DB_NAME is required}
+      DB_USER: ${DB_USER:?DB_USER is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_REQUIRED: "true"
+      TRUST_PROXY: "true"
+      SESSION_COOKIE_SECURE: "true"
+      SESSION_COOKIE_SAME_SITE: lax
+      CSP_REPORT_ONLY: "false"
+      DB_RUN_MIGRATIONS_ON_BOOT: ${DB_RUN_MIGRATIONS_ON_BOOT:-false}
+      ALLOW_RUNTIME_MIGRATIONS: ${ALLOW_RUNTIME_MIGRATIONS:-false}
+    expose:
+      - "3000"
+    volumes:
+      - ${GSS_ANDROID_APP_DIR:-../../androidApp}:/app/androidApp:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    init: true
+    networks:
+      - frontend
+      - backend
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

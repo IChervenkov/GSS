@@ -33,6 +33,7 @@ const AUDIT_EVENT_NAMES = Object.freeze({
     USER_DELETED: 'main.user.deleted',
     USER_REQUEST_RESOLVED: 'main.user.request.resolved',
     PERMISSION_UPDATED: 'main.permission.updated',
+    CAMP_ACCESS_UPDATED: 'main.camp_access.updated',
     CAMP_CREATED: 'main.camp.created',
     CAMP_UPDATED: 'main.camp.updated',
     CAMP_DELETED: 'main.camp.deleted',

@@ -22,6 +22,8 @@ const REALTIME_EVENT_NAMES = Object.freeze({
     CREATED: 'camp:add',
     UPDATED: 'camp:updated',
     DELETED: 'camp:deleted',
+    ACCESS_CHANGED: 'camp:access:changed',
+    ACCESS_SELF_REFRESHED: 'camp:access:self:refresh',
   }),
   CAMP_IMPORT: Object.freeze({
     PROGRESSED: 'camp:import:progress',

@@ -44,6 +44,7 @@ function createMainController({ useCases, env }) {
     setCamp: async (req) => {
       return respondWithJson(
         await useCases.setCurrentCamp({
+          userId: readSessionUserId(req),
           campId: req.body?.campId,
           mainSession: buildMainSession(req),
         }),
@@ -113,6 +114,20 @@ function createMainController({ useCases, env }) {
         await useCases.savePermissions({
           actorUserId: readSessionUserId(req),
           changes: req.body?.permissions,
+          requestMeta: buildRequestMeta(req),
+        }),
+      );
+    },
+
+    campAccessData: async (req) => {
+      return respondWithJson(await useCases.getCampAccessMatrix(normalizeSearchQuery(req.query)));
+    },
+
+    campAccessSave: async (req) => {
+      return respondWithJson(
+        await useCases.saveCampAccess({
+          actorUserId: readSessionUserId(req),
+          changes: req.body?.campAccess,
           requestMeta: buildRequestMeta(req),
         }),
       );

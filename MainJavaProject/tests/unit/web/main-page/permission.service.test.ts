@@ -87,6 +87,63 @@ test('savePermissions emits self-refresh events for each affected user', async (
   ]);
 });
 
+test('saveCampAccess emits camp-access refresh events for each affected user', async () => {
+  const emitted = [];
+  const reevaluated = [];
+
+  const service = createPermissionService({
+    env: {},
+    repository: {
+      userHasPermission: async () => true,
+      saveCampAccess: async () => ({
+        affectedUserIds: [
+          '11111111-1111-1111-1111-111111111111',
+          '22222222-2222-2222-2222-222222222222',
+        ],
+      }),
+    },
+    realtime: {
+      emitCampAccessChanged() {
+        emitted.push({ type: 'camp-access' });
+      },
+      emitCampAccessSelfRefresh(userId) {
+        emitted.push({ type: 'self', userId });
+      },
+      async reevaluateUserSockets(userId, reason) {
+        reevaluated.push({ userId, reason });
+      },
+    },
+    auditLog() {},
+  });
+
+  const result = await service.saveCampAccess({
+    actorUserId: '33333333-3333-3333-3333-333333333333',
+    changes: [
+      {
+        userId: '11111111-1111-1111-1111-111111111111',
+        campId: '44444444-4444-4444-4444-444444444444',
+        isCheck: true,
+      },
+      {
+        userId: '22222222-2222-2222-2222-222222222222',
+        campId: '55555555-5555-5555-5555-555555555555',
+        isCheck: false,
+      },
+    ],
+  });
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(emitted, [
+    { type: 'camp-access' },
+    { type: 'self', userId: '11111111-1111-1111-1111-111111111111' },
+    { type: 'self', userId: '22222222-2222-2222-2222-222222222222' },
+  ]);
+  assert.deepEqual(reevaluated, [
+    { userId: '11111111-1111-1111-1111-111111111111', reason: 'permissions_changed' },
+    { userId: '22222222-2222-2222-2222-222222222222', reason: 'permissions_changed' },
+  ]);
+});
+
 test('savePermissions rejects Full permission without Admin permission', async () => {
   const checkedPermissions = [];
   const service = createPermissionService({

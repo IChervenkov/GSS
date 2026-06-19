@@ -13,6 +13,7 @@ const mapCampRowToEntity = (row) =>
     id: 'id',
     name: 'name',
     createdAt: 'created_at',
+    canAccess: 'can_access',
   });
 
 const mapPermissionRowToEntity = (row) =>
@@ -30,8 +31,8 @@ function buildCampFilters({ filters = [] } = {}) {
   return buildAllowedIlikeFilters({
     filters,
     allowedColumns: {
-      name: 'name',
-      id: 'id::text',
+      name: 'c.name',
+      id: 'c.id::text',
     },
   });
 }
@@ -43,18 +44,42 @@ function buildCampOrder(sortColumn, sortDirection) {
       direction: sortDirection,
     },
     allowedSorts: {
-      name: 'name',
-      id: 'id',
+      name: 'c.name',
+      id: 'c.id',
     },
-    defaultSql: 'name ASC, created_at ASC',
+    defaultSql: 'c.name ASC, c.created_at ASC',
   });
+}
+
+function shiftSqlParams(sql, offset) {
+  if (!sql || !offset) return sql;
+  return sql.replace(/\$(\d+)/g, (_, value) => `$${Number(value) + offset}`);
+}
+
+function buildAccessibleCampWhere({ userId = null, filters = [] } = { userId: null, filters: [] }) {
+  const filterResult = buildCampFilters({ filters });
+  const params = [userId, ...filterResult.params];
+  const where = [
+    'uca.user_id = $1',
+    ...filterResult.where.map((clause) => shiftSqlParams(clause, 1)),
+  ];
+
+  return {
+    params,
+    whereSql: `WHERE ${where.join(' AND ')}`,
+  };
 }
 
 async function findMainPageContext({ userId }) {
   return withClient(async (client) => {
     const [campsResult, permissionsResult, userResult] = await Promise.all([
       client.query(
-        'SELECT id, name AS name, created_at FROM app.camps ORDER BY name ASC, created_at ASC',
+        `SELECT c.id, c.name AS name, c.created_at
+           FROM app.camps c
+           JOIN app.user_camp_access uca ON uca.camp_id = c.id
+          WHERE uca.user_id = $1
+          ORDER BY c.name ASC, c.created_at ASC`,
+        [userId],
       ),
       client.query(
         `SELECT p.name AS name
@@ -84,16 +109,31 @@ async function listCampsAndPermissions({
   sortDirection = 'default',
 }) {
   return withClient(async (client) => {
-    const { params, whereSql } = buildCampFilters({ filters });
+    const filterResult = buildCampFilters({ filters });
+    const params = [userId, ...filterResult.params];
+    const countWhereSql = filterResult.where.length
+      ? `WHERE ${filterResult.where.join(' AND ')}`
+      : '';
+    const campsWhereSql = filterResult.where.length
+      ? `WHERE ${filterResult.where.map((clause) => shiftSqlParams(clause, 1)).join(' AND ')}`
+      : '';
     const orderSql = buildCampOrder(sortColumn, sortDirection);
     const pagination = buildPagination({ page, limit, baseParamCount: params.length });
 
     const [countResult, campsResult, permissionsResult] = await Promise.all([
-      client.query(`SELECT COUNT(*)::int AS count FROM app.camps ${whereSql}`, params),
       client.query(
-        `SELECT id, name AS name, created_at
-           FROM app.camps
-           ${whereSql}
+        `SELECT COUNT(*)::int AS count
+           FROM app.camps c
+           ${countWhereSql}`,
+        filterResult.params,
+      ),
+      client.query(
+        `SELECT c.id, c.name AS name, c.created_at, (uca.user_id IS NOT NULL) AS can_access
+           FROM app.camps c
+           LEFT JOIN app.user_camp_access uca
+            ON uca.camp_id = c.id
+            AND uca.user_id = $1
+           ${campsWhereSql}
            ORDER BY ${orderSql}
            LIMIT ${pagination.limitPlaceholder} OFFSET ${pagination.offsetPlaceholder}`,
         [...params, pagination.limit, pagination.offset],
@@ -116,9 +156,19 @@ async function listCampsAndPermissions({
   });
 }
 
-async function campExists(campId) {
+async function campExists(campId, userId = null) {
   return withClient(async (client) => {
-    const result = await client.query('SELECT 1 FROM app.camps WHERE id = $1 LIMIT 1', [campId]);
+    const result = userId
+      ? await client.query(
+          `SELECT 1
+             FROM app.camps c
+             JOIN app.user_camp_access uca ON uca.camp_id = c.id
+            WHERE c.id = $1
+              AND uca.user_id = $2
+            LIMIT 1`,
+          [campId, userId],
+        )
+      : await client.query('SELECT 1 FROM app.camps WHERE id = $1 LIMIT 1', [campId]);
     return result.rowCount > 0;
   });
 }

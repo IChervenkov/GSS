@@ -387,6 +387,36 @@
             <button class="btn btn-ghost" type="button" id="permissions-next-button">Next</button>
           </div>
         </div>
+
+        <div class="panel-card">
+          <div class="panel-card__header">
+            <div>
+              <span class="panel-card__eyebrow">Camp access matrix</span>
+              <h2 class="panel-card__title">Allow or disallow users for each camp</h2>
+            </div>
+            <div class="panel-card__actions">
+              <button class="btn btn-secondary" type="button" id="refresh-camp-access-button"><svg class="icon" aria-hidden="true">
+                  <use href="#icon-refresh"></use>
+                </svg><span>Refresh</span></button>
+            </div>
+          </div>
+          <div id="camp-access-dirty-banner" class="inline-banner" hidden aria-live="polite"></div>
+          <div class="data-table-wrap">
+            <table class="data-table permissions-table">
+              <thead id="camp-access-table-head"></thead>
+              <tbody id="camp-access-table-body">
+                <tr>
+                  <td class="table-empty">Load camp access to continue.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-row">
+            <button class="btn btn-ghost" type="button" id="camp-access-prev-button">Previous</button>
+            <span id="camp-access-page-label" class="pagination-label">Page 1</span>
+            <button class="btn btn-ghost" type="button" id="camp-access-next-button">Next</button>
+          </div>
+        </div>
       </section>
 
       <section class="tab-panel" id="tab-guide" data-tab-panel="guide" role="tabpanel" hidden>

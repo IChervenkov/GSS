@@ -3101,6 +3101,13 @@ bootstrapPage(() => {
     void loadAssets({ quiet: true });
   });
 
+  document.addEventListener('workspace:camp-access:refreshed', (event) => {
+    if (!event.detail?.revoked) return;
+    pageData.campId = '';
+    if (document.body) document.body.dataset.currentCampId = '';
+    void loadAssets({ quiet: true });
+  });
+
   const socket =
     typeof window.io === 'function' ? window.io({ transports: ['websocket', 'polling'] }) : null;
   bindForcedSignOut(socket);

@@ -13,6 +13,8 @@ type PermissionRow = {
 
 type PermissionAccessPageData = {
   csrfToken?: string;
+  campId?: string;
+  currentCampId?: string | (() => string);
 };
 
 type WorkspacePermissionRenderOptions = {
@@ -91,6 +93,39 @@ function buildHorizontalNavItems(permissionNames = new Set<string>(), isAdmin = 
 
 function getCsrfToken(pageData: PermissionAccessPageData = {}) {
   return document.querySelector<HTMLInputElement>('#csrf-token')?.value || pageData.csrfToken || '';
+}
+
+function getCurrentCampId(pageData: PermissionAccessPageData = {}) {
+  const dynamicCampId =
+    typeof pageData.currentCampId === 'function'
+      ? pageData.currentCampId()
+      : pageData.currentCampId;
+  return String(
+    dynamicCampId || pageData.campId || document.body?.dataset?.currentCampId || '',
+  ).trim();
+}
+
+function setCurrentCampContext(pageData: PermissionAccessPageData = {}, campId = '', campName = '') {
+  pageData.campId = campId;
+  if (typeof pageData.currentCampId !== 'function') {
+    pageData.currentCampId = campId;
+  }
+  if (document.body) {
+    document.body.dataset.currentCampId = campId;
+    document.body.dataset.currentCampName = campName;
+  }
+}
+
+function dispatchCampAccessRefreshed(detail = {}) {
+  document.dispatchEvent(new CustomEvent('workspace:camp-access:refreshed', { detail }));
+}
+
+function dispatchCampContextChanged(campId = '', campName = '') {
+  document.dispatchEvent(
+    new CustomEvent('gss:camp-context-changed', {
+      detail: { campId, campName },
+    }),
+  );
 }
 
 function getCurrentNavName() {
@@ -176,6 +211,7 @@ export function createWorkspacePermissionAccessRefresh({
 }: WorkspacePermissionRefreshOptions = {}) {
   const client = createRequestClient();
   let refreshInFlight = null;
+  let campRefreshInFlight = null;
 
   async function refreshNavigation() {
     if (refreshInFlight) return refreshInFlight;
@@ -208,15 +244,79 @@ export function createWorkspacePermissionAccessRefresh({
     const handlePermissionRefresh = () => {
       void refreshNavigation();
     };
+    const handleCampAccessRefresh = () => {
+      void refreshCampAccess();
+    };
 
     socket.on('permission:access:changed', handlePermissionRefresh);
     socket.on('permission:access:updated', handlePermissionRefresh);
     socket.on('permission:self:refresh', handlePermissionRefresh);
     socket.on('permission:self:refreshed', handlePermissionRefresh);
+    socket.on('camp:access:self:refresh', handleCampAccessRefresh);
+    socket.on('camp:access:self:refreshed', handleCampAccessRefresh);
+  }
+
+  async function refreshCampAccess() {
+    if (campRefreshInFlight) return campRefreshInFlight;
+
+    const currentCampId = getCurrentCampId(pageData);
+    if (!currentCampId) {
+      dispatchCampAccessRefreshed({ currentCampId: '', hasAccess: false, revoked: false });
+      return null;
+    }
+
+    campRefreshInFlight = client
+      .getJson('/web/camp/data', {
+        query: {
+          page: 1,
+          limit: 1,
+          searchColumn: 'id',
+          searchValue: currentCampId,
+        },
+      })
+      .then(async (result) => {
+        if (!result.ok) return null;
+
+        const camps = Array.isArray(result.data?.camps) ? result.data.camps : [];
+        const camp = camps.find((item) => String(item.id) === String(currentCampId)) || null;
+        if (camp && camp.canAccess !== false) {
+          setCurrentCampContext(pageData, camp.id || currentCampId, camp.name || '');
+          dispatchCampAccessRefreshed({
+            currentCampId,
+            campId: camp.id || currentCampId,
+            campName: camp.name || '',
+            hasAccess: true,
+            revoked: false,
+          });
+          return { hasAccess: true, camp };
+        }
+
+        await client.postJson('/web/camp/set', {
+          csrfToken: getCsrfToken(pageData),
+          body: { campId: '' },
+        });
+        setCurrentCampContext(pageData, '', '');
+        dispatchCampContextChanged('', '');
+        dispatchCampAccessRefreshed({
+          previousCampId: currentCampId,
+          currentCampId: '',
+          campId: '',
+          campName: '',
+          hasAccess: false,
+          revoked: true,
+        });
+        return { hasAccess: false, revoked: true };
+      })
+      .finally(() => {
+        campRefreshInFlight = null;
+      });
+
+    return campRefreshInFlight;
   }
 
   return {
     bind,
+    refreshCampAccess,
     refreshNavigation,
   };
 }
