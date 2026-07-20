@@ -1,8 +1,15 @@
 const { spawnSync } = require('child_process');
 
-const result = spawnSync('npm', ['audit', '--json'], {
+const npmExecPath = process.env.npm_execpath;
+const auditCommand = npmExecPath ? process.execPath : process.platform === 'win32' ? process.env.ComSpec || 'cmd.exe' : 'npm';
+const auditArgs = npmExecPath
+  ? [npmExecPath, 'audit', '--json']
+  : process.platform === 'win32'
+    ? ['/d', '/s', '/c', 'npm audit --json']
+    : ['audit', '--json'];
+
+const result = spawnSync(auditCommand, auditArgs, {
   encoding: 'utf8',
-  shell: process.platform === 'win32',
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 
