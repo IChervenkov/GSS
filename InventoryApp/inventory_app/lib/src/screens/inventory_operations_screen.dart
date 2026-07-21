@@ -2654,9 +2654,9 @@ class _AssetEditorDialogState extends State<_AssetEditorDialog> {
     'No information',
     'Not recorded',
   };
-  static const _defaultOwner = 'Global RTS';
+  static const _defaultOwner = 'Owner not recorded';
   static const _defaultService = 'Billeting';
-  static const _defaultMrah = 'Global RTS';
+  static const _defaultMrah = 'MRAH not recorded';
 
   static String _editableText(
     Asset? asset,

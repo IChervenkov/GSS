@@ -37,7 +37,7 @@ test('assets page service builds the dashboard for the active camp', async () =>
             locationKeyName: 'Key 1',
             buildingName: 'Building A',
             quantity: '2',
-            owner: 'Global RTS',
+            owner: 'Owner not recorded',
             status: 'New',
             inventoryStatus: 'completed',
             lastInventoryDate: '2030-01-02T00:00:00.000Z',
@@ -615,7 +615,7 @@ test('assets page service defaults MRAH, formats M2 inside, and ignores user sys
   });
 
   assert.equal(result.status, 200);
-  assert.equal(savedPayload.mrah, 'Global RTS');
+  assert.equal(savedPayload.mrah, 'MRAH not recorded');
   assert.equal(savedPayload.m2Inside, '10.10');
   assert.equal(savedPayload.writtenOffDate, null);
   assert.equal(savedPayload.lastInventoryDate, null);
@@ -753,7 +753,7 @@ test('assets page service enforces required asset fields in bulk updates', async
     actorUserId: 'user-1',
     campId: 'camp-1',
     payload:
-      ',A-001,Chair Asset,Chair,Room 1,,Furniture,1,Global RTS,,undiscovered,Billeting,false,Description',
+      ',A-001,Chair Asset,Chair,Room 1,,Furniture,1,Owner not recorded,MRAH not recorded,undiscovered,Billeting,false,Description',
   });
 
   assert.equal(result.status, 422);
@@ -806,8 +806,8 @@ test('assets page service rejects quantitative values when bulk updating existin
       '',
       'Furniture',
       '1',
-      'Global RTS',
-      'Global RTS',
+      'Owner not recorded',
+      'MRAH not recorded',
       'Good',
       'undiscovered',
       'Billeting',
@@ -870,8 +870,8 @@ test('assets page service reports Bed type as invalid for new quantitative rows 
       '',
       'Furniture',
       '10',
-      'Global RTS',
-      'Global RTS',
+      'Owner not recorded',
+      'MRAH not recorded',
       'Good',
       'undiscovered',
       'Billeting',
