@@ -32,7 +32,6 @@ function buildBaseEnv(overrides = {}) {
     HASH_APP_BIKE: 'b'.repeat(64),
     HASH_APP_LAUNDRY: 'l'.repeat(64),
     HASH_APP_ASSET: 'x'.repeat(64),
-    HASH_APP_GYM: 'g'.repeat(64),
     REDIS_HOST: 'localhost',
     REDIS_PORT: '6379',
     REDIS_REQUIRED: 'false',

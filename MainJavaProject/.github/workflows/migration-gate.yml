@@ -1,5 +1,10 @@
 name: migration-gate
 
+env:
+  REGISTRY: ghcr.io
+  # OCI repository names must be lowercase.
+  IMAGE_NAME: ichervenkov/gsscodeonly
+
 on:
   workflow_dispatch:
     inputs:
@@ -31,7 +36,7 @@ jobs:
           script_stop: true
           script: |
             set -eu
-            export IMAGE_REF=ghcr.io/${{ github.repository }}:${{ inputs.image_tag }}
+            export IMAGE_REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image_tag }}
             docker pull "$IMAGE_REF"
             docker run --rm \
               --env-file /opt/gss/.env \

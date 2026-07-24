@@ -15,7 +15,7 @@ COPY tests ./tests
 COPY scripts ./scripts
 RUN npm run lint && npm run build
 
-FROM node:24-bookworm-slim AS runtime
+FROM debian-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 

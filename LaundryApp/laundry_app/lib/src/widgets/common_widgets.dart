@@ -221,6 +221,7 @@ class SearchSelectionField<T> extends StatelessWidget {
     required this.itemLabel,
     required this.onChanged,
     this.itemSubtitle,
+    this.itemEnabled,
     this.optionsStream,
     this.emptyMessage = 'No results.',
     super.key,
@@ -233,6 +234,7 @@ class SearchSelectionField<T> extends StatelessWidget {
   final T? selectedValue;
   final String Function(T item) itemLabel;
   final String? Function(T item)? itemSubtitle;
+  final bool Function(T item)? itemEnabled;
   final FutureOr<void> Function(T item) onChanged;
   final String emptyMessage;
 
@@ -265,6 +267,7 @@ class SearchSelectionField<T> extends StatelessWidget {
         selectedValue: selectedValue,
         itemLabel: itemLabel,
         itemSubtitle: itemSubtitle,
+        itemEnabled: itemEnabled,
         optionsStream: optionsStream,
         emptyMessage: emptyMessage,
       ),
@@ -280,6 +283,7 @@ class _SearchSelectionSheet<T> extends StatefulWidget {
     required this.selectedValue,
     required this.itemLabel,
     required this.itemSubtitle,
+    required this.itemEnabled,
     required this.optionsStream,
     required this.emptyMessage,
   });
@@ -289,6 +293,7 @@ class _SearchSelectionSheet<T> extends StatefulWidget {
   final T? selectedValue;
   final String Function(T item) itemLabel;
   final String? Function(T item)? itemSubtitle;
+  final bool Function(T item)? itemEnabled;
   final Stream<List<T>>? optionsStream;
   final String emptyMessage;
 
@@ -395,14 +400,19 @@ class _SearchSelectionSheetState<T> extends State<_SearchSelectionSheet<T>> {
                         final selected =
                             identical(item, widget.selectedValue) ||
                             item == widget.selectedValue;
+                        final enabled =
+                            widget.itemEnabled?.call(item) ?? true;
                         final subtitle = widget.itemSubtitle?.call(item);
                         return ListTile(
+                          enabled: enabled,
                           leading: selected ? const Icon(Icons.check) : null,
                           title: Text(widget.itemLabel(item)),
                           subtitle: subtitle == null || subtitle.isEmpty
                               ? null
                               : Text(subtitle),
-                          onTap: () => Navigator.pop(context, item),
+                          onTap: enabled
+                              ? () => Navigator.pop(context, item)
+                              : null,
                         );
                       },
                     ),

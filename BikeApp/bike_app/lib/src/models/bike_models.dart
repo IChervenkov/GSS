@@ -1,15 +1,17 @@
 import '../utils/parsing.dart';
 
 class Camp {
-  const Camp({required this.id, required this.name});
+  const Camp({required this.id, required this.name, this.canAccess = true});
 
   final String id;
   final String name;
+  final bool canAccess;
 
   factory Camp.fromJson(Map<String, dynamic> json) {
     return Camp(
       id: asString(json['id']),
       name: asString(json['name'], fallback: 'Camp'),
+      canAccess: json['canAccess'] != false,
     );
   }
 }

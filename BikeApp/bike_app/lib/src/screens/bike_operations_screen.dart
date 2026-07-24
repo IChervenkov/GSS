@@ -13,6 +13,13 @@ import '../widgets/asset_dialog.dart';
 import '../widgets/common_widgets.dart';
 import '../widgets/rental_dialogs.dart';
 
+String _firstAccessibleCampId(Iterable<Camp> camps) {
+  for (final camp in camps) {
+    if (camp.canAccess) return camp.id;
+  }
+  return '';
+}
+
 class BikeOperationsScreen extends StatefulWidget {
   const BikeOperationsScreen({
     required this.api,
@@ -202,7 +209,7 @@ class _BikeOperationsScreenState extends State<BikeOperationsScreen>
       setState(() {
         _camps = camps;
         _permissions = permissions;
-        _selectedCampId = camps.isNotEmpty ? camps.first.id : '';
+        _selectedCampId = _firstAccessibleCampId(camps);
       });
       _publishCampOptions();
       _publishPermissionOptions();
@@ -328,23 +335,26 @@ class _BikeOperationsScreenState extends State<BikeOperationsScreen>
     try {
       final camps = await widget.api.camps();
       if (!mounted) return;
-      final selectedStillExists =
+      final selectedStillAccessible =
           _selectedCampId.isNotEmpty &&
-          camps.any((camp) => camp.id == _selectedCampId);
-      final nextSelectedCampId = selectedStillExists
-          ? _selectedCampId
-          : (camps.isNotEmpty ? camps.first.id : '');
+          camps.any((camp) => camp.id == _selectedCampId && camp.canAccess);
+      final nextSelectedCampId = selectedStillAccessible ? _selectedCampId : '';
       final campChanged = nextSelectedCampId != _selectedCampId;
       setState(() {
         _camps = camps;
         _selectedCampId = nextSelectedCampId;
         if (campChanged) {
+          _bikeRequestToken++;
+          _helmetRequestToken++;
+          _pendingBikePage = null;
+          _pendingHelmetPage = null;
           _bikePage = 1;
           _helmetPage = 1;
           _inventoryLoaded = false;
           _inventoryBicycles = const [];
           _inventoryHelmets = const [];
           if (nextSelectedCampId.isEmpty) {
+            _loading = false;
             _summary = const InventorySummary();
             _totalBicycles = 0;
             _helmetPairingCount = 0;
@@ -352,12 +362,16 @@ class _BikeOperationsScreenState extends State<BikeOperationsScreen>
             _bicycles = const [];
             _helmets = const [];
             _soldiers = const [];
+            _scanResult = null;
+            _lastBikeStatuses.clear();
           }
         }
       });
       _publishCampOptions();
       if (campChanged && nextSelectedCampId.isEmpty) {
+        _closeOpenModalWindows();
         _publishAssignmentOptions();
+        if (!_bicycleUpdates.isClosed) _bicycleUpdates.add(const []);
       }
       if (campChanged && nextSelectedCampId.isNotEmpty) {
         await _refresh(quiet: true, includeSoldiers: _canLoadSoldiers);
@@ -406,16 +420,17 @@ class _BikeOperationsScreenState extends State<BikeOperationsScreen>
     bool quiet = false,
     bool includeSoldiers = true,
   }) async {
-    if (_selectedCampId.isEmpty) {
+    final campId = _selectedCampId;
+    if (campId.isEmpty) {
       setState(() => _loading = false);
       return;
     }
     if (!quiet && mounted) setState(() => _loading = true);
     try {
       final results = await Future.wait<Object>([
-        widget.api.inventory(_selectedCampId),
+        widget.api.inventory(campId),
         includeSoldiers && _canLoadSoldiers
-            ? widget.api.soldiers(_selectedCampId, '')
+            ? widget.api.soldiers(campId, '')
             : Future.value(_soldiers),
       ]);
       final snapshot = results[0] as InventorySnapshot;
@@ -428,7 +443,7 @@ class _BikeOperationsScreenState extends State<BikeOperationsScreen>
       final helmets = loadHelmets
           ? _helmetPageFromInventory(snapshot.helmets, page: _helmetPage)
           : PagedHelmetAssets(rows: _helmets, meta: _helmetMeta);
-      if (!mounted) return;
+      if (!mounted || _selectedCampId != campId) return;
       final previousBikeStatuses = Map<String, String>.from(_lastBikeStatuses);
       setState(() {
         _summary = snapshot.summary;
@@ -453,6 +468,7 @@ class _BikeOperationsScreenState extends State<BikeOperationsScreen>
       _rememberBikeStatuses(snapshot.bicycles);
       unawaited(_refreshCurrentScanResult());
     } catch (error) {
+      if (!mounted || _selectedCampId != campId) return;
       if (_isAuthFailure(error)) {
         await _handleAuthExpired();
         return;
@@ -2065,6 +2081,7 @@ class _BikeOperationsScreenState extends State<BikeOperationsScreen>
   }
 
   Future<void> _changeCamp(String campId) async {
+    if (!_camps.any((camp) => camp.id == campId && camp.canAccess)) return;
     setState(() {
       _selectedCampId = campId;
       _bikePage = 1;
@@ -2103,7 +2120,9 @@ class _BikeOperationsScreenState extends State<BikeOperationsScreen>
   Widget build(BuildContext context) {
     Camp? selectedCamp;
     for (final camp in _camps) {
-      if (camp.id == _selectedCampId) selectedCamp = camp;
+      if (camp.id == _selectedCampId && camp.canAccess) {
+        selectedCamp = camp;
+      }
     }
 
     return Scaffold(
@@ -2857,7 +2876,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   Widget build(BuildContext context) {
     Camp? selectedCamp;
     for (final camp in _camps) {
-      if (camp.id == widget.selectedCampId) {
+      if (camp.id == widget.selectedCampId && camp.canAccess) {
         selectedCamp = camp;
         break;
       }
@@ -2879,7 +2898,9 @@ class _SettingsPageState extends State<_SettingsPage> {
                 optionsStream: widget.campUpdates,
                 selectedValue: selectedCamp,
                 itemLabel: (camp) => camp.name,
-                itemSubtitle: (camp) => camp.id,
+                itemSubtitle: (camp) =>
+                    camp.canAccess ? camp.id : '${camp.id} - No access',
+                itemEnabled: (camp) => camp.canAccess,
                 onChanged: (camp) async {
                   await widget.onCampChanged(camp.id);
                   if (context.mounted) Navigator.pop(context);

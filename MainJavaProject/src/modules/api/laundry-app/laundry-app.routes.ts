@@ -2,6 +2,7 @@
 const express = require('express');
 const { asyncHandler } = require('../../../shared/http/async-handler');
 const {
+  fileResponse,
   isResponseContract,
   sendResponseContract,
 } = require('../../../shared/http/response-contract');
@@ -27,6 +28,9 @@ function actorUserId(req) {
 
 function sendResult(res, result) {
   if (isResponseContract(result)) return sendResponseContract(res, result);
+  if (Buffer.isBuffer(result?.buffer)) {
+    return sendResponseContract(res, fileResponse(result));
+  }
   const status = Number.isInteger(result?.status) ? result.status : 200;
   return res.status(status).json(result?.body || result || {});
 }
@@ -83,6 +87,7 @@ function createApiLaundryAppRouter(dependencies = {}) {
           id: camp.id,
           name: camp.name,
           createdAt: camp.createdAt,
+          canAccess: camp.canAccess !== false,
         })),
       });
     }),

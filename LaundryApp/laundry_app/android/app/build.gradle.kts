@@ -5,6 +5,17 @@ plugins {
 }
 
 android {
+    val releaseStoreFile = System.getenv("GSS_KEYSTORE_PATH")
+    val releaseStorePassword = System.getenv("GSS_STORE_PASSWORD")
+    val releaseKeyAlias = System.getenv("GSS_KEY_ALIAS")
+    val releaseKeyPassword = System.getenv("GSS_KEY_PASSWORD")
+    val hasReleaseSigningCredentials = listOf(
+        releaseStoreFile,
+        releaseStorePassword,
+        releaseKeyAlias,
+        releaseKeyPassword,
+    ).all { !it.isNullOrBlank() }
+
     namespace = "com.example.laundry_app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -22,9 +33,23 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigningCredentials) {
+                storeFile = file(requireNotNull(releaseStoreFile))
+                storePassword = requireNotNull(releaseStorePassword)
+                keyAlias = requireNotNull(releaseKeyAlias)
+                keyPassword = requireNotNull(releaseKeyPassword)
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            check(hasReleaseSigningCredentials) {
+                "Release signing credentials are required. Run build-release.ps1."
+            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

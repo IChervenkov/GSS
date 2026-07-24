@@ -113,7 +113,7 @@ class HeaderBar extends StatelessWidget {
         final isWide = constraints.maxWidth >= 900;
         Camp? selectedCamp;
         for (final camp in camps) {
-          if (camp.id == selectedCampId) {
+          if (camp.id == selectedCampId && camp.canAccess) {
             selectedCamp = camp;
             break;
           }
@@ -125,6 +125,7 @@ class HeaderBar extends StatelessWidget {
           selectedValue: selectedCamp,
           itemLabel: (camp) => camp.name,
           itemSubtitle: (camp) => camp.id,
+          itemEnabled: (camp) => camp.canAccess,
           onChanged: (camp) => onCampChanged(camp.id),
         );
         final metrics = SingleChildScrollView(
@@ -210,6 +211,7 @@ class SearchSelectionField<T> extends StatelessWidget {
     required this.onChanged,
     this.optionsStream,
     this.itemSubtitle,
+    this.itemEnabled,
     this.leadingIcon = Icons.search,
     this.enabled = true,
     this.emptyMessage = 'No matches found.',
@@ -223,6 +225,7 @@ class SearchSelectionField<T> extends StatelessWidget {
   final T? selectedValue;
   final String Function(T item) itemLabel;
   final String? Function(T item)? itemSubtitle;
+  final bool Function(T item)? itemEnabled;
   final ValueChanged<T> onChanged;
   final IconData leadingIcon;
   final bool enabled;
@@ -260,6 +263,7 @@ class SearchSelectionField<T> extends StatelessWidget {
         selectedValue: selectedValue,
         itemLabel: itemLabel,
         itemSubtitle: itemSubtitle,
+        itemEnabled: itemEnabled,
         optionsStream: optionsStream,
         emptyMessage: emptyMessage,
       ),
@@ -275,6 +279,7 @@ class _SearchSelectionSheet<T> extends StatefulWidget {
     required this.selectedValue,
     required this.itemLabel,
     required this.itemSubtitle,
+    required this.itemEnabled,
     required this.optionsStream,
     required this.emptyMessage,
   });
@@ -284,6 +289,7 @@ class _SearchSelectionSheet<T> extends StatefulWidget {
   final T? selectedValue;
   final String Function(T item) itemLabel;
   final String? Function(T item)? itemSubtitle;
+  final bool Function(T item)? itemEnabled;
   final Stream<List<T>>? optionsStream;
   final String emptyMessage;
 
@@ -390,14 +396,18 @@ class _SearchSelectionSheetState<T> extends State<_SearchSelectionSheet<T>> {
                         final selected =
                             identical(item, widget.selectedValue) ||
                             item == widget.selectedValue;
+                        final enabled = widget.itemEnabled?.call(item) ?? true;
                         final subtitle = widget.itemSubtitle?.call(item);
                         return ListTile(
+                          enabled: enabled,
                           leading: selected ? const Icon(Icons.check) : null,
                           title: Text(widget.itemLabel(item)),
                           subtitle: subtitle == null || subtitle.isEmpty
                               ? null
                               : Text(subtitle),
-                          onTap: () => Navigator.pop(context, item),
+                          onTap: enabled
+                              ? () => Navigator.pop(context, item)
+                              : null,
                         );
                       },
                     ),

@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
 const express = require('express');
 
 const { createApiInventoryAppRouter } = require('../../../../src/modules/api/inventory-app/inventory-app.routes');
@@ -58,7 +60,16 @@ function createDependencies() {
   const main = {
     listCampsAndPermissions: async ({ userId }) => {
       calls.push(['camps', userId]);
-      return { camps: [{ id: 'camp-1', name: 'Camp One', createdAt: '2026-05-13' }] };
+      return {
+        camps: [
+          {
+            id: 'camp-1',
+            name: 'Camp One',
+            createdAt: '2026-05-13',
+            canAccess: false,
+          },
+        ],
+      };
     },
   };
   return {
@@ -76,7 +87,12 @@ test('inventory app exposes camps permissions and overview endpoints', async () 
     const camps = await requestJson(server.baseUrl, '/api/inventory-app/camps');
     assert.equal(camps.response.status, 200);
     assert.deepEqual(camps.body.camps, [
-      { id: 'camp-1', name: 'Camp One', createdAt: '2026-05-13' },
+      {
+        id: 'camp-1',
+        name: 'Camp One',
+        createdAt: '2026-05-13',
+        canAccess: false,
+      },
     ]);
 
     const permissions = await requestJson(server.baseUrl, '/api/inventory-app/permissions');
@@ -118,6 +134,29 @@ test('inventory scan forwards replacement key selection', async () => {
 
     assert.equal(result.response.status, 200);
     assert.equal(result.body.asset.locationKeyId, 'key-2');
+  } finally {
+    await server.close();
+  }
+});
+
+test('inventory app download returns the exact APK bytes instead of JSON', async () => {
+  const dependencies = createDependencies();
+  const apkBuffer = fs.readFileSync(__filename);
+  dependencies.env = {
+    ...dependencies.env,
+    APP_ASSET_FILE_PATH: __filename,
+    HASH_APP_ASSET: crypto.createHash('sha256').update(apkBuffer).digest('hex'),
+  };
+  const server = await startServer(createApp(dependencies));
+
+  try {
+    const response = await fetch(`${server.baseUrl}/api/inventory-app/mobile-app`);
+    const downloaded = Buffer.from(await response.arrayBuffer());
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'application/vnd.android.package-archive');
+    assert.match(response.headers.get('content-disposition') || '', /^attachment; filename=/);
+    assert.deepEqual(downloaded, apkBuffer);
   } finally {
     await server.close();
   }

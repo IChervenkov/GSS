@@ -312,6 +312,7 @@ function createBikeAppService({ env, auditLog, repositories, eventBus }) {
         id: camp.id,
         name: camp.name,
         createdAt: camp.createdAt,
+        canAccess: camp.canAccess !== false,
       })),
       total: result.total,
     });

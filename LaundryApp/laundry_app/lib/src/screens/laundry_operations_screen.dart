@@ -12,6 +12,13 @@ import '../services/native_bridge.dart';
 import '../utils/formatters.dart';
 import '../widgets/common_widgets.dart';
 
+String _firstAccessibleCampId(Iterable<Camp> camps) {
+  for (final camp in camps) {
+    if (camp.canAccess) return camp.id;
+  }
+  return '';
+}
+
 const _statusOrder = ['drop_off', 'laundry_facility', 'ready_to_pick_up'];
 const _bagFilterColumns = [
   'code',
@@ -87,7 +94,6 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
   final Queue<String> _rfidQueue = Queue<String>();
   final Set<String> _queuedRfidCodes = {};
   final Set<String> _scannedRfidCodes = {};
-  bool _updatePromptOpen = false;
   bool _authExpired = false;
   final Set<String> _appUpdateNotificationVersions = {};
   final Set<String> _overdueNotificationKeys = {};
@@ -158,7 +164,7 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
       setState(() {
         _camps = camps;
         _permissions = permissions;
-        _selectedCampId = camps.isNotEmpty ? camps.first.id : '';
+        _selectedCampId = _firstAccessibleCampId(camps);
       });
       _syncRfidScanAvailability();
       _publishCampOptions();
@@ -333,23 +339,29 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
     try {
       final camps = await widget.api.camps();
       if (!mounted) return;
-      final selectedStillExists =
+      final selectedStillAccessible =
           _selectedCampId.isNotEmpty &&
-          camps.any((camp) => camp.id == _selectedCampId);
-      final nextSelectedCampId = selectedStillExists
-          ? _selectedCampId
-          : (camps.isNotEmpty ? camps.first.id : '');
+          camps.any((camp) => camp.id == _selectedCampId && camp.canAccess);
+      final nextSelectedCampId = selectedStillAccessible ? _selectedCampId : '';
       final campChanged = nextSelectedCampId != _selectedCampId;
       setState(() {
         _camps = camps;
         _selectedCampId = nextSelectedCampId;
         if (campChanged && nextSelectedCampId.isEmpty) {
+          _loading = false;
           _overview = const LaundryOverview();
+          _scanResult = null;
         }
         if (campChanged) _clearRfidScanSession();
       });
       _syncRfidScanAvailability();
       _publishCampOptions();
+      if (campChanged && nextSelectedCampId.isEmpty) {
+        _closeOpenModalWindows();
+        if (!_overviewUpdates.isClosed) {
+          _overviewUpdates.add(const LaundryOverview());
+        }
+      }
       if (campChanged && nextSelectedCampId.isNotEmpty) {
         await _refresh(quiet: true);
       }
@@ -375,14 +387,15 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
   }
 
   Future<void> _refresh({bool quiet = false}) async {
-    if (_selectedCampId.isEmpty) {
+    final campId = _selectedCampId;
+    if (campId.isEmpty) {
       setState(() => _loading = false);
       return;
     }
     if (!quiet && mounted) setState(() => _loading = true);
     try {
-      final overview = await widget.api.overview(_selectedCampId);
-      if (!mounted) return;
+      final overview = await widget.api.overview(campId);
+      if (!mounted || _selectedCampId != campId) return;
       setState(() {
         _overview = overview;
         _scanResult = _updatedScanResultFromOverview(_scanResult, overview);
@@ -390,6 +403,7 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
       });
       if (!_overviewUpdates.isClosed) _overviewUpdates.add(overview);
     } catch (error) {
+      if (!mounted || _selectedCampId != campId) return;
       if (_isAuthFailure(error)) {
         await _handleAuthExpired();
       } else {
@@ -621,24 +635,31 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
   }
 
   Future<void> _checkForUpdate({bool manual = false}) async {
-    if (_authExpired || _updatePromptOpen) return;
+    if (_authExpired) return;
+    if (!_permissions.canDownloadLaundryApp) {
+      if (manual) _show("You don't have permission to check for app updates.");
+      return;
+    }
     try {
       try {
         await widget.api.refreshTokens();
       } catch (_) {}
       if ((await widget.api.accessToken).isEmpty) return;
-      final update = await widget.api.appVersion();
+      final results = await Future.wait<Object>([
+        NativeBridge.appBuildInfo(),
+        widget.api.appVersion(),
+      ]);
       if (_authExpired || !mounted) return;
+      final build = results[0] as AppBuildInfo;
+      final update = results[1] as AppUpdateInfo;
       final apkUrl = update.apkUrl;
       if (apkUrl == null || apkUrl.isEmpty) {
         if (manual) _show('No Android update package is published.');
         return;
       }
-      final build = await NativeBridge.appBuildInfo();
       final currentVersion = build.versionName.trim();
       final nextVersion = (update.version ?? '').trim();
-      final changed = nextVersion.isNotEmpty && nextVersion != currentVersion;
-      if (!changed) {
+      if (!_isNewerVersion(nextVersion, currentVersion)) {
         if (manual) _show('This device already has the current version.');
         return;
       }
@@ -651,7 +672,6 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
         return;
       }
       if (!mounted) return;
-      _updatePromptOpen = true;
       final install = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -671,7 +691,6 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
           ],
         ),
       );
-      _updatePromptOpen = false;
       if (install != true) return;
       final bearerToken = await widget.api.accessToken;
       if (bearerToken.isEmpty) return;
@@ -681,7 +700,6 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
         sha256: update.sha256,
       );
     } catch (error) {
-      _updatePromptOpen = false;
       if (_isAuthFailure(error)) {
         await _handleAuthExpired();
         return;
@@ -690,7 +708,33 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
     }
   }
 
+  bool _isNewerVersion(String latest, String current) {
+    if (latest.trim().isEmpty) return false;
+    final latestParts = _versionParts(latest);
+    final currentParts = _versionParts(current);
+    final length = latestParts.length > currentParts.length
+        ? latestParts.length
+        : currentParts.length;
+    for (var index = 0; index < length; index += 1) {
+      final left = index < latestParts.length ? latestParts[index] : 0;
+      final right = index < currentParts.length ? currentParts[index] : 0;
+      if (left > right) return true;
+      if (left < right) return false;
+    }
+    return false;
+  }
+
+  List<int> _versionParts(String value) {
+    final version = value.split('+').first;
+    return version
+        .split(RegExp(r'[^0-9]+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) => int.tryParse(part) ?? 0)
+        .toList();
+  }
+
   Future<void> _changeCamp(String campId) async {
+    if (!_camps.any((camp) => camp.id == campId && camp.canAccess)) return;
     _terminateRfidBatch();
     setState(() {
       _selectedCampId = campId;
@@ -1050,7 +1094,9 @@ class _LaundryOperationsScreenState extends State<LaundryOperationsScreen>
   Widget build(BuildContext context) {
     Camp? selectedCamp;
     for (final camp in _camps) {
-      if (camp.id == _selectedCampId) selectedCamp = camp;
+      if (camp.id == _selectedCampId && camp.canAccess) {
+        selectedCamp = camp;
+      }
     }
     return Scaffold(
       appBar: AppBar(
@@ -2505,7 +2551,9 @@ class _SettingsScreenState extends State<_SettingsScreen> {
   Widget build(BuildContext context) {
     Camp? selectedCamp;
     for (final camp in _camps) {
-      if (camp.id == widget.selectedCampId) selectedCamp = camp;
+      if (camp.id == widget.selectedCampId && camp.canAccess) {
+        selectedCamp = camp;
+      }
     }
     final rfidPower = _rfidPower ?? _maxRfidPower.toDouble();
     return Scaffold(
@@ -2524,7 +2572,9 @@ class _SettingsScreenState extends State<_SettingsScreen> {
                 optionsStream: widget.campUpdates,
                 selectedValue: selectedCamp,
                 itemLabel: (camp) => camp.name,
-                itemSubtitle: (camp) => camp.id,
+                itemSubtitle: (camp) =>
+                    camp.canAccess ? camp.id : '${camp.id} - No access',
+                itemEnabled: (camp) => camp.canAccess,
                 onChanged: (camp) async {
                   await widget.onCampChanged(camp.id);
                   if (context.mounted) Navigator.pop(context);

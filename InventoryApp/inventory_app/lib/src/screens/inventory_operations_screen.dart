@@ -11,6 +11,13 @@ import '../services/native_bridge.dart';
 import '../utils/formatters.dart';
 import '../widgets/common_widgets.dart';
 
+String _firstAccessibleCampId(Iterable<Camp> camps) {
+  for (final camp in camps) {
+    if (camp.canAccess) return camp.id;
+  }
+  return '';
+}
+
 const _assetFilterColumns = [
   'code',
   'rfidCode',
@@ -95,7 +102,6 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
   bool _refreshInFlight = false;
   bool _refreshAgain = false;
   bool _permissionRefreshInFlight = false;
-  bool _updatePromptOpen = false;
   bool _authExpired = false;
   bool _rfidProcessing = false;
   bool _rfidHandledByDialog = false;
@@ -177,7 +183,7 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
       setState(() {
         _camps = camps;
         _permissions = permissions;
-        _selectedCampId = camps.isNotEmpty ? camps.first.id : '';
+        _selectedCampId = _firstAccessibleCampId(camps);
       });
       _publishCampOptions();
       _publishPermissionOptions();
@@ -325,17 +331,16 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
     try {
       final camps = await widget.api.camps();
       if (!mounted) return;
-      final stillExists =
+      final stillAccessible =
           _selectedCampId.isNotEmpty &&
-          camps.any((camp) => camp.id == _selectedCampId);
-      final nextCampId = stillExists
-          ? _selectedCampId
-          : (camps.isNotEmpty ? camps.first.id : '');
+          camps.any((camp) => camp.id == _selectedCampId && camp.canAccess);
+      final nextCampId = stillAccessible ? _selectedCampId : '';
       final changed = nextCampId != _selectedCampId;
       setState(() {
         _camps = camps;
         _selectedCampId = nextCampId;
         if (changed) {
+          _loading = false;
           _overview = const AssetsOverview();
           _selectedRoom = null;
           _roomScanFindings = const [];
@@ -347,6 +352,12 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
       _publishCampOptions();
       _publishLookupOptions();
       _syncRfidScanAvailability();
+      if (changed && nextCampId.isEmpty) {
+        _closeOpenModalWindows();
+        if (!_overviewUpdates.isClosed) {
+          _overviewUpdates.add(const AssetsOverview());
+        }
+      }
       if (changed && nextCampId.isNotEmpty) await _refresh(quiet: true);
     } catch (error) {
       if (_isAuthFailure(error)) await _handleAuthExpired();
@@ -377,17 +388,18 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
   }
 
   Future<void> _refresh({bool quiet = false}) async {
-    if (_selectedCampId.isEmpty) {
+    final campId = _selectedCampId;
+    if (campId.isEmpty) {
       setState(() => _loading = false);
       return;
     }
     if (!quiet && mounted) setState(() => _loading = true);
     try {
       final overview = await widget.api.overview(
-        _selectedCampId,
+        campId,
         tableState: _tableState(),
       );
-      if (!mounted) return;
+      if (!mounted || _selectedCampId != campId) return;
       setState(() {
         _overview = overview;
         _loading = false;
@@ -396,6 +408,7 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
       if (!_overviewUpdates.isClosed) _overviewUpdates.add(overview);
       _publishLookupOptions();
     } catch (error) {
+      if (!mounted || _selectedCampId != campId) return;
       if (_isAuthFailure(error)) {
         await _handleAuthExpired();
       } else {
@@ -540,24 +553,31 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
   }
 
   Future<void> _checkForUpdate({bool manual = false}) async {
-    if (_authExpired || _updatePromptOpen) return;
+    if (_authExpired) return;
+    if (!_permissions.canDownloadAssetsApp) {
+      if (manual) _show("You don't have permission to check for app updates.");
+      return;
+    }
     try {
       try {
         await widget.api.refreshTokens();
       } catch (_) {}
       if ((await widget.api.accessToken).isEmpty) return;
-      final update = await widget.api.appVersion();
+      final results = await Future.wait<Object>([
+        NativeBridge.appBuildInfo(),
+        widget.api.appVersion(),
+      ]);
       if (_authExpired || !mounted) return;
+      final build = results[0] as AppBuildInfo;
+      final update = results[1] as AppUpdateInfo;
       final apkUrl = update.apkUrl;
       if (apkUrl == null || apkUrl.isEmpty) {
         if (manual) _show('No Android update package is published.');
         return;
       }
-      final build = await NativeBridge.appBuildInfo();
       final currentVersion = build.versionName.trim();
       final nextVersion = (update.version ?? '').trim();
-      final changed = nextVersion.isNotEmpty && nextVersion != currentVersion;
-      if (!changed) {
+      if (!_isNewerVersion(nextVersion, currentVersion)) {
         if (manual) _show('This device already has the current version.');
         return;
       }
@@ -570,7 +590,6 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
         return;
       }
       if (!mounted) return;
-      _updatePromptOpen = true;
       final install = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -590,7 +609,6 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
           ],
         ),
       );
-      _updatePromptOpen = false;
       if (install != true) return;
       final bearerToken = await widget.api.accessToken;
       if (bearerToken.isEmpty) return;
@@ -600,7 +618,6 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
         sha256: update.sha256,
       );
     } catch (error) {
-      _updatePromptOpen = false;
       if (_isAuthFailure(error)) {
         await _handleAuthExpired();
         return;
@@ -609,7 +626,33 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
     }
   }
 
+  bool _isNewerVersion(String latest, String current) {
+    if (latest.trim().isEmpty) return false;
+    final latestParts = _versionParts(latest);
+    final currentParts = _versionParts(current);
+    final length = latestParts.length > currentParts.length
+        ? latestParts.length
+        : currentParts.length;
+    for (var index = 0; index < length; index += 1) {
+      final left = index < latestParts.length ? latestParts[index] : 0;
+      final right = index < currentParts.length ? currentParts[index] : 0;
+      if (left > right) return true;
+      if (left < right) return false;
+    }
+    return false;
+  }
+
+  List<int> _versionParts(String value) {
+    final version = value.split('+').first;
+    return version
+        .split(RegExp(r'[^0-9]+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) => int.tryParse(part) ?? 0)
+        .toList();
+  }
+
   Future<void> _changeCamp(String campId) async {
+    if (!_camps.any((camp) => camp.id == campId && camp.canAccess)) return;
     setState(() {
       _selectedCampId = campId;
       _overview = const AssetsOverview();
@@ -642,7 +685,9 @@ class _InventoryOperationsScreenState extends State<InventoryOperationsScreen>
   Widget build(BuildContext context) {
     Camp? selectedCamp;
     for (final camp in _camps) {
-      if (camp.id == _selectedCampId) selectedCamp = camp;
+      if (camp.id == _selectedCampId && camp.canAccess) {
+        selectedCamp = camp;
+      }
     }
 
     return Scaffold(
@@ -2034,7 +2079,9 @@ class _SettingsScreenState extends State<_SettingsScreen> {
   Widget build(BuildContext context) {
     Camp? selectedCamp;
     for (final camp in _camps) {
-      if (camp.id == widget.selectedCampId) selectedCamp = camp;
+      if (camp.id == widget.selectedCampId && camp.canAccess) {
+        selectedCamp = camp;
+      }
     }
     final rfidPower = _rfidPower ?? _maxRfidPower.toDouble();
 
@@ -2054,7 +2101,9 @@ class _SettingsScreenState extends State<_SettingsScreen> {
                 optionsStream: widget.campUpdates,
                 selectedValue: selectedCamp,
                 itemLabel: (camp) => camp.name,
-                itemSubtitle: (camp) => camp.id,
+                itemSubtitle: (camp) =>
+                    camp.canAccess ? camp.id : '${camp.id} - No access',
+                itemEnabled: (camp) => camp.canAccess,
                 onChanged: (camp) async {
                   await widget.onCampChanged(camp.id);
                   if (context.mounted) Navigator.pop(context);

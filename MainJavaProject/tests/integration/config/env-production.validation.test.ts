@@ -31,7 +31,6 @@ const baseEnv = {
   HASH_APP_BIKE: 'a'.repeat(64),
   HASH_APP_LAUNDRY: 'b'.repeat(64),
   HASH_APP_ASSET: 'c'.repeat(64),
-  HASH_APP_GYM: 'd'.repeat(64),
   SECRET_NAME: 'GSS',
   DB_USER: 'gss',
   DB_HOST: '127.0.0.1',

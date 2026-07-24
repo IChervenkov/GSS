@@ -340,7 +340,6 @@ sudo sh docker-bench-security.sh
 - `HASH_APP_BIKE`: shared mobile/app secret for the bicycle app.
 - `HASH_APP_LAUNDRY`: shared mobile/app secret for the laundry app.
 - `HASH_APP_ASSET`: shared mobile/app secret for the asset app.
-- `HASH_APP_GYM`: shared mobile/app secret for the gym app.
 
 ### Redis and shared infrastructure
 

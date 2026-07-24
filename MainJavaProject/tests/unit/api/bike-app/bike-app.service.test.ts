@@ -5,6 +5,42 @@ const {
   createBikeAppService,
 } = require('../../../../src/modules/api/bike-app/application/services/bike-app.service');
 
+test('bike app camp list preserves per-user access flags', async () => {
+  const service = createBikeAppService({
+    env: {},
+    repositories: {
+      main: {
+        listCampsAndPermissions: async () => ({
+          camps: [
+            {
+              id: 'camp-1',
+              name: 'Camp One',
+              createdAt: '2026-05-13',
+              canAccess: false,
+            },
+          ],
+          total: 1,
+        }),
+      },
+      bicycles: {},
+    },
+  });
+
+  const result = await service.listCamps({
+    actorUserId: 'user-1',
+  });
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.camps, [
+    {
+      id: 'camp-1',
+      name: 'Camp One',
+      createdAt: '2026-05-13',
+      canAccess: false,
+    },
+  ]);
+});
+
 test('bike app legacy rent requests infer camp context and emit the shared bicycle realtime update', async () => {
   const emitted = [];
   let rentPayload = null;

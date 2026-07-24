@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ichervenkov/gsscodeonly
 
 jobs:
   quality:
@@ -38,9 +38,9 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -114,7 +114,7 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Log in to registry
         uses: docker/login-action@v3
@@ -132,9 +132,41 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
+  deployment-preflight:
+    if: github.ref == 'refs/heads/main' && vars.ENABLE_STAGING_DEPLOYMENT == 'true'
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Validate staging deployment configuration
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DB_MIGRATION_GATE_TOKEN: ${{ secrets.DB_MIGRATION_GATE_TOKEN }}
+          STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          STAGING_HEALTH_TOKEN: ${{ secrets.STAGING_HEALTH_TOKEN }}
+        run: |
+          missing=0
+          for name in \
+            DEPLOY_SSH_HOST \
+            DEPLOY_SSH_USER \
+            DEPLOY_SSH_KEY \
+            DB_MIGRATION_GATE_TOKEN \
+            STAGING_BASE_URL \
+            STAGING_HEALTH_TOKEN
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error title=Missing staging configuration::$name is not configured in the staging environment"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
   migrate-staging:
     if: github.ref == 'refs/heads/main'
-    needs: publish
+    needs: deployment-preflight
     runs-on: ubuntu-latest
     environment: staging
 
@@ -142,9 +174,9 @@ jobs:
       - name: Run explicit staging migration gate
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.STAGING_SSH_HOST }}
-          username: ${{ secrets.STAGING_SSH_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
+          host: ${{ vars.DEPLOY_SSH_HOST }}
+          username: ${{ vars.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           script_stop: true
           script: |
             set -eu
@@ -157,7 +189,7 @@ jobs:
               -e DB_RUN_MIGRATIONS_ON_BOOT=false \
               -e ALLOW_RUNTIME_MIGRATIONS=true \
               -e DB_MIGRATION_EXECUTION_MODE=ci-gate \
-              -e DB_MIGRATION_GATE_TOKEN='${{ secrets.STAGING_DB_MIGRATION_GATE_TOKEN }}' \
+              -e DB_MIGRATION_GATE_TOKEN='${{ secrets.DB_MIGRATION_GATE_TOKEN }}' \
               -e DB_MIGRATION_RELEASE_ID='${{ github.sha }}' \
               -e DB_MIGRATION_APPLIED_BY='ci:${{ github.actor }}' \
               "$IMAGE_REF" \
@@ -173,9 +205,9 @@ jobs:
       - name: Deploy on staging host
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.STAGING_SSH_HOST }}
-          username: ${{ secrets.STAGING_SSH_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
+          host: ${{ vars.DEPLOY_SSH_HOST }}
+          username: ${{ vars.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           script_stop: true
           script: |
             set -eu
@@ -198,7 +230,7 @@ jobs:
             "${{ secrets.STAGING_BASE_URL }}/health/ready"
 
   rollback-staging:
-    if: failure() && github.ref == 'refs/heads/main'
+    if: always() && github.ref == 'refs/heads/main' && needs.deploy-staging.result == 'failure'
     needs: deploy-staging
     runs-on: ubuntu-latest
     environment: staging
@@ -207,9 +239,9 @@ jobs:
       - name: Roll back to previous image tag
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.STAGING_SSH_HOST }}
-          username: ${{ secrets.STAGING_SSH_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
+          host: ${{ vars.DEPLOY_SSH_HOST }}
+          username: ${{ vars.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           script_stop: true
           script: |
             set -eu

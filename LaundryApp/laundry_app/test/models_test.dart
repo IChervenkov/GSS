@@ -2,6 +2,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:laundry_app/src/models/laundry_models.dart';
 
 void main() {
+  test('Camp maps its per-user access flag', () {
+    expect(
+      Camp.fromJson({'id': 'camp-1', 'name': 'Camp One'}).canAccess,
+      isTrue,
+    );
+    expect(
+      Camp.fromJson({
+        'id': 'camp-2',
+        'name': 'Camp Two',
+        'canAccess': false,
+      }).canAccess,
+      isFalse,
+    );
+  });
+
   test('LaundryOverview maps summary, rows, status rows, and tables', () {
     final overview = LaundryOverview.fromJson({
       'total': 3,

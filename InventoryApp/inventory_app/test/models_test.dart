@@ -2,6 +2,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inventory_app/src/models/inventory_models.dart';
 
 void main() {
+  test('Camp maps its per-user access flag', () {
+    expect(
+      Camp.fromJson({'id': 'camp-1', 'name': 'Camp One'}).canAccess,
+      isTrue,
+    );
+    expect(
+      Camp.fromJson({
+        'id': 'camp-2',
+        'name': 'Camp Two',
+        'canAccess': false,
+      }).canAccess,
+      isFalse,
+    );
+  });
+
   test('AssetsOverview maps summary, rows, lookups, and tables', () {
     final overview = AssetsOverview.fromJson({
       'totalAssets': 3,

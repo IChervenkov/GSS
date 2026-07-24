@@ -167,7 +167,6 @@ const schema = Joi.object({
   HASH_APP_BIKE: secretStringSchema('HASH_APP_BIKE'),
   HASH_APP_LAUNDRY: secretStringSchema('HASH_APP_LAUNDRY'),
   HASH_APP_ASSET: secretStringSchema('HASH_APP_ASSET'),
-  HASH_APP_GYM: secretStringSchema('HASH_APP_GYM'),
   APP_BIKE_VERSION: Joi.string().trim().min(1).default('1.4.1'),
   APP_LAUNDRY_VERSION: Joi.string().trim().min(1).default('1.4.2'),
   APP_ASSET_VERSION: Joi.string().trim().min(1).default('1.5.3'),
@@ -302,7 +301,6 @@ if (!isLocal) {
     'HASH_APP_BIKE',
     'HASH_APP_LAUNDRY',
     'HASH_APP_ASSET',
-    'HASH_APP_GYM',
   ]) {
     ensureNotPlaceholder(secretKey, resolved[secretKey]);
   }

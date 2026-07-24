@@ -97,6 +97,10 @@ class LaundrySocketClient {
       'camp:record:created',
       'camp:record:updated',
       'camp:record:deleted',
+      'camp:access:changed',
+      'camp:access:updated',
+      'camp:access:self:refresh',
+      'camp:access:self:refreshed',
     ]) {
       socket.on(eventName, (_) => onCampsChanged());
     }

@@ -178,15 +178,15 @@ class _AssetDialogState extends State<AssetDialog> {
                     ],
                     onChanged: formEnabled
                         ? (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _status = value;
-                        if (_status == 'repair') {
-                          _soldierId = null;
-                          _helmetId = null;
-                        }
-                      });
-                    }
+                            if (value == null) return;
+                            setState(() {
+                              _status = value;
+                              if (_status == 'repair') {
+                                _soldierId = null;
+                                _helmetId = null;
+                              }
+                            });
+                          }
                         : null,
                   ),
                   const SizedBox(height: 12),

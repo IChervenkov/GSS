@@ -2,6 +2,21 @@ import 'package:bike_app/src/models/bike_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Camp maps its per-user access flag', () {
+    expect(
+      Camp.fromJson({'id': 'camp-1', 'name': 'Camp One'}).canAccess,
+      isTrue,
+    );
+    expect(
+      Camp.fromJson({
+        'id': 'camp-2',
+        'name': 'Camp Two',
+        'canAccess': false,
+      }).canAccess,
+      isFalse,
+    );
+  });
+
   test('InventorySnapshot maps summary, bicycles, and helmets', () {
     final snapshot = InventorySnapshot.fromJson({
       'summary': {'available': 2, 'rented': 1, 'repair': 0, 'late': 1, 'longTerm': 3},

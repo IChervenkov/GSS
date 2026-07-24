@@ -129,13 +129,13 @@ class _RentDialogState extends State<RentDialog> {
                   value: _repair,
                   onChanged: formEnabled
                       ? (value) => setState(() {
-                    _repair = value;
-                    if (_repair) {
-                      _soldierId = null;
-                      _helmetId = null;
-                      _scanMessage = '';
-                    }
-                  })
+                          _repair = value;
+                          if (_repair) {
+                            _soldierId = null;
+                            _helmetId = null;
+                            _scanMessage = '';
+                          }
+                        })
                       : null,
                   title: const Text('Send to repair'),
                 ),
